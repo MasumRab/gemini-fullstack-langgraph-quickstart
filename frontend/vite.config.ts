@@ -1,5 +1,4 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
@@ -10,7 +9,7 @@ export default defineConfig({
   base: "/app/",
   resolve: {
     alias: {
-      "@": path.resolve(path.dirname(fileURLToPath(import.meta.url)), "src"),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   server: {
