@@ -39,6 +39,13 @@ class Configuration(BaseModel):
         metadata={"description": "The maximum number of research loops to perform."},
     )
 
+    require_planning_confirmation: bool = Field(
+        default=False,
+        metadata={
+            "description": "If true, pause after planning until the user confirms the plan"
+        },
+    )
+
     @classmethod
     def from_runnable_config(
         cls, config: Optional[RunnableConfig] = None
