@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TypedDict
+from typing import List, TypedDict
 
 from langgraph.graph import add_messages
 from typing_extensions import Annotated
@@ -14,7 +14,12 @@ class OverallState(TypedDict):
     messages: Annotated[list, add_messages]
     search_query: Annotated[list, operator.add]
     web_research_result: Annotated[list, operator.add]
+    validated_web_research_result: Annotated[list, operator.add]
+    validation_notes: Annotated[list, operator.add]
     sources_gathered: Annotated[list, operator.add]
+    planning_steps: List[dict] | None
+    planning_status: str | None
+    planning_feedback: Annotated[list, operator.add]
     initial_search_query_count: int
     max_research_loops: int
     research_loop_count: int
@@ -46,3 +51,12 @@ class WebSearchState(TypedDict):
 @dataclass(kw_only=True)
 class SearchStateOutput:
     running_summary: str = field(default=None)  # Final report
+
+
+def create_rag_resources(resource_uris: list[str]):
+    """Placeholder factory for RAG resources until a concrete implementation exists."""
+
+    raise NotImplementedError(
+        "create_rag_resources is not implemented. Provide agent.state.create_rag_resources"
+        " to convert resource URIs into Resource objects consumed by rag_nodes."
+    )

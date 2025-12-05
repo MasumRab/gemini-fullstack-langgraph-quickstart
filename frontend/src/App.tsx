@@ -13,8 +13,18 @@ export default function App() {
   const [historicalActivities, setHistoricalActivities] = useState<
     Record<string, ProcessedEvent[]>
   >({});
+  const [planningContext, setPlanningContext] = useState<{
+    steps: any[];
+    status?: string | null;
+    feedback?: string[];
+  } | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const hasFinalizeEventOccurredRef = useRef(false);
+  const lastConfigRef = useRef({
+    initial_search_query_count: 1,
+    max_research_loops: 1,
+    reasoning_model: "gemini-2.5-flash-preview-04-17",
+  });
   const [error, setError] = useState<string | null>(null);
   const thread = useStream<{
     messages: Message[];
@@ -34,6 +44,18 @@ export default function App() {
           title: "Generating Search Queries",
           data: event.generate_query?.search_query?.join(", ") || "",
         };
+      } else if (event.planning_mode) {
+        setPlanningContext({
+          steps: event.planning_mode.planning_steps || [],
+          status: event.planning_mode.planning_status,
+          feedback: event.planning_mode.planning_feedback || [],
+        });
+      } else if (event.planning_wait) {
+        setPlanningContext((prev) => ({
+          steps: prev?.steps || [],
+          status: "awaiting_confirmation",
+          feedback: event.planning_wait.planning_feedback || [],
+        }));
       } else if (event.web_research) {
         const sources = event.web_research.sources_gathered || [];
         const numSources = sources.length;
@@ -41,9 +63,17 @@ export default function App() {
           ...new Set(sources.map((s: any) => s.label).filter(Boolean)),
         ];
         const exampleLabels = uniqueLabels.slice(0, 3).join(", ");
+        setPlanningContext((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: "confirmed",
+              }
+            : prev
+        );
         processedEvent = {
           title: "Web Research",
-          data: `Gathered ${numSources} sources. Related to: ${
+          data: `Gathered ${numSources} sources. Related to ${
             exampleLabels || "N/A"
           }.`,
         };
@@ -134,11 +164,35 @@ export default function App() {
           id: Date.now().toString(),
         },
       ];
+      const config = {
+        initial_search_query_count,
+        max_research_loops,
+        reasoning_model: model,
+      };
+      lastConfigRef.current = config;
+      setPlanningContext(null);
       thread.submit({
         messages: newMessages,
-        initial_search_query_count: initial_search_query_count,
-        max_research_loops: max_research_loops,
-        reasoning_model: model,
+        ...config,
+      });
+    },
+    [thread]
+  );
+
+  const handlePlanningCommand = useCallback(
+    (command: string) => {
+      const config = lastConfigRef.current;
+      const newMessages: Message[] = [
+        ...(thread.messages || []),
+        {
+          type: "human",
+          content: command,
+          id: Date.now().toString(),
+        },
+      ];
+      thread.submit({
+        messages: newMessages,
+        ...config,
       });
     },
     [thread]
@@ -152,37 +206,39 @@ export default function App() {
   return (
     <div className="flex h-screen bg-neutral-800 text-neutral-100 font-sans antialiased">
       <main className="h-full w-full max-w-4xl mx-auto">
-          {thread.messages.length === 0 ? (
-            <WelcomeScreen
-              handleSubmit={handleSubmit}
-              isLoading={thread.isLoading}
-              onCancel={handleCancel}
-            />
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <div className="flex flex-col items-center justify-center gap-4">
-                <h1 className="text-2xl text-red-400 font-bold">Error</h1>
-                <p className="text-red-400">{JSON.stringify(error)}</p>
+        {thread.messages.length === 0 ? (
+          <WelcomeScreen
+            handleSubmit={handleSubmit}
+            isLoading={thread.isLoading}
+            onCancel={handleCancel}
+          />
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center gap-4">
+              <h1 className="text-2xl text-red-400 font-bold">Error</h1>
+              <p className="text-red-400">{JSON.stringify(error)}</p>
 
-                <Button
-                  variant="destructive"
-                  onClick={() => window.location.reload()}
-                >
-                  Retry
-                </Button>
-              </div>
+              <Button
+                variant="destructive"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
             </div>
-          ) : (
-            <ChatMessagesView
-              messages={thread.messages}
-              isLoading={thread.isLoading}
-              scrollAreaRef={scrollAreaRef}
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-              liveActivityEvents={processedEventsTimeline}
-              historicalActivities={historicalActivities}
-            />
-          )}
+          </div>
+        ) : (
+          <ChatMessagesView
+            messages={thread.messages}
+            isLoading={thread.isLoading}
+            scrollAreaRef={scrollAreaRef}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            liveActivityEvents={processedEventsTimeline}
+            historicalActivities={historicalActivities}
+            planningContext={planningContext}
+            onSendCommand={handlePlanningCommand}
+          />
+        )}
       </main>
     </div>
   );

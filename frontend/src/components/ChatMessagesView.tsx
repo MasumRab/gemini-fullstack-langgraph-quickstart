@@ -222,6 +222,12 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   );
 };
 
+interface PlanningContext {
+  steps: any[];
+  status?: string | null;
+  feedback?: string[];
+}
+
 interface ChatMessagesViewProps {
   messages: Message[];
   isLoading: boolean;
@@ -230,6 +236,8 @@ interface ChatMessagesViewProps {
   onCancel: () => void;
   liveActivityEvents: ProcessedEvent[];
   historicalActivities: Record<string, ProcessedEvent[]>;
+  planningContext?: PlanningContext | null;
+  onSendCommand?: (command: string) => void;
 }
 
 export function ChatMessagesView({
@@ -240,6 +248,8 @@ export function ChatMessagesView({
   onCancel,
   liveActivityEvents,
   historicalActivities,
+  planningContext,
+  onSendCommand,
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
@@ -254,6 +264,88 @@ export function ChatMessagesView({
   };
   return (
     <div className="flex flex-col h-full">
+      {planningContext && (
+        <div className="px-4 pt-4">
+          <div className="border border-neutral-700 rounded-2xl bg-neutral-900/50 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-neutral-400 uppercase tracking-wide">
+                  Planning Mode
+                </p>
+                <h3 className="text-lg font-semibold">
+                  {planningContext.steps?.length
+                    ? `${planningContext.steps.length} proposed step${
+                        planningContext.steps.length > 1 ? "s" : ""
+                      }`
+                    : "Awaiting plan details"}
+                </h3>
+              </div>
+              {planningContext.status && (
+                <Badge className="bg-neutral-700 text-xs">
+                  {planningContext.status}
+                </Badge>
+              )}
+            </div>
+            {planningContext.feedback?.length ? (
+              <ul className="text-xs text-neutral-400 list-disc pl-4 space-y-1">
+                {planningContext.feedback.map((note, idx) => (
+                  <li key={`feedback-${idx}`}>{note}</li>
+                ))}
+              </ul>
+            ) : null}
+            {planningContext.steps?.length ? (
+              <ol className="space-y-2">
+                {planningContext.steps.map((step, idx) => (
+                  <li
+                    key={step.id || `plan-${idx}`}
+                    className="border border-neutral-700 rounded-xl p-3 text-sm"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-neutral-200 font-medium">
+                        {step.title || step.query || `Step ${idx + 1}`}
+                      </span>
+                      {step.status && (
+                        <Badge variant="outline" className="text-xs">
+                          {step.status}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-neutral-400 mt-1">
+                      Tool: {step.suggested_tool || "web_research"}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+            {onSendCommand && (
+              <div className="flex flex-wrap gap-2 justify-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onSendCommand("/plan")}
+                >
+                  Enter Planning
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onSendCommand("/end_plan")}
+                >
+                  Skip Planning
+                </Button>
+                {planningContext.status === "awaiting_confirmation" && (
+                  <Button
+                    size="sm"
+                    onClick={() => onSendCommand("/confirm_plan")}
+                  >
+                    Confirm Plan
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <ScrollArea className="flex-1 overflow-y-auto" ref={scrollAreaRef}>
         <div className="p-4 md:p-6 space-y-2 max-w-4xl mx-auto pt-16">
           {messages.map((message, index) => {
@@ -317,6 +409,27 @@ export function ChatMessagesView({
         onCancel={onCancel}
         hasHistory={messages.length > 0}
       />
+      {onSendCommand && (
+        <div className="flex flex-wrap gap-2 justify-end px-4 pb-4 text-xs text-neutral-400">
+          <span className="mr-auto">
+            Use planning toggles to guide the agent before web research.
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onSendCommand("/plan")}
+          >
+            Start Planning
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onSendCommand("/end_plan")}
+          >
+            End Planning
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
