@@ -1,4 +1,5 @@
 import os
+import re
 
 from agent.tools_and_schemas import SearchQueryList, Reflection
 from dotenv import load_dotenv
@@ -8,6 +9,7 @@ from langgraph.graph import StateGraph
 from langgraph.graph import START, END
 from langchain_core.runnables import RunnableConfig
 from google.genai import Client
+from typing import Callable, Dict, List, Optional
 
 from agent.state import (
     OverallState,
@@ -36,11 +38,91 @@ load_dotenv()
 if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
 
+
+class GraphRegistry:
+    """Metadata registry for documenting graph components and helper utilities.
+
+    Rather than wiring the graph directly, this registry keeps track of node
+    annotations, optional notes, and edge descriptions that can power docs or
+    experimentation tooling.
+    """
+
+    def __init__(self):
+        self.node_docs: Dict[str, Dict[str, object]] = {}
+        self.edge_docs: List[Dict[str, str]] = []
+        self.notes: List[str] = []
+
+    def describe(
+        self,
+        name: str,
+        *,
+        summary: str,
+        tags: Optional[List[str]] = None,
+        outputs: Optional[List[str]] = None,
+    ):
+        """Decorator that records metadata for a node without altering wiring."""
+
+        def decorator(func: Callable):
+            self.node_docs[name] = {
+                "handler": func.__name__,
+                "summary": summary,
+                "tags": tags or [],
+                "outputs": outputs or [],
+            }
+            return func
+
+        return decorator
+
+    def document_edge(self, source: str, target: str, *, description: str = ""):
+        self.edge_docs.append(
+            {
+                "source": source,
+                "target": target,
+                "description": description,
+            }
+        )
+
+    def add_note(self, note: str):
+        self.notes.append(note)
+
+    def render_overview(self) -> str:
+        lines = ["Registered Nodes:"]
+        for name, meta in self.node_docs.items():
+            lines.append(
+                f"- {name} ({meta['handler']}): {meta['summary']}"  # type: ignore[index]
+            )
+            if meta["tags"]:
+                lines.append(f"    tags: {', '.join(meta['tags'])}")
+            if meta["outputs"]:
+                lines.append(f"    outputs: {', '.join(meta['outputs'])}")
+
+        if self.edge_docs:
+            lines.append("\nDocumented Edges:")
+            for edge in self.edge_docs:
+                desc = f" - {edge['description']}" if edge["description"] else ""
+                lines.append(f"- {edge['source']} -> {edge['target']}{desc}")
+
+        if self.notes:
+            lines.append("\nNotes:")
+            for note in self.notes:
+                lines.append(f"- {note}")
+
+        return "\n".join(lines)
+
+
+graph_registry = GraphRegistry()
+
 # Used for Google Search API
 genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
 # Nodes
+@graph_registry.describe(
+    "generate_query",
+    summary="LLM generates structured search queries from the conversation context.",
+    tags=["llm", "search"],
+    outputs=["search_query"],
+)
 def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
     """LangGraph node that generates search queries based on the User's question.
 
@@ -81,6 +163,11 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
     return {"search_query": result.query}
 
 
+@graph_registry.describe(
+    "continue_to_web_research",
+    summary="Fan-out helper that routes each generated query to a web research task.",
+    tags=["routing", "parallel"],
+)
 def continue_to_web_research(state: QueryGenerationState):
     """LangGraph node that sends the search queries to the web research node.
 
@@ -92,6 +179,12 @@ def continue_to_web_research(state: QueryGenerationState):
     ]
 
 
+@graph_registry.describe(
+    "web_research",
+    summary="Calls Google Search tool, resolves citations, and returns annotated snippets.",
+    tags=["search", "tool"],
+    outputs=["web_research_result", "sources_gathered"],
+)
 def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
     """LangGraph node that performs web research using the native Google Search API tool.
 
@@ -136,6 +229,171 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
     }
 
 
+@graph_registry.describe(
+    "planning_mode",
+    summary="Creates structured plan steps from generated queries for user review.",
+    tags=["planning", "ui"],
+    outputs=["planning_steps", "planning_status", "planning_feedback"],
+)
+def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
+    configurable = Configuration.from_runnable_config(config)
+    queries = state.get("search_query", []) or []
+
+    planning_status = state.get("planning_status")
+    if planning_status == "skip_planning":
+        return {"planning_status": "auto_approved", "planning_steps": [], "planning_feedback": ["Planning skipped via /end_plan."]}
+
+    last_message = state["messages"][-1] if state.get("messages") else None
+    if isinstance(last_message, dict):
+        last_content = last_message.get("content") if isinstance(last_message.get("content"), str) else None
+    else:
+        last_content = getattr(last_message, "content", None)
+
+    if last_content and last_content.strip().lower().startswith("/end_plan"):
+        return {
+            "planning_status": "auto_approved",
+            "planning_steps": [],
+            "planning_feedback": ["Planning disabled via /end_plan."],
+        }
+
+    if last_content and last_content.strip().lower().startswith("/plan"):
+        state["planning_status"] = "awaiting_confirmation"
+
+    plan_steps = []
+    for idx, query in enumerate(queries):
+        label = query if isinstance(query, str) else str(query)
+        plan_steps.append(
+            {
+                "id": f"plan-{idx}",
+                "title": f"Investigate: {label}",
+                "query": label,
+                "suggested_tool": "web_research",
+                "status": "pending",
+            }
+        )
+
+    status = (
+        "awaiting_confirmation"
+        if configurable.require_planning_confirmation
+        else "auto_approved"
+    )
+
+    feedback = [f"Generated {len(plan_steps)} plan steps from initial queries."]
+    if not plan_steps:
+        feedback.append("No queries available; planning mode produced an empty plan.")
+
+    return {
+        "planning_steps": plan_steps,
+        "planning_status": state.get("planning_status") or status,
+        "planning_feedback": feedback,
+    }
+
+
+@graph_registry.describe(
+    "planning_wait",
+    summary="Pauses execution until the frontend confirms the plan.",
+    tags=["planning", "ui"],
+    outputs=["planning_feedback"],
+)
+def planning_wait(state: OverallState) -> OverallState:
+    return {
+        "planning_feedback": [
+            "Awaiting user confirmation. Update planning_status to 'confirmed' to continue."
+        ]
+    }
+
+
+def planning_router(state: OverallState, config: RunnableConfig):
+    configurable = Configuration.from_runnable_config(config)
+    planning_status = state.get("planning_status")
+    last_message = state["messages"][-1] if state.get("messages") else None
+    last_content = getattr(last_message, "content", "") if last_message else ""
+    last_content = last_content.strip().lower() if isinstance(last_content, str) else ""
+
+    if last_content.startswith("/plan"):
+        state["planning_status"] = "awaiting_confirmation"
+        return "planning_wait"
+
+    if last_content.startswith("/end_plan"):
+        state["planning_status"] = "auto_approved"
+        return continue_to_web_research(state)
+
+    if last_content.startswith("/confirm_plan"):
+        state["planning_status"] = "confirmed"
+        return continue_to_web_research(state)
+
+    if configurable.require_planning_confirmation and planning_status != "confirmed":
+        return "planning_wait"
+
+    return continue_to_web_research(state)
+
+
+def _flatten_queries(queries: List) -> List[str]:
+    flattened: List[str] = []
+    for item in queries:
+        if isinstance(item, list):
+            flattened.extend(_flatten_queries(item))
+        elif isinstance(item, str):
+            flattened.append(item)
+    return flattened
+
+
+def _keywords_from_queries(queries: List[str]) -> List[str]:
+    keywords: List[str] = []
+    for query in queries:
+        for token in re.split(r"[^a-zA-Z0-9]+", query.lower()):
+            if len(token) >= 4:
+                keywords.append(token)
+    return keywords
+
+
+@graph_registry.describe(
+    "validate_web_results",
+    summary="Lightweight heuristic gate that filters summaries misaligned with the query intent.",
+    tags=["validation", "quality"],
+    outputs=["validated_web_research_result", "validation_notes"],
+)
+def validate_web_results(state: OverallState) -> OverallState:
+    """Ensure returned summaries reference the core query intent before reflection."""
+
+    summaries = state.get("web_research_result", [])
+    if not summaries:
+        return {
+            "validated_web_research_result": [],
+            "validation_notes": ["No web research summaries available for validation."],
+        }
+
+    raw_queries = state.get("search_query", [])
+    flattened_queries = _flatten_queries(raw_queries) if isinstance(raw_queries, list) else [str(raw_queries)]
+    keywords = _keywords_from_queries(flattened_queries)
+
+    validated: List[str] = []
+    notes: List[str] = []
+    for idx, summary in enumerate(summaries):
+        normalized = summary.lower()
+        if keywords and any(keyword in normalized for keyword in keywords):
+            validated.append(summary)
+        else:
+            notes.append(
+                f"Result {idx + 1} filtered: missing overlap with query intent ({', '.join(keywords[:5])})."
+            )
+
+    if not validated:
+        notes.append("All summaries failed heuristics; retaining originals to avoid data loss.")
+        validated = summaries
+
+    return {
+        "validated_web_research_result": validated,
+        "validation_notes": notes,
+    }
+
+
+@graph_registry.describe(
+    "reflection",
+    summary="Reasoning step that evaluates coverage and proposes follow-up queries.",
+    tags=["llm", "reasoning"],
+    outputs=["is_sufficient", "follow_up_queries"],
+)
 def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
     """LangGraph node that identifies knowledge gaps and generates potential follow-up queries.
 
@@ -157,10 +415,11 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
 
     # Format the prompt
     current_date = get_current_date()
+    summaries_source = state.get("validated_web_research_result") or state.get("web_research_result", [])
     formatted_prompt = reflection_instructions.format(
         current_date=current_date,
         research_topic=get_research_topic(state["messages"]),
-        summaries="\n\n---\n\n".join(state["web_research_result"]),
+        summaries="\n\n---\n\n".join(summaries_source),
     )
     # init Reasoning Model
     llm = ChatGoogleGenerativeAI(
@@ -180,6 +439,11 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
     }
 
 
+@graph_registry.describe(
+    "evaluate_research",
+    summary="Routing policy deciding between additional web searches or final answer.",
+    tags=["routing", "policy"],
+)
 def evaluate_research(
     state: ReflectionState,
     config: RunnableConfig,
@@ -217,6 +481,12 @@ def evaluate_research(
         ]
 
 
+@graph_registry.describe(
+    "finalize_answer",
+    summary="Synthesizes final response with deduplicated sources and citations.",
+    tags=["llm", "synthesis"],
+    outputs=["messages", "sources_gathered"],
+)
 def finalize_answer(state: OverallState, config: RunnableConfig):
     """LangGraph node that finalizes the research summary.
 
@@ -265,29 +535,70 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
     }
 
 
-# Create our Agent Graph
+# Create our Agent Graph using the standard builder wiring
 builder = StateGraph(OverallState, config_schema=Configuration)
-
-# Define the nodes we will cycle between
 builder.add_node("generate_query", generate_query)
+builder.add_node("planning_mode", planning_mode)
+builder.add_node("planning_wait", planning_wait)
 builder.add_node("web_research", web_research)
+builder.add_node("validate_web_results", validate_web_results)
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 
-# Set the entrypoint as `generate_query`
-# This means that this node is the first one called
 builder.add_edge(START, "generate_query")
-# Add conditional edge to continue with search queries in a parallel branch
+builder.add_edge("generate_query", "planning_mode")
 builder.add_conditional_edges(
-    "generate_query", continue_to_web_research, ["web_research"]
+    "planning_mode", planning_router, ["planning_wait", "web_research"]
 )
-# Reflect on the web research
-builder.add_edge("web_research", "reflection")
-# Evaluate the research
+builder.add_conditional_edges(
+    "planning_wait", planning_router, ["planning_wait", "web_research"]
+)
+builder.add_edge("web_research", "validate_web_results")
+builder.add_edge("validate_web_results", "reflection")
 builder.add_conditional_edges(
     "reflection", evaluate_research, ["web_research", "finalize_answer"]
 )
-# Finalize the answer
 builder.add_edge("finalize_answer", END)
+
+graph_registry.document_edge(
+    "generate_query",
+    "planning_mode",
+    description="Initial queries are summarized into a plan for user review.",
+)
+graph_registry.document_edge(
+    "planning_mode",
+    "web_research",
+    description="Once approved (or auto-approved), plan steps dispatch to web research.",
+)
+graph_registry.document_edge(
+    "planning_mode",
+    "planning_wait",
+    description="If confirmation is required, execution pauses for user feedback.",
+)
+graph_registry.document_edge(
+    "web_research",
+    "validate_web_results",
+    description="Heuristic validation guards against irrelevant summaries.",
+)
+graph_registry.document_edge(
+    "validate_web_results",
+    "reflection",
+    description="Only validated summaries reach the reasoning loop.",
+)
+graph_registry.document_edge(
+    "reflection",
+    "web_research",
+    description="Follow-up queries trigger additional web searches until sufficient.",
+)
+graph_registry.document_edge(
+    "reflection",
+    "finalize_answer",
+    description="Once sufficient or max loops reached, finalize the response.",
+)
+graph_registry.document_edge(
+    "finalize_answer",
+    END,
+    description="Graph terminates after final answer is produced.",
+)
 
 graph = builder.compile(name="pro-search-agent")
