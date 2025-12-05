@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planning Mode Test Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #60a5fa;
+            font-size: 2rem;
+        }
+        
+        .test-section {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .test-section h2 {
+            color: #93c5fd;
+            margin-bottom: 16px;
+            font-size: 1.5rem;
+        }
+        
+        .test-section h3 {
+            color: #cbd5e1;
+            margin: 16px 0 12px 0;
+            font-size: 1.1rem;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        
+        .status-card {
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .status-card h4 {
+            color: #60a5fa;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #10b981;
+        }
+        
+        .status-value.error {
+            color: #ef4444;
+        }
+        
+        .status-value.warning {
+            color: #f59e0b;
+        }
+        
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 12px;
+            margin-bottom: 12px;
+        }
+        
+        button:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button.secondary {
+            background: #64748b;
+        }
+        
+        button.secondary:hover {
+            background: #475569;
+        }
+        
+        button.success {
+            background: #10b981;
+        }
+        
+        button.success:hover {
+            background: #059669;
+        }
+        
+        .code-block {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .planning-preview {
+            background: #1e293b;
+            border: 2px solid #3b82f6;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 16px;
+        }
+        
+        .planning-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .badge.auto-approved {
+            background: #10b981;
+            color: white;
+        }
+        
+        .badge.awaiting {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .badge.confirmed {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .plan-step {
+            background: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .plan-step-title {
+            color: #e2e8f0;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        
+        .plan-step-tool {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+        
+        .log-container {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+        
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid #1e293b;
+        }
+        
+        .log-time {
+            color: #64748b;
+            margin-right: 8px;
+        }
+        
+        .log-info {
+            color: #60a5fa;
+        }
+        
+        .log-success {
+            color: #10b981;
+        }
+        
+        .log-error {
+            color: #ef4444;
+        }
+        
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .checklist li {
+            padding: 8px 0;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .checklist li:before {
+            content: "☐ ";
+            color: #64748b;
+            margin-right: 8px;
+        }
+        
+        .checklist li.checked:before {
+            content: "✓ ";
+            color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Planning Mode Test Interface</h1>
+        
+        <!-- Server Status -->
+        <div class="test-section">
+            <h2>Server Status</h2>
+            <div class="status-grid">
+                <div class="status-card">
+                    <h4>Backend (LangGraph)</h4>
+                    <div class="status-value" id="backend-status">Checking...</div>
+                    <small id="backend-url">http://localhost:2024</small>
+                </div>
+                <div class="status-card">
+                    <h4>Frontend (Vite)</h4>
+                    <div class="status-value" id="frontend-status">Checking...</div>
+                    <small id="frontend-url">http://localhost:5173/app/</small>
+                </div>
+            </div>
+            <div style="margin-top: 16px;">
+                <button onclick="checkServers()">🔄 Refresh Status</button>
+                <button class="secondary" onclick="openFrontend()">🌐 Open Frontend</button>
+            </div>
+        </div>
+        
+        <!-- Planning Mode Features -->
+        <div class="test-section">
+            <h2>Planning Mode Features Checklist</h2>
+            <ul class="checklist">
+                <li class="checked">Planning context state management (App.tsx)</li>
+                <li class="checked">Planning mode event handler (onUpdateEvent)</li>
+                <li class="checked">Planning wait event handler</li>
+                <li class="checked">Planning UI component (ChatMessagesView.tsx)</li>
+                <li class="checked">Planning command handler (handlePlanningCommand)</li>
+                <li class="checked">Planning router in backend (graph.py)</li>
+                <li class="checked">Planning mode node implementation</li>
+                <li class="checked">Planning wait node implementation</li>
+                <li class="checked">Status badge display</li>
+                <li class="checked">Plan steps rendering</li>
+                <li class="checked">Action buttons (Enter/Skip/Confirm)</li>
+                <li class="checked">Feedback messages display</li>
+            </ul>
+        </div>
+        
+        <!-- Mock Planning Context -->
+        <div class="test-section">
+            <h2>Planning Mode Preview</h2>
+            <p style="margin-bottom: 16px; color: #94a3b8;">
+                This shows how the planning mode UI should appear in the actual application:
+            </p>
+            
+            <div class="planning-preview">
+                <div class="planning-header">
+                    <div>
+                        <p style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+                            Planning Mode
+                        </p>
+                        <h3 style="margin: 0; color: #e2e8f0;">3 proposed steps</h3>
+                    </div>
+                    <span class="badge auto-approved" id="status-badge">auto_approved</span>
+                </div>
+                
+                <ul style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 16px; list-style: disc; padding-left: 20px;">
+                    <li>Generated 3 plan steps from initial queries.</li>
+                </ul>
+                
+                <div id="plan-steps">
+                    <div class="plan-step">
+                        <div class="plan-step-title">Investigate: renewable energy trends 2024</div>
+                        <div class="plan-step-tool">Tool: web_research</div>
+                    </div>
+                    <div class="plan-step">
+                        <div class="plan-step-title">Investigate: solar power innovations</div>
+                        <div class="plan-step-tool">Tool: web_research</div>
+                    </div>
+                    <div class="plan-step">
+                        <div class="plan-step-title">Investigate: wind energy developments</div>
+                        <div class="plan-step-tool">Tool: web_research</div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                    <button onclick="simulateCommand('/plan')">Enter Planning</button>
+                    <button class="secondary" onclick="simulateCommand('/end_plan')">Skip Planning</button>
+                    <button class="success" onclick="simulateCommand('/confirm_plan')" id="confirm-btn" style="display: none;">
+                        Confirm Plan
+                    </button>
+                </div>
+            </div>
+            
+            <h3>Status Transitions</h3>
+            <div style="display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap;">
+                <button onclick="setStatus('auto_approved')">Auto Approved</button>
+                <button onclick="setStatus('awaiting_confirmation')">Awaiting Confirmation</button>
+                <button onclick="setStatus('confirmed')">Confirmed</button>
+            </div>
+        </div>
+        
+        <!-- Test Scenarios -->
+        <div class="test-section">
+            <h2>Test Scenarios</h2>
+            
+            <h3>Scenario 1: Basic Planning Display</h3>
+            <div class="code-block">
+Query: "What are the latest trends in renewable energy?"
+Effort: medium (3 queries, 3 loops)
+Expected: Planning card with 3 steps, auto_approved status
+            </div>
+            <button onclick="logTest('Scenario 1', 'Basic Planning Display')">▶️ Run Test</button>
+            
+            <h3>Scenario 2: Confirmation Workflow</h3>
+            <div class="code-block">
+Config: require_planning_confirmation = true
+Query: "Explain quantum computing"
+Expected: Status = awaiting_confirmation, Confirm button visible
+            </div>
+            <button onclick="logTest('Scenario 2', 'Confirmation Workflow')">▶️ Run Test</button>
+            
+            <h3>Scenario 3: Skip Planning</h3>
+            <div class="code-block">
+Action: Click "Skip Planning" button
+Expected: Planning bypassed, research starts immediately
+            </div>
+            <button onclick="logTest('Scenario 3', 'Skip Planning')">▶️ Run Test</button>
+        </div>
+        
+        <!-- Test Log -->
+        <div class="test-section">
+            <h2>Test Log</h2>
+            <div class="log-container" id="log-container">
+                <div class="log-entry">
+                    <span class="log-time">[00:00:00]</span>
+                    <span class="log-info">Test interface initialized</span>
+                </div>
+            </div>
+            <button onclick="clearLog()">🗑️ Clear Log</button>
+        </div>
+        
+        <!-- Implementation Details -->
+        <div class="test-section">
+            <h2>Implementation Details</h2>
+            
+            <h3>Backend Files</h3>
+            <ul style="color: #94a3b8; line-height: 1.8;">
+                <li><code>backend/src/agent/graph.py</code> - Planning nodes and router</li>
+                <li><code>backend/src/agent/state.py</code> - State definitions</li>
+                <li><code>backend/src/agent/configuration.py</code> - Configuration options</li>
+                <li><code>backend/tests/test_planning.py</code> - Unit tests</li>
+            </ul>
+            
+            <h3>Frontend Files</h3>
+            <ul style="color: #94a3b8; line-height: 1.8;">
+                <li><code>frontend/src/App.tsx</code> - State management and event handling</li>
+                <li><code>frontend/src/components/ChatMessagesView.tsx</code> - Planning UI</li>
+            </ul>
+            
+            <h3>Key Functions</h3>
+            <div class="code-block">
+// Backend
+- planning_mode(state, config) → Creates plan steps
+- planning_wait(state) → Pauses for confirmation
+- planning_router(state, config) → Routes based on status
+
+// Frontend
+- setPlanningContext(context) → Updates planning state
+- handlePlanningCommand(command) → Sends commands to backend
+- onUpdateEvent(event) → Captures planning events
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let logIndex = 0;
+        
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('log-container');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-time">[${time}]</span>
+                <span class="log-${type}">${message}</span>
+            `;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            logIndex++;
+        }
+        
+        function clearLog() {
+            const logContainer = document.getElementById('log-container');
+            logContainer.innerHTML = '<div class="log-entry"><span class="log-time">[' + 
+                new Date().toLocaleTimeString() + ']</span><span class="log-info">Log cleared</span></div>';
+            logIndex = 0;
+        }
+        
+        async function checkServers() {
+            addLog('Checking server status...', 'info');
+            
+            // Check backend
+            try {
+                const backendResponse = await fetch('http://localhost:2024/ok', { mode: 'no-cors' });
+                document.getElementById('backend-status').textContent = '✓ Online';
+                document.getElementById('backend-status').className = 'status-value';
+                addLog('Backend server is online', 'success');
+            } catch (error) {
+                document.getElementById('backend-status').textContent = '✗ Offline';
+                document.getElementById('backend-status').className = 'status-value error';
+                addLog('Backend server is offline', 'error');
+            }
+            
+            // Check frontend
+            try {
+                const frontendResponse = await fetch('http://localhost:5173', { mode: 'no-cors' });
+                document.getElementById('frontend-status').textContent = '✓ Online';
+                document.getElementById('frontend-status').className = 'status-value';
+                addLog('Frontend server is online', 'success');
+            } catch (error) {
+                document.getElementById('frontend-status').textContent = '✗ Offline';
+                document.getElementById('frontend-status').className = 'status-value error';
+                addLog('Frontend server is offline', 'error');
+            }
+        }
+        
+        function openFrontend() {
+            window.open('http://localhost:5173/app/', '_blank');
+            addLog('Opened frontend in new tab', 'info');
+        }
+        
+        function simulateCommand(command) {
+            addLog(`Simulating command: ${command}`, 'info');
+            
+            if (command === '/plan') {
+                setStatus('awaiting_confirmation');
+                addLog('Planning mode activated, awaiting confirmation', 'success');
+            } else if (command === '/end_plan') {
+                setStatus('auto_approved');
+                document.getElementById('plan-steps').innerHTML = '<p style="color: #94a3b8;">Planning skipped</p>';
+                addLog('Planning skipped, proceeding to research', 'success');
+            } else if (command === '/confirm_plan') {
+                setStatus('confirmed');
+                addLog('Plan confirmed, starting web research', 'success');
+            }
+        }
+        
+        function setStatus(status) {
+            const badge = document.getElementById('status-badge');
+            badge.textContent = status;
+            badge.className = 'badge';
+            
+            if (status === 'auto_approved') {
+                badge.classList.add('auto-approved');
+                document.getElementById('confirm-btn').style.display = 'none';
+            } else if (status === 'awaiting_confirmation') {
+                badge.classList.add('awaiting');
+                document.getElementById('confirm-btn').style.display = 'inline-block';
+            } else if (status === 'confirmed') {
+                badge.classList.add('confirmed');
+                document.getElementById('confirm-btn').style.display = 'none';
+            }
+            
+            addLog(`Status changed to: ${status}`, 'info');
+        }
+        
+        function logTest(scenario, name) {
+            addLog(`Running ${scenario}: ${name}`, 'info');
+            addLog(`Manual testing required - check frontend at http://localhost:5173/app/`, 'info');
+        }
+        
+        // Check servers on load
+        window.addEventListener('load', () => {
+            setTimeout(checkServers, 1000);
+        });
+    </script>
+</body>
+</html>
