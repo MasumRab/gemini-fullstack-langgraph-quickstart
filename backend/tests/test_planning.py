@@ -70,7 +70,7 @@ def test_planning_router_handles_plan_and_end_plan_commands():
     )
     # Should return the same structure as continue_to_web_research (list of Send instructions)
     assert isinstance(router_result, list)
-    assert router_result[0].name == "web_research"
+    assert router_result[0].node == "web_research"
 
 
 def test_planning_router_requires_confirmation_when_flag_true():
@@ -89,4 +89,5 @@ def test_planning_router_bypasses_wait_when_confirmed():
         config={"configurable": {"require_planning_confirmation": True}},
     )
     assert isinstance(result, list)
-    assert result[0].name == "web_research"
+    # result[0] is a Send object. It has a .node attribute (not .name)
+    assert result[0].node == "web_research"

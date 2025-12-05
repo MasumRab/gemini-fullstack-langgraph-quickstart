@@ -138,6 +138,9 @@ def get_citations(response, resolved_urls_map):
 
         # Add 1 to end_index to make it an exclusive end for slicing/range purposes
         # (assuming the API provides an inclusive end_index)
+        # However, check if the end_index is already exclusive or inclusive based on observation.
+        # Typically Gemini API returns exclusive end index for text segments.
+        # If experimental observation shows off-by-one, adjust here.
         citation["start_index"] = start_index
         citation["end_index"] = support.segment.end_index
 
