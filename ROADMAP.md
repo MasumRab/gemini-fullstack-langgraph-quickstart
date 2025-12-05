@@ -1,6 +1,8 @@
 # Roadmap: Gemini Fullstack LangGraph Evolution
 
-This document outlines the strategic roadmap for evolving the current "Research Agent" into a "Long-term Planning & Scheduling Agent". The goal is to integrate advanced capabilities from the LangChain ecosystem (`deepagents`, `open-swe`, `open-canvas`) while maintaining the simplicity and robustness of the existing infrastructure.
+This document outlines the strategic roadmap for evolving the current "Research Agent" into a "Long-term Planning & Scheduling Agent".
+
+**Detailed Strategy:** For technical trade-offs, architecture, and granular task breakdowns, please refer to [INTEGRATION_STRATEGY.md](./INTEGRATION_STRATEGY.md).
 
 ## Current Status
 - **Core Functionality:** Functional Research Agent with Basic Planning Mode (`planning_mode`, `planning_wait`).
