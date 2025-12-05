@@ -274,7 +274,7 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
 
     status = (
         "awaiting_confirmation"
-        if configurable.require_planning_confirmation
+        if getattr(configurable, "require_planning_confirmation", False)
         else "auto_approved"
     )
 
@@ -322,7 +322,7 @@ def planning_router(state: OverallState, config: RunnableConfig):
         state["planning_status"] = "confirmed"
         return continue_to_web_research(state)
 
-    if configurable.require_planning_confirmation and planning_status != "confirmed":
+    if getattr(configurable, "require_planning_confirmation", False) and planning_status != "confirmed":
         return "planning_wait"
 
     return continue_to_web_research(state)

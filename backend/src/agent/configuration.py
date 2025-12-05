@@ -56,12 +56,27 @@ class Configuration(BaseModel):
         )
 
         # Get raw values from environment or config
-        raw_values: dict[str, Any] = {
-            name: os.environ.get(name.upper(), configurable.get(name))
-            for name in cls.model_fields.keys()
-        }
+        raw_values: dict[str, Any] = {}
+        for name, field_info in cls.model_fields.items():
+            # Try to get from configurable first, then environment
+            value = configurable.get(name, os.environ.get(name.upper()))
+            
+            if value is not None:
+                # Handle type conversions
+                field_type = field_info.annotation
+                
+                # Handle boolean fields
+                if field_type == bool or (hasattr(field_type, '__origin__') and field_type.__origin__ == bool):
+                    if isinstance(value, str):
+                        value = value.lower() in ('true', '1', 'yes', 'on')
+                    else:
+                        value = bool(value)
+                
+                # Handle integer fields
+                elif field_type == int or (hasattr(field_type, '__origin__') and field_type.__origin__ == int):
+                    if isinstance(value, str):
+                        value = int(value)
+                
+                raw_values[name] = value
 
-        # Filter out None values
-        values = {k: v for k, v in raw_values.items() if v is not None}
-
-        return cls(**values)
+        return cls(**raw_values)
