@@ -23,7 +23,7 @@ export default function App() {
   const lastConfigRef = useRef({
     initial_search_query_count: 1,
     max_research_loops: 1,
-    reasoning_model: "gemini-2.5-flash-preview-04-17",
+    reasoning_model: "gemini-1.5-flash",
   });
   const [error, setError] = useState<string | null>(null);
   const thread = useStream<{
@@ -66,16 +66,15 @@ export default function App() {
         setPlanningContext((prev) =>
           prev
             ? {
-                ...prev,
-                status: "confirmed",
-              }
+              ...prev,
+              status: "confirmed",
+            }
             : prev
         );
         processedEvent = {
           title: "Web Research",
-          data: `Gathered ${numSources} sources. Related to ${
-            exampleLabels || "N/A"
-          }.`,
+          data: `Gathered ${numSources} sources. Related to ${exampleLabels || "N/A"
+            }.`,
         };
       } else if (event.reflection) {
         processedEvent = {
