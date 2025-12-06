@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangGraph Implementations</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-top: 40px;
+            border-left: 4px solid #3498db;
+            padding-left: 10px;
+        }
+
+        .metadata {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+
+        .metadata strong {
+            color: #555;
+        }
+
+        .mermaid {
+            background-color: white;
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            margin: 20px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Graph Implementation Architectures</h1>
+        <p>This document visualizes the three different LangGraph architectures found in this workspace.</p>
+
+        <h2>1. Iterative Search Graph (Local)</h2>
+        <div class="metadata">
+            <p><strong>File:</strong> <code>backend/src/agent/graph.py</code></p>
+            <p><strong>Type:</strong> Flat Graph with Parallel Fan-out</p>
+            <p><strong>Goal:</strong> Answer a specific question through iterative refinement.</p>
+        </div>
+        <div class="mermaid">
+            graph TD
+            classDef conditional fill:#f9f,stroke:#333,stroke-width:2px;
+            classDef node fill:#fff,stroke:#333,stroke-width:2px;
+
+            START((Start)) --> generate_query[Generate Query]
+            generate_query --> planning_mode[Planning Mode]
+
+            planning_mode --> check_plan{Planning Router}
+            class check_plan conditional
+
+            check_plan -- "/plan" --> planning_wait[Planning Wait]
+            check_plan -- "/confirm" or "/end_plan" --> fan_out_research((Fan Out))
+
+            planning_wait --> check_plan_wait{Planning Router}
+            class check_plan_wait conditional
+            check_plan_wait -- Wait --> planning_wait
+            check_plan_wait -- Confirm --> fan_out_research
+
+            fan_out_research --> web_research[Web Research]
+
+            subgraph Parallel Execution
+            web_research
+            end
+
+            web_research --> validate_web_results[Validate Results]
+            validate_web_results --> reflection[Reflection]
+
+            reflection --> evaluate{Evaluate Research}
+            class evaluate conditional
+
+            evaluate -- "Is Sufficient / Max Loops" --> finalize_answer[Finalize Answer]
+            evaluate -- "Knowledge Gap" --> fan_out_research
+
+            finalize_answer --> END((End))
+        </div>
+
+        <h2>2. Section-Based Report Graph (Legacy)</h2>
+        <div class="metadata">
+            <p><strong>File:</strong> <code>src/legacy/graph.py</code></p>
+            <p><strong>Type:</strong> Map-Reduce Style with Subgraphs</p>
+            <p><strong>Goal:</strong> Write a structured report by researching sections in parallel.</p>
+        </div>
+        <div class="mermaid">
+            graph TD
+            classDef conditional fill:#f9f,stroke:#333,stroke-width:2px;
+            classDef subgraph_node fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+
+            START((Start)) --> generate_report_plan[Generate Report Plan]
+            generate_report_plan --> human_feedback[Human Feedback]
+
+            human_feedback --> check_feedback{Check Feedback}
+            class check_feedback conditional
+
+            check_feedback -- "Changes Requested" --> generate_report_plan
+            check_feedback -- "Approved" --> fan_out_sections((Fan Out Sections))
+
+            subgraph "Section Subgraph (Parallel)"
+            fan_out_sections --> generate_queries[Generate Queries]
+            generate_queries --> search_web[Search Web]
+            search_web --> write_section[Write Section]
+
+            write_section --> check_quality{Check Quality}
+            class check_quality conditional
+
+            check_quality -- "Needs More Info" --> search_web
+            check_quality -- "Pass" --> section_complete((Section Complete))
+            end
+
+            section_complete --> gather_completed_sections[Gather Completed Sections]
+
+            gather_completed_sections --> initiate_final{Initiate Final Writing}
+            class initiate_final conditional
+
+            initiate_final --> write_final_sections[Write Final Sections]
+            write_final_sections --> compile_final_report[Compile Final Report]
+            compile_final_report --> END((End))
+        </div>
+
+        <h2>3. Hierarchical Deep Research Graph (New)</h2>
+        <div class="metadata">
+            <p><strong>File:</strong> <code>src/open_deep_research/deep_researcher.py</code></p>
+            <p><strong>Type:</strong> Hierarchical Multi-Agent (Supervisor-Worker)</p>
+            <p><strong>Goal:</strong> Conduct deep, autonomous research with managed teams.</p>
+        </div>
+        <div class="mermaid">
+            graph TD
+            classDef conditional fill:#f9f,stroke:#333,stroke-width:2px;
+            classDef supervisor fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+            classDef worker fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+
+            START((Start)) --> clarify_with_user[Clarify With User]
+
+            clarify_with_user --> check_clarity{Check Clarity}
+            class check_clarity conditional
+
+            check_clarity -- "Need Info" --> END_QUESTION((End: Ask User))
+            check_clarity -- "Clear" --> write_research_brief[Write Research Brief]
+
+            write_research_brief --> supervisor_node[Research Supervisor]
+            class supervisor_node supervisor
+
+            subgraph "Supervisor Subgraph"
+            supervisor_node --> supervisor_tools[Supervisor Tools]
+            class supervisor_tools supervisor
+
+            supervisor_tools --> check_sup_action{Action?}
+            class check_sup_action conditional
+
+            check_sup_action -- "Think" --> supervisor_node
+            check_sup_action -- "Delegate" --> fan_out_researchers((Fan Out Researchers))
+            check_sup_action -- "Complete" --> supervisor_end((Supervisor End))
+
+            subgraph "Researcher Subgraph (Parallel)"
+            fan_out_researchers --> researcher[Researcher Agent]
+            class researcher worker
+
+            researcher --> researcher_tools[Researcher Tools]
+            class researcher_tools worker
+
+            researcher_tools --> check_res_action{Action?}
+            class check_res_action conditional
+
+            check_res_action -- "Search/Think/MCP" --> researcher
+            check_res_action -- "Complete" --> compress_research[Compress Research]
+            class compress_research worker
+
+            compress_research --> researcher_end((Researcher End))
+            end
+
+            researcher_end --> supervisor_tools
+            end
+
+            supervisor_end --> final_report_generation[Final Report Generation]
+            final_report_generation --> END((End))
+        </div>
+    </div>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</body>
+
+</html>
