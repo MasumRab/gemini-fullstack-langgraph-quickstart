@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Research Implementation Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 1200px; margin: 0 auto; padding: 20px; color: #333; }
+        h1, h2, h3 { color: #2c3e50; margin-top: 1.5em; }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        pre { background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .mermaid { background: #f9f9f9; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0; border: 1px solid #e1e4e8; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .feature-box { background: #e8f4f8; padding: 15px; border-left: 5px solid #3498db; margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+<h1>Deep Research Implementation Analysis</h1>
+
+<p>This report compares the current <code>pro-search-agent</code> implementation against two "Deep Research" reference implementations and analyzes the integration of the <strong>DeepResearch-Bench</strong> framework.</p>
+
+<div class="feature-box">
+    <strong>Key Findings:</strong>
+    <ul>
+        <li><strong>Architecture Gap:</strong> Reference implementations use a hierarchical Supervisor-Worker pattern with parallelism.</li>
+        <li><strong>Prompt Engineering:</strong> References use a "Diffusion Algorithm" (Plan -> Research -> Denoise) for higher quality.</li>
+        <li><strong>Evaluation:</strong> DeepResearch-Bench provides missing rigorous metrics (RACE and FACT).</li>
+    </ul>
+</div>
+
+<h2>1. High-Level Architecture Comparison</h2>
+
+<h3>Current Implementation (<code>pro-search-agent</code>)</h3>
+<p>A linear, iterative loop with a "Planning Mode" gate.</p>
+<div class="mermaid">
+graph TD
+    Start --> GenerateQuery
+    GenerateQuery --> PlanningMode
+    PlanningMode -- "Approves" --> WebResearch
+    PlanningMode -- "Needs Input" --> PlanningWait
+    PlanningWait --> PlanningMode
+    WebResearch --> ValidateResults
+    ValidateResults --> Reflection
+    Reflection -- "Need More Info" --> WebResearch
+    Reflection -- "Sufficient" --> FinalizeAnswer
+    FinalizeAnswer --> End
+</div>
+
+<h3>Reference Implementation (Open Deep Research)</h3>
+<p>A hierarchical Supervisor delegating to parallel Researcher sub-agents.</p>
+<div class="mermaid">
+graph TD
+    subgraph "Main Graph"
+        Start --> ClarifyWithUser
+        ClarifyWithUser --> WriteResearchBrief
+        WriteResearchBrief --> ResearchSupervisor
+        ResearchSupervisor --> FinalReportGen
+        FinalReportGen --> End
+    end
+
+    subgraph "Supervisor Subgraph"
+        ResearchSupervisor -- "Delegate" --> SupervisorTools
+        SupervisorTools -- "Parallel Call" --> ResearcherSubgraph
+        ResearcherSubgraph -- "Results" --> SupervisorTools
+        SupervisorTools -- "Reflect/Decide" --> ResearchSupervisor
+    end
+
+    subgraph "Researcher Subgraph"
+        ResearcherStart --> ResearcherAgent
+        ResearcherAgent -- "Search/Think" --> ResearcherTools
+        ResearcherTools --> ResearcherAgent
+        ResearcherAgent -- "Complete" --> CompressResearch
+        CompressResearch --> ResearcherEnd
+    end
+</div>
+
+<h2>2. Deep Research Logic Flow ("Diffusion" Pattern)</h2>
+<p>The reference "Diffusion" pattern ensures high signal-to-noise ratio by constantly denoising findings.</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant User
+    participant Supervisor
+    participant Researcher
+    participant Tools
+
+    User->>Supervisor: Complex Query
+    Supervisor->>Supervisor: Plan Strategy (Think)
+    loop Diffusion Process
+        Supervisor->>Researcher: Delegate Sub-topic
+        Researcher->>Tools: Search & Gather
+        Tools-->>Researcher: Raw Data
+        Researcher->>Researcher: Denoise (Remove irrelevant info)
+        Researcher->>Supervisor: Compressed Findings
+        Supervisor->>Supervisor: Refine Draft Report
+        Supervisor->>Supervisor: Check Completeness
+    end
+    Supervisor->>User: Final Comprehensive Report
+</div>
+
+<h2>3. DeepResearch-Bench Integration Strategy</h2>
+
+<p>We propose integrating the <strong>RACE</strong> (Report Quality) and <strong>FACT</strong> (Citation Accuracy) metrics as a parallel evaluation process.</p>
+
+<div class="mermaid">
+graph LR
+    subgraph "Agent Flow"
+        FinalizeAnswer --> Output[Final Report]
+    end
+
+    subgraph "Evaluation Flow (Async)"
+        Output --> EvalNode[DeepBench Evaluator]
+        EvalNode --> RACE_Check[RACE Metric (Quality)]
+        EvalNode --> FACT_Check[FACT Metric (Citations)]
+        RACE_Check --> Dashboard
+        FACT_Check --> Dashboard
+    end
+</div>
+
+<h2>4. Integration Roadmap</h2>
+
+<h3>Phase 1: Low-Hanging Fruit</h3>
+<ul>
+    <li><strong>Add "Compress/Denoise" Node:</strong> Clean web search results before reflection.</li>
+    <li><strong>Adopt "Diffusion" Prompts:</strong> Use superior instructions for helpfulness and insightfulness.</li>
+    <li><strong>Clarification Step:</strong> Ensure user intent is clear before starting.</li>
+</ul>
+
+<h3>Phase 2: Structural Evolution</h3>
+<ul>
+    <li><strong>Split Graph:</strong> Separate Planner and Researcher logic.</li>
+    <li><strong>Parallel Execution:</strong> Run multiple research loops concurrently.</li>
+</ul>
+
+<h3>Phase 3: Rigorous Evaluation</h3>
+<ul>
+    <li><strong>Integrate DeepBench:</strong> Automated scoring of agent outputs using RACE.</li>
+</ul>
+
+<script>mermaid.initialize({startOnLoad:true});</script>
+</body>
+</html>
