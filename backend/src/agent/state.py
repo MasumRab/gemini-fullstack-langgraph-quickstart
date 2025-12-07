@@ -24,6 +24,8 @@ class OverallState(TypedDict):
     max_research_loops: int
     research_loop_count: int
     reasoning_model: str
+    todo_list: List[dict] | None
+    artifacts: dict | None
 
 
 class ReflectionState(TypedDict):

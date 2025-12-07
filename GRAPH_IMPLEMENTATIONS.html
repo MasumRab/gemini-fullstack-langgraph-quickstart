@@ -82,8 +82,8 @@
             planning_mode --> check_plan{Planning Router}
             class check_plan conditional
 
-            check_plan -- "/plan" --> planning_wait[Planning Wait]
-            check_plan -- "/confirm" or "/end_plan" --> fan_out_research((Fan Out))
+            check_plan -- Plan --> planning_wait[Planning Wait]
+            check_plan -- Confirm or End --> fan_out_research((Fan Out))
 
             planning_wait --> check_plan_wait{Planning Router}
             class check_plan_wait conditional
@@ -102,8 +102,8 @@
             reflection --> evaluate{Evaluate Research}
             class evaluate conditional
 
-            evaluate -- "Is Sufficient / Max Loops" --> finalize_answer[Finalize Answer]
-            evaluate -- "Knowledge Gap" --> fan_out_research
+            evaluate -- Is Sufficient or Max Loops --> finalize_answer[Finalize Answer]
+            evaluate -- Knowledge Gap --> fan_out_research
 
             finalize_answer --> END((End))
         </div>
@@ -125,8 +125,8 @@
             human_feedback --> check_feedback{Check Feedback}
             class check_feedback conditional
 
-            check_feedback -- "Changes Requested" --> generate_report_plan
-            check_feedback -- "Approved" --> fan_out_sections((Fan Out Sections))
+            check_feedback -- Changes Requested --> generate_report_plan
+            check_feedback -- Approved --> fan_out_sections((Fan Out Sections))
 
             subgraph "Section Subgraph (Parallel)"
             fan_out_sections --> generate_queries[Generate Queries]
@@ -136,8 +136,8 @@
             write_section --> check_quality{Check Quality}
             class check_quality conditional
 
-            check_quality -- "Needs More Info" --> search_web
-            check_quality -- "Pass" --> section_complete((Section Complete))
+            check_quality -- Needs More Info --> search_web
+            check_quality -- Pass --> section_complete((Section Complete))
             end
 
             section_complete --> gather_completed_sections[Gather Completed Sections]
@@ -167,25 +167,26 @@
             clarify_with_user --> check_clarity{Check Clarity}
             class check_clarity conditional
 
-            check_clarity -- "Need Info" --> END_QUESTION((End: Ask User))
-            check_clarity -- "Clear" --> write_research_brief[Write Research Brief]
+            check_clarity -- Need Info --> END_USER_INPUT((End: User Input Needed))
+            check_clarity -- Clear --> write_research_brief[Write Research Brief]
 
-            write_research_brief --> supervisor_node[Research Supervisor]
-            class supervisor_node supervisor
+            write_research_brief --> supervisor_entry[Enter Supervisor Subgraph]
+            class supervisor_entry supervisor
 
             subgraph "Supervisor Subgraph"
-            supervisor_node --> supervisor_tools[Supervisor Tools]
+            supervisor_entry --> supervisor[Supervisor Node]
+            supervisor --> supervisor_tools[Supervisor Tools]
             class supervisor_tools supervisor
 
             supervisor_tools --> check_sup_action{Action?}
             class check_sup_action conditional
 
-            check_sup_action -- "Think" --> supervisor_node
-            check_sup_action -- "Delegate" --> fan_out_researchers((Fan Out Researchers))
-            check_sup_action -- "Complete" --> supervisor_end((Supervisor End))
+            check_sup_action -- Think --> supervisor
+            check_sup_action -- Delegate --> invoke_researcher[Invoke Researcher Subgraph]
+            check_sup_action -- Complete --> supervisor_end((Supervisor End))
 
-            subgraph "Researcher Subgraph (Parallel)"
-            fan_out_researchers --> researcher[Researcher Agent]
+            subgraph "Researcher Subgraph (Invoked by Tools)"
+            invoke_researcher --> researcher[Researcher Agent]
             class researcher worker
 
             researcher --> researcher_tools[Researcher Tools]
@@ -194,8 +195,8 @@
             researcher_tools --> check_res_action{Action?}
             class check_res_action conditional
 
-            check_res_action -- "Search/Think/MCP" --> researcher
-            check_res_action -- "Complete" --> compress_research[Compress Research]
+            check_res_action -- Search or Think or MCP --> researcher
+            check_res_action -- Complete --> compress_research[Compress Research]
             class compress_research worker
 
             compress_research --> researcher_end((Researcher End))

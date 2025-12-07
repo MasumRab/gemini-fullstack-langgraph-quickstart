@@ -32,6 +32,7 @@ from agent.utils import (
     insert_citation_markers,
     resolve_urls,
 )
+from agent.persistence import load_plan, save_plan
 
 load_dotenv()
 
@@ -117,6 +118,27 @@ genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
 # Nodes
+@graph_registry.describe(
+    "load_context",
+    summary="Loads existing plan and artifacts from persistence layer.",
+    tags=["persistence"],
+    outputs=["todo_list", "artifacts"],
+)
+def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
+    thread_id = config.get("configurable", {}).get("thread_id")
+    if not thread_id:
+        return {}
+    
+    data = load_plan(thread_id)
+    if data:
+        return {
+            "todo_list": data.get("todo_list", []),
+            "artifacts": data.get("artifacts", {}),
+            "planning_steps": data.get("todo_list", [])
+        }
+    return {}
+
+
 @graph_registry.describe(
     "generate_query",
     summary="LLM generates structured search queries from the conversation context.",
@@ -282,8 +304,14 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
     if not plan_steps:
         feedback.append("No queries available; planning mode produced an empty plan.")
 
+    # Save to persistence
+    thread_id = config.get("configurable", {}).get("thread_id")
+    if thread_id:
+        save_plan(thread_id, plan_steps, state.get("artifacts", {}) or {})
+
     return {
         "planning_steps": plan_steps,
+        "todo_list": plan_steps,
         "planning_status": state.get("planning_status") or status,
         "planning_feedback": feedback,
     }
@@ -307,7 +335,10 @@ def planning_router(state: OverallState, config: RunnableConfig):
     configurable = Configuration.from_runnable_config(config)
     planning_status = state.get("planning_status")
     last_message = state["messages"][-1] if state.get("messages") else None
-    last_content = getattr(last_message, "content", "") if last_message else ""
+    if isinstance(last_message, dict):
+        last_content = last_message.get("content", "")
+    else:
+        last_content = getattr(last_message, "content", "")
     last_content = last_content.strip().lower() if isinstance(last_content, str) else ""
 
     if last_content.startswith("/plan"):
@@ -537,6 +568,7 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
 
 # Create our Agent Graph using the standard builder wiring
 builder = StateGraph(OverallState, config_schema=Configuration)
+builder.add_node("load_context", load_context)
 builder.add_node("generate_query", generate_query)
 builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
@@ -545,7 +577,8 @@ builder.add_node("validate_web_results", validate_web_results)
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 
-builder.add_edge(START, "generate_query")
+builder.add_edge(START, "load_context")
+builder.add_edge("load_context", "generate_query")
 builder.add_edge("generate_query", "planning_mode")
 builder.add_conditional_edges(
     "planning_mode", planning_router, ["planning_wait", "web_research"]
