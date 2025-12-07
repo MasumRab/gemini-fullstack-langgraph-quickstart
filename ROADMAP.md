@@ -4,6 +4,8 @@ This document outlines the strategic roadmap for evolving the current "Research 
 
 **Detailed Strategy:** For technical trade-offs, architecture, and granular task breakdowns, please refer to [INTEGRATION_STRATEGY.md](./INTEGRATION_STRATEGY.md).
 
+**Deep Research Analysis:** For a comparative analysis of this agent vs. state-of-the-art "Deep Research" implementations (and integration plans), see [docs/analysis/DEEP_RESEARCH_COMPARISON.md](./docs/analysis/DEEP_RESEARCH_COMPARISON.md).
+
 ## Current Status
 - **Core Functionality:** Functional Research Agent with Basic Planning Mode (`planning_mode`, `planning_wait`).
 - **Architecture:** LangGraph backend (Python) + React/Vite frontend.
@@ -59,5 +61,6 @@ This document outlines the strategic roadmap for evolving the current "Research 
 ## Architecture Log
 *Record of significant architectural decisions.*
 
+- **[Date]:** Added Deep Research Analysis and Benchmarking integration strategy.
 - **[Date]:** Roadmap updated to reflect "Iterative Chained Planning" vision and existing `planning_mode` implementation.
 - **[Date]:** Initial Roadmap creation. Decision to prioritize Deep Agents memory patterns before UI overhauls.
