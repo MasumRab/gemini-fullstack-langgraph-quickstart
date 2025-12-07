@@ -51,11 +51,13 @@ def insert_citation_markers(text, citations_list):
         str: The text with citation markers inserted.
     """
     # Sort citations by end_index in descending order.
-    # If end_index is the same, secondary sort by start_index descending.
+    # If end_index is the same, secondary sort by start_index descending (default 0 if missing).
     # This ensures that insertions at the end of the string don't affect
     # the indices of earlier parts of the string that still need to be processed.
     sorted_citations = sorted(
-        citations_list, key=lambda c: (c["end_index"], c["start_index"]), reverse=True
+        citations_list,
+        key=lambda c: (c["end_index"], c.get("start_index", 0)),
+        reverse=True,
     )
 
     modified_text = text

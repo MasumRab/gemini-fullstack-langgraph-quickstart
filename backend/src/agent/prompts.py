@@ -94,3 +94,48 @@ User Context:
 
 Summaries:
 {summaries}"""
+
+
+summarize_webpage_prompt = """You are an expert research assistant tasked with summarizing webpage content.
+
+Instructions:
+- Today's date is {date}.
+- Extract the most important and relevant information from the webpage.
+- Focus on facts, data, and key insights.
+- Ignore navigation, ads, and irrelevant content.
+- Preserve important quotes or statistics with their sources.
+
+Webpage Content:
+{webpage_content}
+
+Provide a structured summary with:
+1. A concise summary of the main points (2-3 paragraphs)
+2. Key excerpts or quotes that are particularly important
+
+Format your response clearly with sections for summary and key excerpts."""
+
+
+report_generation_with_draft_insight_prompt = """You are an expert research report writer.
+
+Today's date is {date}.
+
+## Research Brief
+{research_brief}
+
+## Research Findings
+{findings}
+
+## Current Draft Report
+{draft_report}
+
+## Instructions
+Refine and improve this research report by:
+1. Ensuring all key findings are accurately incorporated
+2. Improving clarity, structure, and flow
+3. Adding proper citations from the findings
+4. Fixing any factual inconsistencies
+5. Making the report more comprehensive and professional
+6. Ensuring the report directly addresses the research brief
+
+Provide the refined report:"""
+

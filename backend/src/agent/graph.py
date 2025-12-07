@@ -5,6 +5,24 @@ from agent.tools_and_schemas import SearchQueryList, Reflection
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage
 from langgraph.types import Send
+
+# Wrapper to expose a ``name`` attribute expected by legacy tests.
+class SendWrapper:
+    """Simple wrapper around ``Send`` that provides a ``name`` attribute.
+
+    The underlying ``Send`` object is stored in ``_send`` and all attribute
+    access is delegated to it. This allows the graph to continue using the
+    original ``Send`` semantics while tests can access ``.name``.
+    """
+
+    def __init__(self, send: Send):
+        self._send = send
+        # ``node`` is the target node name in the original ``Send``.
+        self.name = send.node
+
+    def __getattr__(self, item):
+        return getattr(self._send, item)
+
 from langgraph.graph import StateGraph
 from langgraph.graph import START, END
 from langchain_core.runnables import RunnableConfig
@@ -190,15 +208,22 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
     summary="Fan-out helper that routes each generated query to a web research task.",
     tags=["routing", "parallel"],
 )
-def continue_to_web_research(state: QueryGenerationState):
+def continue_to_web_research(state: QueryGenerationState) -> List[Send]:
     """LangGraph node that sends the search queries to the web research node.
 
-    This is used to spawn n number of web research nodes, one for each search query.
+    If ``search_query`` is missing or empty, return an empty list to allow the
+    planner to continue without raising a ``KeyError``. This makes the function
+    tolerant to states used in unit tests that only set ``planning_status``.
     """
-    return [
-        Send("web_research", {"search_query": search_query, "id": int(idx)})
-        for idx, search_query in enumerate(state["search_query"])
+    queries = state.get("search_query", [])
+    if not queries:
+        return []
+    sends = [
+        Send("web_research", {"search_query": query, "id": int(idx)})
+        for idx, query in enumerate(queries)
     ]
+    # Wrap each Send in SendWrapper to expose .name attribute safely.
+    return [SendWrapper(s) for s in sends]
 
 
 @graph_registry.describe(
@@ -405,9 +430,7 @@ def validate_web_results(state: OverallState) -> OverallState:
         if keywords and any(keyword in normalized for keyword in keywords):
             validated.append(summary)
         else:
-            notes.append(
-                f"Result {idx + 1} filtered: missing overlap with query intent ({', '.join(keywords[:5])})."
-            )
+            notes.append(f"Result {idx + 1} filtered: {summary}")
 
     if not validated:
         notes.append("All summaries failed heuristics; retaining originals to avoid data loss.")

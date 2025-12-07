@@ -1,0 +1,31 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	load_context(load_context)
+	generate_query(generate_query)
+	planning_mode(planning_mode)
+	planning_wait(planning_wait)
+	web_research(web_research)
+	validate_web_results(validate_web_results)
+	reflection(reflection)
+	finalize_answer(finalize_answer)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> load_context;
+	generate_query --> planning_mode;
+	load_context --> generate_query;
+	planning_mode -.-> planning_wait;
+	planning_mode -.-> web_research;
+	planning_wait -.-> web_research;
+	reflection -.-> finalize_answer;
+	reflection -.-> web_research;
+	validate_web_results --> reflection;
+	web_research --> validate_web_results;
+	finalize_answer --> __end__;
+	planning_wait -.-> planning_wait;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
