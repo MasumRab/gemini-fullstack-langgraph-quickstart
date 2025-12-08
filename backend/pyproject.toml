@@ -20,6 +20,9 @@ dependencies = [
     "google-genai",
     "langchain-mcp-adapters",
     "mcp",
+    "sentence-transformers",
+    "faiss-cpu",
+    "pandas",
 ]
 
 
