@@ -8,6 +8,28 @@ from agent.nodes import planning_mode, planning_router, planning_wait
 
 
 # =============================================================================
+# Helper function
+# =============================================================================
+
+def make_state(
+    messages=None,
+    search_query=None,
+    planning_status=None,
+    planning_feedback=None,
+    **kwargs
+):
+    """Create a state dict with default values."""
+    state = {
+        "messages": messages or [{"content": "User: research solar energy"}],
+        "search_query": search_query or ["solar energy market outlook"],
+        "planning_status": planning_status,
+        "planning_feedback": planning_feedback or [],
+    }
+    state.update(kwargs)
+    return state
+
+
+# =============================================================================
 # Fixtures
 # =============================================================================
 
@@ -230,3 +252,100 @@ class TestPlanningRouter:
         assert len(result) == 3
         for send in result:
             assert send.node == "web_research"
+
+
+# =============================================================================
+# Additional standalone tests from remote branch
+# =============================================================================
+
+def test_planning_mode_creates_plan_steps_structure():
+    """Test that planning_mode creates properly structured plan steps."""
+    state = make_state(search_query=["query1", "query2", "query3"])
+    result = planning_mode(
+        state,
+        config={"configurable": {"require_planning_confirmation": False}},
+    )
+    
+    assert len(result["planning_steps"]) == 3
+    
+    for idx, step in enumerate(result["planning_steps"]):
+        assert "id" in step
+        assert "title" in step
+        assert "query" in step
+        assert "suggested_tool" in step
+        assert "status" in step
+        assert step["id"] == f"plan-{idx}"
+        assert step["suggested_tool"] == "web_research"
+        assert step["status"] == "pending"
+
+
+def test_planning_mode_handles_empty_search_query():
+    """Test planning_mode behavior with empty search query list."""
+    state = make_state(search_query=[])
+    result = planning_mode(
+        state,
+        config={"configurable": {"require_planning_confirmation": False}},
+    )
+    
+    assert result["planning_steps"] == []
+    assert "No queries available" in " ".join(result["planning_feedback"])
+
+
+def test_planning_mode_with_require_confirmation_flag():
+    """Test that require_planning_confirmation flag sets correct status."""
+    state = make_state()
+    result = planning_mode(
+        state,
+        config={"configurable": {"require_planning_confirmation": True}},
+    )
+    
+    assert result["planning_status"] == "awaiting_confirmation"
+
+
+def test_planning_router_case_insensitive_commands():
+    """Test that planning_router handles commands case-insensitively."""
+    state = make_state(messages=[{"content": "/PLAN"}])
+    result = planning_router(
+        state,
+        config={"configurable": {"require_planning_confirmation": True}},
+    )
+    
+    assert result == "planning_wait"
+
+
+def test_planning_router_with_whitespace_in_command():
+    """Test that planning_router handles commands with whitespace."""
+    state = make_state(messages=[{"content": "  /plan  "}])
+    result = planning_router(
+        state,
+        config={"configurable": {"require_planning_confirmation": True}},
+    )
+    
+    assert result == "planning_wait"
+
+
+def test_planning_wait_returns_feedback():
+    """Test that planning_wait returns proper feedback structure."""
+    state = make_state()
+    result = planning_wait(state)
+    
+    assert "planning_feedback" in result
+    assert isinstance(result["planning_feedback"], list)
+    assert len(result["planning_feedback"]) > 0
+
+
+def test_planning_router_multiple_queries_fan_out():
+    """Test that planning_router creates multiple Send objects for multiple queries."""
+    state = make_state(
+        planning_status="confirmed",
+        search_query=["q1", "q2", "q3"]
+    )
+    result = planning_router(
+        state,
+        config={"configurable": {"require_planning_confirmation": False}},
+    )
+    
+    assert isinstance(result, list)
+    assert len(result) == 3
+    for item in result:
+        assert item.node == "web_research"
