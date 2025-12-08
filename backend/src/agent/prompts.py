@@ -95,7 +95,6 @@ User Context:
 Summaries:
 {summaries}"""
 
-
 summarize_webpage_prompt = """You are an expert research assistant tasked with summarizing webpage content.
 
 Instructions:

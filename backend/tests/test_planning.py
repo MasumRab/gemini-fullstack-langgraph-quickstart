@@ -4,8 +4,7 @@ Tests cover planning_mode, planning_router, and planning_wait with various
 state configurations and flags.
 """
 import pytest
-
-from agent.graph import planning_mode, planning_router, planning_wait
+from agent.nodes import planning_mode, planning_router, planning_wait
 
 
 # =============================================================================
@@ -161,7 +160,7 @@ class TestPlanningRouter:
         
         assert isinstance(result, list)
         assert len(result) > 0
-        assert result[0].name == "web_research"
+        assert result[0].node == "web_research"
 
     def test_routes_to_web_research_on_confirm_plan(self, base_planning_state, confirmation_required_config):
         """Should route to web_research when /confirm_plan is used."""
@@ -171,7 +170,7 @@ class TestPlanningRouter:
         result = planning_router(base_planning_state, config=confirmation_required_config)
         
         assert isinstance(result, list)
-        assert result[0].name == "web_research"
+        assert result[0].node == "web_research"
 
     def test_requires_confirmation_when_flag_true_and_not_confirmed(self, base_planning_state, confirmation_required_config):
         """Should wait when confirmation is required and not yet confirmed."""
@@ -189,7 +188,7 @@ class TestPlanningRouter:
         result = planning_router(base_planning_state, config=confirmation_required_config)
         
         assert isinstance(result, list)
-        assert result[0].name == "web_research"
+        assert result[0].node == "web_research"
 
     def test_bypasses_wait_when_flag_false(self, base_planning_state, no_confirmation_config):
         """Should proceed directly when require_planning_confirmation is False."""
@@ -198,7 +197,7 @@ class TestPlanningRouter:
         result = planning_router(base_planning_state, config=no_confirmation_config)
         
         assert isinstance(result, list)
-        assert result[0].name == "web_research"
+        assert result[0].node == "web_research"
 
     def test_handles_empty_search_query(self, base_planning_state, no_confirmation_config):
         """Should handle empty search_query gracefully."""
@@ -230,4 +229,4 @@ class TestPlanningRouter:
         
         assert len(result) == 3
         for send in result:
-            assert send.name == "web_research"
+            assert send.node == "web_research"

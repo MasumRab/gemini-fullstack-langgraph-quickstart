@@ -9,6 +9,10 @@ from typing import Any, Dict, List
 from types import SimpleNamespace
 
 import pytest
+import os
+
+# Set dummy API key before any imports that might use it
+os.environ["GEMINI_API_KEY"] = "dummy_key_for_tests"
 
 # Ensure the src directory is on the path
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]

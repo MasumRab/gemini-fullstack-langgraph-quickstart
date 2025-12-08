@@ -3,8 +3,7 @@
 Tests cover filtering logic, edge cases, and fallback behavior.
 """
 import pytest
-
-from agent.graph import validate_web_results
+from agent.nodes import validate_web_results
 
 
 # =============================================================================

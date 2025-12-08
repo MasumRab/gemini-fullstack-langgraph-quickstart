@@ -60,6 +60,7 @@ def insert_citation_markers(text, citations_list):
         reverse=True,
     )
 
+
     modified_text = text
     for citation_info in sorted_citations:
         # These indices refer to positions in the *original* text,
