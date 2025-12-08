@@ -9,8 +9,17 @@ export default defineConfig({
         environment: 'jsdom',
         setupFiles: './src/test/setup.ts',
         coverage: {
-            reporter: ['text', 'html'],
-            exclude: ['node_modules/', 'src/test/'],
+            provider: 'v8',
+            reporter: ['text', 'json', 'html'],
+            exclude: [
+                'node_modules/',
+                'src/test/',
+                '**/*.d.ts',
+                '**/*.config.*',
+                '**/mockData',
+                '**/*.test.{ts,tsx}',
+                '**/*.spec.{ts,tsx}',
+            ],
         },
         alias: {
             '@': path.resolve(__dirname, './src'),
