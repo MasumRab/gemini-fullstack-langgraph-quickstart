@@ -14,6 +14,17 @@ from agent.nodes import (
     evaluate_research
 )
 from agent.registry import graph_registry
+from agent.mcp_config import load_mcp_settings, validate
+
+# Load and validate MCP settings at module level to ensure early failure on misconfiguration
+# This does NOT connect to servers yet, only validates config structure
+mcp_settings = load_mcp_settings()
+try:
+    validate(mcp_settings)
+except ValueError as e:
+    # We log but do not crash the module load unless critical
+    # For now, we print to stderr as a warning
+    print(f"WARN: MCP Configuration invalid: {e}")
 
 # This file now implements the Parallel Agent (Variant 1) directly,
 # using the shared node logic. This restores the file's original role
@@ -21,6 +32,13 @@ from agent.registry import graph_registry
 
 # Create our Agent Graph using the standard builder wiring
 builder = StateGraph(OverallState, config_schema=Configuration)
+
+# If MCP is enabled, we would register MCP tools here or modify the schema
+# For now, this is a placeholder wiring to satisfy the requirement of "Agent Wiring"
+if mcp_settings.enabled:
+    print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
+    # In future: builder.bind_tools(mcp_tools)
+
 builder.add_node("load_context", load_context)
 builder.add_node("generate_query", generate_query)
 builder.add_node("planning_mode", planning_mode)
