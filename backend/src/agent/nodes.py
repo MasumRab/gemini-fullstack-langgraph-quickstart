@@ -182,7 +182,6 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
         
         return {
             "sources_gathered": sources_gathered,
-            "search_query": [state["search_query"]],
             "web_research_result": ["\n\n".join(web_research_results)],
         }
 
@@ -202,7 +201,6 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
         # Fallback if no grounding metadata (though unlikely with google_search tool)
         return {
             "sources_gathered": [],
-            "search_query": [state["search_query"]],
             "web_research_result": [response.text],
         }
 
@@ -218,7 +216,6 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
 
     return {
         "sources_gathered": sources_gathered,
-        "search_query": [state["search_query"]],
         "web_research_result": [modified_text],
     }
 
