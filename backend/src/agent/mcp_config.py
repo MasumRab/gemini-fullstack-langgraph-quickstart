@@ -12,7 +12,19 @@ class MCPSettings:
     tool_whitelist: Tuple[str, ...] = field(default_factory=tuple)
 
 def load_mcp_settings() -> MCPSettings:
-    """Loads MCP settings from environment variables."""
+    """
+    Load MCP configuration from environment variables.
+    
+    Reads the following environment variables and converts them into an MCPSettings instance:
+    - MCP_ENABLED: interpreted as enabled when equal to "true" (case-insensitive).
+    - MCP_ENDPOINT: optional endpoint URL or path.
+    - MCP_API_KEY: optional API key.
+    - MCP_TIMEOUT: integer timeout in seconds; defaults to 30 on missing or invalid value.
+    - MCP_TOOL_WHITELIST: comma-separated list; converted to a tuple of trimmed, non-empty tool names.
+    
+    Returns:
+        MCPSettings: Configuration populated from the corresponding environment variables.
+    """
     enabled_str = os.getenv("MCP_ENABLED", "false").lower()
     enabled = enabled_str == "true"
 
@@ -36,7 +48,15 @@ def load_mcp_settings() -> MCPSettings:
     )
 
 def validate(settings: MCPSettings) -> None:
-    """Validates the MCP settings."""
+    """
+    Validate MCP configuration for required fields.
+    
+    Raises:
+        ValueError: If `settings.enabled` is True and `settings.endpoint` is missing.
+    
+    Parameters:
+        settings (MCPSettings): The MCP configuration to validate.
+    """
     if settings.enabled:
         if not settings.endpoint:
             # For now, we allow missing endpoint if we are just using local stubs,
@@ -50,10 +70,25 @@ def validate(settings: MCPSettings) -> None:
 # Stub for future connection logic
 class McpConnectionManager:
     def __init__(self, settings: MCPSettings):
+        """
+        Initialize the connection manager with MCP configuration.
+        
+        Parameters:
+            settings (MCPSettings): Immutable MCP configuration used by the manager; stored on the instance.
+        
+        Notes:
+            Initializes an empty list `clients` for managing connections or client objects.
+        """
         self.settings = settings
         self.clients = []
 
     async def get_tools(self):
+        """
+        Retrieve the list of available MCP tools for this connection manager.
+        
+        Returns:
+            A list of tool descriptors available from the configured MCP endpoint; an empty list when MCP is disabled or no tools are available.
+        """
         if not self.settings.enabled:
             return []
         # Return stubs or connect to real MCP server
