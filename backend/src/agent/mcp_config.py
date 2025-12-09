@@ -37,17 +37,9 @@ def load_mcp_settings() -> MCPSettings:
 
 def validate(settings: MCPSettings) -> None:
     """Validates the MCP settings."""
-    if settings.enabled:
-        if not settings.endpoint:
-            # For now, we allow missing endpoint if we are just using local stubs,
-            # but usually MCP requires a server connection.
-            # The prompt example said: "if settings.enabled and not settings.endpoint: raise ValueError"
-            # However, if we are doing filesystem MCP, it might be a local path, usually passed as argument to a connector.
-            # We will strictly follow the prompt's example logic for now.
-            if not settings.endpoint:
-                 raise ValueError("MCP enabled but MCP_ENDPOINT missing")
+    if settings.enabled and not settings.endpoint:
+        raise ValueError("MCP enabled but MCP_ENDPOINT missing")
 
-# Stub for future connection logic
 class McpConnectionManager:
     def __init__(self, settings: MCPSettings):
         self.settings = settings
