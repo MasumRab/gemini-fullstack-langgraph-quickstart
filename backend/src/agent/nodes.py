@@ -561,10 +561,11 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
     unique_sources = []
     if "sources_gathered" in state:
         for source in state["sources_gathered"]:
-            if source["short_url"] in result.content:
-                result.content = result.content.replace(
-                    source["short_url"], source["value"]
-                )
+            # Robust regex pattern to match the short URL
+            pattern = re.escape(source["short_url"])
+            if re.search(pattern, result.content):
+                # Replace all occurrences using regex
+                result.content = re.sub(pattern, source["value"], result.content)
                 unique_sources.append(source)
 
     return {
