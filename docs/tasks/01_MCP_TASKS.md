@@ -10,9 +10,9 @@
 ## 3. Detailed Task List
 
 ### Phase 1: Infrastructure Setup
-- [ ] **Install Python Dependencies**
+- [x] **Install Python Dependencies**
     - Action: Add `langchain-mcp-adapters` and `mcp` to `requirements.txt` / `pyproject.toml`.
-    - Verification: `pip install -r requirements.txt` succeeds.
+    - Verification: `pip install -r requirements.txt` succeeds. (Dependencies already present in `pyproject.toml`).
 
 - [ ] **Install MCP Server (Filesystem)**
     - Action: Ensure `npx` is available.
@@ -32,8 +32,14 @@
               # ... logic from design doc ...
       ```
 
+- [ ] **Wrap Persistence Tools (New Task)**
+    - Action: Create `backend/src/agent/mcp_persistence.py`.
+    - Subtask: Wrap existing `persistence.py` functions in an MCP-compatible server/adapter.
+    - Note: This avoids rewriting the core logic.
+
 - [ ] **Refactor `tools_and_schemas.py`**
     - Subtask: Add `get_global_tools()` function that aggregates MCP tools + custom tools.
+    - Note: Perform this incrementally. Start with `load_plan` and `save_plan`.
     - Verification: Ensure the list of tools includes `read_file`, `write_file` (from MCP).
 
 ### Phase 3: Integration

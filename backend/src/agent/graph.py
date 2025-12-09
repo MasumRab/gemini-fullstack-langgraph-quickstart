@@ -27,6 +27,9 @@ if os.getenv("GEMINI_API_KEY") is None:
 # Create our Agent Graph using the standard builder wiring
 builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("load_context", load_context)
+# TODO: Phase 2 - Rename 'generate_query' to 'generate_plan'
+# This node will eventually generate a structured Todo list and bind MCP tools (load_thread_plan, save_thread_plan)
+# to allow the agent to manage long-term state.
 builder.add_node("generate_query", generate_query)
 builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
@@ -37,6 +40,7 @@ builder.add_node("finalize_answer", finalize_answer)
 
 builder.add_edge(START, "load_context")
 builder.add_edge("load_context", "generate_query")
+# TODO: Future - Insert 'save_plan' step here to persist the generated plan automatically
 builder.add_edge("generate_query", "planning_mode")
 builder.add_conditional_edges(
     "planning_mode", planning_router, ["planning_wait", "web_research"]
