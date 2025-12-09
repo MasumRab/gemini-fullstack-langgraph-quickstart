@@ -359,7 +359,8 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
     """Extract keywords from queries (tokens >= 4 chars)."""
     keywords: List[str] = []
     for query in queries:
-        for token in re.split(r"[^a-zA-Z0-9]+", query.lower()):
+        # Use regex that supports unicode word characters
+        for token in re.split(r"[^\w]+", query.lower()):
             if len(token) >= 4:
                 keywords.append(token)
     return keywords

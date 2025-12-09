@@ -174,7 +174,8 @@ def test_evaluate_research_uses_config_when_state_missing():
         "is_sufficient": False,
         "research_loop_count": 1,
         # max_research_loops not in state
-        "follow_up_queries": ["query"]
+        "follow_up_queries": ["query"],
+        "number_of_ran_queries": 1
     }
     config = {
         "configurable": {
