@@ -138,11 +138,9 @@ class TestValidateWebResults:
         
         result = validate_web_results(state, config)
         
-        # No valid keywords, should fallback to keeping everything (safety net)
+        # No valid keywords, should fallback
         assert len(result["validated_web_research_result"]) == 1
-        # When no keywords are extracted, we treat it as "match all" or "don't filter",
-        # so we don't expect "All summaries failed" notes because nothing was actually filtered out or failed a check.
-        # The logic is: "if match_found or not keywords: validated.append"
+        assert any("All summaries failed" in note for note in result["validation_notes"])
 
     def test_multiple_matching_keywords(self):
         """Summary matching multiple keywords should be kept."""

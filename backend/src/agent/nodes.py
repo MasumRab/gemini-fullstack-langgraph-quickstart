@@ -301,8 +301,7 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
     """Extract keywords from queries (tokens >= 4 chars)."""
     keywords: List[str] = []
     for query in queries:
-        # Use regex that supports unicode word characters
-        for token in re.split(r"[^\w]+", query.lower()):
+        for token in re.split(r"[^a-zA-Z0-9]+", query.lower()):
             if len(token) >= 4:
                 keywords.append(token)
     return keywords
@@ -567,11 +566,10 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
     unique_sources = []
     if "sources_gathered" in state:
         for source in state["sources_gathered"]:
-            # Robust regex pattern to match the short URL
-            pattern = re.escape(source["short_url"])
-            if re.search(pattern, result.content):
-                # Replace all occurrences using regex
-                result.content = re.sub(pattern, source["value"], result.content)
+            if source["short_url"] in result.content:
+                result.content = result.content.replace(
+                    source["short_url"], source["value"]
+                )
                 unique_sources.append(source)
 
     return {

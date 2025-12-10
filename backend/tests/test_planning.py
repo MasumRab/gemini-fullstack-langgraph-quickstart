@@ -19,12 +19,9 @@ def make_state(
     **kwargs
 ):
     """Create a state dict with default values."""
-    if search_query is None:
-        search_query = ["solar energy market outlook"]
-
     state = {
         "messages": messages or [{"content": "User: research solar energy"}],
-        "search_query": search_query,
+        "search_query": search_query or ["solar energy market outlook"],
         "planning_status": planning_status,
         "planning_feedback": planning_feedback or [],
     }
