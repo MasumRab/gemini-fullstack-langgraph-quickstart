@@ -88,11 +88,13 @@ To run the agent in Google Colab, you can use the provided setup notebook:
 **Quick Instructions for Colab:**
 
 1.  Clone the repository.
-2.  Run the following in a cell:
-    ```python
-    !pip install .
-    ```
-    *Colab environments update frequently. If you see errors related to `torch` on Python 3.13 runtimes, use the nightly install command shown in the "Standard Pip Installation" section.*
+2.  Run the setup cell in the notebook, which handles:
+    - Cloning the code.
+    - Uninstalling conflicting pre-installed packages (e.g., legacy `tensorflow` or `google-ai-generativelanguage` which require older Protobuf versions).
+    - Installing the agent backend.
+3.  Set your `GEMINI_API_KEY`.
+
+*Note: If you choose to install manually in a Colab cell, run `!pip uninstall -y google-ai-generativelanguage tensorflow` first to avoid `pip` dependency resolver errors.*
 
 ---
 
@@ -102,5 +104,21 @@ To verify your installation was successful, run the CLI example:
 
 ```bash
 # Ensure you are in the backend directory and your .env has the GEMINI_API_KEY
-python examples/cli_research.py "What is LangGraph?"
+python ../examples/cli_research.py "What is LangGraph?"
+```
+
+## Troubleshooting
+
+### Protobuf Conflicts (e.g., `google-ai-generativelanguage` or `tensorflow`)
+
+If you see an error like:
+> `google-ai-generativelanguage 0.6.15 requires protobuf!=...<6.0.0dev, but you have protobuf 6.33.2`
+
+This happens because the agent requires a newer version of `protobuf` (via `langgraph-api`), while some pre-installed environment packages require an older version.
+
+**Solution:** Uninstall the conflicting packages if you are not using them (which is usually the case for this agent).
+
+```bash
+pip uninstall -y google-ai-generativelanguage tensorflow grpcio-status
+pip install .
 ```
