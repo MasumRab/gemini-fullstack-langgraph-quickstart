@@ -63,7 +63,7 @@ class TestNodeRegistration:
     def test_register_single_node(self, registry, sample_node):
         """Test registering a single node"""
         registry.register("test_node", sample_node)
-        
+
         assert "test_node" in registry.list_nodes()
         assert registry.get("test_node") == sample_node
 
@@ -71,7 +71,7 @@ class TestNodeRegistration:
         """Test registering multiple nodes"""
         registry.register("node1", sample_node)
         registry.register("node2", another_node)
-        
+
         nodes = registry.list_nodes()
         assert "node1" in nodes
         assert "node2" in nodes
@@ -81,7 +81,7 @@ class TestNodeRegistration:
         """Test that registering with same name overwrites previous"""
         registry.register("test_node", sample_node)
         registry.register("test_node", another_node)
-        
+
         assert registry.get("test_node") == another_node
         assert len(registry.list_nodes()) == 1
 
@@ -122,10 +122,10 @@ class TestNodeRegistration:
         def documented_node(state, config):
             """This is a documented node"""
             return {"result": "success"}
-        
+
         registry.register("doc_node", documented_node)
         retrieved = registry.get("doc_node")
-        
+
         assert retrieved.__doc__ == "This is a documented node"
         assert retrieved.__name__ == "documented_node"
 
@@ -137,7 +137,7 @@ class TestNodeRetrieval:
     def test_get_existing_node(self, registry, sample_node):
         """Test retrieving an existing node"""
         registry.register("test_node", sample_node)
-        
+
         retrieved = registry.get("test_node")
         assert retrieved == sample_node
 
@@ -150,7 +150,7 @@ class TestNodeRetrieval:
         """Test getting node after it's been overwritten"""
         registry.register("test_node", sample_node)
         registry.register("test_node", another_node)
-        
+
         retrieved = registry.get("test_node")
         assert retrieved == another_node
         assert retrieved != sample_node
@@ -179,7 +179,7 @@ class TestNodeListing:
     def test_list_nodes_single_node(self, registry, sample_node):
         """Test listing with single registered node"""
         registry.register("test_node", sample_node)
-        
+
         nodes = registry.list_nodes()
         assert len(nodes) == 1
         assert "test_node" in nodes
@@ -189,7 +189,7 @@ class TestNodeListing:
         registry.register("node1", sample_node)
         registry.register("node2", another_node)
         registry.register("node3", sample_node)
-        
+
         nodes = registry.list_nodes()
         assert len(nodes) == 3
         assert "node1" in nodes
@@ -199,10 +199,10 @@ class TestNodeListing:
     def test_list_nodes_returns_copy(self, registry, sample_node):
         """Test that list_nodes returns a copy, not reference"""
         registry.register("test_node", sample_node)
-        
+
         nodes1 = registry.list_nodes()
         nodes2 = registry.list_nodes()
-        
+
         # Modifying one list shouldn't affect the other
         nodes1.append("fake_node")
         assert "fake_node" not in nodes2
@@ -211,7 +211,7 @@ class TestNodeListing:
         """Test that list doesn't include duplicates after overwrite"""
         registry.register("test_node", sample_node)
         registry.register("test_node", another_node)
-        
+
         nodes = registry.list_nodes()
         assert nodes.count("test_node") == 1
 
@@ -224,12 +224,12 @@ class TestNodeExecution:
         """Test executing a registered node"""
         def add_node(state, config):
             return {"count": state.get("count", 0) + 1}
-        
+
         registry.register("add", add_node)
-        
+
         node = registry.get("add")
         result = node({"count": 5}, {})
-        
+
         assert result["count"] == 6
 
     def test_execute_node_with_state(self, registry):
@@ -239,13 +239,13 @@ class TestNodeExecution:
                 "messages": state.get("messages", []) + ["new message"],
                 "count": state.get("count", 0) + 1,
             }
-        
+
         registry.register("processor", state_processor)
-        
+
         node = registry.get("processor")
         initial_state = {"messages": ["hello"], "count": 5}
         result = node(initial_state, {})
-        
+
         assert len(result["messages"]) == 2
         assert result["count"] == 6
 
@@ -254,12 +254,12 @@ class TestNodeExecution:
         def configurable_node(state, config):
             multiplier = config.get("multiplier", 1)
             return {"value": state.get("value", 0) * multiplier}
-        
+
         registry.register("multiply", configurable_node)
-        
+
         node = registry.get("multiply")
         result = node({"value": 5}, {"multiplier": 3})
-        
+
         assert result["value"] == 15
 
 
@@ -270,7 +270,7 @@ class TestNodeExistence:
     def test_has_node_exists(self, registry, sample_node):
         """Test checking for existing node"""
         registry.register("test_node", sample_node)
-        
+
         # Assuming has_node or similar method exists
         assert "test_node" in registry.list_nodes()
 
@@ -286,32 +286,32 @@ class TestSpecialCharacterNames:
     def test_register_with_spaces(self, registry, sample_node):
         """Test registering node with spaces in name"""
         registry.register("test node with spaces", sample_node)
-        
+
         assert "test node with spaces" in registry.list_nodes()
         assert registry.get("test node with spaces") == sample_node
 
     def test_register_with_underscores(self, registry, sample_node):
         """Test registering node with underscores"""
         registry.register("test_node_with_underscores", sample_node)
-        
+
         assert "test_node_with_underscores" in registry.list_nodes()
 
     def test_register_with_hyphens(self, registry, sample_node):
         """Test registering node with hyphens"""
         registry.register("test-node-with-hyphens", sample_node)
-        
+
         assert "test-node-with-hyphens" in registry.list_nodes()
 
     def test_register_with_dots(self, registry, sample_node):
         """Test registering node with dots"""
         registry.register("test.node.with.dots", sample_node)
-        
+
         assert "test.node.with.dots" in registry.list_nodes()
 
     def test_register_with_unicode(self, registry, sample_node):
         """Test registering node with unicode characters"""
         registry.register("test_node_🚀", sample_node)
-        
+
         assert "test_node_🚀" in registry.list_nodes()
 
 
@@ -323,7 +323,7 @@ class TestRegistryOperations:
         """Test clearing all nodes from registry"""
         registry.register("node1", sample_node)
         registry.register("node2", another_node)
-        
+
         # If clear method exists
         if hasattr(registry, 'clear'):
             registry.clear()
@@ -333,14 +333,14 @@ class TestRegistryOperations:
         """Test whether registry behaves as singleton"""
         registry1 = NodeRegistry()
         registry2 = NodeRegistry()
-        
+
         # Document the behavior - either singleton or separate instances
         # This test just verifies consistency
         def test_node(state, config):
             return {"result": "test"}
-        
+
         registry1.register("test", test_node)
-        
+
         # Check if registry2 sees the same registration
         if "test" in registry2.list_nodes():
             # Singleton behavior
@@ -352,13 +352,13 @@ class TestRegistryOperations:
     def test_registry_size_tracking(self, registry, sample_node):
         """Test tracking number of registered nodes"""
         assert len(registry.list_nodes()) == 0
-        
+
         registry.register("node1", sample_node)
         assert len(registry.list_nodes()) == 1
-        
+
         registry.register("node2", sample_node)
         assert len(registry.list_nodes()) == 2
-        
+
         registry.register("node1", sample_node)  # Overwrite
         assert len(registry.list_nodes()) == 2
 
@@ -372,21 +372,21 @@ class TestRegistryIntegration:
         # Define nodes
         def node_a(state, config):
             return {"step": "A"}
-        
+
         def node_b(state, config):
             return {"step": "B"}
-        
+
         # Register nodes
         registry.register("node_a", node_a)
         registry.register("node_b", node_b)
-        
+
         # List and execute
         nodes = registry.list_nodes()
         assert len(nodes) == 2
-        
+
         result_a = registry.get("node_a")({}, {})
         assert result_a["step"] == "A"
-        
+
         result_b = registry.get("node_b")({}, {})
         assert result_b["step"] == "B"
 
@@ -396,11 +396,11 @@ class TestRegistryIntegration:
         for i in range(5):
             def node_func(state, config, index=i):
                 return {"index": index}
-            
+
             registry.register(f"node_{i}", node_func)
-        
+
         assert len(registry.list_nodes()) == 5
-        
+
         # Execute one
         node_3 = registry.get("node_3")
         result = node_3({}, {})
@@ -414,7 +414,7 @@ class TestEdgeCases:
     def test_register_lambda(self, registry):
         """Test registering lambda function"""
         registry.register("lambda_node", lambda state, config: {"result": "lambda"})
-        
+
         assert "lambda_node" in registry.list_nodes()
         result = registry.get("lambda_node")({}, {})
         assert result["result"] == "lambda"
@@ -424,10 +424,10 @@ class TestEdgeCases:
         class NodeClass:
             def node_method(self, state, config):
                 return {"result": "method"}
-        
+
         instance = NodeClass()
         registry.register("method_node", instance.node_method)
-        
+
         assert "method_node" in registry.list_nodes()
 
     def test_register_static_method(self, registry):
@@ -436,16 +436,16 @@ class TestEdgeCases:
             @staticmethod
             def static_node(state, config):
                 return {"result": "static"}
-        
+
         registry.register("static_node", NodeClass.static_node)
-        
+
         assert "static_node" in registry.list_nodes()
 
     def test_very_long_node_name(self, registry, sample_node):
         """Test registering node with very long name"""
         long_name = "a" * 1000
         registry.register(long_name, sample_node)
-        
+
         assert long_name in registry.list_nodes()
         assert registry.get(long_name) == sample_node
 
@@ -453,7 +453,7 @@ class TestEdgeCases:
         """Test that node names are case-sensitive"""
         registry.register("TestNode", sample_node)
         registry.register("testnode", another_node)
-        
+
         assert "TestNode" in registry.list_nodes()
         assert "testnode" in registry.list_nodes()
         assert registry.get("TestNode") != registry.get("testnode")

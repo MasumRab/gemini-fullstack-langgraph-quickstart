@@ -25,6 +25,7 @@ def get_builder() -> StateGraph:
     return builder
 
 # If upstream doesn't do this, we treat their file as "read-only"
+# If upstream doesn't do this, we treat their file as "read-only"
 # and import nodes directly if they are exported.
 ```
 
@@ -69,6 +70,29 @@ def build_extended_graph():
     workflow.add_edge("generate_query", "planning_node")
     workflow.add_edge("planning_node", "web_research")
 
+    builder = get_base_builder()
+
+    # Modify the schema to use our ExtendedState
+    # (Note: LangGraph makes swapping state schema tricky,
+    #  better to have Upstream use a generic or open schema,
+    #  OR we rebuild the graph using Upstream Node Functions)
+
+    # Preferred: Rebuild using Upstream Nodes
+    workflow = StateGraph(ExtendedState)
+
+    # Import nodes from upstream (assuming they are public)
+    from agent.nodes import generate_query, web_research
+
+    workflow.add_node("generate_query", generate_query)
+    workflow.add_node("web_research", web_research)
+
+    # Add OUR nodes
+    workflow.add_node("planning_node", planning_node)
+
+    # Wire them together (Custom Edges)
+    workflow.add_edge("generate_query", "planning_node")
+    workflow.add_edge("planning_node", "web_research")
+
     return workflow.compile()
 ```
 
@@ -81,6 +105,7 @@ Instead of editing `ChatMessagesView.tsx` to add "Planning Mode UI" inside the r
 // frontend/src/features/Planning/PlanningOverlay.tsx
 export const PlanningOverlay = ({ children, threadState }) => {
   const planningContext = usePlanningState(threadState);
+
 
   return (
     <div className="layout">
@@ -103,6 +128,7 @@ import { PlanningOverlay } from './features/Planning';
 
 export default function App() {
   // ... hook setup ...
+
 
   return (
     <PlanningOverlay threadState={thread}>

@@ -88,6 +88,11 @@ To run the agent in Google Colab, you can use the provided setup notebook:
 **Quick Instructions for Colab:**
 
 1.  Clone the repository.
+2.  Run the following in a cell:
+    ```python
+    !pip install .
+    ```
+    *Colab environments update frequently. If you see errors related to `torch` on Python 3.13 runtimes, use the nightly install command shown in the "Standard Pip Installation" section.*
 2.  Run the setup cell in the notebook, which handles:
     - Cloning the code.
     - Uninstalling conflicting pre-installed packages (e.g., legacy `tensorflow` or `google-ai-generativelanguage` which require older Protobuf versions).
@@ -104,6 +109,7 @@ To verify your installation was successful, run the CLI example:
 
 ```bash
 # Ensure you are in the backend directory and your .env has the GEMINI_API_KEY
+python examples/cli_research.py "What is LangGraph?"
 python ../examples/cli_research.py "What is LangGraph?"
 ```
 
