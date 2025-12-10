@@ -85,7 +85,7 @@ def test_generate_query_returns_queries(mock_genai, mock_llm):
 def test_rag_retrieve_returns_documents(mock_backend, monkeypatch):
     monkeypatch.setattr(rag_nodes, "is_rag_enabled", lambda: True)
     mock_backend.retrieve.return_value = ["doc1", "doc2"]
-    
+
     result = rag_nodes.rag_retrieve({"messages": [], "rag_resources": ["uri"]}, config=None)
     assert result["rag_documents"] == ["doc1", "doc2"]
 ```
@@ -188,10 +188,10 @@ describe('ChatInput', () => {
   it('calls onSubmit when form is submitted', () => {
     const mockSubmit = vi.fn();
     render(<ChatInput onSubmit={mockSubmit} />);
-    
+
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'test' } });
     fireEvent.submit(screen.getByRole('form'));
-    
+
     expect(mockSubmit).toHaveBeenCalledWith('test');
   });
 });

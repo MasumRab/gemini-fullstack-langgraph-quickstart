@@ -15,7 +15,7 @@ def visualize_graph(graph, name):
         return
 
     print(f"\n{'='*20} {name} {'='*20}\n")
-    
+
     # Mermaid
     try:
         mermaid_code = graph.get_graph().draw_mermaid()
@@ -26,7 +26,7 @@ def visualize_graph(graph, name):
         with open(f"{filename}.mermaid", "w", encoding="utf-8") as f:
             f.write(mermaid_code)
         print(f"Saved mermaid code to {filename}.mermaid")
-        
+
         # Try PNG
         try:
             png_data = graph.get_graph().draw_mermaid_png()
@@ -35,7 +35,7 @@ def visualize_graph(graph, name):
             print(f"Saved PNG to {filename}.png")
         except Exception as e:
             print(f"Could not save PNG for {name} (likely missing mermaid-cli): {e}")
-            
+
     except Exception as e:
         print(f"Error drawing mermaid for {name}: {e}")
 
@@ -45,7 +45,7 @@ def visualize_graph(graph, name):
         graph.get_graph().print_ascii()
     except Exception as e:
         print(f"Error printing ASCII for {name}: {e}")
-    
+
     sys.stdout.flush()
 
 print("Starting visualization script...", flush=True)
@@ -59,11 +59,11 @@ print("Starting visualization script...", flush=True)
 #         researcher_subgraph
 #     )
 #     print("Successfully imported Current Deep Research Graph and Subgraphs", flush=True)
-    
+
 #     visualize_graph(current_graph, "Current Deep Research Graph")
 #     visualize_graph(supervisor_subgraph, "Current Supervisor Subgraph")
 #     visualize_graph(researcher_subgraph, "Current Researcher Subgraph")
-    
+
 # except ImportError as e:
 #     print(f"Error importing Current Deep Research Graph: {e}", flush=True)
 # except Exception as e:
@@ -95,15 +95,15 @@ print("Starting visualization script...", flush=True)
 # 4. Proposed Improved Graph (Planning Agent)
 try:
     print("Importing Proposed Improved Graph (Planning Agent)...", flush=True)
-    
+
     # Add backend/src to sys.path
     backend_src_path = project_root / "backend" / "src"
     sys.path.append(str(backend_src_path))
-    
+
     # Set dummy API key to avoid ValueError during import if not set
     if "GEMINI_API_KEY" not in os.environ:
         os.environ["GEMINI_API_KEY"] = "dummy_key_for_visualization"
-        
+
     from agent.graph import graph as proposed_graph
     print("Successfully imported Proposed Improved Graph", flush=True)
     visualize_graph(proposed_graph, "Proposed Improved Graph")

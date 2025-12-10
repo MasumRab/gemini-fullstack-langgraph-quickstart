@@ -14,7 +14,7 @@ def main():
     backend_dir = os.path.join(root_dir, "backend")
 
     print(f"🚀 Starting development servers...")
-    
+
     # Define commands based on OS
     is_windows = sys.platform.startswith('win')
     shell = is_windows  # specialized shell handling for windows
@@ -23,13 +23,13 @@ def main():
     backend_cmd = "langgraph dev"
 
     processes = []
-    
+
     try:
         # Start Frontend
         print(f"📦 Starting Frontend in {frontend_dir}...")
         frontend_proc = subprocess.Popen(
-            frontend_cmd, 
-            cwd=frontend_dir, 
+            frontend_cmd,
+            cwd=frontend_dir,
             shell=True,
             creationflags=subprocess.CREATE_NEW_CONSOLE if is_windows else 0
         )
@@ -38,15 +38,15 @@ def main():
         # Start Backend
         print(f"🐍 Starting Backend in {backend_dir}...")
         backend_proc = subprocess.Popen(
-            backend_cmd, 
-            cwd=backend_dir, 
+            backend_cmd,
+            cwd=backend_dir,
             shell=True,
             creationflags=subprocess.CREATE_NEW_CONSOLE if is_windows else 0
         )
         processes.append(backend_proc)
 
         print("\n✅ Servers started! Press Ctrl+C to stop.")
-        
+
         # Keep main process alive to monitor children
         while True:
             time.sleep(1)

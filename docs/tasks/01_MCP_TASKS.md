@@ -20,17 +20,11 @@
     - Snippet: `npx @modelcontextprotocol/server-filesystem --help`
 
 ### Phase 2: Configuration & Code
-- [ ] **Create `backend/src/agent/mcp_config.py`**
-    - Subtask: Implement `McpConnectionManager` class.
-    - Subtask: Implement method `connect_filesystem(path: str)`.
-    - Pseudocode:
-      ```python
-      class McpConfig:
-          def __init__(self):
-              self.clients = []
-          async def get_filesystem_tools(self, mount_dir):
-              # ... logic from design doc ...
-      ```
+- [x] **Create `backend/src/agent/mcp_config.py`**
+    - [x] Subtask: Implement `MCPSettings` dataclass and loader.
+    - [x] Subtask: Add `validate` function.
+    - [x] Subtask: Add `McpConnectionManager` stub.
+    - Code: `backend/src/agent/mcp_config.py`
 
 - [ ] **Wrap Persistence Tools (New Task)**
     - Action: Create `backend/src/agent/mcp_persistence.py`.

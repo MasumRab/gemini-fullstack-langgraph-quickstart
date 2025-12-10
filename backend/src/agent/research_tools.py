@@ -34,7 +34,7 @@ from agent.prompts import summarize_webpage_prompt
 
 def get_today_str() -> str:
     """Get current date in a human-readable format.
-    
+
     Returns:
         Formatted date string (e.g., 'Sun Dec 8, 2024')
     """
@@ -43,13 +43,13 @@ def get_today_str() -> str:
 
 def get_tavily_api_key(config: Optional[RunnableConfig] = None) -> str:
     """Retrieve Tavily API key from config or environment.
-    
+
     Args:
         config: Optional runtime configuration
-        
+
     Returns:
         Tavily API key string
-        
+
     Raises:
         ValueError: If no API key is found
     """
@@ -58,12 +58,12 @@ def get_tavily_api_key(config: Optional[RunnableConfig] = None) -> str:
         configurable = config.get("configurable", {})
         if key := configurable.get("tavily_api_key"):
             return key
-    
+
     # Fall back to environment variable
     key = os.getenv("TAVILY_API_KEY")
     if key:
         return key
-    
+
     raise ValueError("Tavily API key not found in config or environment")
 
 
@@ -93,10 +93,10 @@ def tavily_search_multiple(
     if not TAVILY_AVAILABLE:
         logging.warning("Tavily client not available, returning empty results")
         return []
-    
+
     api_key = get_tavily_api_key(config)
     tavily_client = TavilyClient(api_key=api_key)
-    
+
     search_docs = []
     for query in search_queries:
         try:
@@ -110,7 +110,7 @@ def tavily_search_multiple(
         except Exception as e:
             logging.error(f"Search failed for query '{query}': {e}")
             search_docs.append({"query": query, "results": []})
-    
+
     return search_docs
 
 
@@ -122,24 +122,24 @@ async def tavily_search_async(
     config: Optional[RunnableConfig] = None,
 ) -> List[dict]:
     """Execute multiple Tavily search queries asynchronously.
-    
+
     Args:
         search_queries: List of search query strings to execute
         max_results: Maximum number of results per query
         topic: Topic category for filtering results
         include_raw_content: Whether to include full webpage content
         config: Runtime configuration for API key access
-        
+
     Returns:
         List of search result dictionaries from Tavily API
     """
     if not TAVILY_AVAILABLE:
         logging.warning("Tavily async client not available, returning empty results")
         return []
-    
+
     api_key = get_tavily_api_key(config)
     tavily_client = AsyncTavilyClient(api_key=api_key)
-    
+
     search_tasks = [
         tavily_client.search(
             query,
@@ -149,9 +149,9 @@ async def tavily_search_async(
         )
         for query in search_queries
     ]
-    
+
     search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
-    
+
     # Filter out exceptions and log them
     valid_results = []
     for i, result in enumerate(search_results):
@@ -160,7 +160,7 @@ async def tavily_search_async(
             valid_results.append({"query": search_queries[i], "results": []})
         else:
             valid_results.append(result)
-    
+
     return valid_results
 
 
@@ -178,7 +178,7 @@ def deduplicate_search_results(search_results: List[dict]) -> Dict[str, dict]:
         Dictionary mapping URLs to unique results
     """
     unique_results = {}
-    
+
     for response in search_results:
         for result in response.get("results", []):
             url = result.get("url", "")
@@ -187,7 +187,7 @@ def deduplicate_search_results(search_results: List[dict]) -> Dict[str, dict]:
                     **result,
                     "query": response.get("query", "")
                 }
-    
+
     return unique_results
 
 
@@ -207,10 +207,10 @@ def process_search_results(
         Dictionary of processed results with summaries
     """
     summarized_results = {}
-    
+
     for url, result in unique_results.items():
         raw_content = result.get("raw_content", "")
-        
+
         if not raw_content:
             # No raw content, use the short snippet
             content = result.get("content", "")
@@ -223,12 +223,12 @@ def process_search_results(
         else:
             # No model, just truncate
             content = raw_content[:max_content_length]
-        
+
         summarized_results[url] = {
             "title": result.get("title", "Untitled"),
             "content": content
         }
-    
+
     return summarized_results
 
 
@@ -243,15 +243,15 @@ def format_search_output(summarized_results: Dict[str, dict]) -> str:
     """
     if not summarized_results:
         return "No valid search results found. Please try different search queries."
-    
+
     formatted_output = "Search results:\n\n"
-    
+
     for i, (url, result) in enumerate(summarized_results.items(), 1):
         formatted_output += f"\n--- SOURCE {i}: {result['title']} ---\n"
         formatted_output += f"URL: {url}\n\n"
         formatted_output += f"SUMMARY:\n{result['content']}\n\n"
         formatted_output += "-" * 80 + "\n"
-    
+
     return formatted_output
 
 
@@ -279,9 +279,9 @@ def summarize_webpage_content(
             webpage_content=webpage_content,
             date=get_today_str()
         )
-        
+
         summary = model.invoke([HumanMessage(content=prompt_content)])
-        
+
         # Handle structured output
         if hasattr(summary, "summary") and hasattr(summary, "key_excerpts"):
             formatted_summary = (
@@ -291,9 +291,9 @@ def summarize_webpage_content(
         else:
             # Plain text response
             formatted_summary = str(summary.content if hasattr(summary, "content") else summary)
-        
+
         return formatted_summary
-        
+
     except Exception as e:
         logging.warning(f"Summarization failed: {e}")
         # Return truncated original content
@@ -322,12 +322,12 @@ async def summarize_webpage_async(
             webpage_content=webpage_content,
             date=get_today_str()
         )
-        
+
         summary = await asyncio.wait_for(
             model.ainvoke([HumanMessage(content=prompt_content)]),
             timeout=timeout
         )
-        
+
         # Handle structured output
         if hasattr(summary, "summary") and hasattr(summary, "key_excerpts"):
             formatted_summary = (
@@ -336,9 +336,9 @@ async def summarize_webpage_async(
             )
         else:
             formatted_summary = str(summary.content if hasattr(summary, "content") else summary)
-        
+
         return formatted_summary
-        
+
     except asyncio.TimeoutError:
         logging.warning(f"Summarization timed out after {timeout} seconds")
         return webpage_content[:1000] + "..." if len(webpage_content) > 1000 else webpage_content
@@ -380,13 +380,13 @@ def tavily_search(
         topic=topic,
         include_raw_content=True,
     )
-    
+
     # Deduplicate results by URL
     unique_results = deduplicate_search_results(search_results)
-    
+
     # Process results (without summarization model for simplicity)
     summarized_results = process_search_results(unique_results)
-    
+
     # Format output
     return format_search_output(summarized_results)
 
@@ -443,7 +443,7 @@ def refine_draft_report(
     """
     # Use default model for refinement
     writer_model = init_chat_model(model="gemini-1.5-pro", max_tokens=16000)
-    
+
     prompt = f"""You are refining a research report based on the following:
 
 ## Research Brief
@@ -467,7 +467,7 @@ Today's date: {get_today_str()}
 
 Provide the refined report:
 """
-    
+
     response = writer_model.invoke([HumanMessage(content=prompt)])
     return response.content
 
@@ -478,16 +478,16 @@ Provide the refined report:
 
 def is_token_limit_exceeded(exception: Exception, model_name: str = None) -> bool:
     """Determine if an exception indicates a token/context limit was exceeded.
-    
+
     Args:
         exception: The exception to analyze
         model_name: Optional model name to optimize provider detection
-        
+
     Returns:
         True if the exception indicates a token limit was exceeded, False otherwise
     """
     error_str = str(exception).lower()
-    
+
     # Common token limit error patterns
     token_keywords = [
         "token limit",
@@ -499,7 +499,7 @@ def is_token_limit_exceeded(exception: Exception, model_name: str = None) -> boo
         "prompt is too long",
         "resource exhausted",
     ]
-    
+
     return any(keyword in error_str for keyword in token_keywords)
 
 
@@ -514,12 +514,12 @@ MODEL_TOKEN_LIMITS = {
     "openai:gpt-4-turbo": 128000,
     "openai:o1": 200000,
     "openai:o1-mini": 128000,
-    
+
     # Anthropic Models
     "anthropic:claude-3-5-sonnet": 200000,
     "anthropic:claude-3-opus": 200000,
     "anthropic:claude-3-haiku": 200000,
-    
+
     # Google/Gemini Models
     "google:gemini-1.5-pro": 2097152,
     "google:gemini-1.5-flash": 1048576,
@@ -532,10 +532,10 @@ MODEL_TOKEN_LIMITS = {
 
 def get_model_token_limit(model_name: str) -> int:
     """Get the token limit for a given model.
-    
+
     Args:
         model_name: Name of the model
-        
+
     Returns:
         Token limit, or default of 128000 if unknown
     """
