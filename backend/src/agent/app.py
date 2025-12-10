@@ -7,6 +7,12 @@ from fastapi.staticfiles import StaticFiles
 app = FastAPI()
 
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+
+
 def create_frontend_router(build_dir="../frontend/dist"):
     """Creates a router to serve the React frontend.
 
