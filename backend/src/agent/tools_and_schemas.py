@@ -21,3 +21,13 @@ class Reflection(BaseModel):
     follow_up_queries: List[str] = Field(
         description="A list of follow-up queries to address the knowledge gap."
     )
+
+def get_tools_from_mcp(mcp_config=None):
+    """
+    Placeholder to load tools via langchain-mcp-adapters.
+    In the future, this will connect to the MCP server defined in mcp_config.
+    """
+    # Example integration:
+    # from langchain_mcp_adapters import MCPToolAdapter
+    # return MCPToolAdapter.load_tools(mcp_config)
+    return []

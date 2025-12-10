@@ -19,6 +19,7 @@ from agent.nodes import (
     evaluate_research,
 )
 from agent.mcp_config import load_mcp_settings, validate
+from agent.memory_tools import save_plan_tool, load_plan_tool
 
 load_dotenv()
 
@@ -43,6 +44,7 @@ builder = StateGraph(OverallState, config_schema=Configuration)
 if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
     # In future: builder.bind_tools(mcp_tools)
+    # builder.bind_tools([save_plan_tool, load_plan_tool]) # Example wiring
 
 builder.add_node("load_context", load_context)
 builder.add_node("generate_query", generate_query)
