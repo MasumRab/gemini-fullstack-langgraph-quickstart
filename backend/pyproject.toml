@@ -23,6 +23,7 @@ dependencies = [
     "sentence-transformers",
     "faiss-cpu",
     "pandas",
+    "google-ai-generativelanguage>=0.9.0",
 ]
 
 
