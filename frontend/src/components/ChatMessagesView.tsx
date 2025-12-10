@@ -6,7 +6,6 @@ import { InputForm } from "@/components/InputForm";
 import { Button } from "@/components/ui/button";
 import { useState, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -150,7 +149,7 @@ const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = ({
     <div
       className={`text-white rounded-3xl break-words min-h-7 bg-neutral-700 max-w-[100%] sm:max-w-[90%] px-4 pt-3 rounded-br-lg`}
     >
-      <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown components={mdComponents}>
         {typeof message.content === "string"
           ? message.content
           : JSON.stringify(message.content)}
@@ -197,15 +196,16 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           />
         </div>
       )}
-      <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown components={mdComponents}>
         {typeof message.content === "string"
           ? message.content
           : JSON.stringify(message.content)}
       </ReactMarkdown>
       <Button
         variant="default"
-        className={`cursor-pointer bg-neutral-700 border-neutral-600 text-neutral-300 self-end ${message.content.length > 0 ? "visible" : "hidden"
-          }`}
+        className={`cursor-pointer bg-neutral-700 border-neutral-600 text-neutral-300 self-end ${
+          message.content.length > 0 ? "visible" : "hidden"
+        }`}
         onClick={() =>
           handleCopy(
             typeof message.content === "string"
@@ -274,8 +274,9 @@ export function ChatMessagesView({
                 </p>
                 <h3 className="text-lg font-semibold">
                   {planningContext.steps?.length
-                    ? `${planningContext.steps.length} proposed step${planningContext.steps.length > 1 ? "s" : ""
-                    }`
+                    ? `${planningContext.steps.length} proposed step${
+                        planningContext.steps.length > 1 ? "s" : ""
+                      }`
                     : "Awaiting plan details"}
                 </h3>
               </div>
@@ -352,8 +353,9 @@ export function ChatMessagesView({
             return (
               <div key={message.id || `msg-${index}`} className="space-y-3">
                 <div
-                  className={`flex items-start gap-3 ${message.type === "human" ? "justify-end" : ""
-                    }`}
+                  className={`flex items-start gap-3 ${
+                    message.type === "human" ? "justify-end" : ""
+                  }`}
                 >
                   {message.type === "human" ? (
                     <HumanMessageBubble

@@ -1,7 +1,5 @@
 {
-  "dependencies": [
-    "."
-  ],
+  "dependencies": ["."],
   "graphs": {
     "agent": "./src/agent/router.py:graph"
   },
