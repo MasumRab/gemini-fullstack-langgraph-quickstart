@@ -159,16 +159,16 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
             max_results=3,
             include_raw_content=False,
         )
-        
+
         sources_gathered = []
         web_research_results = []
-        
+
         for response in search_results:
             for result in response.get("results", []):
                 title = result.get("title", "Untitled")
                 url = result.get("url", "")
                 content = result.get("content", "")
-                
+
                 # Create source
                 source = {
                     "label": title,
@@ -176,10 +176,10 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
                     "value": url
                 }
                 sources_gathered.append(source)
-                
+
                 # Append to result text with citation
                 web_research_results.append(f"{content} [{title}]({url})")
-        
+
         return {
             "sources_gathered": sources_gathered,
             "web_research_result": ["\n\n".join(web_research_results)],
@@ -371,7 +371,7 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
 )
 def validate_web_results(state: OverallState, config: RunnableConfig) -> OverallState:
     """Ensure returned summaries reference the core query intent before reflection.
-    
+
     Uses fuzzy matching for robustness against typos and stemming differences.
     """
     summaries = state.get("web_research_result", [])
