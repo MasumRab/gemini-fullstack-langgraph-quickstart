@@ -56,8 +56,10 @@ npm install
 
 ```bash
 make dev
+# Or on Windows (or if make is not installed):
+python dev.py
 ```
-This will run the backend and frontend development servers.    Open your browser and navigate to the frontend development server URL (e.g., `http://localhost:5173/app`).
+This will run the backend and frontend development servers. Open your browser and navigate to the frontend development server URL (e.g., `http://localhost:5173/app`).
 
 _Alternatively, you can run the backend and frontend development servers separately. For the backend, open a terminal in the `backend/` directory and run `langgraph dev`. The backend API will be available at `http://127.0.0.1:2024`. It will also open a browser window to the LangGraph UI. For the frontend, open a terminal in the `frontend/` directory and run `npm run dev`. The frontend will be available at `http://localhost:5173`._
 
@@ -91,7 +93,7 @@ In production, the backend server serves the optimized static frontend build. La
 
 _Note: For the docker-compose.yml example you need a LangSmith API key, you can get one from [LangSmith](https://smith.langchain.com/settings)._
 
-_Note: If you are not running the docker-compose.yml example or exposing the backend server to the public internet, you should update the `apiUrl` in the `frontend/src/App.tsx` file to your host. Currently the `apiUrl` is set to `http://localhost:8123` for docker-compose or `http://localhost:2024` for development._
+_Note: If you are not running the docker-compose.yml example or exposing the backend server to the public internet, you can update the `apiUrl` by setting the `VITE_API_URL` environment variable or checking `frontend/.env.example`._
 
 **1. Build the Docker Image:**
 
