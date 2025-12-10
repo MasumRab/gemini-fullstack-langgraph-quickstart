@@ -11,5 +11,5 @@
     - *Update:* `docs/reference/` DOES exist.
 
 ## Documentation Discrepancy
-- **Issue:** `01_MCP_TASKS.md` lists `backend/src/agent/mcp_config.py` as a task, but it is not yet implemented.
-- **Status:** Correct, this is the current task.
+- **Issue:** `01_MCP_TASKS.md` lists `backend/src/agent/mcp_config.py` as a task.
+- **Status:** ✅ Implemented in this PR. Task checklist updated accordingly.
