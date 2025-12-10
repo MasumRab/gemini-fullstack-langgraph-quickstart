@@ -3,6 +3,10 @@
 ## Summary
 This report documents the differences between the current HEAD and `upstream/main` (google-gemini/gemini-fullstack-langgraph-quickstart).
 
+**Strategic Recommendation:**
+**Do NOT merge `upstream/main` directly.**
+The recommended workflow is to **target specific commits** (cherry-pick) for bug fixes or dependency updates. Merging the full upstream HEAD is strongly discouraged because the architectures have diverged significantly.
+
 ## Key Findings
 
 ### 1. Architectural Changes
@@ -22,10 +26,9 @@ If merging upstream updates, expect conflicts in:
 - `backend/src/agent/state.py`: Likely modified to support new state fields.
 - `frontend/src/App.tsx` & `ChatMessagesView.tsx`: UI modifications for the enhanced agent.
 
-## Recommendations
-- **Do not merge directly.** The architectures have diverged.
-- **Cherry-pick specific upstream fixes.** If upstream fixes bugs in the basic setup (e.g., build tools, basic configuration), apply them manually.
-- **Maintain `_graph.py` as a reference.** This file seems to serve as a snapshot of the original logic.
+## Implementation Guide
+For specific instructions on how to sync selected changes, refer to:
+[docs/tasks/UPSTREAM_SYNC_COMMANDS.md](../docs/tasks/UPSTREAM_SYNC_COMMANDS.md)
 
 ## Files Added (Not in Upstream)
 - `backend/src/agent/nodes.py`
