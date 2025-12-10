@@ -10,38 +10,38 @@ class Configuration(BaseModel):
 
     query_generator_model: str = Field(
         default="gemini-1.5-flash",
-        metadata={
+        json_schema_extra={
             "description": "The name of the language model to use for the agent's query generation."
         },
     )
 
     reflection_model: str = Field(
         default="gemini-1.5-flash",
-        metadata={
+        json_schema_extra={
             "description": "The name of the language model to use for the agent's reflection."
         },
     )
 
     answer_model: str = Field(
         default="gemini-1.5-pro",
-        metadata={
+        json_schema_extra={
             "description": "The name of the language model to use for the agent's answer."
         },
     )
 
     number_of_initial_queries: int = Field(
         default=3,
-        metadata={"description": "The number of initial search queries to generate."},
+        json_schema_extra={"description": "The number of initial search queries to generate."},
     )
 
     max_research_loops: int = Field(
         default=2,
-        metadata={"description": "The maximum number of research loops to perform."},
+        json_schema_extra={"description": "The maximum number of research loops to perform."},
     )
 
     require_planning_confirmation: bool = Field(
         default=True,
-        metadata={
+        json_schema_extra={
             "description": "If true, pause after planning until the user confirms the plan"
         },
     )

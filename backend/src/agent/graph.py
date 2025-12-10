@@ -25,7 +25,7 @@ if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
 
 # Create our Agent Graph using the standard builder wiring
-builder = StateGraph(OverallState, config_schema=Configuration)
+builder = StateGraph(OverallState, context_schema=Configuration)
 builder.add_node("load_context", load_context)
 builder.add_node("generate_query", generate_query)
 builder.add_node("planning_mode", planning_mode)
