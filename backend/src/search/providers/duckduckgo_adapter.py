@@ -10,6 +10,7 @@ class DuckDuckGoAdapter(SearchProvider):
     """Adapter for DuckDuckGo Search."""
 
     def __init__(self):
+        """Initialize adapter."""
         pass
 
     def search(
@@ -21,6 +22,11 @@ class DuckDuckGoAdapter(SearchProvider):
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
+        """
+        Execute search.
+        Arguments:
+            tuned (bool): If False, clears the time_range to relax search constraints.
+        """
 
         # specific DDG region mapping if needed
         ddg_region = region if region else "wt-wt"
@@ -29,10 +35,6 @@ class DuckDuckGoAdapter(SearchProvider):
         # DDG uses: 'd' (day), 'w' (week), 'm' (month), 'y' (year)
 
         # Tuned behavior: If not tuned (retry/fallback), maybe relax time range or strictness
-        # For DDG, safe_search off could be a 'tuned' relaxation if safe_search was requested but failed?
-        # Or here 'tuned' means standard optimization.
-        # If `tuned=False` (transient retry), we might clear the time_range.
-
         effective_time_range = time_range if tuned else None
 
         try:

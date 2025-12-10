@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from dataclasses import dataclass
 
 @dataclass
 class SearchResult:
+    """Standardized search result."""
     title: str
     url: str
     content: str

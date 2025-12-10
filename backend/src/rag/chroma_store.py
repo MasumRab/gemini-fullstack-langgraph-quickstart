@@ -1,9 +1,7 @@
 from typing import List, Dict, Optional, Tuple, Any
 import logging
 import time
-import os
 from dataclasses import dataclass, field, asdict
-import numpy as np
 import chromadb
 from chromadb.config import Settings
 
@@ -33,15 +31,17 @@ class ChromaStore:
         self,
         collection_name: str = "deep_search_evidence",
         persist_path: str = "./chroma_db",
-        embedding_function: Any = None
+        embedding_function: Any = None,
+        allow_reset: bool = False
     ):
         """
         Args:
             collection_name: Name of the Chroma collection.
             persist_path: Path to persist the DB.
             embedding_function: Optional embedding function. If None, uses default (all-MiniLM-L6-v2 compatible).
+            allow_reset: Whether to allow resetting the database (destructive).
         """
-        self.client = chromadb.PersistentClient(path=persist_path, settings=Settings(allow_reset=True))
+        self.client = chromadb.PersistentClient(path=persist_path, settings=Settings(allow_reset=allow_reset))
 
         # Use default embedding function if none provided (Chroma uses all-MiniLM-L6-v2 by default)
         self.collection = self.client.get_or_create_collection(

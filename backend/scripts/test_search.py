@@ -2,6 +2,7 @@ from backend.src.search.router import SearchRouter
 from backend.src.config.app_config import AppConfig
 
 def test_router():
+    """Verify SearchRouter functionality."""
     # Mock config to force DuckDuckGo (since we might not have API keys in sandbox)
     # We can rely on DDG being available without keys.
     mock_config = AppConfig(

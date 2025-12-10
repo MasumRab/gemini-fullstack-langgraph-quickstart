@@ -29,9 +29,9 @@ A centralized `AppConfig` class now manages all feature flags and settings via e
 
 *   **Router (`router.py`):** Implements reliability-first fallback. If a tuned (strict) search fails, it retries with relaxed parameters before switching to the fallback provider.
 *   **Adapters:**
-    *   `GoogleSearchAdapter`: Wraps `google-genai` SDK.
-    *   `DuckDuckGoAdapter`: Wraps `duckduckgo-search` (no API key required).
-    *   `BraveSearchAdapter`: Wraps Brave Search API.
+  *   `GoogleSearchAdapter`: Wraps `google-genai` SDK.
+  *   `DuckDuckGoAdapter`: Wraps `duckduckgo-search` (no API key required).
+  *   `BraveSearchAdapter`: Wraps Brave Search API.
 
 ## 3. RAG Infrastructure (`backend/src/rag/`)
 

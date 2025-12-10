@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 import os
+from typing import Optional
 
 # Ensure backend path is in pythonpath
 sys.path.append(os.getcwd())
@@ -12,21 +13,25 @@ from backend.src.agent.rag import DeepSearchRAG
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def check_parity():
+def check_parity(test_config: Optional[AppConfig] = None):
     """
     Ingest sample data and verify that both FAISS and Chroma return similar results.
     """
-    # Force dual write
-    os.environ["RAG_STORE"] = "faiss"
-    os.environ["DUAL_WRITE"] = "true"
-
-    # Reload config (hacky but works for script)
-    from backend.src.config.app_config import AppConfig
-    # We might need to reload the module or just instantiate RAG which reads config
+    # Create test configuration
+    if test_config is None:
+        try:
+            test_config = AppConfig(
+                rag_store="faiss",
+                dual_write=True,
+            )
+        except ValueError:
+            logger.warning("Failed to create complete AppConfig, falling back to defaults")
+            # Fallback for environments where env vars might be strict
+            pass
 
     logger.info("Initializing RAG with Dual Write...")
     try:
-        rag = DeepSearchRAG()
+        rag = DeepSearchRAG(config=test_config)
     except ImportError:
         logger.error("Skipping parity check: Dependencies missing")
         return
@@ -47,35 +52,30 @@ def check_parity():
     logger.info("Retrieving from FAISS...")
     faiss_results = rag.retrieve(query, top_k=2)
 
-    # Retrieve from Chroma (force read)
-    # We temporarily patch config.rag_store or inspect the implementation.
-    # The implementation reads `config.rag_store`.
-    # To check parity without restarting, we can access `rag.chroma` directly if available.
-
-    if not rag.use_chroma:
-        logger.error("Chroma not enabled despite DUAL_WRITE=true")
+    # Retrieve from Chroma (explicit call)
+    try:
+        logger.info("Retrieving from Chroma...")
+        chroma_raw = rag.retrieve_from_chroma(query, top_k=2)
+    except ValueError as e:
+        logger.error(f"Chroma not enabled: {e}")
         return
-
-    logger.info("Retrieving from Chroma...")
-    # Manually call chroma retrieve
-    embedding = rag.embedder.encode(query).tolist()
-    chroma_raw = rag.chroma.retrieve(query, top_k=2, query_embedding=embedding)
 
     # Compare
     logger.info("--- FAISS Results ---")
-    faiss_ids = set()
+    faiss_docs = []
     for res, score in faiss_results:
         logger.info(f"[{score:.4f}] {res.content[:50]}...")
-        faiss_ids.add(res.content) # using content as proxy for ID since IDs differ in format
+        # Use a composite key of (url, hash(content)) for identity
+        faiss_docs.append((res.source_url, hash(res.content)))
 
     logger.info("--- Chroma Results ---")
-    chroma_ids = set()
+    chroma_docs = []
     for res, score in chroma_raw:
         logger.info(f"[{score:.4f}] {res.content[:50]}...")
-        chroma_ids.add(res.content)
+        chroma_docs.append((res.source_url, hash(res.content)))
 
     # Parity Logic
-    overlap = len(faiss_ids.intersection(chroma_ids))
+    overlap = len(set(faiss_docs).intersection(set(chroma_docs)))
     logger.info(f"Overlap: {overlap}/2")
 
     if overlap == 2:

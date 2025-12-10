@@ -1,10 +1,11 @@
 from typing import Dict, Any, List
 import logging
-from backend.src.config.app_config import config
+from backend.src.agent.nodes import validate_web_results
 
 logger = logging.getLogger(__name__)
 
 def test_validation():
+    """Verify validation logic with mock data."""
     print("Testing Validation Logic...")
 
     # Mock Config: require citations
@@ -24,9 +25,6 @@ def test_validation():
         "web_research_result": summaries,
         "search_query": ["programming languages"],
     }
-
-    # Import the function (it will use the global config, so we rely on env vars or defaults)
-    from backend.src.agent.nodes import validate_web_results
 
     result = validate_web_results(state, {})
 

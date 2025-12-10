@@ -35,8 +35,8 @@ from agent.registry import graph_registry
 from agent.persistence import load_plan, save_plan
 from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
 
-from backend.src.config.app_config import config as app_config
-from backend.src.search.router import search_router
+from ..config.app_config import config as app_config
+from ..search.router import search_router
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +144,8 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
         return {
             "sources_gathered": [],
             "search_query": [query],
-            "web_research_result": [f"Search failed: {e}"],
+            "web_research_result": [],
+            "validation_notes": [f"Search failed for query '{query}': {e}"],
         }
 
     sources_gathered = []
@@ -336,12 +337,15 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
 
     # 1. Heuristics (Pre-filter)
     heuristic_passed = []
+
+    # Check for markdown-style citations [Title](url)
+    citation_pattern = r'\[[^\]]+\]\(https?://[^\)]+\)'
+
     for idx, summary in enumerate(summaries):
         normalized_summary = summary.lower()
         match_found = False
 
-        # Check citations (Simple heuristics: look for [])
-        has_citation = "[" in summary and "](" in summary
+        has_citation = bool(re.search(citation_pattern, summary))
 
         if app_config.require_citations and not has_citation:
             notes.append(f"Result {idx+1} rejected: Missing citations (Hard Fail).")
@@ -361,7 +365,6 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         if match_found or not keywords:
             heuristic_passed.append(summary)
         else:
-            snippet = (summary[:50] + "...") if len(summary) > 50 else summary
             notes.append(f"Result {idx + 1} filtered (Heuristics): Low overlap with query intent.")
 
     # 2. LLM Validation (Hybrid Mode)
@@ -374,6 +377,7 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
             api_key=os.getenv("GEMINI_API_KEY"),
         )
 
+        # Batching could be implemented here, but keeping it simple for now as per "first order enhancements"
         for candidate in heuristic_passed:
             # Lightweight claim check
             prompt = f"""
@@ -389,7 +393,7 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                 if "YES" in content.upper():
                     validated_by_llm.append(candidate)
                 else:
-                    notes.append(f"Result rejected by LLM Validator: Content mismatch.")
+                    notes.append("Result rejected by LLM Validator: Content mismatch.")
             except Exception as e:
                 logger.warning(f"LLM validation failed: {e}. Accepting candidate.")
                 validated_by_llm.append(candidate)
@@ -423,21 +427,29 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
     if not app_config.compression_enabled:
         return {} # No change
 
+    # Fallback to web_research_result if validation was skipped or returned empty (backward compat)
     results = state.get("validated_web_research_result", []) or state.get("web_research_result", [])
     if not results:
         return {}
 
-    # Tier 1: Extractive (Simple deduplication already happens in RAG/Search usually, but we enforce it here)
-    unique_results = list(set(results))
+    # Tier 1: Extractive (Deduplicate while preserving order)
+    seen = set()
+    unique_results = []
+    for r in results:
+        if r not in seen:
+            seen.add(r)
+            unique_results.append(r)
 
     # Tier 2: Abstractive (LLM Summarization)
     if app_config.compression_mode == "tiered":
-        # We summarize the content but MUST ask to preserve citations
-        # We can use a cheaper model for this as per config
-        configurable = Configuration.from_runnable_config(config)
-
         # Simple prompt construction
         combined_text = "\n\n".join(unique_results)
+
+        # Truncate if too long to avoid context overflow
+        max_chars = 30000  # Reasonable limit for most models
+        if len(combined_text) > max_chars:
+            combined_text = combined_text[:max_chars] + "\n[... truncated]"
+
         prompt = f"""
         Compress the following research notes into a concise summary.
         CRITICAL: You MUST preserve all source citations in [Title](url) format.

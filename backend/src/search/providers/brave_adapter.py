@@ -11,6 +11,7 @@ class BraveSearchAdapter(SearchProvider):
     """Adapter for Brave Search."""
 
     def __init__(self, api_key: Optional[str] = None):
+        """Initialize with API key."""
         self.api_key = api_key or os.getenv("BRAVE_API_KEY")
         if not self.api_key:
              # We don't raise here to allow instantiation, but search will fail/warn
@@ -25,6 +26,7 @@ class BraveSearchAdapter(SearchProvider):
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
+        """Execute search via Brave API."""
 
         if not self.api_key:
             raise ValueError("BRAVE_API_KEY is missing")
@@ -39,12 +41,13 @@ class BraveSearchAdapter(SearchProvider):
             if safe_search:
                 params["safesearch"] = "strict"
 
-            # Tuned: if false, relax freshness
+            # Map time_range to Brave freshness
             if tuned and time_range:
-                # Map time_range to brave filters if applicable
-                pass
+                freshness_map = {"d": "pd", "w": "pw", "m": "pm", "y": "py"}
+                if time_range in freshness_map:
+                    params["freshness"] = freshness_map[time_range]
 
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(url, headers=headers, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 

@@ -21,15 +21,13 @@ class SearchRouter:
     """
 
     def __init__(self, app_config: AppConfig = config):
+        """Initialize router with config."""
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
         self._init_providers()
 
     def _init_providers(self):
         """Initialize providers based on availability and config."""
-        # We instantiate all potentially needed providers to be ready for fallback
-        # Ideally, we lazy load, but eager loading is safer for configuration validation.
-
         # Google
         try:
             self.providers[SearchProviderType.GOOGLE.value] = GoogleSearchAdapter()
@@ -42,8 +40,11 @@ class SearchRouter:
         except Exception as e:
             logger.debug(f"Brave adapter failed to init: {e}")
 
-        # DuckDuckGo (No API key needed)
-        self.providers[SearchProviderType.DUCKDUCKGO.value] = DuckDuckGoAdapter()
+        # DuckDuckGo
+        try:
+            self.providers[SearchProviderType.DUCKDUCKGO.value] = DuckDuckGoAdapter()
+        except Exception as e:
+            logger.debug(f"DuckDuckGo adapter failed to init: {e}")
 
     def _get_provider(self, name: str) -> Optional[SearchProvider]:
         return self.providers.get(name)
@@ -94,6 +95,9 @@ class SearchRouter:
                     logger.info(f"Switching to fallback provider: {fallback_name}")
                     fallback_provider = self._get_provider(fallback_name)
                     if fallback_provider:
+                        # Fallback gets the same retry logic or just a single shot?
+                        # For simplicity, fallback is usually single shot untuned or standard.
+                        # Let's try standard (tuned=True default)
                         return fallback_provider.search(query, max_results=max_results)
 
                 # If we get here, all attempts failed

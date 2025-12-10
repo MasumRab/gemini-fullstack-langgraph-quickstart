@@ -47,12 +47,16 @@ class DeepSearchRAG:
 
     def __init__(
         self,
+        config=None, # Allow injecting config
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         chunk_size: int = 512,
         chunk_overlap: int = 50,
         max_context_chunks: int = 10
     ):
         self.embedding_model = embedding_model
+        # Use provided config or fallback to global
+        from backend.src.config.app_config import config as global_config
+        self.config = config or global_config
 
         # Load embedding model
         if SentenceTransformer:
@@ -64,14 +68,14 @@ class DeepSearchRAG:
 
         # Initialize Stores
         # Force fallback if optional libs missing
-        requested_store = config.rag_store
+        requested_store = self.config.rag_store
 
         if requested_store == "chroma" and not CHROMA_AVAILABLE:
             logger.warning("ChromaDB not available. Falling back to FAISS.")
             requested_store = "faiss"
 
-        self.use_faiss = requested_store == "faiss" or config.dual_write
-        self.use_chroma = (requested_store == "chroma" or config.dual_write) and CHROMA_AVAILABLE
+        self.use_faiss = requested_store == "faiss" or self.config.dual_write
+        self.use_chroma = (requested_store == "chroma" or self.config.dual_write) and CHROMA_AVAILABLE
 
         # FAISS Init
         if self.use_faiss:
@@ -84,13 +88,15 @@ class DeepSearchRAG:
 
         # Chroma Init
         if self.use_chroma and CHROMA_AVAILABLE:
+            # Configurable path
+            persist_path = getattr(self.config, 'chroma_persist_path', "./chroma_db")
             self.chroma = ChromaStore(
                 collection_name="deep_search_evidence",
-                persist_path="./chroma_db",
+                persist_path=persist_path,
                 # Pass a wrapper or allow Chroma to use its default if we don't map sentence-transformers exactly
                 # Ideally we use the same embeddings.
             )
-        elif config.dual_write and not CHROMA_AVAILABLE:
+        elif self.config.dual_write and not CHROMA_AVAILABLE:
             logger.warning("Dual write enabled but ChromaDB is missing. Writing to FAISS only.")
 
         # Text splitting
@@ -102,6 +108,27 @@ class DeepSearchRAG:
 
         self.max_context_chunks = max_context_chunks
         self.subgoal_evidence_map: Dict[str, List[int]] = {} # Primarily tracks FAISS IDs if active
+
+    def retrieve_from_chroma(self, query: str, top_k: int) -> List[Tuple[EvidenceChunk, float]]:
+        """Retrieve directly from Chroma store if enabled."""
+        if not self.use_chroma:
+            raise ValueError("Chroma not enabled")
+        embedding = self.embedder.encode(query).tolist()
+
+        # Map ChromaEvidenceChunk back to EvidenceChunk
+        results = self.chroma.retrieve(query, top_k=top_k, query_embedding=embedding)
+        return [
+            (EvidenceChunk(
+                content=c.content,
+                source_url=c.source_url,
+                subgoal_id=c.subgoal_id,
+                relevance_score=c.relevance_score,
+                timestamp=c.timestamp,
+                chunk_id=c.chunk_id,
+                metadata=c.metadata
+            ), score)
+            for c, score in results
+        ]
 
     def ingest_research_results(
         self,
@@ -185,26 +212,10 @@ class DeepSearchRAG:
         If dual-write is on, respects RAG_STORE preference for retrieval.
         """
         # Decide which store to read from
-        read_source = config.rag_store
+        read_source = self.config.rag_store
 
         if read_source == "chroma" and self.use_chroma and CHROMA_AVAILABLE:
-            query_embedding = self.embedder.encode(query).tolist()
-            results = self.chroma.retrieve(
-                query, top_k, subgoal_filter, min_score, query_embedding
-            )
-            # Map back to local EvidenceChunk class if needed (duck typing usually works)
-            return [
-                (EvidenceChunk(
-                    content=c.content,
-                    source_url=c.source_url,
-                    subgoal_id=c.subgoal_id,
-                    relevance_score=c.relevance_score,
-                    timestamp=c.timestamp,
-                    chunk_id=c.chunk_id,
-                    metadata=c.metadata
-                ), score)
-                for c, score in results
-            ]
+            return self.retrieve_from_chroma(query, top_k)
 
         elif self.use_faiss:
             # Existing FAISS logic
@@ -212,7 +223,7 @@ class DeepSearchRAG:
                 return []
 
             query_embedding = self.embedder.encode(query)
-            k_search = min(top_k * 2, len(self.doc_store))
+            k_search = min(top_k * 2, self.index_with_ids.ntotal)
             distances, indices = self.index_with_ids.search(
                 np.array([query_embedding], dtype=np.float32),
                 k=k_search
@@ -241,9 +252,9 @@ class DeepSearchRAG:
         Currently optimized for FAISS. If Chroma-only, this would need a Chroma-specific implementation
         using `get` and `delete`.
         For now, we keep the FAISS-centric logic and warn if using Chroma-only.
+        Note: This is a soft-delete pattern; items are removed from the active map but persist in the index.
         """
         if not self.use_faiss:
-            # Stub for Chroma-only pruning (complex to implement efficiently without ID map)
             return {"status": "skipped", "reason": "pruning_not_implemented_for_chroma"}
 
         # Existing FAISS pruning logic...
@@ -266,9 +277,6 @@ class DeepSearchRAG:
 
         self.subgoal_evidence_map[subgoal_id] = kept_ids
         pruned_count = original_count - len(kept_ids)
-
-        # If dual-write, we might ideally delete from Chroma too, but that requires mapping integer IDs to string IDs
-        # The current implementation uses integer IDs for FAISS and composite string IDs for Chroma.
 
         avg_score = 0.0
         if kept_ids:

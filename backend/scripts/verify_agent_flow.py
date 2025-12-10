@@ -11,6 +11,7 @@ from backend.src.agent.graph import graph
 from backend.src.config.app_config import config
 
 async def run_full_flow():
+    """Execute full agent flow verification."""
     print("Running Full Agent Flow Verification...")
     print(f"Config: {config}")
 
