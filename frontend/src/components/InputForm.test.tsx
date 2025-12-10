@@ -81,7 +81,7 @@ describe('InputForm', () => {
     it('calls onCancel when stop button is clicked while loading', () => {
         render(<InputForm {...defaultProps} isLoading={true} />);
 
-        // Stop button icon is StopCircle, but we mocked Button. 
+        // Stop button icon is StopCircle, but we mocked Button.
         // In the real component, the button renders StopCircle icon.
         // Since we mocked Button to just render children, and StopCircle is an icon...
         // We can look for the button by role 'button'

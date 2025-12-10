@@ -200,6 +200,31 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
             },
         )
 
+        sources_gathered = []
+        web_research_results = []
+
+        for response in search_results:
+            for result in response.get("results", []):
+                title = result.get("title", "Untitled")
+                url = result.get("url", "")
+                content = result.get("content", "")
+
+                # Create source
+                source = {
+                    "label": title,
+                    "short_url": url,
+                    "value": url
+                }
+                sources_gathered.append(source)
+
+                # Append to result text with citation
+                web_research_results.append(f"{content} [{title}]({url})")
+
+        return {
+            "sources_gathered": sources_gathered,
+            "web_research_result": ["\n\n".join(web_research_results)],
+        }
+
         # Check if grounding metadata is available
         if not response.candidates or not response.candidates[0].grounding_metadata:
             # Fallback if no grounding metadata (though unlikely with google_search tool)
@@ -220,10 +245,24 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
         sources_gathered = [item for citation in citations for item in citation["segments"]]
 
         return {
-            "sources_gathered": sources_gathered,
-            "search_query": [state["search_query"]],
-            "web_research_result": [modified_text],
+            "sources_gathered": [],
+            "web_research_result": [response.text],
         }
+
+    # resolve the urls to short urls for saving tokens and time
+    resolved_urls = resolve_urls(
+        response.candidates[0].grounding_metadata.grounding_chunks, state["id"]
+    )
+
+    # Gets the citations and adds them to the generated text
+    citations = get_citations(response, resolved_urls)
+    modified_text = insert_citation_markers(response.text, citations)
+    sources_gathered = [item for citation in citations for item in citation["segments"]]
+
+    return {
+        "sources_gathered": sources_gathered,
+        "web_research_result": [modified_text],
+    }
 
 
 @graph_registry.describe(
@@ -363,7 +402,8 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
     """Extract keywords from queries (tokens >= 4 chars)."""
     keywords: List[str] = []
     for query in queries:
-        for token in re.split(r"[^a-zA-Z0-9]+", query.lower()):
+        # Use regex that supports unicode word characters
+        for token in re.split(r"[^\w]+", query.lower()):
             if len(token) >= 4:
                 keywords.append(token)
     return keywords
@@ -377,7 +417,7 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
 )
 def validate_web_results(state: OverallState, config: RunnableConfig) -> OverallState:
     """Ensure returned summaries reference the core query intent before reflection.
-    
+
     Uses fuzzy matching for robustness against typos and stemming differences.
     """
     with observe_span("validate_web_results", config):
@@ -557,24 +597,25 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
             summaries="\n---\n\n".join(state["web_research_result"]),
         )
 
-        # init Reasoning Model, default to Gemini 2.5 Flash
-        llm = ChatGoogleGenerativeAI(
-            model=reasoning_model,
-            temperature=0,
-            max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
-        )
-        result = llm.invoke(formatted_prompt, config=config)
+    # init Reasoning Model, default to Gemini 2.5 Flash
+    llm = ChatGoogleGenerativeAI(
+        model=reasoning_model,
+        temperature=0,
+        max_retries=2,
+        api_key=os.getenv("GEMINI_API_KEY"),
+    )
+    result = llm.invoke(formatted_prompt)
 
-        # Replace the short urls with the original urls and add all used urls to the sources_gathered
-        unique_sources = []
-        if "sources_gathered" in state:
-            for source in state["sources_gathered"]:
-                if source["short_url"] in result.content:
-                    result.content = result.content.replace(
-                        source["short_url"], source["value"]
-                    )
-                    unique_sources.append(source)
+    # Replace the short urls with the original urls and add all used urls to the sources_gathered
+    unique_sources = []
+    if "sources_gathered" in state:
+        for source in state["sources_gathered"]:
+            # Robust regex pattern to match the short URL
+            pattern = re.escape(source["short_url"])
+            if re.search(pattern, result.content):
+                # Replace all occurrences using regex
+                result.content = re.sub(pattern, source["value"], result.content)
+                unique_sources.append(source)
 
         return {
             "messages": [AIMessage(content=result.content)],
