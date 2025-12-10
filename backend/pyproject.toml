@@ -19,7 +19,12 @@ dependencies = [
     "fastapi",
     "google-genai",
     "langchain-mcp-adapters",
+    "langchain-text-splitters",
     "mcp",
+    "sentence-transformers",
+    "faiss-cpu",
+    "pandas",
+    "google-ai-generativelanguage>=0.9.0",
 ]
 
 
@@ -58,4 +63,6 @@ convention = "google"
 dev = [
     "langgraph-cli[inmem]>=0.1.71",
     "pytest>=8.3.5",
+    "pytest-cov>=5.0.0",
+    "hypothesis>=6.100.0",
 ]
