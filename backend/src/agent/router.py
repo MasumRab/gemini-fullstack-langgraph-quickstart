@@ -54,4 +54,17 @@ builder.add_edge("supervisor_agent", END)
 # Compile the meta-graph
 graph = builder.compile()
 
+# Observability injection (Opt-in)
+# This wraps the graph with a default configuration containing the Langfuse callback if enabled.
+try:
+    from observability.config import is_enabled
+    from observability.langfuse import get_langfuse_handler
+
+    if is_enabled():
+        handler = get_langfuse_handler()
+        if handler:
+            graph = graph.with_config({"callbacks": [handler]})
+except ImportError:
+    pass
+
 __all__ = ["graph", "graph_registry"]
