@@ -2,7 +2,7 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field
 import numpy as np
 import time
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 import logging
 
 # Optional imports for RAG dependencies to avoid breaking if not installed

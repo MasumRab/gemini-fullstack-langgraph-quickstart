@@ -1,0 +1,31 @@
+name: gemini-fullstack-langgraph
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.12,<3.14
+  - pip
+  # Core PyTorch ecosystem from pytorch channel
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cpuonly # Remove if GPU is needed
+  # Scientific / ML Stack from conda-forge
+  - pandas
+  - sentence-transformers
+  - faiss-cpu
+  - python-dotenv
+  - pip:
+    # LangChain / LangGraph ecosystem (often newer in PyPI)
+    - langgraph
+    - langchain
+    - langchain-google-genai
+    - langgraph-sdk
+    - langgraph-cli
+    - langgraph-api
+    - langchain-mcp-adapters
+    - langchain-text-splitters
+    - fastapi
+    - google-genai
+    - mcp
