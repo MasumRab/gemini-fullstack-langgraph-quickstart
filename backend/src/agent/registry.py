@@ -1,7 +1,12 @@
 from typing import Callable, Dict, List, Optional
 
+
 class GraphRegistry:
     """Metadata registry for documenting graph components and helper utilities.
+
+    Work in Progress/Experimental: This registry is intended for documentation
+    and metadata tracking. It does not affect the runtime logic of the graph,
+    but provides a structure for future tooling or introspection.
 
     Rather than wiring the graph directly, this registry keeps track of node
     annotations, optional notes, and edge descriptions that can power docs or
@@ -71,4 +76,5 @@ class GraphRegistry:
         return "\n".join(lines)
 
 
+# Singleton instance
 graph_registry = GraphRegistry()
