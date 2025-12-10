@@ -19,6 +19,7 @@ dependencies = [
     "fastapi",
     "google-genai",
     "langchain-mcp-adapters",
+    "langchain-text-splitters",
     "mcp",
     "sentence-transformers",
     "faiss-cpu",
