@@ -24,7 +24,7 @@ from agent.mcp_config import load_mcp_settings, validate
 from agent.memory_tools import save_plan_tool, load_plan_tool
 
 # Ensure config is loaded
-from config.app_config import config
+from backend.src.config.app_config import config
 
 load_dotenv()
 
