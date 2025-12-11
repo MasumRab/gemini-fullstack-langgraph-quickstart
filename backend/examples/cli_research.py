@@ -1,6 +1,6 @@
 import argparse
 from langchain_core.messages import HumanMessage
-from agent.graph import graph
+
 
 
 import asyncio
@@ -26,6 +26,12 @@ async def main() -> None:
         default="gemini-2.5-pro",
         help="Model for the final answer",
     )
+    parser.add_argument(
+        "--mode",
+        choices=["upstream", "linear", "enriched"],
+        default="upstream",
+        help="Graph execution mode: 'upstream' (Basic+Planning), 'linear' (Sequential), 'enriched' (KG+Compression)",
+    )
     args = parser.parse_args()
 
     state = {
@@ -34,6 +40,14 @@ async def main() -> None:
         "max_research_loops": args.max_loops,
         "reasoning_model": args.reasoning_model,
     }
+
+    # Select Graph
+    if args.mode == "upstream":
+        from agent.graphs.upstream import graph
+    elif args.mode == "linear":
+        from agent.graphs.linear import graph
+    else:
+        from agent.graph import graph
 
     # Pass configuration to disable interactive planning confirmation for CLI
     config = {"configurable": {"require_planning_confirmation": False}}
