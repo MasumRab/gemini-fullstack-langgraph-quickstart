@@ -59,7 +59,46 @@ This document catalogs all node classes, graph variants, and feature modules imp
 | **Supervisor** | `supervisor.py` | Multi-agent supervision | Agent coordination |
 | **Enriched** | `graph.py` | Full-featured | + KG Enrichment, + Compression |
 
-### Graph Selection (via `cli_research.py`)
+### Dynamic Graph Builder (`backend/src/agent/graph_builder.py`)
+
+For notebook flexibility, use `build_graph()` to compose custom graphs:
+
+```python
+from agent.graph_builder import build_graph
+
+# Minimal (upstream-like)
+graph = build_graph(enable_planning=False, enable_reflection=False)
+
+# Standard with planning
+graph = build_graph(enable_planning=True, enable_reflection=True)
+
+# Full enriched
+graph = build_graph(
+    enable_planning=True,
+    enable_reflection=True,
+    enable_compression=True,
+    enable_kg=True,
+)
+
+# RAG-enabled
+graph = build_graph(enable_rag=True, enable_planning=True)
+
+# Execute
+result = await graph.ainvoke(state, config)
+```
+
+**Available Flags:**
+| Flag | Default | Description |
+|------|---------|-------------|
+| `enable_planning` | `False` | Include planning mode |
+| `enable_reflection` | `True` | Include reflection loop |
+| `enable_validation` | `True` | Include result validation |
+| `enable_compression` | `False` | Include compression |
+| `enable_rag` | `False` | Include RAG retrieval |
+| `enable_kg` | `False` | Include KG enrichment |
+| `parallel_search` | `True` | Parallel web search |
+
+### CLI Selection (via `cli_research.py`)
 ```bash
 python examples/cli_research.py "Your question" --mode upstream   # Minimal
 python examples/cli_research.py "Your question" --mode planning   # Standard
