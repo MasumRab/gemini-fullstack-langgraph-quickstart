@@ -30,6 +30,12 @@ The MCP (Model Context Protocol) integration has been successfully implemented w
     - Subtask: Bind MCP tools to LLM in appropriate nodes (e.g., `web_research`, `finalize_answer`)
     - Verification: Verify LLM can see the file tools in its schema
 
+- [x] **Create `backend/src/agent/mcp_config.py`**
+    - [x] Subtask: Implement `MCPSettings` dataclass and loader.
+    - [x] Subtask: Add `validate` function.
+    - [x] Subtask: Add `McpConnectionManager` stub.
+    - Code: `backend/src/agent/mcp_config.py`
+
 ### Phase 2: Testing & Validation
 - [ ] **Create MCP Integration Tests**
     - Action: Create `backend/tests/test_mcp_integration.py`

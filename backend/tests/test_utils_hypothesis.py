@@ -1,6 +1,8 @@
-from hypothesis import given, strategies as st
+from hypothesis import given, strategies as st, settings, HealthCheck
+import pytest
 from agent.utils import insert_citation_markers
 
+@settings(suppress_health_check=[HealthCheck.too_slow])
 @given(
     text=st.text(min_size=1, max_size=500),
     end_indices=st.lists(st.integers(min_value=0, max_value=500), max_size=5)

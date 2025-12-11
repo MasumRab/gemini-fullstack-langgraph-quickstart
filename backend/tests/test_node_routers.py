@@ -17,9 +17,9 @@ def test_continue_to_web_research_single_query():
     state = {
         "search_query": ["single query"]
     }
-    
+
     result = continue_to_web_research(state)
-    
+
     assert isinstance(result, list)
     assert len(result) == 1
     assert result[0].node == "web_research"
@@ -32,12 +32,12 @@ def test_continue_to_web_research_multiple_queries():
     state = {
         "search_query": ["query1", "query2", "query3"]
     }
-    
+
     result = continue_to_web_research(state)
-    
+
     assert isinstance(result, list)
     assert len(result) == 3
-    
+
     for idx, send_obj in enumerate(result):
         assert send_obj.node == "web_research"
         assert send_obj.arg["search_query"] == f"query{idx + 1}"
@@ -49,9 +49,9 @@ def test_continue_to_web_research_empty_queries():
     state = {
         "search_query": []
     }
-    
+
     result = continue_to_web_research(state)
-    
+
     assert isinstance(result, list)
     assert len(result) == 0
 
@@ -61,9 +61,9 @@ def test_continue_to_web_research_preserves_query_order():
     state = {
         "search_query": ["first", "second", "third"]
     }
-    
+
     result = continue_to_web_research(state)
-    
+
     assert result[0].arg["search_query"] == "first"
     assert result[1].arg["search_query"] == "second"
     assert result[2].arg["search_query"] == "third"
@@ -74,9 +74,9 @@ def test_continue_to_web_research_ids_increment():
     state = {
         "search_query": ["q1", "q2", "q3", "q4", "q5"]
     }
-    
+
     result = continue_to_web_research(state)
-    
+
     for idx, send_obj in enumerate(result):
         assert send_obj.arg["id"] == idx
 
@@ -91,9 +91,9 @@ def test_evaluate_research_sufficient_knowledge():
         "follow_up_queries": ["query1"]
     }
     config = {"configurable": {}}
-    
+
     result = evaluate_research(state, config)
-    
+
     assert result == "finalize_answer"
 
 
@@ -106,9 +106,9 @@ def test_evaluate_research_max_loops_reached():
         "follow_up_queries": ["query1"]
     }
     config = {"configurable": {}}
-    
+
     result = evaluate_research(state, config)
-    
+
     assert result == "finalize_answer"
 
 
@@ -122,9 +122,9 @@ def test_evaluate_research_continues_with_follow_ups():
         "number_of_ran_queries": 3
     }
     config = {"configurable": {}}
-    
+
     result = evaluate_research(state, config)
-    
+
     assert isinstance(result, list)
     assert len(result) == 2
     assert all(item.node == "web_research" for item in result)
@@ -140,9 +140,9 @@ def test_evaluate_research_follow_up_query_ids():
         "number_of_ran_queries": 5
     }
     config = {"configurable": {}}
-    
+
     result = evaluate_research(state, config)
-    
+
     assert result[0].arg["id"] == 5
     assert result[1].arg["id"] == 6
     assert result[2].arg["id"] == 7
@@ -161,9 +161,9 @@ def test_evaluate_research_uses_state_max_loops():
             "max_research_loops": 10  # Config value should be ignored
         }
     }
-    
+
     result = evaluate_research(state, config)
-    
+
     # Should finalize because state's max_research_loops is reached
     assert result == "finalize_answer"
 
@@ -182,9 +182,9 @@ def test_evaluate_research_uses_config_when_state_missing():
             "max_research_loops": 2
         }
     }
-    
+
     result = evaluate_research(state, config)
-    
+
     # Should continue because loop count (1) < config max (2)
     assert isinstance(result, list)
 
@@ -199,9 +199,9 @@ def test_evaluate_research_empty_follow_up_queries():
         "number_of_ran_queries": 2
     }
     config = {"configurable": {}}
-    
+
     result = evaluate_research(state, config)
-    
+
     assert isinstance(result, list)
     assert len(result) == 0
 
@@ -216,9 +216,9 @@ def test_evaluate_research_single_follow_up():
         "number_of_ran_queries": 1
     }
     config = {"configurable": {}}
-    
+
     result = evaluate_research(state, config)
-    
+
     assert isinstance(result, list)
     assert len(result) == 1
     assert result[0].arg["search_query"] == "single_follow_up"
@@ -234,9 +234,9 @@ def test_evaluate_research_boundary_condition():
         "number_of_ran_queries": 10
     }
     config = {"configurable": {}}
-    
+
     result = evaluate_research(state, config)
-    
+
     # Should finalize at boundary
     assert result == "finalize_answer"
 
@@ -251,9 +251,9 @@ def test_evaluate_research_one_below_max():
         "number_of_ran_queries": 8
     }
     config = {"configurable": {}}
-    
+
     result = evaluate_research(state, config)
-    
+
     # Should continue
     assert isinstance(result, list)
     assert len(result) == 1

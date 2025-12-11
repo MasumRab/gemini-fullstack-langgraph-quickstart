@@ -137,4 +137,3 @@ Refine and improve this research report by:
 6. Ensuring the report directly addresses the research brief
 
 Provide the refined report:"""
-

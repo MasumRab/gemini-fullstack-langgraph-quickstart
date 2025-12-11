@@ -77,7 +77,7 @@ class TestResolveUrls:
         """Basic URLs should be resolved to short form."""
         urls = [MockSite("http://example.com/a"), MockSite("http://example.com/b")]
         result = resolve_urls(urls, id=5)
-        
+
         assert result["http://example.com/a"] == "https://vertexaisearch.cloud.google.com/id/5-0"
         assert result["http://example.com/b"] == "https://vertexaisearch.cloud.google.com/id/5-1"
 
@@ -89,7 +89,7 @@ class TestResolveUrls:
             MockSite("http://other.com/page"),
         ]
         result = resolve_urls(urls, id=1)
-        
+
         # First occurrence determines the index
         assert result["http://example.com/page"] == "https://vertexaisearch.cloud.google.com/id/1-0"
         assert result["http://other.com/page"] == "https://vertexaisearch.cloud.google.com/id/1-2"

@@ -15,7 +15,7 @@ class TestConfiguration:
     def test_default_values(self):
         """Configuration should have sensible defaults."""
         config = Configuration()
-        
+
         assert config.query_generator_model == "gemini-1.5-flash"
         assert config.reflection_model == "gemini-1.5-flash"
         assert config.answer_model == "gemini-1.5-pro"
@@ -26,14 +26,14 @@ class TestConfiguration:
     def test_from_runnable_config_with_none(self):
         """from_runnable_config with None should use defaults."""
         config = Configuration.from_runnable_config(None)
-        
+
         assert config.query_generator_model == "gemini-1.5-flash"
         assert config.number_of_initial_queries == 3
 
     def test_from_runnable_config_with_empty_dict(self):
         """from_runnable_config with empty dict should use defaults."""
         config = Configuration.from_runnable_config({})
-        
+
         assert config.max_research_loops == 2
 
     def test_from_runnable_config_overrides_from_configurable(self):
@@ -45,9 +45,9 @@ class TestConfiguration:
                 "max_research_loops": 10,
             }
         }
-        
+
         config = Configuration.from_runnable_config(runnable_config)
-        
+
         assert config.query_generator_model == "custom-model"
         assert config.number_of_initial_queries == 5
         assert config.max_research_loops == 10
@@ -59,7 +59,7 @@ class TestConfiguration:
                 "require_planning_confirmation": "true",
             }
         }
-        
+
         config = Configuration.from_runnable_config(runnable_config)
         assert config.require_planning_confirmation is True
 
@@ -70,7 +70,7 @@ class TestConfiguration:
                 "require_planning_confirmation": "false",
             }
         }
-        
+
         config = Configuration.from_runnable_config(runnable_config)
         assert config.require_planning_confirmation is False
 
@@ -82,7 +82,7 @@ class TestConfiguration:
                 "max_research_loops": "4",
             }
         }
-        
+
         config = Configuration.from_runnable_config(runnable_config)
         assert config.number_of_initial_queries == 7
         assert config.max_research_loops == 4
@@ -91,22 +91,22 @@ class TestConfiguration:
         """Environment variables should be used when configurable is empty."""
         monkeypatch.setenv("NUMBER_OF_INITIAL_QUERIES", "8")
         monkeypatch.setenv("MAX_RESEARCH_LOOPS", "5")
-        
+
         config = Configuration.from_runnable_config({})
-        
+
         assert config.number_of_initial_queries == 8
         assert config.max_research_loops == 5
 
     def test_configurable_takes_precedence_over_env(self, monkeypatch):
         """Configurable values should take precedence over env vars."""
         monkeypatch.setenv("NUMBER_OF_INITIAL_QUERIES", "100")
-        
+
         runnable_config = {
             "configurable": {
                 "number_of_initial_queries": 2,
             }
         }
-        
+
         config = Configuration.from_runnable_config(runnable_config)
         assert config.number_of_initial_queries == 2
 
@@ -117,9 +117,9 @@ class TestConfiguration:
                 "query_generator_model": "new-model",
             }
         }
-        
+
         config = Configuration.from_runnable_config(runnable_config)
-        
+
         assert config.query_generator_model == "new-model"
         # Other fields should have defaults
         assert config.reflection_model == "gemini-1.5-flash"
@@ -143,7 +143,7 @@ class TestConfigurationValidation:
         """Test require_planning_confirmation accepts boolean."""
         config_true = Configuration(require_planning_confirmation=True)
         config_false = Configuration(require_planning_confirmation=False)
-        
+
         assert config_true.require_planning_confirmation is True
         assert config_false.require_planning_confirmation is False
 
@@ -159,9 +159,9 @@ class TestConfigurationSerialization:
             number_of_initial_queries=2,
             require_planning_confirmation=True
         )
-        
+
         config_dict = config.model_dump()
-        
+
         assert config_dict["query_generator_model"] == "test-model"
         assert config_dict["max_research_loops"] == 5
         assert config_dict["number_of_initial_queries"] == 2

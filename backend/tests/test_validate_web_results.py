@@ -25,9 +25,9 @@ class TestValidateWebResults:
             ],
         }
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         assert result["validated_web_research_result"] == [
             "Quantum breakthroughs in error correction were announced."
         ]
@@ -45,9 +45,9 @@ class TestValidateWebResults:
             ],
         }
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         # All should be kept (contain 'python', 'programming', or 'tutorials')
         assert len(result["validated_web_research_result"]) == 3
 
@@ -56,9 +56,9 @@ class TestValidateWebResults:
         summaries = ["Generic summary with no overlap."]
         state = {"search_query": ["specific topic"], "web_research_result": summaries}
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         # Should retain the original if nothing matches (safeguard)
         assert result["validated_web_research_result"] == summaries
         assert any("All summaries failed" in note for note in result["validation_notes"])
@@ -67,9 +67,9 @@ class TestValidateWebResults:
         """Should handle empty web_research_result gracefully."""
         state = {"search_query": ["ai"], "web_research_result": []}
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         assert result["validated_web_research_result"] == []
         assert result["validation_notes"] == [
             "No web research summaries available for validation."
@@ -79,9 +79,9 @@ class TestValidateWebResults:
         """Should handle missing web_research_result key."""
         state = {"search_query": ["test"]}
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         assert result["validated_web_research_result"] == []
         assert "No web research summaries" in result["validation_notes"][0]
 
@@ -89,9 +89,9 @@ class TestValidateWebResults:
         """Should handle missing search_query key."""
         state = {"web_research_result": ["Some summary about nothing."]}
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         # With no keywords, should fallback to keeping all
         assert result["validated_web_research_result"] == ["Some summary about nothing."]
 
@@ -105,9 +105,9 @@ class TestValidateWebResults:
             ],
         }
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         assert "python is great for beginners." in result["validated_web_research_result"]
 
     def test_nested_query_lists_are_flattened(self):
@@ -120,9 +120,9 @@ class TestValidateWebResults:
             ],
         }
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         # Both should match based on keywords
         assert len(result["validated_web_research_result"]) >= 1
 
@@ -135,9 +135,9 @@ class TestValidateWebResults:
             ],
         }
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         # No valid keywords, should fallback to keeping everything (safety net)
         assert len(result["validated_web_research_result"]) == 1
         # When no keywords are extracted, we treat it as "match all" or "don't filter",
@@ -153,9 +153,9 @@ class TestValidateWebResults:
             ],
         }
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         assert len(result["validated_web_research_result"]) == 1
 
     def test_validation_notes_contain_filtered_content(self):
@@ -168,9 +168,9 @@ class TestValidateWebResults:
             ],
         }
         config = RunnableConfig(configurable={})
-        
+
         result = validate_web_results(state, config)
-        
+
         # The filtered summary should be mentioned in notes
         notes_text = " ".join(result["validation_notes"])
         assert "unrelated" in notes_text.lower() or "filtered" in notes_text.lower()
@@ -187,9 +187,9 @@ def test_validate_web_results_with_fuzzy_matching():
         ],
     }
     config = RunnableConfig(configurable={})
-    
+
     result = validate_web_results(state, config)
-    
+
     # Should match despite typo due to fuzzy matching
     assert len(result["validated_web_research_result"]) > 0
 
@@ -206,9 +206,9 @@ def test_validate_web_results_multiple_summaries_mixed():
         ],
     }
     config = RunnableConfig(configurable={})
-    
+
     result = validate_web_results(state, config)
-    
+
     # Should keep only relevant ones
     validated = result["validated_web_research_result"]
     assert len(validated) == 2
@@ -225,9 +225,9 @@ def test_validate_web_results_validation_notes_format():
         ],
     }
     config = RunnableConfig(configurable={})
-    
+
     result = validate_web_results(state, config)
-    
+
     assert "validation_notes" in result
     assert isinstance(result["validation_notes"], list)
     # Should have at least one note about filtering
@@ -243,9 +243,9 @@ def test_validate_web_results_no_keywords_extracted():
         ],
     }
     config = RunnableConfig(configurable={})
-    
+
     result = validate_web_results(state, config)
-    
+
     # With no keywords, should retain original summaries
     assert result["validated_web_research_result"] == ["Some summary text."]
 
@@ -261,9 +261,9 @@ def test_validate_web_results_all_summaries_relevant():
         ],
     }
     config = RunnableConfig(configurable={})
-    
+
     result = validate_web_results(state, config)
-    
+
     assert len(result["validated_web_research_result"]) == 3
 
 
@@ -276,9 +276,9 @@ def test_validate_web_results_special_characters_in_query():
         ],
     }
     config = RunnableConfig(configurable={})
-    
+
     result = validate_web_results(state, config)
-    
+
     assert len(result["validated_web_research_result"]) == 1
 
 
@@ -290,9 +290,9 @@ def test_validate_web_results_long_summaries():
         "web_research_result": [long_summary],
     }
     config = RunnableConfig(configurable={})
-    
+
     result = validate_web_results(state, config)
-    
+
     assert len(result["validated_web_research_result"]) == 1
 
 
@@ -305,9 +305,9 @@ def test_validate_web_results_query_as_string_not_list():
         ],
     }
     config = RunnableConfig(configurable={})
-    
+
     result = validate_web_results(state, config)
-    
+
     # Should handle gracefully
     assert "validated_web_research_result" in result
 
@@ -323,9 +323,9 @@ def test_validate_web_results_preserves_order():
         ],
     }
     config = RunnableConfig(configurable={})
-    
+
     result = validate_web_results(state, config)
-    
+
     validated = result["validated_web_research_result"]
     assert "First" in validated[0]
     assert "Second" in validated[1]
