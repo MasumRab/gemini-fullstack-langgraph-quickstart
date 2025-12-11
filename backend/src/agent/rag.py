@@ -6,7 +6,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 import logging
 import os
 
-from backend.src.config.app_config import config
+from config.app_config import config
 
 # Optional imports for RAG dependencies
 try:
@@ -18,7 +18,7 @@ except ImportError:
 
 # Optional Chroma
 try:
-    from backend.src.rag.chroma_store import ChromaStore, EvidenceChunk as ChromaEvidenceChunk
+    from rag.chroma_store import ChromaStore, EvidenceChunk as ChromaEvidenceChunk
     CHROMA_AVAILABLE = True
 except ImportError:
     CHROMA_AVAILABLE = False
@@ -55,7 +55,7 @@ class DeepSearchRAG:
     ):
         self.embedding_model = embedding_model
         # Use provided config or fallback to global
-        from backend.src.config.app_config import config as global_config
+        from config.app_config import config as global_config
         self.config = config or global_config
 
         # Load embedding model

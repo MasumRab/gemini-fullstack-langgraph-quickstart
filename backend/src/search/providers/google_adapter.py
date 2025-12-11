@@ -34,7 +34,7 @@ class GoogleSearchAdapter(SearchProvider):
 
         try:
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=prompt,
                 config={
                     "tools": [{"google_search": {}}],
@@ -45,7 +45,6 @@ class GoogleSearchAdapter(SearchProvider):
             results = []
             if response.candidates and response.candidates[0].grounding_metadata:
                 chunks = response.candidates[0].grounding_metadata.grounding_chunks
-                # supports = response.candidates[0].grounding_metadata.grounding_supports # Unused
 
                 for chunk in chunks:
                     if chunk.web:

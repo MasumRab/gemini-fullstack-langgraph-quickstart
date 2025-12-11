@@ -463,7 +463,7 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
 
         try:
             llm = ChatGoogleGenerativeAI(
-                model=app_config.model_compression, # e.g. "gemini-2.0-flash-lite" or similar
+                model=app_config.model_compression, # e.g. "gemini-2.5-flash-lite" or similar
                 temperature=0,
                 api_key=os.getenv("GEMINI_API_KEY"),
             )

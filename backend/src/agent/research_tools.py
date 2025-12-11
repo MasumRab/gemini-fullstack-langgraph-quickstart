@@ -533,9 +533,10 @@ MODEL_TOKEN_LIMITS = {
     "gemini-2.0-pro": 2097152,
     # Gemini 2.5 series (current stable)
     "google:gemini-2.5-flash": 1048576,
+    "google:gemini-2.5-flash-lite": 1048576,
+    "google:gemini-2.5-pro": 2097152,
     "gemini-2.5-flash": 1048576,
     "gemini-2.5-flash-lite": 1048576,
-    "google:gemini-2.5-pro": 2097152,
     "gemini-2.5-pro": 2097152,
 }
 
