@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional, Dict, Any
 from enum import Enum
 
-from backend.src.config.app_config import config, AppConfig
+from config.app_config import config, AppConfig
 from .provider import SearchProvider, SearchResult
 from .providers.google_adapter import GoogleSearchAdapter
 from .providers.duckduckgo_adapter import DuckDuckGoAdapter

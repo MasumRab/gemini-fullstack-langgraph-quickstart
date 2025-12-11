@@ -1,7 +1,7 @@
 from typing import Dict, Any, List
 import logging
 import re
-from backend.src.config.app_config import config
+from config.app_config import config
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ from agent.registry import graph_registry
     outputs=["artifacts"],
 )
 async def kg_enrich(state: OverallState, runnable_config: RunnableConfig) -> OverallState:
-    from backend.src.config.app_config import config as app_config
+    from config.app_config import config as app_config
 
     if not app_config.kg_enabled:
         return {}
