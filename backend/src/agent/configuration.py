@@ -9,23 +9,23 @@ class Configuration(BaseModel):
     """The configuration for the agent."""
 
     query_generator_model: str = Field(
-        default="gemini-2.0-flash-exp",
+        default="gemini-2.5-flash-lite",
         json_schema_extra={
-            "description": "The name of the language model to use for the agent's query generation. Uses Gemini 2.0 Flash Exp for optimal cost efficiency."
+            "description": "The name of the language model to use for the agent's query generation. Uses Gemini 2.5 Flash-Lite for optimal cost efficiency."
         },
     )
 
     reflection_model: str = Field(
-        default="gemini-2.0-flash-exp",
+        default="gemini-2.5-flash",
         json_schema_extra={
-            "description": "The name of the language model to use for the agent's reflection. Uses Gemini 2.0 Flash Exp for fast reasoning and analysis."
+            "description": "The name of the language model to use for the agent's reflection. Uses Gemini 2.5 Flash for fast reasoning and analysis."
         },
     )
 
     answer_model: str = Field(
-        default="gemini-2.0-flash-exp",
+        default="gemini-2.5-pro",
         json_schema_extra={
-            "description": "The name of the language model to use for the agent's answer. Uses Gemini 2.0 Flash Exp for highest quality synthesis with advanced reasoning."
+            "description": "The name of the language model to use for the agent's answer. Uses Gemini 2.5 Pro for highest quality synthesis with advanced reasoning."
         },
     )
 

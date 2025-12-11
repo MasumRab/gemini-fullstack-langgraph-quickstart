@@ -59,8 +59,8 @@ except ImportError:
         require_citations: bool = False
         compression_enabled: bool = False
         compression_mode: str = "extractive"
-        model_validation: str = "gemini-2.0-flash-exp"
-        model_compression: str = "gemini-2.0-flash-exp"
+        model_validation: str = "gemini-2.5-flash-lite"
+        model_compression: str = "gemini-2.5-flash-lite"
         search_provider: str = "google"
         search_fallback: str = "duckduckgo"
 
@@ -86,7 +86,7 @@ except ImportError:
             from google.genai import Client
             client = Client(api_key=os.getenv("GEMINI_API_KEY"))
             response = client.models.generate_content(
-                model="gemini-2.0-flash-exp",
+                model="gemini-2.5-flash",
                 contents=query,
                 config={
                     "tools": [{"google_search": {}}],
