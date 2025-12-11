@@ -8,6 +8,11 @@ TEST_THREAD_ID = "test_mcp_thread_123"
 @pytest.fixture(autouse=True)
 def cleanup():
     # Setup: Ensure clean state
+    """
+    Ensure the test plan file for TEST_THREAD_ID is removed before and after tests to provide isolation.
+    
+    Removes plans/<TEST_THREAD_ID>.json if it exists during setup and again during teardown. Intended for use as a pytest fixture to prevent leftover test artifacts in the plans directory.
+    """
     if os.path.exists("plans"):
         # We don't want to delete the whole plans dir if it has other stuff,
         # but for test isolation let's just delete the specific file.

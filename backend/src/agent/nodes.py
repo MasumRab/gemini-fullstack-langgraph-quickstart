@@ -73,10 +73,13 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
     outputs=["search_query"],
 )
 def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
-    """LangGraph node that generates search queries based on the User's question.
-
-    Uses Gemini 2.0 Flash to create an optimized search queries for web research based on
-    the User's question.
+    """
+    Generate structured web search queries from the current conversation context.
+    
+    Determines a research topic from state["messages"], ensures state["initial_search_query_count"] is set (from configuration if absent), and produces one or more optimized search queries for downstream web research.
+    
+    Returns:
+        dict: A mapping with key "search_query" whose value is the generated search query string.
     """
     with observe_span("generate_query", config):
         configurable = Configuration.from_runnable_config(config)
@@ -131,8 +134,16 @@ def continue_to_web_research(state: QueryGenerationState):
 )
 def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
     """
-    LangGraph node that performs web research.
-    Updated to use the unified SearchRouter and AppConfig.
+    Perform a web search for the query in state using the centralized SearchRouter and return gathered sources and a combined, citation-preserving result.
+    
+    Performs a search for state["search_query"] (uses SearchRouter.search with max_results=3). On success, returns a list of source objects and a single combined result string where each snippet is followed by a citation in the form `[Title](url)`. On failure, logs the error and returns empty sources and results plus a validation note describing the failure.
+    
+    Returns:
+        dict: A mapping containing:
+            - sources_gathered (List[dict]): Each source has keys `label` (title), `short_url` (url), and `value` (url).
+            - search_query (List[str]): The original query wrapped in a list.
+            - web_research_result (List[str]): A single-item list with the combined snippets and citations on success, or an empty list on failure.
+            - validation_notes (List[str], optional): Present only on search failure and contains an error message.
     """
     with observe_span("web_research", config):
         query = state["search_query"]
@@ -181,7 +192,18 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
     outputs=["planning_steps", "planning_status", "planning_feedback"],
 )
 def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
-    """Create structured plan steps from generated queries for user review."""
+    """
+    Generate a set of structured planning steps from the current search queries and update planning state for user review.
+    
+    This node builds a list of plan steps (one per query) with ids, titles, suggested tool, and pending status; it interprets special user commands (a message starting with "/end_plan" skips planning and sets planning_status to "auto_approved"; a message starting with "/plan" sets planning_status to "awaiting_confirmation"). If no explicit planning_status exists, the node chooses "awaiting_confirmation" when the runnable configuration requires confirmation, otherwise "auto_approved". When a thread_id is present in the runnable config, the generated plan is persisted via save_plan. The returned state includes planning_steps and a user-facing planning_feedback summary; todo_list mirrors planning_steps.
+    
+    Returns:
+        dict: Updated planning-related state containing:
+            - "planning_steps": list of generated plan step objects (id, title, query, suggested_tool, status).
+            - "todo_list": same list as "planning_steps".
+            - "planning_status": the resulting planning status string (e.g., "awaiting_confirmation", "confirmed", "auto_approved").
+            - "planning_feedback": list of human-readable feedback messages about the planning outcome.
+    """
     with observe_span("planning_mode", config):
         configurable = Configuration.from_runnable_config(config)
         queries = state.get("search_query", []) or []
@@ -262,7 +284,23 @@ def planning_wait(state: OverallState) -> OverallState:
 
 
 def planning_router(state: OverallState, config: RunnableConfig):
-    """Route based on planning status and user commands."""
+    """
+    Route execution based on planning-related user commands and the current planning status.
+    
+    Updates state["planning_status"] when a user issues the commands "/plan", "/end_plan", or "/confirm_plan".
+    - "/plan": sets planning_status to "awaiting_confirmation" and routes to the planning wait node.
+    - "/end_plan": sets planning_status to "auto_approved" and continues to web research.
+    - "/confirm_plan": sets planning_status to "confirmed" and continues to web research.
+    
+    If the configuration requires planning confirmation and the planning status is not "confirmed", routes to the planning wait node; otherwise continues to web research.
+    
+    Parameters:
+        state (OverallState): Mutable runtime state; may be updated with a new "planning_status".
+        config (RunnableConfig): Runtime configuration; checked for the `require_planning_confirmation` flag.
+    
+    Returns:
+        Either a routing target string (e.g., "planning_wait") or the result of continuing to web research (a list of routing actions).
+    """
     configurable = Configuration.from_runnable_config(config)
     planning_status = state.get("planning_status")
     last_message = state["messages"][-1] if state.get("messages") else None
@@ -302,7 +340,17 @@ def _flatten_queries(queries: List) -> List[str]:
 
 
 def _keywords_from_queries(queries: List[str]) -> List[str]:
-    """Extract keywords from queries (tokens >= 4 chars)."""
+    """
+    Extract normalized keyword tokens from a list of query strings.
+    
+    Each returned token is lowercased and has length greater than or equal to four.
+    
+    Parameters:
+        queries (List[str]): Query strings to extract keywords from.
+    
+    Returns:
+        List[str]: Lowercase keyword tokens of length >= 4 found in the queries, in the order they appear.
+    """
     keywords: List[str] = []
     for query in queries:
         for token in re.split(r"[^\w]+", query.lower()):
@@ -319,10 +367,15 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
 )
 def validate_web_results(state: OverallState, config: RunnableConfig) -> OverallState:
     """
-    Hybrid validation logic:
-    1. Heuristic filtering (fuzzy match against query intent).
-    2. LLM Claim-Check (if Validation Mode is hybrid).
-    3. Citation Hard-Fail (if REQUIRE_CITATIONS is true).
+    Validate web research summaries with heuristic checks, optional LLM claim-checking, and citation enforcement.
+    
+    Performs keyword-overlap and fuzzy-match heuristics, enforces citation presence when required, and—if configured—runs a lightweight LLM relevance check. Returns validated summaries and human-readable validation notes.
+    
+    Returns:
+        dict: {
+            "validated_web_research_result": List[str] — summaries that passed validation,
+            "validation_notes": List[str] — explanatory notes for rejections or issues
+        }
     """
     with observe_span("validate_web_results", config):
         summaries = state.get("web_research_result", [])
@@ -422,9 +475,12 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
 )
 def compression_node(state: OverallState, config: RunnableConfig) -> OverallState:
     """
-    Tiered Compression:
-    1. Extractive: Deduplicate and remove redundant phrases.
-    2. Abstractive: Summarize while keeping citations (if enabled).
+    Perform tiered compression of research results: deduplicate extractively and optionally produce an abstractive summary that preserves citations.
+    
+    If compression is disabled or there are no results, no changes are returned. When tiered abstractive compression is enabled, the function concatenates unique results, truncates overly long input, and requests a citation-preserving summary from the configured LLM; on LLM failure it falls back to the deduplicated originals.
+    
+    Returns:
+        dict: If compression produced a summary, returns {"validated_web_research_result": [summary]}. If only deduplication applied, returns {"validated_web_research_result": [ ...unique results... ]}. If compression is disabled or no input results exist, returns an empty dict.
     """
     if not app_config.compression_enabled:
         return {} # No change
@@ -483,11 +539,18 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
     outputs=["is_sufficient", "follow_up_queries"],
 )
 def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
-    """LangGraph node that identifies knowledge gaps and generates potential follow-up queries.
-
-    Analyzes the current summary to identify areas for further research and generates
-    potential follow-up queries. Uses structured output to extract
-    the follow-up query in JSON format.
+    """
+    Determine whether the collected research is sufficient and propose follow-up queries to address coverage gaps.
+    
+    Uses validated_web_research_result when available (falls back to web_research_result) and increments the internal research loop counter.
+    
+    Returns:
+        dict: A reflection summary containing:
+            is_sufficient (bool): `true` if coverage is judged sufficient, `false` otherwise.
+            knowledge_gap (str): Human-readable description of identified gaps in the coverage.
+            follow_up_queries (List[str]): Suggested queries to run next to address gaps.
+            research_loop_count (int): Updated number of completed reflection/research loops.
+            number_of_ran_queries (int): Count of queries that have been run in the current cycle.
     """
     with observe_span("reflection", config):
         configurable = Configuration.from_runnable_config(config)
@@ -530,7 +593,13 @@ def evaluate_research(
     state: ReflectionState,
     config: RunnableConfig,
 ) -> OverallState:
-    """LangGraph routing function that determines the next step in the research flow."""
+    """
+    Decide whether to finalize the answer or schedule additional web research based on reflection results.
+    
+    Returns:
+    	- "finalize_answer" if the reflection indicates sufficient coverage or the research loop count has reached the maximum.
+    	- A list of Send actions targeting "web_research", one per follow-up query, when further research is required. Each action's payload includes the follow-up query under `search_query` and an `id` computed from `number_of_ran_queries` plus the action's index.
+    """
     configurable = Configuration.from_runnable_config(config)
     max_research_loops = (
         state.get("max_research_loops")
@@ -559,7 +628,16 @@ def evaluate_research(
     outputs=["messages", "sources_gathered"],
 )
 def finalize_answer(state: OverallState, config: RunnableConfig):
-    """LangGraph node that finalizes the research summary."""
+    """
+    Synthesize a final answer from validated research summaries and attach resolved source URLs.
+    
+    Uses the validated research results (falling back to raw web results) to generate a final response, replaces any short URLs in the generated content with the original source URLs found in state["sources_gathered"], and returns the finalized message along with the list of sources actually referenced.
+    
+    Returns:
+        dict: A dictionary containing:
+            - "messages": a list with a single AIMessage whose content is the synthesized final answer.
+            - "sources_gathered": a list of source objects (from state["sources_gathered"]) that were inserted into the final content.
+    """
     with observe_span("finalize_answer", config):
         configurable = Configuration.from_runnable_config(config)
         reasoning_model = state.get("reasoning_model") or configurable.answer_model

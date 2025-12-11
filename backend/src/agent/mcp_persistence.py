@@ -21,15 +21,15 @@ def load_thread_plan(thread_id: str) -> Optional[Dict[str, Any]]:
 @mcp.tool()
 def save_thread_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, str]) -> str:
     """
-    Saves the plan and artifacts for a specific thread to the local file system.
-
-    Args:
-        thread_id: The unique identifier for the thread/conversation.
-        todo_list: The list of tasks/todos.
-        artifacts: A dictionary of artifacts (documents, code, etc.).
-
+    Save the plan and artifacts for a thread to local storage.
+    
+    Parameters:
+        thread_id (str): Thread/conversation identifier.
+        todo_list (List[Dict[str, Any]]): List of task dictionaries to persist.
+        artifacts (Dict[str, str]): Mapping of artifact names to their contents.
+    
     Returns:
-        A success message.
+        str: Success message "Plan saved successfully for thread {thread_id}" on success, or an error message containing the exception text on failure.
     """
     try:
         save_plan(thread_id, todo_list, artifacts)

@@ -24,8 +24,10 @@ class Reflection(BaseModel):
 
 def get_mcp_tools() -> List:
     """
-    Retrieves MCP-based tools.
-    Currently returns the Persistence tools (load_thread_plan, save_thread_plan).
+    Return MCP persistence tools for thread plan operations.
+    
+    Returns:
+        tools (List): A list of MCP persistence tool callables (e.g., `load_thread_plan`, `save_thread_plan`) obtained from the MCP connection manager.
     """
     manager = McpConnectionManager()
     # In a sync context, we might need to be careful with async tools,

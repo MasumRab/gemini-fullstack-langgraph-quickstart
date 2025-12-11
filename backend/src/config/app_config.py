@@ -47,7 +47,18 @@ class AppConfig:
 
     @classmethod
     def load(cls) -> "AppConfig":
-        """Load configuration and log the effective settings."""
+        """
+        Load application configuration from environment and return an AppConfig.
+        
+        Returns:
+            AppConfig: Instantiated configuration with values loaded from environment variables.
+        
+        Raises:
+            ValueError: If configuration values are invalid.
+        
+        Notes:
+            If the loaded configuration's `audit_mode` is not "off", the configuration is logged.
+        """
         try:
             config = cls()
             if config.audit_mode != "off":

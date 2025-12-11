@@ -5,7 +5,11 @@ from agent.mcp_config import load_mcp_settings, validate, MCPSettings
 
 class TestMCPSettings(unittest.TestCase):
     def test_default_settings(self):
-        """Test that default settings are disabled."""
+        """
+        Verify MCP defaults when no environment variables are set.
+        
+        Asserts that MCP is disabled, the default timeout is 30 seconds, and the tool whitelist is an empty tuple when the environment is cleared for the test.
+        """
         # Ensure env is clear for this test
         with mock.patch.dict(os.environ, {}, clear=True):
             settings = load_mcp_settings()

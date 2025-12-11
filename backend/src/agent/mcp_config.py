@@ -18,7 +18,19 @@ class MCPSettings:
     tool_whitelist: Tuple[str, ...] = field(default_factory=tuple)
 
 def load_mcp_settings() -> MCPSettings:
-    """Loads MCP settings from environment variables."""
+    """
+    Load MCP configuration from environment variables and return an MCPSettings instance.
+    
+    Reads these environment variables and maps them to MCPSettings fields:
+    - MCP_ENABLED: "true" (case-insensitive) enables MCP; any other value disables it.
+    - MCP_ENDPOINT: optional endpoint URL string.
+    - MCP_API_KEY: optional API key string.
+    - MCP_TIMEOUT: timeout in seconds parsed as an integer; defaults to 30 if missing or invalid.
+    - MCP_TOOL_WHITELIST: comma-separated list of tool names; entries are stripped of whitespace and empty entries are ignored.
+    
+    Returns:
+        MCPSettings: An immutable settings object populated from the environment.
+    """
     enabled_str = os.getenv("MCP_ENABLED", "false").lower()
     enabled = enabled_str == "true"
 
@@ -42,7 +54,15 @@ def load_mcp_settings() -> MCPSettings:
     )
 
 def validate(settings: MCPSettings) -> None:
-    """Validates the MCP settings."""
+    """
+    Validate MCPSettings and ensure required fields are present when MCP is enabled.
+    
+    Parameters:
+        settings (MCPSettings): MCP configuration to validate.
+    
+    Raises:
+        ValueError: If `settings.enabled` is True but `settings.endpoint` is missing.
+    """
     if settings.enabled and not settings.endpoint:
         raise ValueError("MCP enabled but MCP_ENDPOINT missing")
 
@@ -52,12 +72,23 @@ class McpConnectionManager:
     """
 
     def __init__(self, settings: Optional[MCPSettings] = None):
+        """
+        Initialize the connection manager and its tool registry.
+        
+        Parameters:
+            settings (Optional[MCPSettings]): MCP configuration to use; if omitted, settings are loaded from environment variables via load_mcp_settings().
+        """
         self.settings = settings or load_mcp_settings()
         self.tools = []
 
     def get_persistence_tools(self) -> List[StructuredTool]:
         """
-        Converts the internal FastMCP tools into LangChain tools.
+        Create LangChain StructuredTool objects from the internal FastMCP persistence tools.
+        
+        Each persistence tool is converted into a StructuredTool; asynchronous tool functions are exposed via the `coroutine` field and synchronous functions via the `func` field. The tools' argument schemas are omitted so LangChain can infer parameters from the functions' signatures.
+        
+        Returns:
+            list[StructuredTool]: StructuredTool instances corresponding to the persistence tools.
         """
         lc_tools = []
 
@@ -85,8 +116,13 @@ class McpConnectionManager:
 
     async def get_filesystem_tools(self, mount_dir: str = "./workspace") -> List[Any]:
         """
-        Returns tools from the external Filesystem MCP server.
-        Uses langchain-mcp-adapters.
+        Discover and return filesystem-related tools from an external Filesystem MCP server.
+        
+        Parameters:
+            mount_dir (str): Local mount directory to expose to the filesystem MCP server; defaults to "./workspace".
+        
+        Returns:
+            List[Any]: A list of tool objects provided by the external Filesystem MCP server. May be an empty list if the system dependency `npx` is not available or the external filesystem MCP integration is not configured; in that case a warning is printed and no tools are returned.
         """
         if not shutil.which("npx"):
             print("Warning: npx not found. Filesystem MCP server cannot be started.")
@@ -96,7 +132,12 @@ class McpConnectionManager:
         return []
 
     async def get_tools(self):
-        """Aggregate all enabled tools."""
+        """
+        Aggregate all available tools from configured sources.
+        
+        Returns:
+            tools (List[Any]): List of tool objects aggregated from persistence and, when MCP is enabled, from external MCP sources.
+        """
         tools = self.get_persistence_tools()
 
         if self.settings.enabled:

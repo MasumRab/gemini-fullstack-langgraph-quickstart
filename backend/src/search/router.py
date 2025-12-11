@@ -47,6 +47,15 @@ class SearchRouter:
             logger.debug(f"DuckDuckGo adapter failed to init: {e}")
 
     def _get_provider(self, name: str) -> Optional[SearchProvider]:
+        """
+        Retrieve a registered search provider by name.
+        
+        Parameters:
+            name (str): Provider identifier (for example "google", "duckduckgo", or "brave").
+        
+        Returns:
+            SearchProvider or None: `SearchProvider` if a provider with the given name is registered, `None` otherwise.
+        """
         return self.providers.get(name)
 
     def search(
@@ -57,13 +66,16 @@ class SearchRouter:
         attempt_fallback: bool = True,
     ) -> List[SearchResult]:
         """
-        Execute search with routing and fallback logic.
-
-        Args:
-            query: Search query
-            max_results: Max results
-            provider_name: Override configured provider
-            attempt_fallback: Whether to try fallback provider on failure
+        Route the query to an available search provider using retry and optional fallback logic.
+        
+        Performs up to two attempts on the selected provider (first with tuned=True, then with tuned=False) and, if enabled, switches to the configured fallback provider for a final attempt. Returns the results from the first successful attempt or an empty list if all attempts fail.
+        
+        Parameters:
+            provider_name (Optional[str]): If provided, use this provider instead of the configured default.
+            attempt_fallback (bool): If True, when the primary provider fails on both attempts, try the configured fallback provider.
+        
+        Returns:
+            List[SearchResult]: Search results from the successful provider call, or an empty list if all attempts fail.
         """
         # Determine primary provider
         primary_name = provider_name or self.config.search_provider

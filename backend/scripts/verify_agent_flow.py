@@ -11,7 +11,11 @@ from backend.src.agent.graph import graph
 from backend.src.config.app_config import config
 
 async def run_full_flow():
-    """Execute full agent flow verification."""
+    """
+    Run a full agent flow verification using the graph runner and print status and results.
+    
+    Constructs a mock input (single HumanMessage and a short search count), invokes the graph runner with a test thread id, and prints progress, the truncated final answer when available, and the count of any validation notes. On error, prints an error message and a traceback.
+    """
     print("Running Full Agent Flow Verification...")
     print(f"Config: {config}")
 
