@@ -33,15 +33,26 @@ class MCPToolUser:
         # Handle cases where tool_name might be just "read_file" or "filesystem.read_file"
         if tool_name not in self.tool_registry:
             # Try finding it without server prefix
-            found = False
+            candidates = []
             for key in self.tool_registry:
+                # We check for suffix match, assuming the registry key format is server.tool_name
+                # The check ensures that we match a full tool name component (preceded by dot)
                 if key.endswith(f".{tool_name}"):
-                    tool_name = key
-                    found = True
-                    break
+                    candidates.append(key)
 
-            if not found:
+            if len(candidates) == 0:
                 return {"success": False, "error": f"Tool {tool_name} not found"}
+            elif len(candidates) == 1:
+                # Unambiguous match
+                matched_tool = candidates[0]
+                logger.warning(f"Tool '{tool_name}' matched to '{matched_tool}'. Please use the full tool name in the future.")
+                tool_name = matched_tool
+            else:
+                # Ambiguous match
+                return {
+                    "success": False,
+                    "error": f"Ambiguous tool name '{tool_name}'. Candidates: {', '.join(candidates)}"
+                }
 
         tool_info = self.tool_registry[tool_name]
         handler = tool_info["tool"].handler
