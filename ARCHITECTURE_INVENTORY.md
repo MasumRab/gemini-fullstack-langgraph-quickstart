@@ -108,6 +108,84 @@ python examples/cli_research.py "Your question" --mode enriched   # Full
 
 ---
 
+## 8. Orchestration Layer (`backend/src/agent/orchestration.py`)
+
+For dynamic tool and agent management with coordinator-based task allocation:
+
+### Tool Registry
+```python
+from agent.orchestration import ToolRegistry
+
+registry = ToolRegistry()
+
+# Register custom tools
+registry.register(
+    "semantic_search",
+    my_semantic_search_func,
+    description="Search using semantic embeddings",
+    category="search",
+)
+
+# Get tools by category
+search_tools = registry.get_tools(category="search")
+```
+
+### Agent Pool
+```python
+from agent.orchestration import AgentPool
+
+pool = AgentPool()
+
+# Register sub-agents
+pool.register(
+    "fact_checker",
+    fact_check_graph,
+    description="Verifies claims against sources",
+    capabilities=["verification", "citation"],
+)
+
+# Get agents with capability
+verifiers = pool.get_agents_with_capability("verification")
+```
+
+### Orchestrated Graph
+```python
+from agent.orchestration import build_orchestrated_graph, ToolRegistry, AgentPool
+
+# Setup registries
+tools = ToolRegistry()
+agents = AgentPool()
+
+# Add custom components
+tools.register("custom_tool", my_func, description="My custom tool")
+agents.register("specialist", specialist_graph, capabilities=["domain_expert"])
+
+# Build orchestrated graph
+graph = build_orchestrated_graph(
+    tools=tools,
+    agents=agents,
+    coordinator_model="gemini-2.5-pro",
+)
+
+# Execute with coordinator-based routing
+result = await graph.ainvoke(state, config)
+```
+
+### Orchestration Flow
+```
+User Query → Coordinator → [Route Decision]
+                              ↓
+              ┌───────────────┼───────────────┐
+              ↓               ↓               ↓
+        quick_search      planner      deep_researcher
+              ↓               ↓               ↓
+              └───────────────┴───────────────┘
+                              ↓
+                         Finalize
+```
+
+---
+
 ## 4. Feature Modules
 
 ### MCP Tools (`backend/src/agent/mcp_*.py`)
