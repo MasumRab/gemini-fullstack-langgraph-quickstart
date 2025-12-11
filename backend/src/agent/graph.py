@@ -37,7 +37,7 @@ if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
 
 # Create our Agent Graph using the standard builder wiring
-builder = StateGraph(OverallState, config_schema=Configuration)
+builder = StateGraph(OverallState, context_schema=Configuration)
 
 # If MCP is enabled, we would register MCP tools here or modify the schema
 # For now, this is a placeholder wiring to satisfy the requirement of "Agent Wiring"
