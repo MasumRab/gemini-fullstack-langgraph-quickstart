@@ -36,8 +36,8 @@ from agent.persistence import load_plan, save_plan
 from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
 from observability.langfuse import observe_span
 
-from backend.src.config.app_config import config as app_config
-from backend.src.search.router import search_router
+from ..config.app_config import config as app_config
+from ..search.router import search_router
 
 logger = logging.getLogger(__name__)
 
