@@ -19,7 +19,7 @@ from agent.nodes import (
     evaluate_research,
 )
 from agent.mcp_config import load_mcp_settings, validate
-from agent.memory_tools import save_plan_tool, load_plan_tool
+# from agent.memory_tools import save_plan_tool, load_plan_tool # Removing as I'm using my wrapper
 
 load_dotenv()
 
@@ -37,7 +37,7 @@ if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
 
 # Create our Agent Graph using the standard builder wiring
-builder = StateGraph(OverallState, config_schema=Configuration)
+builder = StateGraph(OverallState, context_schema=Configuration)
 
 # If MCP is enabled, we would register MCP tools here or modify the schema
 # For now, this is a placeholder wiring to satisfy the requirement of "Agent Wiring"
