@@ -29,6 +29,7 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 ## 3. FlowSearch (InternAgent)
 
 **Source:** [InternScience/InternAgent](https://github.com/InternScience/InternAgent)
+**Docs:** [InternLM](https://internlm.intern-ai.org.cn/api/document)
 
 | Core Concept | This Project Implementation | Status |
 |--------------|----------------------------|--------|
@@ -57,7 +58,16 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 6. Quick Test Commands
+## 6. Benchmarks (Planned)
+
+| Benchmark | Source | Goal |
+|-----------|--------|------|
+| **MLE-bench** | [openai/mle-bench](https://github.com/openai/mle-bench) | Evaluate Engineering Capabilities |
+| **DeepResearch-Bench** | [muset-ai](https://huggingface.co/spaces/muset-ai/DeepResearch-Bench-Leaderboard) | Evaluate Research Quality |
+
+---
+
+## 7. Quick Test Commands
 
 ```bash
 # Test upstream (minimal)
