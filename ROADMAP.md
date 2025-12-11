@@ -4,7 +4,7 @@ This document outlines the strategic roadmap for evolving the current "Research 
 
 **Detailed Strategy:** For technical trade-offs, architecture, and granular task breakdowns, please refer to [INTEGRATION_STRATEGY.md](./INTEGRATION_STRATEGY.md).
 
-**Deep Research Analysis:** For a comparative analysis of this agent vs. state-of-the-art "Deep Research" implementations (and integration plans), see [docs/analysis/DEEP_RESEARCH_COMPARISON.md](./docs/analysis/DEEP_RESEARCH_COMPARISON.md).
+**Deep Research Analysis:** For a comparative analysis of this agent vs. state-of-the-art "Deep Research" implementations (and integration plans), see [docs/analysis/DEEP_RESEARCH_LANDSCAPE.md](./docs/analysis/DEEP_RESEARCH_LANDSCAPE.md).
 
 ## Current Status
 - **Core Functionality:** Functional Research Agent with Basic Planning Mode (`planning_mode`, `planning_wait`).
@@ -28,7 +28,18 @@ This document outlines the strategic roadmap for evolving the current "Research 
 ### Low Priority
 - [ ] **CLI Interface:** Add a CLI entry point for headless operation of the planning loop.
 
-## Phase 2: Planning & Interaction (Open SWE Patterns)
+## Phase 2: SOTA Deep Research Features
+*Goal: Integrate proven patterns from Open Deep Research, STORM, and GPT Researcher.*
+
+### High Priority
+- [ ] **Scoping & Clarification (Open Deep Research):**
+    - [ ] Implement a pre-planning "Scoping Node" that asks the user clarifying questions if the query is ambiguous.
+- [ ] **Hierarchical Outlines (STORM):**
+    - [ ] Upgrade `planning_mode` to generate a structured outline (Section -> Subsection) instead of a flat list.
+- [ ] **Recursive Research (GPT Researcher):**
+    - [ ] Enable the `web_research` node to "recurse" (call the graph again) for complex sub-topics.
+
+## Phase 3: Planning & Interaction (Open SWE Patterns)
 *Goal: Transform the agent from a "Search Query Approver" to a "Task Manager".*
 
 ### High Priority
@@ -43,7 +54,7 @@ This document outlines the strategic roadmap for evolving the current "Research 
 - [ ] **Background Task Execution:**
     - [ ] Enable the agent to run long-duration tasks without blocking the UI.
 
-## Phase 3: Artifacts & Collaboration (Open Canvas Integration)
+## Phase 4: Artifacts & Collaboration (Open Canvas Integration)
 *Goal: Move beyond chat bubbles. The agent should produce and maintain live "artifacts" (documents, schedules, code) that the user can co-edit.*
 
 ### High Priority
@@ -63,6 +74,7 @@ This document outlines the strategic roadmap for evolving the current "Research 
 ## Architecture Log
 *Record of significant architectural decisions.*
 
+- **[Date]:** Roadmap updated to align with verified SOTA Deep Research architectures (Open Deep Research, STORM, GPT Researcher).
 - **[Date]:** Added Deep Research Analysis and Benchmarking integration strategy.
 - **[Date]:** Roadmap updated to reflect "Iterative Chained Planning" vision and existing `planning_mode` implementation.
 - **[Date]:** Initial Roadmap creation. Decision to prioritize Deep Agents memory patterns before UI overhauls.
