@@ -1,46 +1,67 @@
 # Tasks: MCP Integration
 
-## 1. Prerequisites
-*   [ ] Python environment active.
-*   [ ] Node.js installed (for `server-filesystem`).
+## Status: ✅ Core Infrastructure Complete
 
-## 2. Dependencies
-*   None. (This is a foundational infrastructure step).
+The MCP (Model Context Protocol) integration has been successfully implemented with the following components:
 
-## 3. Detailed Task List
+### Completed Components
+- ✅ **`backend/src/agent/mcp_server.py`** - FilesystemMCPServer implementation
+  - Provides `read_file`, `write_file`, and `list_directory` tools
+  - Includes path security validation
+  - Supports async operations
+  
+- ✅ **`backend/src/agent/mcp_client.py`** - MCPToolUser implementation
+  - Tool registry and execution logic
+  - Planned tool sequence generation
+  - LLM-driven tool planning capability
 
-### Phase 1: Infrastructure Setup
-- [ ] **Install Python Dependencies**
-    - Action: Add `langchain-mcp-adapters` and `mcp` to `requirements.txt` / `pyproject.toml`.
-    - Verification: `pip install -r requirements.txt` succeeds.
+## Remaining Tasks
 
-- [ ] **Install MCP Server (Filesystem)**
-    - Action: Ensure `npx` is available.
-    - Action: Verify `@modelcontextprotocol/server-filesystem` can run via `npx`.
-    - Snippet: `npx @modelcontextprotocol/server-filesystem --help`
+### Phase 1: Integration & Testing
+- [ ] **Integrate MCP Tools into Agent Graph**
+    - Action: Update `backend/src/agent/tools_and_schemas.py`
+    - Subtask: Create `get_global_tools()` function that aggregates MCP tools + custom tools
+    - Subtask: Initialize `FilesystemMCPServer` with appropriate allowed paths
+    - Subtask: Create `MCPToolUser` instance and register with agent
+    - Verification: Ensure the list of tools includes `read_file`, `write_file`, `list_directory`
 
-### Phase 2: Configuration & Code
-- [ ] **Create `backend/src/agent/mcp_config.py`**
-    - Subtask: Implement `McpConnectionManager` class.
-    - Subtask: Implement method `connect_filesystem(path: str)`.
-    - Pseudocode:
-      ```python
-      class McpConfig:
-          def __init__(self):
-              self.clients = []
-          async def get_filesystem_tools(self, mount_dir):
-              # ... logic from design doc ...
-      ```
+- [ ] **Update Graph Nodes**
+    - Action: Modify `backend/src/agent/nodes.py` or create new MCP-specific node
+    - Subtask: Bind MCP tools to LLM in appropriate nodes (e.g., `web_research`, `finalize_answer`)
+    - Verification: Verify LLM can see the file tools in its schema
 
-- [ ] **Refactor `tools_and_schemas.py`**
-    - Subtask: Add `get_global_tools()` function that aggregates MCP tools + custom tools.
-    - Verification: Ensure the list of tools includes `read_file`, `write_file` (from MCP).
+### Phase 2: Testing & Validation
+- [ ] **Create MCP Integration Tests**
+    - Action: Create `backend/tests/test_mcp_integration.py`
+    - Test Cases:
+      - [ ] Test file reading from allowed paths
+      - [ ] Test file writing to allowed paths
+      - [ ] Test path security validation (reject unauthorized paths)
+      - [ ] Test directory listing
+      - [ ] Test planned tool sequence execution
+    - Success Criteria: All tests pass
 
-### Phase 3: Integration
-- [ ] **Update `graph.py`**
-    - Subtask: In `web_research` (or new node), bind these tools to the LLM.
-    - Verification: Verify LLM can see the file tools in its schema.
+- [ ] **End-to-End Agent Test**
+    - Action: Create test script that asks agent to "Write a summary of your research to summary.txt"
+    - Success Criteria: 
+      - File `summary.txt` appears in the sandbox
+      - Content is relevant to the research query
+      - Agent uses MCP tools correctly
 
-- [ ] **Test**
-    - Action: Create a test script `tests/test_mcp.py` that spins up the agent and asks it to "Write a file named test.txt".
-    - Success Criteria: File `test.txt` appears in the sandbox.
+### Phase 3: Documentation & Polish
+- [ ] **Update Documentation**
+    - Action: Document MCP configuration in `README.md`
+    - Subtask: Add examples of MCP tool usage
+    - Subtask: Document allowed paths configuration
+    - Subtask: Add troubleshooting guide
+
+- [ ] **Configuration Management**
+    - Action: Add MCP configuration to `backend/src/agent/configuration.py`
+    - Subtask: Add `mcp_allowed_paths` configuration option
+    - Subtask: Add `mcp_enabled` toggle
+    - Verification: Configuration can be set via environment variables
+
+## Notes
+- The current implementation uses in-process MCP servers (Python classes)
+- For external MCP servers via stdio/SSE, additional transport layer needed
+- Consider adding more MCP servers (e.g., database, API) in future iterations
