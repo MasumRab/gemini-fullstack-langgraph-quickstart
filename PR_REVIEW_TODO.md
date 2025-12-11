@@ -57,7 +57,7 @@
 ## Repository Status
 - **Issues:** Disabled on this repository
 - **Main Branch:** 18 commits ahead of origin/main (recently pushed)
-- **Worktrees:** 
+- **Worktrees:**
   - Main: `C:/Users/masum/Projects/gemini-fullstack-langgraph-quickstart`
   - Alternate-graphs: `C:/Users/masum/Projects/gemini-fullstack-langgraph-quickstart.worktrees/alternate-graphs`
 

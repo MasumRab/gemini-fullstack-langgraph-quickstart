@@ -41,9 +41,9 @@ class AppConfig:
     log_level: str = os.getenv("LOG_LEVEL", "info")
 
     # Model Selection
-    model_planning: str = os.getenv("MODEL_PLANNING", "gemini-2.5-flash")
-    model_validation: str = os.getenv("MODEL_VALIDATION", "gemini-2.5-flash-lite")
-    model_compression: str = os.getenv("MODEL_COMPRESSION", "gemini-2.5-flash-lite")
+    model_planning: str = os.getenv("MODEL_PLANNING", "primary_llm")
+    model_validation: str = os.getenv("MODEL_VALIDATION", "cheaper_llm")
+    model_compression: str = os.getenv("MODEL_COMPRESSION", "cheaper_summarizer")
 
     @classmethod
     def load(cls) -> "AppConfig":

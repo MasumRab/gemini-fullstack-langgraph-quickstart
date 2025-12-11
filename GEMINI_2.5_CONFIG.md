@@ -201,7 +201,7 @@ reasoning_model = state.get("reasoning_model", configurable.reflection_model)
 
 ### From Preview to Stable
 
-**Previous:** `gemini-2.5-flash-preview-04-17`  
+**Previous:** `gemini-2.5-flash-preview-04-17`
 **Current:** `gemini-2.5-flash` (stable)
 
 **Benefits:**

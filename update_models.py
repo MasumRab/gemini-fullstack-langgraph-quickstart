@@ -60,10 +60,10 @@ def update_file(file_path: Path, pattern: str, replacement: str):
     if not file_path.exists():
         print(f"Warning: File not found: {file_path}")
         return False
-    
+
     content = file_path.read_text(encoding="utf-8")
     new_content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
-    
+
     if content != new_content:
         file_path.write_text(new_content, encoding="utf-8")
         print(f"Updated {file_path}")
@@ -72,34 +72,34 @@ def update_file(file_path: Path, pattern: str, replacement: str):
 
 def main():
     strategy_name = sys.argv[1] if len(sys.argv) > 1 else "optimized"
-    
+
     if strategy_name not in STRATEGIES:
         print(f"Error: Unknown strategy '{strategy_name}'")
         print(f"Available strategies: {', '.join(STRATEGIES.keys())}")
         sys.exit(1)
-        
+
     config = STRATEGIES[strategy_name]
     print(f"Applying strategy: {strategy_name} ({config['description']})")
-    
+
     # 1. Update backend configuration.py
     config_file = BACKEND_DIR / "configuration.py"
-    
+
     # Queries
     update_file(
-        config_file, 
-        r'(query_generator_model: str = Field\s*\n\s*default=")([^"]+)(")', 
+        config_file,
+        r'(query_generator_model: str = Field\s*\n\s*default=")([^"]+)(")',
         f'\\1{config["query"]}\\3'
     )
     # Reflection
     update_file(
-        config_file, 
-        r'(reflection_model: str = Field\s*\n\s*default=")([^"]+)(")', 
+        config_file,
+        r'(reflection_model: str = Field\s*\n\s*default=")([^"]+)(")',
         f'\\1{config["reflection"]}\\3'
     )
     # Answer
     update_file(
-        config_file, 
-        r'(answer_model: str = Field\s*\n\s*default=")([^"]+)(")', 
+        config_file,
+        r'(answer_model: str = Field\s*\n\s*default=")([^"]+)(")',
         f'\\1{config["answer"]}\\3'
     )
 
@@ -110,14 +110,14 @@ def main():
         r'(writer_model = init_chat_model\(model=")([^"]+)(")',
         f'\\1{config["tools"]}\\3'
     )
-    
+
     # 3. Update Frontend Default
     update_file(
         FRONTEND_FILE,
         r'(reasoning_model: ")([^"]+)(")',
         f'\\1{config["frontend"]}\\3'
     )
-    
+
     # 4. Update .env files (if they contain model defines)
     for env_path in [ENV_FILE, ENV_EXAMPLE]:
         if env_path.exists():

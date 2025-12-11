@@ -1,3 +1,4 @@
+# TODO: See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
 import os
 import re
 import difflib
@@ -34,90 +35,10 @@ from agent.utils import (
 from agent.registry import graph_registry
 from agent.persistence import load_plan, save_plan
 from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
+from observability.langfuse import observe_span
 
-# Optional observability import
-try:
-    from observability.langfuse import observe_span
-except ImportError:
-    from contextlib import contextmanager
-
-    @contextmanager
-    def observe_span(name: str, config: Any = None):
-        """No-op observability span when langfuse is not available."""
-        yield
-
-# Optional config import with sensible defaults for standalone usage
-try:
-    from config.app_config import config as app_config
-except ImportError:
-    from dataclasses import dataclass
-
-    @dataclass
-    class _DefaultAppConfig:
-        """Default configuration for standalone agent usage."""
-        validation_mode: str = "heuristic"
-        require_citations: bool = False
-        compression_enabled: bool = False
-        compression_mode: str = "extractive"
-        model_validation: str = "gemini-2.5-flash-lite"
-        model_compression: str = "gemini-2.5-flash-lite"
-        search_provider: str = "google"
-        search_fallback: str = "duckduckgo"
-
-    app_config = _DefaultAppConfig()
-
-# Optional search router import with fallback implementation
-try:
-    from search.router import search_router
-except ImportError:
-    class _FallbackSearchResult:
-        """Simple search result for fallback router."""
-        def __init__(self, title: str, url: str, content: str):
-            self.title = title
-            self.url = url
-            self.content = content
-            self.raw_content = content
-
-    class _FallbackSearchRouter:
-        """Fallback search router using Google GenAI client directly."""
-
-        def search(self, query: str, max_results: int = 3) -> List[Any]:
-            """Execute search using Google's grounding API."""
-            from google.genai import Client
-            client = Client(api_key=os.getenv("GEMINI_API_KEY"))
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=query,
-                config={
-                    "tools": [{"google_search": {}}],
-                    "temperature": 0,
-                },
-            )
-            results = []
-            # Extract grounding metadata if available
-            if hasattr(response, "candidates") and response.candidates:
-                candidate = response.candidates[0]
-                if hasattr(candidate, "grounding_metadata"):
-                    grounding = candidate.grounding_metadata
-                    if hasattr(grounding, "grounding_chunks"):
-                        for chunk in grounding.grounding_chunks[:max_results]:
-                            web = getattr(chunk, "web", None)
-                            if web:
-                                results.append(_FallbackSearchResult(
-                                    title=getattr(web, "title", ""),
-                                    url=getattr(web, "uri", ""),
-                                    content=getattr(chunk, "text", ""),
-                                ))
-            # Fallback: use text response if no grounding data
-            if not results and hasattr(response, "text"):
-                results.append(_FallbackSearchResult(
-                    title="Search Results",
-                    url="",
-                    content=response.text,
-                ))
-            return results
-
-    search_router = _FallbackSearchRouter()
+from backend.src.config.app_config import config as app_config
+from backend.src.search.router import search_router
 
 logger = logging.getLogger(__name__)
 
@@ -542,7 +463,7 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
 
         try:
             llm = ChatGoogleGenerativeAI(
-                model=app_config.model_compression, # e.g. "gemini-2.5-flash-lite" or similar
+                model=app_config.model_compression, # e.g. "gemini-2.0-flash-lite" or similar
                 temperature=0,
                 api_key=os.getenv("GEMINI_API_KEY"),
             )
