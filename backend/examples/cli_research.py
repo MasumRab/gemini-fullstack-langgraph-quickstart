@@ -28,9 +28,9 @@ async def main() -> None:
     )
     parser.add_argument(
         "--mode",
-        choices=["upstream", "linear", "enriched"],
+        choices=["upstream", "planning", "linear", "enriched"],
         default="upstream",
-        help="Graph execution mode: 'upstream' (Basic+Planning), 'linear' (Sequential), 'enriched' (KG+Compression)",
+        help="Graph mode: 'upstream' (Minimal), 'planning' (Standard), 'linear' (Seq), 'enriched' (Full)",
     )
     args = parser.parse_args()
 
@@ -39,11 +39,14 @@ async def main() -> None:
         "initial_search_query_count": args.initial_queries,
         "max_research_loops": args.max_loops,
         "reasoning_model": args.reasoning_model,
+        "agent_mode": args.mode, # Pass mode to config if needed
     }
 
     # Select Graph
     if args.mode == "upstream":
         from agent.graphs.upstream import graph
+    elif args.mode == "planning":
+        from agent.graphs.planning import graph
     elif args.mode == "linear":
         from agent.graphs.linear import graph
     else:
