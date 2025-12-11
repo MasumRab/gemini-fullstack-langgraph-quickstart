@@ -74,6 +74,10 @@ class DeepSearchRAG:
             logger.warning("ChromaDB not available. Falling back to FAISS.")
             requested_store = "faiss"
 
+        # Store selection logic:
+        # - When dual_write is enabled, BOTH stores are used for redundancy
+        # - use_faiss/use_chroma flags control which stores are active
+        # - Dual-write overrides individual flags to ensure both stores receive data
         self.use_faiss = requested_store == "faiss" or self.config.dual_write
         self.use_chroma = (requested_store == "chroma" or self.config.dual_write) and CHROMA_AVAILABLE
 
@@ -248,11 +252,24 @@ class DeepSearchRAG:
 
     def audit_and_prune(self, subgoal_id: str, relevance_threshold: float = 0.5, diversity_weight: float = 0.3) -> Dict:
         """
-        Pruning logic relies on internal ID tracking.
-        Currently optimized for FAISS. If Chroma-only, this would need a Chroma-specific implementation
-        using `get` and `delete`.
-        For now, we keep the FAISS-centric logic and warn if using Chroma-only.
-        Note: This is a soft-delete pattern; items are removed from the active map but persist in the index.
+        Audit and prune low-relevance evidence for a specific subgoal.
+        
+        Currently optimized for FAISS. If Chroma-only, this would need a Chroma-specific
+        implementation using `get` and `delete`.
+        
+        IMPORTANT: This implements a SOFT-DELETE pattern:
+        - Pruned items are removed from subgoal_evidence_map (excluded from future retrievals)
+        - Items remain in doc_store and FAISS index (memory not reclaimed)
+        - This is intentional for performance (avoiding expensive index rebuilds)
+        - For long-running sessions, consider implementing hard delete with index rebuild
+        
+        Args:
+            subgoal_id: ID of the subgoal to audit
+            relevance_threshold: Minimum score to keep (0.0-1.0)
+            diversity_weight: Weight for diversity scoring (not currently used)
+            
+        Returns:
+            Dict with pruning statistics
         """
         if not self.use_faiss:
             return {"status": "skipped", "reason": "pruning_not_implemented_for_chroma"}
