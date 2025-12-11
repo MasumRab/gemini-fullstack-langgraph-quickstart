@@ -94,13 +94,28 @@ class DeepSearchRAG:
         if self.use_chroma and CHROMA_AVAILABLE:
             # Configurable path
             persist_path = getattr(self.config, 'chroma_persist_path', "./chroma_db")
+            
+            # Create wrapper for consistent embeddings between FAISS and Chroma
+            embedding_fn = None
+            if self.embedder:
+                class ConsistentEmbeddingFunction:
+                    def __init__(self, model):
+                        self.model = model
+                    def __call__(self, input):
+                        # Ensure input is list of strings
+                        if isinstance(input, str):
+                            input = [input]
+                        # Return list of lists of floats
+                        embeddings = self.model.encode(input)
+                        return embeddings.tolist()
+                
+                embedding_fn = ConsistentEmbeddingFunction(self.embedder)
+
             self.chroma = ChromaStore(
                 collection_name="deep_search_evidence",
                 persist_path=persist_path,
-                # Pass a wrapper or allow Chroma to use its default if we don't map sentence-transformers exactly
-                # Ideally we use the same embeddings.
+                embedding_function=embedding_fn
             )
-        elif self.config.dual_write and not CHROMA_AVAILABLE:
             logger.warning("Dual write enabled but ChromaDB is missing. Writing to FAISS only.")
 
         # Text splitting
