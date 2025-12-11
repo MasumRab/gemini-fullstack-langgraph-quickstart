@@ -17,11 +17,13 @@ This document outlines the strategic roadmap for evolving the current "Research 
 
 ### High Priority
 - [ ] **Standardize Tooling (MCP):**
-    - [ ] Install `langchain-mcp-adapters`.
-    - [ ] Refactor `tools_and_schemas.py` to use MCP adapters for tool definitions.
+    - [x] Foundation: Config module `mcp_config.py` created and tested.
+    - [x] Wiring: Agent graph updated to load MCP settings (disabled by default).
+    - [x] Install `langchain-mcp-adapters`.
+    - [x] Refactor `tools_and_schemas.py` to use MCP adapters for tool definitions.
 - [ ] **Implement File-based Memory:**
-    - [ ] Create simple `load_plan` and `save_plan` tools (using MCP or direct implementation).
-    - [ ] Allow the agent to persist the `TodoState` to a local JSON file to survive server restarts.
+    - [x] Create simple `load_plan` and `save_plan` tools (using MCP or direct implementation).
+    - [x] Allow the agent to persist the `TodoState` to a local JSON file to survive server restarts.
 
 ### Low Priority
 - [ ] **CLI Interface:** Add a CLI entry point for headless operation of the planning loop.

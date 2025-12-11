@@ -34,9 +34,10 @@ from agent.utils import (
 from agent.registry import graph_registry
 from agent.persistence import load_plan, save_plan
 from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
+from observability.langfuse import observe_span
 
-from ..config.app_config import config as app_config
-from ..search.router import search_router
+from backend.src.config.app_config import config as app_config
+from backend.src.search.router import search_router
 
 logger = logging.getLogger(__name__)
 
@@ -78,32 +79,33 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
     Uses Gemini 2.0 Flash to create an optimized search queries for web research based on
     the User's question.
     """
-    configurable = Configuration.from_runnable_config(config)
+    with observe_span("generate_query", config):
+        configurable = Configuration.from_runnable_config(config)
 
-    # check for custom initial search query count
-    if state.get("initial_search_query_count") is None:
-        state["initial_search_query_count"] = configurable.number_of_initial_queries
+        # check for custom initial search query count
+        if state.get("initial_search_query_count") is None:
+            state["initial_search_query_count"] = configurable.number_of_initial_queries
 
-    # init Gemini 2.0 Flash
-    llm = ChatGoogleGenerativeAI(
-        model=configurable.query_generator_model,
-        temperature=1.0,
-        max_retries=2,
-        api_key=os.getenv("GEMINI_API_KEY"),
-    )
-    structured_llm = llm.with_structured_output(SearchQueryList)
+        # init Gemini 2.0 Flash
+        llm = ChatGoogleGenerativeAI(
+            model=configurable.query_generator_model,
+            temperature=1.0,
+            max_retries=2,
+            api_key=os.getenv("GEMINI_API_KEY"),
+        )
+        structured_llm = llm.with_structured_output(SearchQueryList)
 
-    # Format the prompt
-    current_date = get_current_date()
-    formatted_prompt = query_writer_instructions.format(
-        current_date=current_date,
-        research_topic=get_research_topic(state["messages"]),
-        number_queries=state["initial_search_query_count"],
-    )
+        # Format the prompt
+        current_date = get_current_date()
+        formatted_prompt = query_writer_instructions.format(
+            current_date=current_date,
+            research_topic=get_research_topic(state["messages"]),
+            number_queries=state["initial_search_query_count"],
+        )
 
-    # Generate the search queries
-    result = structured_llm.invoke(formatted_prompt)
-    return {"search_query": result.query}
+        # Generate the search queries
+        result = structured_llm.invoke(formatted_prompt, config=config)
+        return {"search_query": result.query}
 
 
 @graph_registry.describe(
@@ -133,44 +135,44 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
     LangGraph node that performs web research.
     Updated to use the unified SearchRouter and AppConfig.
     """
-    query = state["search_query"]
+    with observe_span("web_research", config):
+        query = state["search_query"]
 
-    # Use the SearchRouter for standardized search with fallback
-    # The router respects config.search_provider and config.search_fallback
-    try:
-        results = search_router.search(query, max_results=3)
-    except Exception as e:
-        logger.error(f"Web research failed: {e}")
+        # Use the SearchRouter for standardized search with fallback
+        try:
+            results = search_router.search(query, max_results=3)
+        except Exception as e:
+            logger.error(f"Web research failed: {e}")
+            return {
+                "sources_gathered": [],
+                "search_query": [query],
+                "web_research_result": [],
+                "validation_notes": [f"Search failed for query '{query}': {e}"],
+            }
+
+        sources_gathered = []
+        web_research_results = []
+
+        for r in results:
+            # Create source
+            source = {
+                "label": r.title,
+                "short_url": r.url,
+                "value": r.url
+            }
+            sources_gathered.append(source)
+
+            # Append to result text with citation
+            snippet = r.content or r.raw_content or ""
+            web_research_results.append(f"{snippet} [{r.title}]({r.url})")
+
+        combined_result = "\n\n".join(web_research_results)
+
         return {
-            "sources_gathered": [],
+            "sources_gathered": sources_gathered,
             "search_query": [query],
-            "web_research_result": [],
-            "validation_notes": [f"Search failed for query '{query}': {e}"],
+            "web_research_result": [combined_result],
         }
-
-    sources_gathered = []
-    web_research_results = []
-
-    for r in results:
-        # Create source
-        source = {
-            "label": r.title,
-            "short_url": r.url,
-            "value": r.url
-        }
-        sources_gathered.append(source)
-
-        # Append to result text with citation
-        snippet = r.content or r.raw_content or ""
-        web_research_results.append(f"{snippet} [{r.title}]({r.url})")
-
-    combined_result = "\n\n".join(web_research_results)
-
-    return {
-        "sources_gathered": sources_gathered,
-        "search_query": [query],
-        "web_research_result": [combined_result],
-    }
 
 
 @graph_registry.describe(
@@ -181,66 +183,67 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
 )
 def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
     """Create structured plan steps from generated queries for user review."""
-    configurable = Configuration.from_runnable_config(config)
-    queries = state.get("search_query", []) or []
-    planning_status = state.get("planning_status")
+    with observe_span("planning_mode", config):
+        configurable = Configuration.from_runnable_config(config)
+        queries = state.get("search_query", []) or []
+        planning_status = state.get("planning_status")
 
-    last_message = state["messages"][-1] if state.get("messages") else None
-    if isinstance(last_message, dict):
-        last_content = last_message.get("content", "")
-    else:
-        last_content = getattr(last_message, "content", "")
-    last_content = last_content.strip().lower() if isinstance(last_content, str) else ""
+        last_message = state["messages"][-1] if state.get("messages") else None
+        if isinstance(last_message, dict):
+            last_content = last_message.get("content", "")
+        else:
+            last_content = getattr(last_message, "content", "")
+        last_content = last_content.strip().lower() if isinstance(last_content, str) else ""
 
-    if last_content.startswith("/end_plan"):
-        return {
-            "planning_steps": [],
-            "planning_status": "auto_approved",
-            "planning_feedback": ["Planning skipped via /end_plan."]
-        }
-
-    if planning_status == "auto_approved" and not state.get("planning_steps"):
-        return {"planning_steps": [], "planning_feedback": ["Planning skipped."]}
-
-    if last_content.startswith("/plan"):
-        state["planning_status"] = "awaiting_confirmation"
-
-    plan_steps = []
-    for idx, query in enumerate(queries):
-        label = query if isinstance(query, str) else str(query)
-        plan_steps.append(
-            {
-                "id": f"plan-{idx}",
-                "title": f"Investigate: {label}",
-                "query": label,
-                "suggested_tool": "web_research",
-                "status": "pending",
+        if last_content.startswith("/end_plan"):
+            return {
+                "planning_steps": [],
+                "planning_status": "auto_approved",
+                "planning_feedback": ["Planning skipped via /end_plan."]
             }
-        )
 
-    if not planning_status:
-        status = (
-            "awaiting_confirmation"
-            if getattr(configurable, "require_planning_confirmation", False)
-            else "auto_approved"
-        )
-    else:
-        status = planning_status
+        if planning_status == "auto_approved" and not state.get("planning_steps"):
+            return {"planning_steps": [], "planning_feedback": ["Planning skipped."]}
 
-    feedback = [f"Generated {len(plan_steps)} plan steps from initial queries."]
-    if not plan_steps:
-        feedback.append("No queries available; planning mode produced an empty plan.")
+        if last_content.startswith("/plan"):
+            state["planning_status"] = "awaiting_confirmation"
 
-    thread_id = config.get("configurable", {}).get("thread_id")
-    if thread_id:
-        save_plan(thread_id, plan_steps, state.get("artifacts", {}) or {})
+        plan_steps = []
+        for idx, query in enumerate(queries):
+            label = query if isinstance(query, str) else str(query)
+            plan_steps.append(
+                {
+                    "id": f"plan-{idx}",
+                    "title": f"Investigate: {label}",
+                    "query": label,
+                    "suggested_tool": "web_research",
+                    "status": "pending",
+                }
+            )
 
-    return {
-        "planning_steps": plan_steps,
-        "todo_list": plan_steps,
-        "planning_status": state.get("planning_status") or status,
-        "planning_feedback": feedback,
-    }
+        if not planning_status:
+            status = (
+                "awaiting_confirmation"
+                if getattr(configurable, "require_planning_confirmation", False)
+                else "auto_approved"
+            )
+        else:
+            status = planning_status
+
+        feedback = [f"Generated {len(plan_steps)} plan steps from initial queries."]
+        if not plan_steps:
+            feedback.append("No queries available; planning mode produced an empty plan.")
+
+        thread_id = config.get("configurable", {}).get("thread_id")
+        if thread_id:
+            save_plan(thread_id, plan_steps, state.get("artifacts", {}) or {})
+
+        return {
+            "planning_steps": plan_steps,
+            "todo_list": plan_steps,
+            "planning_status": state.get("planning_status") or status,
+            "planning_feedback": feedback,
+        }
 
 
 @graph_registry.describe(
@@ -302,7 +305,7 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
     """Extract keywords from queries (tokens >= 4 chars)."""
     keywords: List[str] = []
     for query in queries:
-        for token in re.split(r"[^a-zA-Z0-9]+", query.lower()):
+        for token in re.split(r"[^\w]+", query.lower()):
             if len(token) >= 4:
                 keywords.append(token)
     return keywords
@@ -321,96 +324,94 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
     2. LLM Claim-Check (if Validation Mode is hybrid).
     3. Citation Hard-Fail (if REQUIRE_CITATIONS is true).
     """
-    summaries = state.get("web_research_result", [])
-    if not summaries:
-        return {
-            "validated_web_research_result": [],
-            "validation_notes": ["No web research summaries available for validation."],
-        }
+    with observe_span("validate_web_results", config):
+        summaries = state.get("web_research_result", [])
+        if not summaries:
+            return {
+                "validated_web_research_result": [],
+                "validation_notes": ["No web research summaries available for validation."],
+            }
 
-    raw_queries = state.get("search_query", [])
-    flattened_queries = _flatten_queries(raw_queries) if isinstance(raw_queries, list) else [str(raw_queries)]
-    keywords = _keywords_from_queries(flattened_queries)
+        raw_queries = state.get("search_query", [])
+        flattened_queries = _flatten_queries(raw_queries) if isinstance(raw_queries, list) else [str(raw_queries)]
+        keywords = _keywords_from_queries(flattened_queries)
 
-    validated: List[str] = []
-    notes: List[str] = []
+        validated: List[str] = []
+        notes: List[str] = []
 
-    # 1. Heuristics (Pre-filter)
-    heuristic_passed = []
+        # 1. Heuristics (Pre-filter)
+        heuristic_passed = []
 
-    # Check for markdown-style citations [Title](url)
-    citation_pattern = r'\[[^\]]+\]\(https?://[^\)]+\)'
+        # Check for markdown-style citations [Title](url)
+        citation_pattern = r'\[[^\]]+\]\(https?://[^\)]+\)'
 
-    for idx, summary in enumerate(summaries):
-        normalized_summary = summary.lower()
-        match_found = False
+        for idx, summary in enumerate(summaries):
+            normalized_summary = summary.lower()
+            match_found = False
 
-        has_citation = bool(re.search(citation_pattern, summary))
+            has_citation = bool(re.search(citation_pattern, summary))
 
-        if app_config.require_citations and not has_citation:
-            notes.append(f"Result {idx+1} rejected: Missing citations (Hard Fail).")
-            continue
+            if app_config.require_citations and not has_citation:
+                notes.append(f"Result {idx+1} rejected: Missing citations (Hard Fail).")
+                continue
 
-        if keywords:
-            if any(keyword in normalized_summary for keyword in keywords):
-                match_found = True
-            else:
-                for keyword in keywords:
-                    summary_words = normalized_summary.split()
-                    matches = difflib.get_close_matches(keyword, summary_words, n=1, cutoff=0.8)
-                    if matches:
-                        match_found = True
-                        break
-
-        if match_found or not keywords:
-            heuristic_passed.append(summary)
-        else:
-            notes.append(f"Result {idx + 1} filtered (Heuristics): Low overlap with query intent.")
-
-    # 2. LLM Validation (Hybrid Mode)
-    if app_config.validation_mode == "hybrid" and heuristic_passed:
-        validated_by_llm = []
-
-        llm = ChatGoogleGenerativeAI(
-            model=app_config.model_validation,
-            temperature=0,
-            api_key=os.getenv("GEMINI_API_KEY"),
-        )
-
-        # Batching could be implemented here, but keeping it simple for now as per "first order enhancements"
-        for candidate in heuristic_passed:
-            # Lightweight claim check
-            prompt = f"""
-            Verify if the following snippet actually contains relevant information for the query: "{flattened_queries[0] if flattened_queries else 'research topic'}"
-            Snippet: "{candidate[:500]}..."
-            Reply with "YES" or "NO" only.
-            """
-            try:
-                # Assuming invoke returns AIMessage or similar
-                response = llm.invoke(prompt)
-                content = response.content if hasattr(response, "content") else str(response)
-
-                if "YES" in content.upper():
-                    validated_by_llm.append(candidate)
+            if keywords:
+                if any(keyword in normalized_summary for keyword in keywords):
+                    match_found = True
                 else:
-                    notes.append("Result rejected by LLM Validator: Content mismatch.")
-            except Exception as e:
-                logger.warning(f"LLM validation failed: {e}. Accepting candidate.")
-                validated_by_llm.append(candidate)
+                    for keyword in keywords:
+                        summary_words = normalized_summary.split()
+                        matches = difflib.get_close_matches(keyword, summary_words, n=1, cutoff=0.8)
+                        if matches:
+                            match_found = True
+                            break
 
-        validated = validated_by_llm
-    else:
-        validated = heuristic_passed
+            if match_found or not keywords:
+                heuristic_passed.append(summary)
+            else:
+                notes.append(f"Result {idx + 1} filtered (Heuristics): Low overlap with query intent.")
 
-    if not validated:
-        # If strict, we return empty and trigger re-search loop via reflection
-        # But for now, we leave it empty so reflection sees knowledge gap
-        notes.append("All summaries failed validation.")
+        # 2. LLM Validation (Hybrid Mode)
+        if app_config.validation_mode == "hybrid" and heuristic_passed:
+            validated_by_llm = []
 
-    return {
-        "validated_web_research_result": validated,
-        "validation_notes": notes,
-    }
+            llm = ChatGoogleGenerativeAI(
+                model=app_config.model_validation,
+                temperature=0,
+                api_key=os.getenv("GEMINI_API_KEY"),
+            )
+
+            for candidate in heuristic_passed:
+                # Lightweight claim check
+                prompt = f"""
+                Verify if the following snippet actually contains relevant information for the query: "{flattened_queries[0] if flattened_queries else 'research topic'}"
+                Snippet: "{candidate[:500]}..."
+                Reply with "YES" or "NO" only.
+                """
+                try:
+                    # Assuming invoke returns AIMessage or similar
+                    response = llm.invoke(prompt)
+                    content = response.content if hasattr(response, "content") else str(response)
+
+                    if "YES" in content.upper():
+                        validated_by_llm.append(candidate)
+                    else:
+                        notes.append("Result rejected by LLM Validator: Content mismatch.")
+                except Exception as e:
+                    logger.warning(f"LLM validation failed: {e}. Accepting candidate.")
+                    validated_by_llm.append(candidate)
+
+            validated = validated_by_llm
+        else:
+            validated = heuristic_passed
+
+        if not validated:
+            notes.append("All summaries failed validation.")
+
+        return {
+            "validated_web_research_result": validated,
+            "validation_notes": notes,
+        }
 
 @graph_registry.describe(
     "compression_node",
@@ -481,36 +482,42 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
     outputs=["is_sufficient", "follow_up_queries"],
 )
 def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
-    """LangGraph node that identifies knowledge gaps and generates potential follow-up queries."""
-    configurable = Configuration.from_runnable_config(config)
-    state["research_loop_count"] = state.get("research_loop_count", 0) + 1
-    reasoning_model = state.get("reasoning_model", configurable.reflection_model)
+    """LangGraph node that identifies knowledge gaps and generates potential follow-up queries.
 
-    current_date = get_current_date()
-    # Use validated results for reflection
-    summaries_source = state.get("validated_web_research_result") or state.get("web_research_result", [])
+    Analyzes the current summary to identify areas for further research and generates
+    potential follow-up queries. Uses structured output to extract
+    the follow-up query in JSON format.
+    """
+    with observe_span("reflection", config):
+        configurable = Configuration.from_runnable_config(config)
+        state["research_loop_count"] = state.get("research_loop_count", 0) + 1
+        reasoning_model = state.get("reasoning_model", configurable.reflection_model)
 
-    formatted_prompt = reflection_instructions.format(
-        current_date=current_date,
-        research_topic=get_research_topic(state["messages"]),
-        summaries="\n\n---\n\n".join(summaries_source),
-    )
+        current_date = get_current_date()
+        # Use validated results for reflection
+        summaries_source = state.get("validated_web_research_result") or state.get("web_research_result", [])
 
-    llm = ChatGoogleGenerativeAI(
-        model=reasoning_model,
-        temperature=1.0,
-        max_retries=2,
-        api_key=os.getenv("GEMINI_API_KEY"),
-    )
-    result = llm.with_structured_output(Reflection).invoke(formatted_prompt)
+        formatted_prompt = reflection_instructions.format(
+            current_date=current_date,
+            research_topic=get_research_topic(state["messages"]),
+            summaries="\n\n---\n\n".join(summaries_source),
+        )
 
-    return {
-        "is_sufficient": result.is_sufficient,
-        "knowledge_gap": result.knowledge_gap,
-        "follow_up_queries": result.follow_up_queries,
-        "research_loop_count": state["research_loop_count"],
-        "number_of_ran_queries": len(state["search_query"]),
-    }
+        llm = ChatGoogleGenerativeAI(
+            model=reasoning_model,
+            temperature=1.0,
+            max_retries=2,
+            api_key=os.getenv("GEMINI_API_KEY"),
+        )
+        result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
+
+        return {
+            "is_sufficient": result.is_sufficient,
+            "knowledge_gap": result.knowledge_gap,
+            "follow_up_queries": result.follow_up_queries,
+            "research_loop_count": state["research_loop_count"],
+            "number_of_ran_queries": len(state["search_query"]),
+        }
 
 
 @graph_registry.describe(
@@ -552,39 +559,41 @@ def evaluate_research(
 )
 def finalize_answer(state: OverallState, config: RunnableConfig):
     """LangGraph node that finalizes the research summary."""
-    configurable = Configuration.from_runnable_config(config)
-    reasoning_model = state.get("reasoning_model") or configurable.answer_model
+    with observe_span("finalize_answer", config):
+        configurable = Configuration.from_runnable_config(config)
+        reasoning_model = state.get("reasoning_model") or configurable.answer_model
 
-    current_date = get_current_date()
+        current_date = get_current_date()
 
-    # Use validated (and optionally compressed) results
-    summaries = state.get("validated_web_research_result") or state.get("web_research_result", [])
+        # Use validated (and optionally compressed) results
+        summaries = state.get("validated_web_research_result") or state.get("web_research_result", [])
 
-    formatted_prompt = answer_instructions.format(
-        current_date=current_date,
-        research_topic=get_research_topic(state["messages"]),
-        summaries="\n---\n\n".join(summaries),
-    )
+        formatted_prompt = answer_instructions.format(
+            current_date=current_date,
+            research_topic=get_research_topic(state["messages"]),
+            summaries="\n---\n\n".join(summaries),
+        )
 
-    llm = ChatGoogleGenerativeAI(
-        model=reasoning_model,
-        temperature=0,
-        max_retries=2,
-        api_key=os.getenv("GEMINI_API_KEY"),
-    )
-    result = llm.invoke(formatted_prompt)
+        llm = ChatGoogleGenerativeAI(
+            model=reasoning_model,
+            temperature=0,
+            max_retries=2,
+            api_key=os.getenv("GEMINI_API_KEY"),
+        )
+        result = llm.invoke(formatted_prompt)
 
-    # Replace the short urls with the original urls and add all used urls to the sources_gathered
-    unique_sources = []
-    if "sources_gathered" in state:
-        for source in state["sources_gathered"]:
-            if source["short_url"] in result.content:
-                result.content = result.content.replace(
-                    source["short_url"], source["value"]
-                )
-                unique_sources.append(source)
+        # Replace the short urls with the original urls and add all used urls to the sources_gathered
+        unique_sources = []
+        if "sources_gathered" in state:
+            for source in state["sources_gathered"]:
+                # Robust regex pattern to match the short URL
+                pattern = re.escape(source["short_url"])
+                if re.search(pattern, result.content):
+                    # Replace all occurrences using regex
+                    result.content = re.sub(pattern, source["value"], result.content)
+                    unique_sources.append(source)
 
-    return {
-        "messages": [AIMessage(content=result.content)],
-        "sources_gathered": unique_sources,
-    }
+        return {
+            "messages": [AIMessage(content=result.content)],
+            "sources_gathered": unique_sources,
+        }

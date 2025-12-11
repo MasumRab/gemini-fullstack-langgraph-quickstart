@@ -56,7 +56,7 @@ describe('useAgentState', () => {
 
   it('should update planning context on planning_mode event', () => {
     const { result } = renderHook(() => useAgentState());
-    
+
     act(() => {
       // Simulate planning mode event
       result.current.thread.onUpdateEvent?.({
@@ -141,7 +141,7 @@ describe('useAgentState', () => {
 
   it('should clear planning context on new submit', () => {
     const { result } = renderHook(() => useAgentState());
-    
+
     // Set initial planning context
     act(() => {
       result.current.thread.onUpdateEvent?.({
@@ -218,7 +218,7 @@ describe('useAgentState', () => {
     const { result } = renderHook(() => useAgentState());
     const mockStop = vi.fn();
     const mockReload = vi.fn();
-    
+
     result.current.thread.stop = mockStop;
     global.location = { reload: mockReload } as any;
 
@@ -404,7 +404,7 @@ vi.mock('@/lib/api', () => ({
 ```typescript
 it('should handle async updates', async () => {
   const { result } = renderHook(() => useAgentState());
-  
+
   await act(async () => {
     await result.current.handleSubmit('query', 'medium', 'model');
   });
@@ -424,11 +424,11 @@ import { renderHook, act } from '@testing-library/react-hooks';
 
 it('should update state correctly', () => {
   const { result } = renderHook(() => useAgentState());
-  
+
   act(() => {
     result.current.handleSubmit('test', 'low', 'model');
   });
-  
+
   expect(result.current.thread.messages.length).toBeGreaterThan(0);
 });
 ```

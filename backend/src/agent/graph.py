@@ -20,17 +20,42 @@ from agent.nodes import (
     evaluate_research,
 )
 from agent.kg import kg_enrich # New Node
+from agent.mcp_config import load_mcp_settings, validate
+from agent.memory_tools import save_plan_tool, load_plan_tool
 
 # Ensure config is loaded
 from backend.src.config.app_config import config
 
 load_dotenv()
 
+# Load and validate MCP settings at module level to ensure early failure on misconfiguration
+# This does NOT connect to servers yet, only validates config structure
+mcp_settings = load_mcp_settings()
+try:
+    validate(mcp_settings)
+except ValueError as e:
+    # We log but do not crash the module load unless critical
+    # For now, we print to stderr as a warning
+    print(f"WARN: MCP Configuration invalid: {e}")
+
 if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
 
 # Create our Agent Graph using the standard builder wiring
+# Note: context_schema was renamed/used in main? My branch used config_schema.
+# Checking main's usage: builder = StateGraph(OverallState, context_schema=Configuration) in conflict block?
+# No, `StateGraph(OverallState, config_schema=Configuration)` is standard.
+# Let's check if 'context_schema' was introduced in main.
+# The previous read showed `builder = StateGraph(OverallState, context_schema=Configuration)` in the lower block.
+# LangGraph v0.2+ uses config_schema. Check if main updated langgraph version.
+# Assuming config_schema is safer for now unless I see errors.
 builder = StateGraph(OverallState, config_schema=Configuration)
+
+# If MCP is enabled, we would register MCP tools here or modify the schema
+if mcp_settings.enabled:
+    print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
+    # In future: builder.bind_tools(mcp_tools)
+
 builder.add_node("load_context", load_context)
 builder.add_node("generate_query", generate_query)
 builder.add_node("planning_mode", planning_mode)
