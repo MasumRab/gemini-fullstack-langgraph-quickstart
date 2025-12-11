@@ -33,7 +33,9 @@ def main() -> None:
         "reasoning_model": args.reasoning_model,
     }
 
-    result = graph.invoke(state)
+    # Pass configuration to disable interactive planning confirmation for CLI
+    config = {"configurable": {"require_planning_confirmation": False}}
+    result = graph.invoke(state, config)
     messages = result.get("messages", [])
     if messages:
         print(messages[-1].content)
