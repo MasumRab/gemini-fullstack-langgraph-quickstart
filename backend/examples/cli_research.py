@@ -3,7 +3,9 @@ from langchain_core.messages import HumanMessage
 from agent.graph import graph
 
 
-def main() -> None:
+import asyncio
+
+async def main() -> None:
     """Run the research agent from the command line."""
     parser = argparse.ArgumentParser(description="Run the LangGraph research agent")
     parser.add_argument("question", help="Research question")
@@ -21,7 +23,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--reasoning-model",
-        default="gemini-2.5-pro-preview-05-06",
+        default="gemini-2.0-flash-exp",
         help="Model for the final answer",
     )
     args = parser.parse_args()
@@ -35,11 +37,11 @@ def main() -> None:
 
     # Pass configuration to disable interactive planning confirmation for CLI
     config = {"configurable": {"require_planning_confirmation": False}}
-    result = graph.invoke(state, config)
+    result = await graph.ainvoke(state, config)
     messages = result.get("messages", [])
     if messages:
         print(messages[-1].content)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
