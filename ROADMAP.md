@@ -25,17 +25,16 @@ This document outlines the strategic roadmap for evolving the current "Research 
     - [x] Create simple `load_plan` and `save_plan` tools (using MCP or direct implementation).
     - [x] Allow the agent to persist the `TodoState` to a local JSON file to survive server restarts.
 
-### Low Priority
-- [ ] **CLI Interface:** Add a CLI entry point for headless operation of the planning loop.
-
 ## Phase 2: SOTA Deep Research Features
-*Goal: Integrate proven patterns from Open Deep Research, STORM, and GPT Researcher.*
+*Goal: Integrate verified patterns from Open Deep Research, STORM, ManuSearch, and GPT Researcher.*
 
 ### High Priority
 - [ ] **Scoping & Clarification (Open Deep Research):**
-    - [ ] Implement a pre-planning "Scoping Node" that asks the user clarifying questions if the query is ambiguous.
+    - [ ] Implement a pre-planning "Scoping Node" that asks the user clarifying questions.
 - [ ] **Hierarchical Outlines (STORM):**
-    - [ ] Upgrade `planning_mode` to generate a structured outline (Section -> Subsection) instead of a flat list.
+    - [ ] Upgrade `planning_mode` to generate structured outlines (Section -> Subsection).
+- [ ] **Structured Content Reading (ManuSearch):**
+    - [ ] Implement a specialized `ContentReader` node that extracts evidence from retrieved pages.
 - [ ] **Recursive Research (GPT Researcher):**
     - [ ] Enable the `web_research` node to "recurse" (call the graph again) for complex sub-topics.
 
@@ -44,37 +43,23 @@ This document outlines the strategic roadmap for evolving the current "Research 
 
 ### High Priority
 - [ ] **Enhance `planning_mode`:**
-    - [ ] Transition from simple `search_query` lists to structured `Todo` objects (Status: Pending, InProgress, Done).
-    - [ ] Implement logic to update the plan based on `reflection` output (e.g., adding new sub-tasks).
+    - [ ] Transition from simple `search_query` lists to structured `Todo` objects.
+    - [ ] Implement logic to update the plan based on `reflection` output.
 - [ ] **Dynamic Re-planning:**
-    - [ ] Update `reflection` node to output *Plan Updates* in addition to *Follow-up Queries*.
-    - [ ] Ensure the graph loops back to `planning_mode` to confirm the updated plan.
-
-### Low Priority
-- [ ] **Background Task Execution:**
-    - [ ] Enable the agent to run long-duration tasks without blocking the UI.
+    - [ ] Update `reflection` node to output *Plan Updates*.
 
 ## Phase 4: Artifacts & Collaboration (Open Canvas Integration)
-*Goal: Move beyond chat bubbles. The agent should produce and maintain live "artifacts" (documents, schedules, code) that the user can co-edit.*
+*Goal: Move beyond chat bubbles. The agent should produce and maintain live "artifacts" that the user can co-edit.*
 
 ### High Priority
 - [ ] **Artifact UI State:**
     - [ ] Frontend: Split the view into "Chat" (left) and "Artifact/Canvas" (right).
-    - [ ] Backend: Define `ArtifactState` in `OverallState` to track the content of the "Final Report" or "Plan".
 - [ ] **Real-time Artifact Streaming:**
     - [ ] Stream updates to the Artifact panel separately from the chat stream.
-
-## Backlog / Jobs
-*Open engineering tasks for contributors.*
-
-1.  **Refactor `graph.py`:** Break down the monolithic graph definition into modular sub-graphs (e.g., `ResearchGraph`, `PlanningGraph`) to support complexity.
-2.  **Frontend State Sync:** Improve the React hook (`useStream`) handling to support complex, multi-channel state (Chat + Artifacts + Plan).
-3.  **Testing Infrastructure:** Add integration tests for the full graph flow using LangSmith.
 
 ## Architecture Log
 *Record of significant architectural decisions.*
 
-- **[Date]:** Roadmap updated to align with verified SOTA Deep Research architectures (Open Deep Research, STORM, GPT Researcher).
-- **[Date]:** Added Deep Research Analysis and Benchmarking integration strategy.
+- **[Date]:** Roadmap updated to align with verified SOTA Deep Research architectures (Open Deep Research, STORM, ManuSearch, GPT Researcher).
 - **[Date]:** Roadmap updated to reflect "Iterative Chained Planning" vision and existing `planning_mode` implementation.
 - **[Date]:** Initial Roadmap creation. Decision to prioritize Deep Agents memory patterns before UI overhauls.

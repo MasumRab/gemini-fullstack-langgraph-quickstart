@@ -13,9 +13,6 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 | **Scoping Phase** | `planning_mode` (interactive) | ⚡ Partial (Needs formal clarification loop) |
 | **Research Loop** | `web_research` + `reflection` | ✅ Implemented |
 | **Synthesis** | `finalize_answer` | ✅ Implemented |
-| **Evaluation** | `DeepResearch-Bench` integration | ❌ Planned |
-
-**Planned Action:** Adopt the "Scoping" pattern to ask clarifying questions before generating the initial plan.
 
 ---
 
@@ -26,15 +23,24 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 | Core Concept | This Project Implementation | Status |
 |--------------|----------------------------|--------|
 | **Outline Generation** | `planning_mode` (steps generation) | ⚡ Partial (Linear list, not hierarchical outline) |
-| **Perspective-Guided QA** | `generate_query` | ❌ Planned (Currently uses generic query expansion) |
-| **Simulated Conversation** | N/A | ❌ Low Priority |
+| **Perspective-Guided QA** | `generate_query` | ❌ Planned |
 | **Co-STORM (Human Interaction)**| `planning_wait` / `human_feedback` | ✅ Implemented |
-
-**Planned Action:** Upgrade `planning_mode` to generate a hierarchical **Outline** instead of just a flat list of queries.
 
 ---
 
-## 3. GPT Researcher
+## 3. ManuSearch (RUCAIBox)
+
+**Source:** [RUCAIBox/ManuSearch](https://github.com/RUCAIBox/ManuSearch)
+
+| Core Concept | This Project Implementation | Status |
+|--------------|----------------------------|--------|
+| **Collaborative Agents** | `Supervisor` / `Parallel` Graphs | ✅ Implemented |
+| **Structured Reader** | `web_research` (raw content) | ⚡ Partial (Need dedicated Reader node) |
+| **ORION Benchmark** | N/A | ❌ Planned |
+
+---
+
+## 4. GPT Researcher
 
 **Source:** [assafelovic/gpt-researcher](https://github.com/assafelovic/gpt-researcher)
 
@@ -42,24 +48,10 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 |--------------|----------------------------|--------|
 | **Parallel Execution** | `Send()` API in LangGraph | ✅ Implemented |
 | **Recursive "Deep" Research**| N/A | ❌ Planned (Sub-task spawning) |
-| **Local Document Support** | MCP Integration | ⚡ Partial (Via `mcp_server_filesystem`) |
-| **Context Aggregation** | `OverallState.web_research_result` | ✅ Implemented |
-
-**Planned Action:** Implement **Recursive Depth** by allowing a research node to recursively call the graph for sub-topics.
 
 ---
 
-## 4. Implementation Reference Table
-
-| Name | Repo | Key Feature to Adopt |
-| :--- | :--- | :--- |
-| **Open Deep Research** | `langchain-ai/open_deep_research` | **Scoping/Clarification Loop** |
-| **STORM** | `stanford-oval/storm` | **Hierarchical Outlines** |
-| **GPT Researcher** | `assafelovic/gpt-researcher` | **Recursive Tree Exploration** |
-
----
-
-## Quick Test Commands
+## 5. Quick Test Commands
 
 ```bash
 # Test upstream (minimal)
