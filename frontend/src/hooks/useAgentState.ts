@@ -24,7 +24,7 @@ export function useAgentState() {
   const lastConfigRef = useRef({
     initial_search_query_count: 1,
     max_research_loops: 1,
-    reasoning_model: "gemini-2.5-flash-preview-04-17",
+    reasoning_model: "gemini-2.5-flash",
   });
 
   const thread = useStream<{
