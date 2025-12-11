@@ -23,7 +23,7 @@ from agent.registry import graph_registry
     tags=["kg", "enrichment"],
     outputs=["artifacts"],
 )
-async def kg_enrich(state: OverallState, runnable_config: RunnableConfig) -> OverallState:
+async def kg_enrich(state: OverallState, config: RunnableConfig) -> OverallState:
     from config.app_config import config as app_config
 
     if not app_config.kg_enabled:

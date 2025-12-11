@@ -7,8 +7,8 @@ sys.path.append(os.getcwd())
 sys.path.append(os.path.join(os.getcwd(), "backend", "src"))
 
 from langchain_core.messages import HumanMessage
-from backend.src.agent.graph import graph
-from backend.src.config.app_config import config
+from agent.graph import graph
+from config.app_config import config
 
 async def run_full_flow():
     """Execute full agent flow verification."""

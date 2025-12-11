@@ -7,8 +7,8 @@ from typing import Optional
 # Ensure backend path is in pythonpath
 sys.path.append(os.getcwd())
 
-from backend.src.config.app_config import AppConfig
-from backend.src.agent.rag import DeepSearchRAG
+from config.app_config import AppConfig
+from agent.rag import DeepSearchRAG
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

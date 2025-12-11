@@ -60,8 +60,8 @@ except ImportError:
         require_citations: bool = False
         compression_enabled: bool = False
         compression_mode: str = "extractive"
-        model_validation: str = "gemini-2.5-flash-preview-05-20"
-        model_compression: str = "gemini-2.5-flash-preview-05-20"
+        model_validation: str = "gemini-2.5-flash-lite"
+        model_compression: str = "gemini-2.5-flash-lite"
         search_provider: str = "google"
         search_fallback: str = "duckduckgo"
 
@@ -87,7 +87,7 @@ except ImportError:
             from google.genai import Client
             client = Client(api_key=os.getenv("GEMINI_API_KEY"))
             response = client.models.generate_content(
-                model="gemini-2.5-flash-preview-05-20",
+                model="gemini-2.5-flash",
                 contents=query,
                 config={
                     "tools": [{"google_search": {}}],
@@ -543,7 +543,7 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
 
         try:
             llm = ChatGoogleGenerativeAI(
-                model=app_config.model_compression, # e.g. "gemini-2.0-flash-lite" or similar
+                model=app_config.model_compression, # e.g. "gemini-2.5-flash-lite" or similar
                 temperature=0,
                 api_key=os.getenv("GEMINI_API_KEY"),
             )
