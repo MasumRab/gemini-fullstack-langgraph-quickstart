@@ -1,3 +1,4 @@
+# TODO: See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
 import os
 import re
 import difflib
