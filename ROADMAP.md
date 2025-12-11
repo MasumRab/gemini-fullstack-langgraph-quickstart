@@ -26,13 +26,15 @@ This document outlines the strategic roadmap for evolving the current "Research 
     - [x] Allow the agent to persist the `TodoState` to a local JSON file to survive server restarts.
 
 ## Phase 2: SOTA Deep Research Features
-*Goal: Integrate verified patterns from Open Deep Research, STORM, ManuSearch, and GPT Researcher.*
+*Goal: Integrate verified patterns from Open Deep Research, STORM, FlowSearch, ManuSearch, and GPT Researcher.*
 
 ### High Priority
 - [ ] **Scoping & Clarification (Open Deep Research):**
     - [ ] Implement a pre-planning "Scoping Node" that asks the user clarifying questions.
 - [ ] **Hierarchical Outlines (STORM):**
     - [ ] Upgrade `planning_mode` to generate structured outlines (Section -> Subsection).
+- [ ] **Dynamic Knowledge Flow (FlowSearch):**
+    - [ ] Enable the planner to dynamically expand the graph (DAG) based on intermediate findings.
 - [ ] **Structured Content Reading (ManuSearch):**
     - [ ] Implement a specialized `ContentReader` node that extracts evidence from retrieved pages.
 - [ ] **Recursive Research (GPT Researcher):**
@@ -60,6 +62,6 @@ This document outlines the strategic roadmap for evolving the current "Research 
 ## Architecture Log
 *Record of significant architectural decisions.*
 
-- **[Date]:** Roadmap updated to align with verified SOTA Deep Research architectures (Open Deep Research, STORM, ManuSearch, GPT Researcher).
+- **[Date]:** Roadmap updated to align with verified SOTA Deep Research architectures (Open Deep Research, STORM, FlowSearch, ManuSearch, GPT Researcher).
 - **[Date]:** Roadmap updated to reflect "Iterative Chained Planning" vision and existing `planning_mode` implementation.
 - **[Date]:** Initial Roadmap creation. Decision to prioritize Deep Agents memory patterns before UI overhauls.

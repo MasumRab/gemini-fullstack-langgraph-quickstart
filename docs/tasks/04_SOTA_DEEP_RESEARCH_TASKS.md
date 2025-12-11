@@ -2,45 +2,37 @@
 
 ## Status: 🔴 Not Started
 
-This task list tracks the integration of features from verified state-of-the-art (SOTA) research agents: **Open Deep Research**, **STORM**, **ManuSearch**, and **GPT Researcher**.
+This task list tracks the integration of features from verified state-of-the-art (SOTA) research agents: **Open Deep Research**, **STORM**, **FlowSearch**, **ManuSearch**, and **GPT Researcher**.
 
 ## 1. Scoping & Clarification (Open Deep Research)
-*Goal: Prevent "garbage in, garbage out" by ensuring the agent understands the user's intent before planning.*
+*Goal: Prevent "garbage in, garbage out" by ensuring the agent understands the user's intent.*
 
 - [ ] **Create `scoping_node`**
-    - [ ] Define `ScopingState` (query, clarifications_needed, user_answers).
-    - [ ] Create node logic: Analyze query → If ambiguous, generate clarifying questions → Wait for user input.
-    - [ ] Integration: Insert before `planning_mode`.
+    - [ ] Logic: Analyze query → If ambiguous, generate clarifying questions → Wait for user input.
 
-## 2. Hierarchical Outlines (STORM)
-*Goal: Move from linear search to structure-driven research.*
+## 2. Dynamic Flow & Outlines (FlowSearch / STORM)
+*Goal: Move from linear search to dynamic, structured research.*
 
-- [ ] **Define `Outline` Schema**
-    - [ ] Create Pydantic models for `Section`, `Subsection`, `KeyPoint`.
-- [ ] **Update `planning_mode`**
-    - [ ] Prompt engineering: Instruct LLM to generate a `STORM`-style outline based on the scoped query.
+- [ ] **Hierarchical Outline Generation** (STORM)
+    - [ ] Update `planning_mode` to generate tree-structured outlines (Section -> Subsection).
+- [ ] **Dynamic Graph Expansion** (FlowSearch)
+    - [ ] Implement logic to "append" new branches to the execution graph based on intermediate findings (e.g., adding a sub-plan when a topic is complex).
 
 ## 3. Structured Content Reading (ManuSearch)
 *Goal: Improve evidence extraction from raw web pages.*
 
 - [ ] **Create `ContentReader` Node**
-    - [ ] Input: Raw HTML/Text from `web_research`.
-    - [ ] Logic: Use LLM to extract structured "Evidence" (Claim, Source, Context) tailored to the current plan step.
-    - [ ] Output: List of `Evidence` objects.
+    - [ ] Input: Raw HTML/Text.
+    - [ ] Output: Structured `Evidence` objects (Claim, Source, Context).
 
 ## 4. Recursive Research (GPT Researcher)
-*Goal: Handle depth by allowing the agent to "dive deep" into sub-topics.*
+*Goal: Handle depth by allowing the agent to "dive deep".*
 
 - [ ] **Refactor Graph for Recursion**
-    - [ ] Create a `ResearchSubgraph` that can be called as a node.
-    - [ ] Allow `web_research` to call `ResearchSubgraph` for a specific section if it lacks depth.
+    - [ ] Allow `web_research` to call a `ResearchSubgraph` for specific sections.
 
 ## 5. Benchmarking
-*Goal: Validate performance against standard metrics.*
+*Goal: Validate performance.*
 
-- [ ] **DeepResearch-Bench Setup**
-    - [ ] Create a script `backend/scripts/run_benchmark.py`.
-    - [ ] Load tasks from the `DeepResearch-Bench` (muset-ai) space.
-- [ ] **ORION Benchmark Setup**
-    - [ ] Load tasks from `RUC-AIBOX/ORION`.
-    - [ ] Evaluate "Long-tail entity" reasoning capabilities.
+- [ ] **DeepResearch-Bench** (muset-ai) setup.
+- [ ] **ORION** (RUCAIBox) setup.

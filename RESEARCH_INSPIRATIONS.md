@@ -10,9 +10,8 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 | Core Concept | This Project Implementation | Status |
 |--------------|----------------------------|--------|
-| **Scoping Phase** | `planning_mode` (interactive) | ⚡ Partial (Needs formal clarification loop) |
+| **Scoping Phase** | `planning_mode` (interactive) | ⚡ Partial |
 | **Research Loop** | `web_research` + `reflection` | ✅ Implemented |
-| **Synthesis** | `finalize_answer` | ✅ Implemented |
 
 ---
 
@@ -22,36 +21,43 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 | Core Concept | This Project Implementation | Status |
 |--------------|----------------------------|--------|
-| **Outline Generation** | `planning_mode` (steps generation) | ⚡ Partial (Linear list, not hierarchical outline) |
-| **Perspective-Guided QA** | `generate_query` | ❌ Planned |
-| **Co-STORM (Human Interaction)**| `planning_wait` / `human_feedback` | ✅ Implemented |
+| **Outline Generation** | `planning_mode` (steps generation) | ⚡ Partial |
+| **Co-STORM (Interaction)**| `planning_wait` / `human_feedback` | ✅ Implemented |
 
 ---
 
-## 3. ManuSearch (RUCAIBox)
+## 3. FlowSearch (InternAgent)
+
+**Source:** [InternScience/InternAgent](https://github.com/InternScience/InternAgent)
+
+| Core Concept | This Project Implementation | Status |
+|--------------|----------------------------|--------|
+| **Dynamic Knowledge Flow** | `OverallState` transitions | ⚡ Partial (Linear flow) |
+| **Hierarchical Decomposition** | `planning_mode` (recursive steps) | ❌ Planned |
+
+---
+
+## 4. ManuSearch (RUCAIBox)
 
 **Source:** [RUCAIBox/ManuSearch](https://github.com/RUCAIBox/ManuSearch)
 
 | Core Concept | This Project Implementation | Status |
 |--------------|----------------------------|--------|
-| **Collaborative Agents** | `Supervisor` / `Parallel` Graphs | ✅ Implemented |
 | **Structured Reader** | `web_research` (raw content) | ⚡ Partial (Need dedicated Reader node) |
-| **ORION Benchmark** | N/A | ❌ Planned |
 
 ---
 
-## 4. GPT Researcher
+## 5. GPT Researcher
 
 **Source:** [assafelovic/gpt-researcher](https://github.com/assafelovic/gpt-researcher)
 
 | Core Concept | This Project Implementation | Status |
 |--------------|----------------------------|--------|
-| **Parallel Execution** | `Send()` API in LangGraph | ✅ Implemented |
 | **Recursive "Deep" Research**| N/A | ❌ Planned (Sub-task spawning) |
 
 ---
 
-## 5. Quick Test Commands
+## 6. Quick Test Commands
 
 ```bash
 # Test upstream (minimal)
