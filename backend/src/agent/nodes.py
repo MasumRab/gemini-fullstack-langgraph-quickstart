@@ -2,6 +2,7 @@ import os
 import re
 import difflib
 from typing import List, Dict, Any, Optional
+import logging
 
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
@@ -34,6 +35,11 @@ from agent.registry import graph_registry
 from agent.persistence import load_plan, save_plan
 from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
 from observability.langfuse import observe_span
+
+from backend.src.config.app_config import config as app_config
+from backend.src.search.router import search_router
+
+logger = logging.getLogger(__name__)
 
 # Initialize Google Search Client
 genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -72,13 +78,6 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
 
     Uses Gemini 2.0 Flash to create an optimized search queries for web research based on
     the User's question.
-
-    Args:
-        state: Current graph state containing the User's question
-        config: Configuration for the runnable, including LLM provider settings
-
-    Returns:
-        Dictionary with state update, including search_query key containing the generated queries
     """
     with observe_span("generate_query", config):
         configurable = Configuration.from_runnable_config(config)
@@ -115,10 +114,7 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
     tags=["routing", "parallel"],
 )
 def continue_to_web_research(state: QueryGenerationState):
-    """LangGraph node that sends the search queries to the web research node.
-
-    This is used to spawn n number of web research nodes, one for each search query.
-    """
+    """LangGraph node that sends the search queries to the web research node."""
     queries = state.get("search_query", [])
     if not queries:
         return []
@@ -130,139 +126,53 @@ def continue_to_web_research(state: QueryGenerationState):
 
 @graph_registry.describe(
     "web_research",
-    summary="Calls Google Search tool, resolves citations, and returns annotated snippets.",
+    summary="Executes web search using configured providers via SearchRouter.",
     tags=["search", "tool"],
     outputs=["web_research_result", "sources_gathered"],
 )
 def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
-    """LangGraph node that performs web research using the native Google Search API tool.
-
-    Executes a web search using the native Google Search API tool in combination with Gemini 2.0 Flash.
-    Also supports Tavily as an alternative search provider if configured.
-
-    Args:
-        state: Current graph state containing the search query and research loop count
-        config: Configuration for the runnable, including search API settings
-
-    Returns:
-        Dictionary with state update, including sources_gathered, research_loop_count, and web_research_results
+    """
+    LangGraph node that performs web research.
+    Updated to use the unified SearchRouter and AppConfig.
     """
     with observe_span("web_research", config):
-        configurable = Configuration.from_runnable_config(config)
-        formatted_prompt = web_searcher_instructions.format(
-            current_date=get_current_date(),
-            research_topic=state["search_query"],
-        )
+        query = state["search_query"]
 
-        # Check for Tavily API Key - use Tavily if available
-        tavily_key = os.getenv("TAVILY_API_KEY")
-        if TAVILY_AVAILABLE and tavily_key:
-            search_results = tavily_search_multiple(
-                [state["search_query"]],
-                max_results=3,
-                include_raw_content=False,
-            )
-
-            sources_gathered = []
-            web_research_results = []
-
-            for response in search_results:
-                for result in response.get("results", []):
-                    title = result.get("title", "Untitled")
-                    url = result.get("url", "")
-                    content = result.get("content", "")
-
-                    # Create source
-                    source = {
-                        "label": title,
-                        "short_url": url,
-                        "value": url
-                    }
-                    sources_gathered.append(source)
-
-                    # Append to result text with citation
-                    web_research_results.append(f"{content} [{title}]({url})")
-
+        # Use the SearchRouter for standardized search with fallback
+        try:
+            results = search_router.search(query, max_results=3)
+        except Exception as e:
+            logger.error(f"Web research failed: {e}")
             return {
-                "sources_gathered": sources_gathered,
-                "search_query": [state["search_query"]],
-                "web_research_result": ["\n\n".join(web_research_results)],
+                "sources_gathered": [],
+                "search_query": [query],
+                "web_research_result": [],
+                "validation_notes": [f"Search failed for query '{query}': {e}"],
             }
-
-        # Uses the google genai client as the langchain client doesn't return grounding metadata
-        # The 'tools' config is compatible with both Gemini 1.5 and 2.x models
-        response = genai_client.models.generate_content(
-            model=configurable.query_generator_model,
-            contents=formatted_prompt,
-            config={
-                "tools": [{"google_search": {}}],
-                "temperature": 0,
-            },
-        )
 
         sources_gathered = []
         web_research_results = []
 
-        for response in search_results:
-            for result in response.get("results", []):
-                title = result.get("title", "Untitled")
-                url = result.get("url", "")
-                content = result.get("content", "")
+        for r in results:
+            # Create source
+            source = {
+                "label": r.title,
+                "short_url": r.url,
+                "value": r.url
+            }
+            sources_gathered.append(source)
 
-                # Create source
-                source = {
-                    "label": title,
-                    "short_url": url,
-                    "value": url
-                }
-                sources_gathered.append(source)
+            # Append to result text with citation
+            snippet = r.content or r.raw_content or ""
+            web_research_results.append(f"{snippet} [{r.title}]({r.url})")
 
-                # Append to result text with citation
-                web_research_results.append(f"{content} [{title}]({url})")
+        combined_result = "\n\n".join(web_research_results)
 
         return {
             "sources_gathered": sources_gathered,
-            "web_research_result": ["\n\n".join(web_research_results)],
+            "search_query": [query],
+            "web_research_result": [combined_result],
         }
-
-        # Check if grounding metadata is available
-        if not response.candidates or not response.candidates[0].grounding_metadata:
-            # Fallback if no grounding metadata (though unlikely with google_search tool)
-            return {
-                "sources_gathered": [],
-                "search_query": [state["search_query"]],
-                "web_research_result": [response.text],
-            }
-
-        # resolve the urls to short urls for saving tokens and time
-        resolved_urls = resolve_urls(
-            response.candidates[0].grounding_metadata.grounding_chunks, state["id"]
-        )
-
-        # Gets the citations and adds them to the generated text
-        citations = get_citations(response, resolved_urls)
-        modified_text = insert_citation_markers(response.text, citations)
-        sources_gathered = [item for citation in citations for item in citation["segments"]]
-
-        return {
-            "sources_gathered": [],
-            "web_research_result": [response.text],
-        }
-
-    # resolve the urls to short urls for saving tokens and time
-    resolved_urls = resolve_urls(
-        response.candidates[0].grounding_metadata.grounding_chunks, state["id"]
-    )
-
-    # Gets the citations and adds them to the generated text
-    citations = get_citations(response, resolved_urls)
-    modified_text = insert_citation_markers(response.text, citations)
-    sources_gathered = [item for citation in citations for item in citation["segments"]]
-
-    return {
-        "sources_gathered": sources_gathered,
-        "web_research_result": [modified_text],
-    }
 
 
 @graph_registry.describe(
@@ -278,7 +188,6 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
         queries = state.get("search_query", []) or []
         planning_status = state.get("planning_status")
 
-        # Check last message for commands
         last_message = state["messages"][-1] if state.get("messages") else None
         if isinstance(last_message, dict):
             last_content = last_message.get("content", "")
@@ -286,7 +195,6 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
             last_content = getattr(last_message, "content", "")
         last_content = last_content.strip().lower() if isinstance(last_content, str) else ""
 
-        # If the user explicitly asks to end planning right away
         if last_content.startswith("/end_plan"):
             return {
                 "planning_steps": [],
@@ -294,11 +202,9 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
                 "planning_feedback": ["Planning skipped via /end_plan."]
             }
 
-        # If already skipped or confirmed, just return (idempotent)
         if planning_status == "auto_approved" and not state.get("planning_steps"):
             return {"planning_steps": [], "planning_feedback": ["Planning skipped."]}
 
-        # Handle /plan command
         if last_content.startswith("/plan"):
             state["planning_status"] = "awaiting_confirmation"
 
@@ -315,7 +221,6 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
                 }
             )
 
-        # Determine initial status based on config, unless already set by a command
         if not planning_status:
             status = (
                 "awaiting_confirmation"
@@ -329,7 +234,6 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
         if not plan_steps:
             feedback.append("No queries available; planning mode produced an empty plan.")
 
-        # Persist the plan
         thread_id = config.get("configurable", {}).get("thread_id")
         if thread_id:
             save_plan(thread_id, plan_steps, state.get("artifacts", {}) or {})
@@ -368,7 +272,6 @@ def planning_router(state: OverallState, config: RunnableConfig):
         last_content = getattr(last_message, "content", "")
     last_content = last_content.strip().lower() if isinstance(last_content, str) else ""
 
-    # Command Handling
     if last_content.startswith("/plan"):
         state["planning_status"] = "awaiting_confirmation"
         return "planning_wait"
@@ -402,7 +305,6 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
     """Extract keywords from queries (tokens >= 4 chars)."""
     keywords: List[str] = []
     for query in queries:
-        # Use regex that supports unicode word characters
         for token in re.split(r"[^\w]+", query.lower()):
             if len(token) >= 4:
                 keywords.append(token)
@@ -411,14 +313,16 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
 
 @graph_registry.describe(
     "validate_web_results",
-    summary="Lightweight heuristic gate that filters summaries misaligned with the query intent.",
+    summary="Hybrid validation (Heuristics + LLM) with citation hard-fail.",
     tags=["validation", "quality"],
     outputs=["validated_web_research_result", "validation_notes"],
 )
 def validate_web_results(state: OverallState, config: RunnableConfig) -> OverallState:
-    """Ensure returned summaries reference the core query intent before reflection.
-
-    Uses fuzzy matching for robustness against typos and stemming differences.
+    """
+    Hybrid validation logic:
+    1. Heuristic filtering (fuzzy match against query intent).
+    2. LLM Claim-Check (if Validation Mode is hybrid).
+    3. Citation Hard-Fail (if REQUIRE_CITATIONS is true).
     """
     with observe_span("validate_web_results", config):
         summaries = state.get("web_research_result", [])
@@ -435,17 +339,26 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         validated: List[str] = []
         notes: List[str] = []
 
+        # 1. Heuristics (Pre-filter)
+        heuristic_passed = []
+
+        # Check for markdown-style citations [Title](url)
+        citation_pattern = r'\[[^\]]+\]\(https?://[^\)]+\)'
+
         for idx, summary in enumerate(summaries):
             normalized_summary = summary.lower()
-
-            # Primary: Fuzzy Keyword Matching
             match_found = False
+
+            has_citation = bool(re.search(citation_pattern, summary))
+
+            if app_config.require_citations and not has_citation:
+                notes.append(f"Result {idx+1} rejected: Missing citations (Hard Fail).")
+                continue
+
             if keywords:
-                # Check for direct inclusion first (fastest)
                 if any(keyword in normalized_summary for keyword in keywords):
                     match_found = True
                 else:
-                    # Fuzzy matching for robustness (e.g. typos, stemming differences)
                     for keyword in keywords:
                         summary_words = normalized_summary.split()
                         matches = difflib.get_close_matches(keyword, summary_words, n=1, cutoff=0.8)
@@ -454,21 +367,112 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                             break
 
             if match_found or not keywords:
-                validated.append(summary)
+                heuristic_passed.append(summary)
             else:
-                snippet = (summary[:50] + "...") if len(summary) > 50 else summary
-                notes.append(
-                    f"Result {idx + 1} filtered: '{snippet}' missing overlap with query intent ({', '.join(keywords[:5])})."
-                )
+                notes.append(f"Result {idx + 1} filtered (Heuristics): Low overlap with query intent.")
+
+        # 2. LLM Validation (Hybrid Mode)
+        if app_config.validation_mode == "hybrid" and heuristic_passed:
+            validated_by_llm = []
+
+            llm = ChatGoogleGenerativeAI(
+                model=app_config.model_validation,
+                temperature=0,
+                api_key=os.getenv("GEMINI_API_KEY"),
+            )
+
+            for candidate in heuristic_passed:
+                # Lightweight claim check
+                prompt = f"""
+                Verify if the following snippet actually contains relevant information for the query: "{flattened_queries[0] if flattened_queries else 'research topic'}"
+                Snippet: "{candidate[:500]}..."
+                Reply with "YES" or "NO" only.
+                """
+                try:
+                    # Assuming invoke returns AIMessage or similar
+                    response = llm.invoke(prompt)
+                    content = response.content if hasattr(response, "content") else str(response)
+
+                    if "YES" in content.upper():
+                        validated_by_llm.append(candidate)
+                    else:
+                        notes.append("Result rejected by LLM Validator: Content mismatch.")
+                except Exception as e:
+                    logger.warning(f"LLM validation failed: {e}. Accepting candidate.")
+                    validated_by_llm.append(candidate)
+
+            validated = validated_by_llm
+        else:
+            validated = heuristic_passed
 
         if not validated:
-            notes.append("All summaries failed heuristics; retaining originals to avoid data loss.")
-            validated = summaries
+            notes.append("All summaries failed validation.")
 
         return {
             "validated_web_research_result": validated,
             "validation_notes": notes,
         }
+
+@graph_registry.describe(
+    "compression_node",
+    summary="Tiered compression of research results.",
+    tags=["compression", "optimization"],
+    outputs=["web_research_result"],
+)
+def compression_node(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Tiered Compression:
+    1. Extractive: Deduplicate and remove redundant phrases.
+    2. Abstractive: Summarize while keeping citations (if enabled).
+    """
+    if not app_config.compression_enabled:
+        return {} # No change
+
+    # Fallback to web_research_result if validation was skipped or returned empty (backward compat)
+    results = state.get("validated_web_research_result", []) or state.get("web_research_result", [])
+    if not results:
+        return {}
+
+    # Tier 1: Extractive (Deduplicate while preserving order)
+    seen = set()
+    unique_results = []
+    for r in results:
+        if r not in seen:
+            seen.add(r)
+            unique_results.append(r)
+
+    # Tier 2: Abstractive (LLM Summarization)
+    if app_config.compression_mode == "tiered":
+        # Simple prompt construction
+        combined_text = "\n\n".join(unique_results)
+
+        # Truncate if too long to avoid context overflow
+        max_chars = 30000  # Reasonable limit for most models
+        if len(combined_text) > max_chars:
+            combined_text = combined_text[:max_chars] + "\n[... truncated]"
+
+        prompt = f"""
+        Compress the following research notes into a concise summary.
+        CRITICAL: You MUST preserve all source citations in [Title](url) format.
+        Do not lose any factual claims.
+
+        Notes:
+        {combined_text}
+        """
+
+        try:
+            llm = ChatGoogleGenerativeAI(
+                model=app_config.model_compression, # e.g. "gemini-2.0-flash-lite" or similar
+                temperature=0,
+                api_key=os.getenv("GEMINI_API_KEY"),
+            )
+            compressed = llm.invoke(prompt).content
+            return {"validated_web_research_result": [compressed]}
+        except Exception as e:
+            logger.warning(f"Compression failed: {e}. Returning originals.")
+            return {"validated_web_research_result": unique_results}
+
+    return {"validated_web_research_result": unique_results}
 
 
 @graph_registry.describe(
@@ -483,30 +487,22 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
     Analyzes the current summary to identify areas for further research and generates
     potential follow-up queries. Uses structured output to extract
     the follow-up query in JSON format.
-
-    Args:
-        state: Current graph state containing the running summary and research topic
-        config: Configuration for the runnable, including LLM provider settings
-
-    Returns:
-        Dictionary with state update, including search_query key containing the generated follow-up query
     """
     with observe_span("reflection", config):
         configurable = Configuration.from_runnable_config(config)
-        # Increment the research loop count and get the reasoning model
         state["research_loop_count"] = state.get("research_loop_count", 0) + 1
         reasoning_model = state.get("reasoning_model", configurable.reflection_model)
 
-        # Format the prompt
         current_date = get_current_date()
+        # Use validated results for reflection
         summaries_source = state.get("validated_web_research_result") or state.get("web_research_result", [])
+
         formatted_prompt = reflection_instructions.format(
             current_date=current_date,
             research_topic=get_research_topic(state["messages"]),
             summaries="\n\n---\n\n".join(summaries_source),
         )
 
-        # init Reasoning Model
         llm = ChatGoogleGenerativeAI(
             model=reasoning_model,
             temperature=1.0,
@@ -533,18 +529,7 @@ def evaluate_research(
     state: ReflectionState,
     config: RunnableConfig,
 ) -> OverallState:
-    """LangGraph routing function that determines the next step in the research flow.
-
-    Controls the research loop by deciding whether to continue gathering information
-    or to finalize the summary based on the configured maximum number of research loops.
-
-    Args:
-        state: Current graph state containing the research loop count
-        config: Configuration for the runnable, including max_research_loops setting
-
-    Returns:
-        String literal indicating the next node to visit ("web_research" or "finalize_summary")
-    """
+    """LangGraph routing function that determines the next step in the research flow."""
     configurable = Configuration.from_runnable_config(config)
     max_research_loops = (
         state.get("max_research_loops")
@@ -573,49 +558,40 @@ def evaluate_research(
     outputs=["messages", "sources_gathered"],
 )
 def finalize_answer(state: OverallState, config: RunnableConfig):
-    """LangGraph node that finalizes the research summary.
-
-    Prepares the final output by deduplicating and formatting sources, then
-    combining them with the running summary to create a well-structured
-    research report with proper citations.
-
-    Args:
-        state: Current graph state containing the running summary and sources gathered
-
-    Returns:
-        Dictionary with state update, including running_summary key containing the formatted final summary with sources
-    """
+    """LangGraph node that finalizes the research summary."""
     with observe_span("finalize_answer", config):
         configurable = Configuration.from_runnable_config(config)
         reasoning_model = state.get("reasoning_model") or configurable.answer_model
 
-        # Format the prompt
         current_date = get_current_date()
+
+        # Use validated (and optionally compressed) results
+        summaries = state.get("validated_web_research_result") or state.get("web_research_result", [])
+
         formatted_prompt = answer_instructions.format(
             current_date=current_date,
             research_topic=get_research_topic(state["messages"]),
-            summaries="\n---\n\n".join(state["web_research_result"]),
+            summaries="\n---\n\n".join(summaries),
         )
 
-    # init Reasoning Model, default to Gemini 2.5 Flash
-    llm = ChatGoogleGenerativeAI(
-        model=reasoning_model,
-        temperature=0,
-        max_retries=2,
-        api_key=os.getenv("GEMINI_API_KEY"),
-    )
-    result = llm.invoke(formatted_prompt)
+        llm = ChatGoogleGenerativeAI(
+            model=reasoning_model,
+            temperature=0,
+            max_retries=2,
+            api_key=os.getenv("GEMINI_API_KEY"),
+        )
+        result = llm.invoke(formatted_prompt)
 
-    # Replace the short urls with the original urls and add all used urls to the sources_gathered
-    unique_sources = []
-    if "sources_gathered" in state:
-        for source in state["sources_gathered"]:
-            # Robust regex pattern to match the short URL
-            pattern = re.escape(source["short_url"])
-            if re.search(pattern, result.content):
-                # Replace all occurrences using regex
-                result.content = re.sub(pattern, source["value"], result.content)
-                unique_sources.append(source)
+        # Replace the short urls with the original urls and add all used urls to the sources_gathered
+        unique_sources = []
+        if "sources_gathered" in state:
+            for source in state["sources_gathered"]:
+                # Robust regex pattern to match the short URL
+                pattern = re.escape(source["short_url"])
+                if re.search(pattern, result.content):
+                    # Replace all occurrences using regex
+                    result.content = re.sub(pattern, source["value"], result.content)
+                    unique_sources.append(source)
 
         return {
             "messages": [AIMessage(content=result.content)],
