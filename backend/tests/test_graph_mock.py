@@ -18,9 +18,9 @@ def mock_state():
 @pytest.fixture
 def mock_config():
     return {"configurable": {
-        "query_generator_model": "gemini-2.0-flash",
-        "reflection_model": "gemini-2.0-flash",
-        "answer_model": "gemini-2.0-flash"
+        "query_generator_model": "gemini-2.5-flash",
+        "reflection_model": "gemini-2.5-flash",
+        "answer_model": "gemini-2.5-flash"
     }}
 
 class TestGraphNodes:

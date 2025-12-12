@@ -70,7 +70,7 @@ def config():
     """
     return RunnableConfig(
         configurable={
-            "model": "gemini-2.0-flash-exp",
+            "model": "gemini-2.5-flash",
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": False,
@@ -90,7 +90,7 @@ def config_with_confirmation():
     """
     return RunnableConfig(
         configurable={
-            "model": "gemini-2.0-flash-exp",
+            "model": "gemini-2.5-flash",
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": True,
