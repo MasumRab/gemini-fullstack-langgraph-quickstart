@@ -47,6 +47,22 @@ STRATEGIES = {
         "tools": "gemini-2.0-flash",
         "frontend": "gemini-2.0-flash"
     },
+    "gemini_2_5_flash": {
+        "description": "Gemini 2.5 Flash: Latest High Speed Model (Quota Required)",
+        "query": "gemini-2.5-flash",
+        "reflection": "gemini-2.5-flash",
+        "answer": "gemini-2.5-flash",
+        "tools": "gemini-2.5-flash",
+        "frontend": "gemini-2.5-flash"
+    },
+    "gemini_2_5_pro": {
+        "description": "Gemini 2.5 Pro: Latest High Reasoning Model (Quota Required)",
+        "query": "gemini-2.5-flash",
+        "reflection": "gemini-2.5-flash",
+        "answer": "gemini-2.5-pro",
+        "tools": "gemini-2.5-flash",
+        "frontend": "gemini-2.5-flash"
+    },
     "experimental": {
         "description": "Experimental: Gemini 2.5 models (Requires Quota/Billing)",
         "query": "gemini-2.5-flash",
