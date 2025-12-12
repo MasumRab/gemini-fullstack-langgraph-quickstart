@@ -26,7 +26,23 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 3. FlowSearch (InternAgent)
+## 3. ThinkDepthAI Deep Research
+
+**Source:** [ThinkDepthAI/thinkdepthai](https://github.com/QishengLu/thinkdepthai)
+
+| Core Concept | This Project Implementation | Status |
+|--------------|----------------------------|--------|
+| Planning Mode | `planning_mode` + `planning_wait` | ✅ Implemented |
+| User Confirmation | `planning_router` + `/confirm_plan` | ✅ Implemented |
+| Structured Plans | `planning_steps` in state | ✅ Implemented |
+| Plan Persistence | `save_plan` / `load_plan` | ✅ Implemented |
+
+**Web:** [thinkdepth.ai](https://thinkdepth.ai/)
+**Graph:** `planning.py`
+
+---
+
+## 4. FlowSearch (InternAgent)
 
 **Source:** [InternScience/InternAgent](https://github.com/InternScience/InternAgent)
 **Docs:** [InternLM](https://internlm.intern-ai.org.cn/api/document)
@@ -38,7 +54,7 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 4. ManuSearch (RUCAIBox)
+## 5. ManuSearch (RUCAIBox)
 
 **Source:** [RUCAIBox/ManuSearch](https://github.com/RUCAIBox/ManuSearch)
 
@@ -48,7 +64,7 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 5. GPT Researcher
+## 6. GPT Researcher
 
 **Source:** [assafelovic/gpt-researcher](https://github.com/assafelovic/gpt-researcher)
 
@@ -58,7 +74,7 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 6. Benchmarks (Planned)
+## 7. Benchmarks (Planned)
 
 | Benchmark | Source | Goal |
 |-----------|--------|------|
@@ -67,7 +83,7 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 7. Quick Test Commands
+## 8. Quick Test Commands
 
 ```bash
 # Test upstream (minimal)
@@ -76,3 +92,19 @@ python examples/cli_research.py "What is quantum computing?" --mode upstream
 # Test planning (standard)
 python examples/cli_research.py "Compare renewable energy sources" --mode planning
 ```
+
+---
+
+## References
+
+| Framework | Repository/Paper |
+|-----------|-----------------|
+| Open Deep Research | https://github.com/langchain-ai/open_deep_research |
+| ThinkDepthAI | https://github.com/QishengLu/thinkdepthai |
+| STORM | https://github.com/stanford-oval/storm |
+| RhinoInsight | (Conceptual - Checklist verification pattern) |
+| TTD-DR | (Conceptual - Diffusion-based research) |
+| ManuSearch | https://github.com/RUCAIBox/ManuSearch |
+| FlowSearch | https://github.com/InternScience/InternAgent |
+| Cognee (KG) | https://github.com/topoteretes/cognee |
+| LangGraph | https://github.com/langchain-ai/langgraph |
