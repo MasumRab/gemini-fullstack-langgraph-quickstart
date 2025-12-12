@@ -520,19 +520,21 @@ MODEL_TOKEN_LIMITS = {
     "anthropic:claude-3-opus": 200000,
     "anthropic:claude-3-haiku": 200000,
 
-    # Google/Gemini Models
-    # Gemini 1.5 series (legacy, retiring April 2025)
-    "google:gemini-1.5-pro": 2097152,
-    "google:gemini-1.5-flash": 1048576,
-    "gemini-1.5-pro": 2097152,
-    "gemini-1.5-flash": 1048576,
-    # Gemini 2.5 series (current stable)
+    # Google/Gemini Models (Only 2.5 series accessible via API as of Dec 2024)
+    # Deprecated: 1.5 and 2.0 series models
+    "google:gemini-2.5-pro": 2097152,
     "google:gemini-2.5-flash": 1048576,
     "google:gemini-2.5-flash-lite": 1048576,
-    "google:gemini-2.5-pro": 2097152,
+    "gemini-2.5-pro": 2097152,
     "gemini-2.5-flash": 1048576,
     "gemini-2.5-flash-lite": 1048576,
-    "gemini-2.5-pro": 2097152,
+    # Legacy models (deprecated, kept for reference)
+    "google:gemini-1.5-pro": 2097152,
+    "google:gemini-1.5-flash": 1048576,
+    "google:gemini-2.0-flash": 1048576,
+    "gemini-1.5-pro": 2097152,
+    "gemini-1.5-flash": 1048576,
+    "gemini-2.0-flash-exp": 1048576,
 }
 
 

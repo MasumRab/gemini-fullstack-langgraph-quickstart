@@ -273,6 +273,8 @@ class TestModelTokenLimits:
 
         assert get_model_token_limit("gemini-1.5-pro") == 2097152
         assert get_model_token_limit("openai:gpt-4o") == 128000
+        assert get_model_token_limit("gemini-2.5-flash") == 1048576
+        assert get_model_token_limit("gemini-2.5-pro") == 2097152
 
     def test_get_unknown_model_returns_default(self):
         """Should return default for unknown models."""

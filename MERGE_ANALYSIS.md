@@ -1,13 +1,13 @@
 # Merge-Tree Analysis: PR Branches vs Main
 
-**Generated:** 2025-12-11 14:21 AEDT  
+**Generated:** 2025-12-11 14:21 AEDT
 **Base Branch:** `main` (commit: 11d1042)
 
 ---
 
 ## PR #19: MCP Persistence Wrapper
 
-**Branch:** `origin/jules-mcp-persistence-wrapper-2114800518725581450`  
+**Branch:** `origin/jules-mcp-persistence-wrapper-2114800518725581450`
 **Commits ahead of main:** 3
 
 ### Commit History
@@ -48,7 +48,7 @@
  docs/tasks/01_MCP_TASKS.md                  |  10 +-
  examples/open_deep_research_example         |   1 -
  examples/thinkdepthai_deep_research_example |   1 -
- 
+
  18 files changed, 1580 insertions(+), 190 deletions(-)
 ```
 
@@ -105,7 +105,7 @@
 
 ## PR #16: Hybrid Search, RAG Dual-Write, and Validation
 
-**Branch:** `origin/feature/search-rag-hybrid-3228504735555579147`  
+**Branch:** `origin/feature/search-rag-hybrid-3228504735555579147`
 **Commits ahead of main:** 6
 
 ### Commit History
@@ -147,7 +147,7 @@
  backend/src/search/router.py                       | 108 ++++++   [NEW FILE]
  docs/tasks/implementation_report.md                |  74 ++++    [NEW FILE]
  requirements.txt                                   |  33 ++
- 
+
  19 files changed, 1350 insertions(+), 425 deletions(-)
 ```
 
