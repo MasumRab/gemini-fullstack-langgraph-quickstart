@@ -442,7 +442,7 @@ def refine_draft_report(
         Refined draft report
     """
     # Use default model for refinement
-    writer_model = init_chat_model(model="gemini-1.5-flash", max_tokens=16000)
+    writer_model = init_chat_model(model="gemini-2.5-flash", max_tokens=16000)
 
     prompt = f"""You are refining a research report based on the following:
 
@@ -520,7 +520,15 @@ MODEL_TOKEN_LIMITS = {
     "anthropic:claude-3-opus": 200000,
     "anthropic:claude-3-haiku": 200000,
 
-    # Google/Gemini Models
+    # Google/Gemini Models (Only 2.5 series accessible via API as of Dec 2024)
+    # Deprecated: 1.5 and 2.0 series models
+    "google:gemini-2.5-pro": 2097152,
+    "google:gemini-2.5-flash": 1048576,
+    "google:gemini-2.5-flash-lite": 1048576,
+    "gemini-2.5-pro": 2097152,
+    "gemini-2.5-flash": 1048576,
+    "gemini-2.5-flash-lite": 1048576,
+    # Legacy models (deprecated, kept for reference)
     "google:gemini-1.5-pro": 2097152,
     "google:gemini-1.5-flash": 1048576,
     "google:gemini-2.0-flash": 1048576,

@@ -37,6 +37,7 @@ from agent.utils import (
 from agent.registry import graph_registry
 from agent.persistence import load_plan, save_plan
 from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
+from agent.rate_limiter import get_rate_limiter, get_context_manager
 from observability.langfuse import observe_span
 
 from backend.src.config.app_config import config as app_config
@@ -139,8 +140,8 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
 def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
     """LangGraph node that generates search queries based on the User's question.
 
-    Uses Gemini 2.0 Flash to create an optimized search queries for web research based on
-    the User's question.
+    Uses Gemini 2.5 Flash to create optimized search queries for web research based on
+    the User's question. Includes rate limiting and context window management.
     """
     with observe_span("generate_query", config):
         configurable = Configuration.from_runnable_config(config)
@@ -149,14 +150,10 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
         if state.get("initial_search_query_count") is None:
             state["initial_search_query_count"] = configurable.number_of_initial_queries
 
-        # init Gemini 2.0 Flash
-        llm = ChatGoogleGenerativeAI(
-            model=configurable.query_generator_model,
-            temperature=1.0,
-            max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
-        )
-        structured_llm = llm.with_structured_output(SearchQueryList)
+        # Get rate limiter and context manager for this model
+        model = configurable.query_generator_model
+        rate_limiter = get_rate_limiter(model)
+        context_mgr = get_context_manager(model)
 
         # Format the prompt
         current_date = get_current_date()
@@ -165,6 +162,30 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             research_topic=get_research_topic(state["messages"]),
             number_queries=state["initial_search_query_count"],
         )
+
+        # Truncate prompt if needed to fit context window
+        formatted_prompt = context_mgr.truncate_to_fit(formatted_prompt)
+
+        # Estimate tokens for rate limiting
+        estimated_tokens = context_mgr.estimate_tokens(formatted_prompt)
+
+        # Wait if necessary to stay within rate limits
+        wait_time = rate_limiter.wait_if_needed(estimated_tokens)
+        if wait_time > 0:
+            logger.info(f"Rate limited: waited {wait_time:.2f}s for {model}")
+
+        # Log current usage
+        usage = rate_limiter.get_current_usage()
+        logger.info(f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}")
+
+        # init Gemini model
+        llm = ChatGoogleGenerativeAI(
+            model=model,
+            temperature=1.0,
+            max_retries=2,
+            api_key=os.getenv("GEMINI_API_KEY"),
+        )
+        structured_llm = llm.with_structured_output(SearchQueryList)
 
         # Generate the search queries
         result = structured_llm.invoke(formatted_prompt, config=config)

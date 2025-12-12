@@ -3,69 +3,45 @@
 Script to update Gemini model configurations across the project.
 Usage: python update_models.py [strategy]
 Strategies:
-  - free_tier (default): Gemini 1.5 Flash for EVERYTHING (Best for avoiding quotas)
-  - optimized: Flash-Lite for queries, Flash for reflection, Pro for answer
-  - stable: All Gemini 1.5 stable models
-  - experimental: Latest Gemini 2.5 experimental models (Requires Billing/Quota)
+  - flash (default): Gemini 2.5 Flash for all components (Best price-performance)
+  - flash_lite: Gemini 2.5 Flash-Lite for fastest/cheapest operations
+  - pro: Gemini 2.5 Pro for highest quality (uses Flash for queries)
+  - balanced: Flash-Lite for queries, Flash for reflection, Pro for answers
 """
 
 import sys
 import re
 from pathlib import Path
 
-# Configuration Strategies
+# Configuration Strategies - Only Gemini 2.5 models (1.5 and 2.0 are deprecated/inaccessible)
 STRATEGIES = {
-    "free_tier": {
-        "description": "Free Tier Safe: Gemini 1.5 Flash for all components (High RPM limit)",
-        "query": "gemini-1.5-flash",
-        "reflection": "gemini-1.5-flash",
-        "answer": "gemini-1.5-flash",
-        "tools": "gemini-1.5-flash",
-        "frontend": "gemini-1.5-flash"
-    },
-    "optimized": {
-        "description": "Cost-optimized: 1.5 Flash-8b (query), 1.5 Flash (reflection), 1.5 Pro (answer)",
-        "query": "gemini-1.5-flash-8b",
-        "reflection": "gemini-1.5-flash",
-        "answer": "gemini-1.5-pro",
-        "tools": "gemini-1.5-flash",
-        "frontend": "gemini-1.5-flash"
-    },
-    "stable": {
-        "description": "Legacy Stable: Gemini 1.5 series",
-        "query": "gemini-1.5-flash",
-        "reflection": "gemini-1.5-flash",
-        "answer": "gemini-1.5-pro",
-        "tools": "gemini-1.5-pro",
-        "frontend": "gemini-1.5-flash"
-    },
-    "flash_2_0": {
-        "description": "Gemini 2.0 Flash Series: Flash-Lite (query) & Flash (answer)",
-        "query": "gemini-2.0-flash-lite-preview-02-05",  # Using specific preview if stable not alias
-        "reflection": "gemini-2.0-flash",
-        "answer": "gemini-2.0-flash",
-        "tools": "gemini-2.0-flash",
-        "frontend": "gemini-2.0-flash"
-    },
-    "gemini_2_5_flash": {
-        "description": "Gemini 2.5 Flash: Latest High Speed Model (Quota Required)",
+    "flash": {
+        "description": "Gemini 2.5 Flash: Best price-performance for all components",
         "query": "gemini-2.5-flash",
         "reflection": "gemini-2.5-flash",
         "answer": "gemini-2.5-flash",
         "tools": "gemini-2.5-flash",
         "frontend": "gemini-2.5-flash"
     },
-    "gemini_2_5_pro": {
-        "description": "Gemini 2.5 Pro: Latest High Reasoning Model (Quota Required)",
+    "flash_lite": {
+        "description": "Gemini 2.5 Flash-Lite: Fastest and most cost-efficient",
+        "query": "gemini-2.5-flash-lite",
+        "reflection": "gemini-2.5-flash-lite",
+        "answer": "gemini-2.5-flash-lite",
+        "tools": "gemini-2.5-flash-lite",
+        "frontend": "gemini-2.5-flash-lite"
+    },
+    "pro": {
+        "description": "Gemini 2.5 Pro: Highest quality reasoning (Flash for queries)",
         "query": "gemini-2.5-flash",
         "reflection": "gemini-2.5-flash",
         "answer": "gemini-2.5-pro",
         "tools": "gemini-2.5-flash",
         "frontend": "gemini-2.5-flash"
     },
-    "experimental": {
-        "description": "Experimental: Gemini 2.5 models (Requires Quota/Billing)",
-        "query": "gemini-2.5-flash",
+    "balanced": {
+        "description": "Balanced: Flash-Lite (query), Flash (reflection), Pro (answer)",
+        "query": "gemini-2.5-flash-lite",
         "reflection": "gemini-2.5-flash",
         "answer": "gemini-2.5-pro",
         "tools": "gemini-2.5-flash",
@@ -96,7 +72,7 @@ def update_file(file_path: Path, pattern: str, replacement: str):
     return False
 
 def main():
-    strategy_name = sys.argv[1] if len(sys.argv) > 1 else "free_tier"
+    strategy_name = sys.argv[1] if len(sys.argv) > 1 else "flash"
 
     if strategy_name not in STRATEGIES:
         print(f"Error: Unknown strategy '{strategy_name}'")
