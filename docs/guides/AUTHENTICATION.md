@@ -81,4 +81,22 @@ Best for: Production workloads, higher quotas, enterprise data privacy.
 | **API Key (AI Studio)** | Prototyping, Personal Projects | Free Tier Available (Strict limits on newer models) | Free (within limits), Pay-as-you-go |
 | **OAuth (Vertex AI)** | Enterprise, Production, High Scale | Higher, adjustable per project | Pay-as-you-go (Google Cloud billing) |
 
-> **Note on "Resource Exhausted"**: If you hit quota limits with an API Key on the free tier (especially with Gemini 2.0/2.5 models), switching to Vertex AI (OAuth) with a billing-enabled project often resolves this, as you move to a paid tier with higher limits.
+
+---
+
+## 3. Enabling Access for Restricted Models (Gemini 2.5 / XP)
+
+If you encounter `429 RESOURCE_EXHAUSTED` with `limit: 0` for models like `gemini-2.5-flash` or `gemini-2.5-pro`, this indicates you need to enable billing to unlock quotas.
+
+### Step 1: Enable Billing (Pay-As-You-Go)
+1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2.  Select your project from the top dropdown.
+3.  Navigate to **Billing** in the left menu.
+4.  Click **Link a Billing Account** and follow the prompts to add a payment method.
+    *   *Note: Free tier quotas are usually separate from paid quotas. Experimental models often require a paid billing account even for low usage.*
+
+### Step 2: verify Quotas
+1.  Navigate to **IAM & Admin** > **Quotas**.
+2.  Filter by "generativelanguage" API.
+3.  Check limits for `Generate content requests`. If they are 0, you may need to "Edit Quota" and request an increase.
+
