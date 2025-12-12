@@ -25,6 +25,8 @@ from agent.prompts import (
     reflection_instructions,
     answer_instructions,
 )
+from agent.scoping_prompts import scoping_instructions
+from agent.scoping_schema import ScopingAssessment
 from agent.tools_and_schemas import SearchQueryList, Reflection
 from agent.utils import (
     get_citations,
@@ -44,6 +46,66 @@ logger = logging.getLogger(__name__)
 
 # Initialize Google Search Client
 genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
+@graph_registry.describe(
+    "scoping_node",
+    summary="Analyzes query for ambiguity and asks clarifying questions if needed.",
+    tags=["planning", "scoping"],
+    outputs=["scoping_status", "clarification_questions", "messages"],
+)
+def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Scoping Phase:
+    Checks if the user's request is ambiguous.
+    If yes -> Generates questions and sets status to 'active' (interrupt).
+    If no -> Sets status to 'complete' (proceed).
+    """
+    with observe_span("scoping_node", config):
+        # 1. Check if we are processing a clarification answer
+        if state.get("scoping_status") == "active":
+            # We just got an answer back from the user (in messages)
+            # We assume the user's last message IS the answer.
+            # We treat this as "complete" for this turn, but ideally we loop back.
+            # For simplicity in V1: If we asked, and user answered, we assume it's clear enough to try planning.
+            return {"scoping_status": "complete"}
+
+        # 2. Analyze Initial Query
+        messages = state["messages"]
+        if not messages:
+            return {"scoping_status": "complete"} # Should not happen
+
+        # Use Gemini to assess ambiguity
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash", # Use a fast model
+            temperature=0,
+            api_key=os.getenv("GEMINI_API_KEY"),
+        )
+        structured_llm = llm.with_structured_output(ScopingAssessment)
+
+        prompt = scoping_instructions.format(
+            current_date=get_current_date(),
+            research_topic=get_research_topic(messages)
+        )
+
+        try:
+            assessment = structured_llm.invoke(prompt)
+        except Exception as e:
+            logger.error(f"Scoping LLM failed: {e}")
+            return {"scoping_status": "complete"} # Fail open
+
+        if assessment.is_ambiguous:
+            # Create a message to ask the user
+            questions_text = "\n".join([f"- {q}" for q in assessment.clarifying_questions])
+            msg = f"To ensure I research this effectively, could you clarify:\n{questions_text}"
+
+            return {
+                "scoping_status": "active",
+                "clarification_questions": assessment.clarifying_questions,
+                "messages": [AIMessage(content=msg)]
+            }
+
+        return {"scoping_status": "complete"}
 
 
 @graph_registry.describe(
