@@ -442,7 +442,7 @@ def refine_draft_report(
         Refined draft report
     """
     # Use default model for refinement
-    writer_model = init_chat_model(model="gemini-1.5-pro", max_tokens=16000)
+    writer_model = init_chat_model(model="gemini-1.5-flash", max_tokens=16000)
 
     prompt = f"""You are refining a research report based on the following:
 
