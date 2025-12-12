@@ -42,7 +42,39 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 4. FlowSearch (InternAgent)
+## 4. RhinoInsight
+
+**Paper/Concept:** Checklist-based verification with evidence auditing.
+
+| Core Tool | This Project Implementation | Status | Notes |
+|-----------|----------------------------|--------|-------|
+| **Checklist Generator** | `planning_mode` (generates plan steps) | ✅ Implemented | Decomposes into plan items |
+| **Evidence Auditor** | `validate_web_results` (hybrid validation) | ✅ Implemented | Heuristic + LLM claim-check |
+| **Source Validator** | `validate_web_results` (citation check) | ✅ Implemented | `REQUIRE_CITATIONS` flag |
+| **Citation Tracker** | `sources_gathered` + `insert_citation_markers` | ✅ Implemented | URL-to-claim mapping |
+| **Context Pruner** | `compression_node` (tiered compression) | ✅ Implemented | Token budget via `TOKEN_BUDGET` |
+
+**Graph:** `build_graph(enable_planning=True, enable_validation=True, enable_compression=True)`
+
+---
+
+## 5. TTD-DR (Test-Time Diffusion for Deep Research)
+
+**Concept:** Generate multiple answer trajectories, iteratively refine via self-evolution.
+
+| Core Tool | This Project Implementation | Status | Notes |
+|-----------|----------------------------|--------|-------|
+| **Diffusion Planner** | `generate_query` (multi-query gen) | ⚡ Partial | Generates N initial queries |
+| **Self-Evolution Engine** | `reflection` loop | ✅ Implemented | Follow-up query iteration |
+| **LLM-as-Judge** | `validate_web_results` (LLM validator) | ✅ Implemented | Hybrid mode claim-check |
+| **Multi-Doc Synthesizer** | `finalize_answer` | ✅ Implemented | Combines all sources |
+| **Variant Generator** | Not implemented | ❌ Planned | Multiple answer variants |
+
+**Planned Enhancement:** Add `answer_variants` node for multi-trajectory synthesis.
+
+---
+
+## 6. FlowSearch (InternAgent)
 
 **Source:** [InternScience/InternAgent](https://github.com/InternScience/InternAgent)
 **Docs:** [InternLM](https://internlm.intern-ai.org.cn/api/document)
@@ -54,7 +86,7 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 5. ManuSearch (RUCAIBox)
+## 7. ManuSearch (RUCAIBox)
 
 **Source:** [RUCAIBox/ManuSearch](https://github.com/RUCAIBox/ManuSearch)
 
@@ -64,7 +96,7 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 6. GPT Researcher
+## 8. GPT Researcher
 
 **Source:** [assafelovic/gpt-researcher](https://github.com/assafelovic/gpt-researcher)
 
@@ -74,7 +106,7 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 7. Benchmarks (Planned)
+## 9. Benchmarks (Planned)
 
 | Benchmark | Source | Goal |
 |-----------|--------|------|
@@ -83,7 +115,7 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## 8. Quick Test Commands
+## 10. Quick Test Commands
 
 ```bash
 # Test upstream (minimal)
