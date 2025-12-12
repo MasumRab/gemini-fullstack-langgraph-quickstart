@@ -39,6 +39,14 @@ STRATEGIES = {
         "tools": "gemini-1.5-pro",
         "frontend": "gemini-1.5-flash"
     },
+    "flash_2_0": {
+        "description": "Gemini 2.0 Flash Series: Flash-Lite (query) & Flash (answer)",
+        "query": "gemini-2.0-flash-lite-preview-02-05",  # Using specific preview if stable not alias
+        "reflection": "gemini-2.0-flash",
+        "answer": "gemini-2.0-flash",
+        "tools": "gemini-2.0-flash",
+        "frontend": "gemini-2.0-flash"
+    },
     "experimental": {
         "description": "Experimental: Gemini 2.5 models (Requires Quota/Billing)",
         "query": "gemini-2.5-flash",
