@@ -16,9 +16,9 @@ class TestConfiguration:
         """Configuration should have sensible defaults."""
         config = Configuration()
 
-        assert config.query_generator_model == "gemini-1.5-flash"
-        assert config.reflection_model == "gemini-1.5-flash"
-        assert config.answer_model == "gemini-1.5-pro"
+        assert config.query_generator_model == "gemini-2.5-flash"
+        assert config.reflection_model == "gemini-2.5-flash"
+        assert config.answer_model == "gemini-2.5-flash"
         assert config.number_of_initial_queries == 3
         assert config.max_research_loops == 2
         assert config.require_planning_confirmation is True
@@ -27,7 +27,7 @@ class TestConfiguration:
         """from_runnable_config with None should use defaults."""
         config = Configuration.from_runnable_config(None)
 
-        assert config.query_generator_model == "gemini-1.5-flash"
+        assert config.query_generator_model == "gemini-2.5-flash"
         assert config.number_of_initial_queries == 3
 
     def test_from_runnable_config_with_empty_dict(self):
@@ -122,7 +122,7 @@ class TestConfiguration:
 
         assert config.query_generator_model == "new-model"
         # Other fields should have defaults
-        assert config.reflection_model == "gemini-1.5-flash"
+        assert config.reflection_model == "gemini-2.5-flash"
         assert config.number_of_initial_queries == 3
 
 
@@ -131,8 +131,8 @@ class TestConfigurationValidation:
 
     def test_model_field_accepts_string(self):
         """Test that model field accepts valid string."""
-        config = Configuration(query_generator_model="gemini-1.5-pro")
-        assert config.query_generator_model == "gemini-1.5-pro"
+        config = Configuration(query_generator_model="gemini-2.5-pro")
+        assert config.query_generator_model == "gemini-2.5-pro"
 
     def test_max_loops_accepts_positive_int(self):
         """Test that max_research_loops accepts positive integers."""

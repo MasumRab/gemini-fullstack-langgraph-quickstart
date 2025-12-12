@@ -49,6 +49,43 @@ logger = logging.getLogger(__name__)
 genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
+def _get_rate_limited_llm(model: str, temperature: float = 0, max_retries: int = 2, prompt: str = "") -> ChatGoogleGenerativeAI:
+    """Get a rate-limited LLM instance with context management.
+    
+    Args:
+        model: Model name to use
+        temperature: Temperature setting
+        max_retries: Maximum retry attempts
+        prompt: Prompt text for token estimation
+        
+    Returns:
+        Configured ChatGoogleGenerativeAI instance
+    """
+    # Get rate limiter and context manager
+    rate_limiter = get_rate_limiter(model)
+    context_mgr = get_context_manager(model)
+    
+    # Estimate tokens if prompt provided
+    if prompt:
+        estimated_tokens = context_mgr.estimate_tokens(prompt)
+        
+        # Wait if necessary
+        wait_time = rate_limiter.wait_if_needed(estimated_tokens)
+        if wait_time > 0:
+            logger.info(f"Rate limited: waited {wait_time:.2f}s for {model}")
+        
+        # Log usage
+        usage = rate_limiter.get_current_usage()
+        logger.debug(f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}")
+    
+    return ChatGoogleGenerativeAI(
+        model=model,
+        temperature=temperature,
+        max_retries=max_retries,
+        api_key=os.getenv("GEMINI_API_KEY"),
+    )
+
+
 @graph_registry.describe(
     "scoping_node",
     summary="Analyzes query for ambiguity and asks clarifying questions if needed.",
@@ -76,18 +113,19 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
         if not messages:
             return {"scoping_status": "complete"} # Should not happen
 
-        # Use Gemini to assess ambiguity
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash", # Use a fast model
-            temperature=0,
-            api_key=os.getenv("GEMINI_API_KEY"),
-        )
-        structured_llm = llm.with_structured_output(ScopingAssessment)
-
+        # Format prompt first for token estimation
         prompt = scoping_instructions.format(
             current_date=get_current_date(),
             research_topic=get_research_topic(messages)
         )
+
+        # Use rate-limited Gemini to assess ambiguity
+        llm = _get_rate_limited_llm(
+            model="gemini-2.5-flash",
+            temperature=0,
+            prompt=prompt
+        )
+        structured_llm = llm.with_structured_output(ScopingAssessment)
 
         try:
             assessment = structured_llm.invoke(prompt)
@@ -150,11 +188,6 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
         if state.get("initial_search_query_count") is None:
             state["initial_search_query_count"] = configurable.number_of_initial_queries
 
-        # Get rate limiter and context manager for this model
-        model = configurable.query_generator_model
-        rate_limiter = get_rate_limiter(model)
-        context_mgr = get_context_manager(model)
-
         # Format the prompt
         current_date = get_current_date()
         formatted_prompt = query_writer_instructions.format(
@@ -163,27 +196,16 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             number_queries=state["initial_search_query_count"],
         )
 
-        # Truncate prompt if needed to fit context window
+        # Truncate if needed
+        context_mgr = get_context_manager(configurable.query_generator_model)
         formatted_prompt = context_mgr.truncate_to_fit(formatted_prompt)
 
-        # Estimate tokens for rate limiting
-        estimated_tokens = context_mgr.estimate_tokens(formatted_prompt)
-
-        # Wait if necessary to stay within rate limits
-        wait_time = rate_limiter.wait_if_needed(estimated_tokens)
-        if wait_time > 0:
-            logger.info(f"Rate limited: waited {wait_time:.2f}s for {model}")
-
-        # Log current usage
-        usage = rate_limiter.get_current_usage()
-        logger.info(f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}")
-
-        # init Gemini model
-        llm = ChatGoogleGenerativeAI(
-            model=model,
+        # Get rate-limited LLM
+        llm = _get_rate_limited_llm(
+            model=configurable.query_generator_model,
             temperature=1.0,
             max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
+            prompt=formatted_prompt
         )
         structured_llm = llm.with_structured_output(SearchQueryList)
 
@@ -459,12 +481,6 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         if app_config.validation_mode == "hybrid" and heuristic_passed:
             validated_by_llm = []
 
-            llm = ChatGoogleGenerativeAI(
-                model=app_config.model_validation,
-                temperature=0,
-                api_key=os.getenv("GEMINI_API_KEY"),
-            )
-
             for candidate in heuristic_passed:
                 # Lightweight claim check
                 prompt = f"""
@@ -472,6 +488,14 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                 Snippet: "{candidate[:500]}..."
                 Reply with "YES" or "NO" only.
                 """
+                
+                # Use rate-limited LLM
+                llm = _get_rate_limited_llm(
+                    model=app_config.model_validation,
+                    temperature=0,
+                    prompt=prompt
+                )
+                
                 try:
                     # Assuming invoke returns AIMessage or similar
                     response = llm.invoke(prompt)
@@ -530,11 +554,6 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
         # Simple prompt construction
         combined_text = "\n\n".join(unique_results)
 
-        # Truncate if too long to avoid context overflow
-        max_chars = 30000  # Reasonable limit for most models
-        if len(combined_text) > max_chars:
-            combined_text = combined_text[:max_chars] + "\n[... truncated]"
-
         prompt = f"""
         Compress the following research notes into a concise summary.
         CRITICAL: You MUST preserve all source citations in [Title](url) format.
@@ -545,12 +564,17 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
         """
 
         try:
-            llm = ChatGoogleGenerativeAI(
-                model=app_config.model_compression, # e.g. "gemini-2.0-flash-lite" or similar
+            # Use context manager to truncate if needed
+            context_mgr = get_context_manager(app_config.model_compression)
+            truncated_prompt = context_mgr.truncate_to_fit(prompt)
+            
+            # Use rate-limited LLM
+            llm = _get_rate_limited_llm(
+                model=app_config.model_compression,
                 temperature=0,
-                api_key=os.getenv("GEMINI_API_KEY"),
+                prompt=truncated_prompt
             )
-            compressed = llm.invoke(prompt).content
+            compressed = llm.invoke(truncated_prompt).content
             return {"validated_web_research_result": [compressed]}
         except Exception as e:
             logger.warning(f"Compression failed: {e}. Returning originals.")
@@ -587,11 +611,12 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
             summaries="\n\n---\n\n".join(summaries_source),
         )
 
-        llm = ChatGoogleGenerativeAI(
+        # Use rate-limited LLM
+        llm = _get_rate_limited_llm(
             model=reasoning_model,
             temperature=1.0,
             max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
+            prompt=formatted_prompt
         )
         result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
 
@@ -658,11 +683,12 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
             summaries="\n---\n\n".join(summaries),
         )
 
-        llm = ChatGoogleGenerativeAI(
+        # Use rate-limited LLM
+        llm = _get_rate_limited_llm(
             model=reasoning_model,
             temperature=0,
             max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
+            prompt=formatted_prompt
         )
         result = llm.invoke(formatted_prompt)
 
