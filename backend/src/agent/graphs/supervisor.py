@@ -1,5 +1,8 @@
+import os
+import logging
 from typing import Dict, Any, List
 from langchain_core.runnables import RunnableConfig
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 from agent.state import OverallState
 from agent.configuration import Configuration
@@ -17,6 +20,10 @@ from agent.nodes import (
 )
 from agent.registry import graph_registry
 
+from config.app_config import config as app_config
+
+logger = logging.getLogger(__name__)
+
 @graph_registry.describe(
     "compress_context",
     summary="Compresses search results into a concise knowledge graph/summary.",
@@ -31,26 +38,63 @@ def compress_context(state: OverallState, config: RunnableConfig) -> Dict[str, A
     2. Merges it with existing 'web_research_result' (history).
     3. Uses an LLM to summarize/deduplicate into a 'Running Summary'.
     """
-    # For Phase 2 Prototype: Simple concatenation/truncation or lightweight summary.
-    # In a full implementation, this would call an LLM.
-
+    # 1. Gather all results
     new_results = state.get("validated_web_research_result", [])
     current_results = state.get("web_research_result", [])
 
-    # Simple compression: Keep unique items, maybe limit total count
-    all_results = current_results + new_results
+    # Combine and deduplicate (preserving order)
+    combined = current_results + new_results
+    unique_results = list(dict.fromkeys(combined))
 
-    # TODO: Add actual LLM summarization here.
-    # For now, we tag them as 'Compressed' to prove the architecture flow.
-    compressed = [f"[Compressed] {r[:100]}..." for r in new_results]
+    # 2. Check configuration
+    if not app_config.compression_enabled:
+        return {"web_research_result": unique_results}
 
-    # We replace the raw results with the compressed version + full history if needed,
-    # or just keep the 'Running Summary' as the main context.
-    # Here we append to keep history but formatted differently.
+    # 3. LLM Compression (if tiered/enabled)
+    # We only compress if we have substantial content to justify the call
+    # and if the mode is set to 'tiered' (or we just treat enabled as tiered for now)
 
-    return {
-        "web_research_result": all_results # Placeholder for actual compression logic
-    }
+    if app_config.compression_mode == "tiered":
+        combined_text = "\n\n".join(unique_results)
+
+        # Safety: avoid blowing context if it's massive
+        max_chars = 50000
+        if len(combined_text) > max_chars:
+            combined_text = combined_text[:max_chars] + "\n[... truncated]"
+
+        prompt = f"""
+        You are an expert researcher.
+        Compress the following research notes into a concise, dense summary.
+
+        CRITICAL INSTRUCTIONS:
+        1. YOU MUST PRESERVE all source citations in the [Title](url) format.
+        2. Do not lose any key factual claims, numbers, or dates.
+        3. Merge repetitive information.
+        4. If the input is already concise, just return it as is.
+
+        Research Notes:
+        {combined_text}
+        """
+
+        try:
+            llm = ChatGoogleGenerativeAI(
+                model=app_config.model_compression,
+                temperature=0,
+                api_key=os.getenv("GEMINI_API_KEY"),
+            )
+            response = llm.invoke(prompt)
+            compressed_content = response.content
+
+            # We return the compressed summary as a single item list
+            # to replace the long list of snippets.
+            return {"web_research_result": [compressed_content]}
+
+        except Exception as e:
+            logger.warning(f"Compression failed in supervisor: {e}. Returning uncompressed history.")
+            return {"web_research_result": unique_results}
+
+    # Default fallback
+    return {"web_research_result": unique_results}
 
 builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("load_context", load_context)

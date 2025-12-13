@@ -1,0 +1,35 @@
+{
+  "status": "divergent",
+  "branch_divergence": {
+    "main": {
+      "missing_features": [
+        "Knowledge Graph",
+        "Unified Search Router",
+        "ChromaDB RAG",
+        "Centralized AppConfig"
+      ],
+      "valid_features": [
+        "FAISS RAG",
+        "MCP Config",
+        "Parallel Graph",
+        "Langfuse Observability"
+      ]
+    },
+    "feature_search_rag_hybrid": {
+      "detected_features": [
+        "Knowledge Graph",
+        "Search Router",
+        "AppConfig",
+        "ChromaStore"
+      ]
+    }
+  },
+  "dependencies": {
+    "status": "valid",
+    "critical_fixes": [
+      "google-ai-generativelanguage>=0.9.0",
+      "langchain-text-splitters"
+    ]
+  },
+  "verification_timestamp": "2025-12-13T02:50:00Z"
+}
