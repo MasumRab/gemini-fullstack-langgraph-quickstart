@@ -61,6 +61,16 @@ class TestDescribeDecorator:
 
         @registry.describe("test_node", summary="Test")
         def original_func(state, config):
+            """
+            Return a constant payload containing the answer 42.
+            
+            Parameters:
+                state: Execution state or context (unused by this function).
+                config: Configuration or settings object (unused by this function).
+            
+            Returns:
+                dict: A mapping with key "value" set to the integer 42.
+            """
             return {"value": 42}
 
         # Function should still work
@@ -73,6 +83,16 @@ class TestDescribeDecorator:
 
         @registry.describe("my_node", summary="My node")
         def my_handler_function(state, config):
+            """
+            A placeholder handler that accepts a state and configuration and returns an empty mapping.
+            
+            Parameters:
+                state: Context or state passed to the handler.
+                config: Configuration or options for the handler.
+            
+            Returns:
+                dict: An empty dictionary.
+            """
             return {}
 
         assert registry.node_docs["my_node"]["handler"] == "my_handler_function"
@@ -83,6 +103,16 @@ class TestDescribeDecorator:
 
         @registry.describe("minimal_node", summary="Minimal")
         def minimal(state, config):
+            """
+            Return an empty output mapping; the function ignores its inputs.
+            
+            Parameters:
+                state: Input state for the node (ignored).
+                config: Configuration for the node (ignored).
+            
+            Returns:
+                dict: An empty dictionary.
+            """
             return {}
 
         assert registry.node_docs["minimal_node"]["tags"] == []

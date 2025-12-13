@@ -3,6 +3,23 @@ import { useStream } from "@langchain/langgraph-sdk/react";
 import type { Message } from "@langchain/langgraph-sdk";
 import { ProcessedEvent } from "@/components/ActivityTimeline";
 
+/**
+ * Manage agent conversation state, processed event timeline, planning context, and control actions.
+ *
+ * Exposes reactive state and handlers used to drive an assistant thread, record intermediate processing events,
+ * track historical activities tied to finalized AI messages, and control submission/cancellation flows.
+ *
+ * @returns An object containing:
+ * - `thread` — The streaming thread controller and its reactive properties (messages, isLoading, submit, stop, etc.).
+ * - `processedEventsTimeline` — Ordered list of processed events produced during the agent's reasoning and research steps.
+ * - `historicalActivities` — Map of AI message IDs to the corresponding processed events captured when the agent finalized an answer.
+ * - `planningContext` — Current planning details (steps, optional status, and optional feedback) or `null` when none.
+ * - `error` — Error message when the stream encounters an error, or `null` otherwise.
+ * - `scrollAreaRef` — Ref to the container element used for auto-scrolling the conversation viewport.
+ * - `handleSubmit` — Function to submit a new user query; accepts (submittedInputValue: string, effort: string, model: string).
+ * - `handlePlanningCommand` — Function to submit a planning command as user input; accepts (command: string).
+ * - `handleCancel` — Function to stop the current thread and reload the page.
+ */
 export function useAgentState() {
   const [processedEventsTimeline, setProcessedEventsTimeline] = useState<
     ProcessedEvent[]

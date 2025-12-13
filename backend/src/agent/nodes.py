@@ -210,7 +210,6 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             prompt=formatted_prompt
         )
         structured_llm = llm.with_structured_output(SearchQueryList)
-
         # Generate the search queries
         result = structured_llm.invoke(formatted_prompt, config=config)
         return {"search_query": result.query}
@@ -282,7 +281,6 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
             "web_research_result": [combined_result],
         }
 
-
 @graph_registry.describe(
     "planning_mode",
     summary="Creates structured plan steps from generated queries for user review.",
@@ -296,12 +294,14 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
         queries = state.get("search_query", []) or []
         planning_status = state.get("planning_status")
 
+
         last_message = state["messages"][-1] if state.get("messages") else None
         if isinstance(last_message, dict):
             last_content = last_message.get("content", "")
         else:
             last_content = getattr(last_message, "content", "")
         last_content = last_content.strip().lower() if isinstance(last_content, str) else ""
+
 
         if last_content.startswith("/end_plan"):
             return {
@@ -621,7 +621,6 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
             prompt=formatted_prompt
         )
         result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
-
         return {
             "is_sufficient": result.is_sufficient,
             "knowledge_gap": result.knowledge_gap,
@@ -704,6 +703,7 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
                     # Replace all occurrences using regex
                     result.content = re.sub(pattern, source["value"], result.content)
                     unique_sources.append(source)
+
 
         return {
             "messages": [AIMessage(content=result.content)],

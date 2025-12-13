@@ -2,11 +2,12 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field, asdict
 import numpy as np
 import time
+import uuid
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import logging
 import os
 
-from backend.src.config.app_config import config
+from config.app_config import config
 
 # Optional imports for RAG dependencies
 try:
@@ -18,7 +19,7 @@ except ImportError:
 
 # Optional Chroma
 try:
-    from backend.src.rag.chroma_store import ChromaStore, EvidenceChunk as ChromaEvidenceChunk
+    from rag.chroma_store import ChromaStore, EvidenceChunk as ChromaEvidenceChunk
     CHROMA_AVAILABLE = True
 except ImportError:
     CHROMA_AVAILABLE = False
@@ -55,7 +56,7 @@ class DeepSearchRAG:
     ):
         self.embedding_model = embedding_model
         # Use provided config or fallback to global
-        from backend.src.config.app_config import config as global_config
+        from config.app_config import config as global_config
         self.config = config or global_config
 
         # Load embedding model
@@ -152,8 +153,10 @@ class DeepSearchRAG:
             chunks = self.splitter.split_text(content)
 
             for i, chunk in enumerate(chunks):
-                # Common data
-                chunk_id_str = f"{subgoal_id}_{int(time.time())}_{i}"
+                                # Common data
+                chunk_timestamp = time.time()
+                # Add UUID component to prevent ID collisions during rapid ingestion
+                chunk_id_str = f"{subgoal_id}_{int(chunk_timestamp * 1000)}_{i}_{uuid.uuid4().hex[:8]}"
                 embedding = self.embedder.encode(chunk)
 
                 # FAISS Logic
@@ -163,7 +166,7 @@ class DeepSearchRAG:
                         source_url=doc.get("url", "unknown"),
                         subgoal_id=subgoal_id,
                         relevance_score=doc.get("score", 0.0),
-                        timestamp=time.time(),
+                        timestamp=chunk_timestamp,
                         chunk_id=chunk_id_str,
                         metadata=metadata or {}
                     )
@@ -188,7 +191,7 @@ class DeepSearchRAG:
                         source_url=doc.get("url", "unknown"),
                         subgoal_id=subgoal_id,
                         relevance_score=doc.get("score", 0.0),
-                        timestamp=time.time(),
+                        timestamp=chunk_timestamp,
                         chunk_id=chunk_id_str,
                         metadata=metadata or {}
                     ))

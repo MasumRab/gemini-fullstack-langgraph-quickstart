@@ -19,11 +19,16 @@ This document outlines the strategic roadmap for evolving the current "Research 
 - [ ] **Standardize Tooling (MCP):**
     - [x] Foundation: Config module `mcp_config.py` created and tested.
     - [x] Wiring: Agent graph updated to load MCP settings (disabled by default).
-    - [x] Install `langchain-mcp-adapters`.
+    - [x] Install `langchain-mcp-adapters` (Included in `pyproject.toml`).
     - [x] Refactor `tools_and_schemas.py` to use MCP adapters for tool definitions.
 - [ ] **Implement File-based Memory:**
-    - [x] Create simple `load_plan` and `save_plan` tools (using MCP or direct implementation).
+<<<<<<< HEAD
+    - [x] Create simple `load_plan` and `save_plan` tools (Implemented in `persistence.py`).
+    - [ ] Allow the agent to persist the `TodoState` to a local JSON file to survive server restarts (Via MCP Wrapper).
+=======
+    - [x] Create simple `load_plan` and `save_plan` tools. (Implemented in `persistence.py` & wrapped).
     - [x] Allow the agent to persist the `TodoState` to a local JSON file to survive server restarts.
+>>>>>>> 641785b (Merge origin/main and Resolve Conflicts)
 
 ## Phase 2: SOTA Deep Research Features
 *Goal: Integrate verified patterns from Open Deep Research, STORM, FlowSearch, ManuSearch, and GPT Researcher.*

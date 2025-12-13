@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 from backend.src.search.router import SearchRouter
 from backend.src.config.app_config import AppConfig
+=======
+from search.router import SearchRouter
+from config.app_config import AppConfig
+>>>>>>> origin/main
 
 def test_router():
     """Verify SearchRouter functionality."""
