@@ -2,7 +2,7 @@
 
 Usage in notebooks:
     from agent.graph_builder import build_graph
-    
+
     graph = build_graph(
         enable_planning=True,
         enable_reflection=True,
@@ -10,7 +10,7 @@ Usage in notebooks:
         enable_kg=False,
         enable_compression=True,
     )
-    
+
     result = await graph.ainvoke(state, config)
 """
 
@@ -66,7 +66,7 @@ def build_graph(
     name: str = "custom-agent",
 ) -> StateGraph:
     """Build a customized agent graph based on feature flags.
-    
+
     Args:
         enable_planning: Include planning mode for user review (default: False)
         enable_reflection: Include reflection loop for follow-up queries (default: True)
@@ -76,17 +76,17 @@ def build_graph(
         enable_kg: Include Knowledge Graph enrichment (default: False)
         parallel_search: Use parallel Send for web research (default: True)
         name: Name for the compiled graph
-        
+
     Returns:
         Compiled StateGraph ready for invocation
-        
+
     Example:
         # Minimal graph (upstream-like)
         graph = build_graph(enable_planning=False, enable_reflection=False)
-        
+
         # Standard planning graph
         graph = build_graph(enable_planning=True, enable_reflection=True)
-        
+
         # Full enriched graph
         graph = build_graph(
             enable_planning=True,
@@ -96,37 +96,37 @@ def build_graph(
         )
     """
     builder = StateGraph(OverallState, config_schema=Configuration)
-    
+
     # === Core Nodes (Always present) ===
     builder.add_node("load_context", load_context)
     builder.add_node("generate_query", generate_query)
     builder.add_node("web_research", web_research)
     builder.add_node("finalize_answer", finalize_answer)
-    
+
     # === Optional Nodes ===
     if enable_planning:
         builder.add_node("planning_mode", planning_mode)
         builder.add_node("planning_wait", planning_wait)
-    
+
     if enable_validation:
         builder.add_node("validate_web_results", validate_web_results)
-    
+
     if enable_compression:
         builder.add_node("compression_node", compression_node)
-    
+
     if enable_reflection:
         builder.add_node("reflection", reflection)
-    
+
     if enable_rag and RAG_AVAILABLE and rag_retrieve:
         builder.add_node("rag_retrieve", rag_retrieve)
-    
+
     if enable_kg and KG_AVAILABLE and kg_enrich:
         builder.add_node("kg_enrich", kg_enrich)
-    
+
     # === Edges ===
     builder.add_edge(START, "load_context")
     builder.add_edge("load_context", "generate_query")
-    
+
     # After query generation: Planning or direct to search
     if enable_planning:
         builder.add_edge("generate_query", "planning_mode")
@@ -147,32 +147,32 @@ def build_graph(
         else:
             # Sequential: just connect
             builder.add_edge("generate_query", "web_research")
-    
+
     # === Post-Search Pipeline ===
     # Determine the chain: web_research -> [validation] -> [compression] -> [rag] -> [kg] -> [reflection] -> finalize
-    
+
     current_node = "web_research"
-    
+
     # Validation
     if enable_validation:
         builder.add_edge(current_node, "validate_web_results")
         current_node = "validate_web_results"
-    
+
     # Compression (optional enrichment)
     if enable_compression:
         builder.add_edge(current_node, "compression_node")
         current_node = "compression_node"
-    
+
     # RAG (optional enrichment)
     if enable_rag and RAG_AVAILABLE and rag_retrieve:
         builder.add_edge(current_node, "rag_retrieve")
         current_node = "rag_retrieve"
-    
+
     # KG Enrichment (optional enrichment)
     if enable_kg and KG_AVAILABLE and kg_enrich:
         builder.add_edge(current_node, "kg_enrich")
         current_node = "kg_enrich"
-    
+
     # Reflection or direct to finalize
     if enable_reflection:
         builder.add_edge(current_node, "reflection")
@@ -181,9 +181,9 @@ def build_graph(
         )
     else:
         builder.add_edge(current_node, "finalize_answer")
-    
+
     builder.add_edge("finalize_answer", END)
-    
+
     return builder.compile(name=name)
 
 

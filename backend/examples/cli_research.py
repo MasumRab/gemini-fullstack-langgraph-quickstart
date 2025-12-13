@@ -1,11 +1,10 @@
 import argparse
 from langchain_core.messages import HumanMessage
+from agent.graph import graph
+from agent.models import DEFAULT_REFLECTION_MODEL
 
 
-
-import asyncio
-
-async def main() -> None:
+def main() -> None:
     """Run the research agent from the command line."""
     parser = argparse.ArgumentParser(description="Run the LangGraph research agent")
     parser.add_argument("question", help="Research question")
@@ -23,14 +22,8 @@ async def main() -> None:
     )
     parser.add_argument(
         "--reasoning-model",
-        default="gemini-2.5-pro",
-        help="Model for the final answer",
-    )
-    parser.add_argument(
-        "--mode",
-        choices=["upstream", "planning", "linear", "enriched"],
-        default="upstream",
-        help="Graph mode: 'upstream' (Minimal), 'planning' (Standard), 'linear' (Seq), 'enriched' (Full)",
+        default=DEFAULT_REFLECTION_MODEL,
+        help="Model for reasoning and final answer",
     )
     args = parser.parse_args()
 
@@ -39,26 +32,13 @@ async def main() -> None:
         "initial_search_query_count": args.initial_queries,
         "max_research_loops": args.max_loops,
         "reasoning_model": args.reasoning_model,
-        "agent_mode": args.mode, # Pass mode to config if needed
     }
 
-    # Select Graph
-    if args.mode == "upstream":
-        from agent.graphs.upstream import graph
-    elif args.mode == "planning":
-        from agent.graphs.planning import graph
-    elif args.mode == "linear":
-        from agent.graphs.linear import graph
-    else:
-        from agent.graph import graph
-
-    # Pass configuration to disable interactive planning confirmation for CLI
-    config = {"configurable": {"require_planning_confirmation": False}}
-    result = await graph.ainvoke(state, config)
+    result = graph.invoke(state)
     messages = result.get("messages", [])
     if messages:
         print(messages[-1].content)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
