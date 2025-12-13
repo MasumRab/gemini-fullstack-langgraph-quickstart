@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Any
 from pydantic import BaseModel, Field
 
 
@@ -22,12 +22,51 @@ class Reflection(BaseModel):
         description="A list of follow-up queries to address the knowledge gap."
     )
 
-def get_tools_from_mcp(mcp_config=None):
+async def get_tools_from_mcp(mcp_config=None) -> List[Any]:
     """
-    Placeholder to load tools via langchain-mcp-adapters.
-    In the future, this will connect to the MCP server defined in mcp_config.
+    Load tools via langchain-mcp-adapters.
+    Connects to the MCP server defined in mcp_config.
+
+    Note: This function is asynchronous because connecting to an MCP server
+    (especially via SSE) involves network operations. Callers must await this function.
     """
-    # Example integration:
-    # from langchain_mcp_adapters import MCPToolAdapter
-    # return MCPToolAdapter.load_tools(mcp_config)
-    return []
+    if mcp_config is None:
+        try:
+            from .mcp_config import load_mcp_settings
+            mcp_config = load_mcp_settings()
+        except ImportError:
+             # Fallback if mcp_config module is not available or path issues
+             return []
+
+    if not mcp_config.enabled or not mcp_config.endpoint:
+        return []
+
+    try:
+        from langchain_mcp_adapters.tools import load_mcp_tools
+        from langchain_mcp_adapters.sessions import SSEConnection
+    except ImportError:
+        # langchain-mcp-adapters not installed
+        return []
+
+    # Headers for authentication if API key is present
+    headers = {}
+    if mcp_config.api_key:
+         headers["Authorization"] = f"Bearer {mcp_config.api_key}"
+
+    # We currently support SSE transport via HTTP/S endpoint
+    connection = SSEConnection(
+        transport="sse",
+        url=mcp_config.endpoint,
+        headers=headers if headers else None,
+        timeout=mcp_config.timeout_seconds
+    )
+
+    try:
+        # load_mcp_tools establishes the connection and returns LangChain compatible tools.
+        # Ensure the environment supports async execution.
+        tools = await load_mcp_tools(connection=connection)
+        return tools
+    except Exception as e:
+        # Log error in a real app, here we just print or return empty
+        # print(f"Error loading MCP tools: {e}")
+        return []
