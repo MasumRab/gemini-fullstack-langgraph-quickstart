@@ -33,7 +33,19 @@ from agent.models import TEST_MODEL
 # Fixtures
 @pytest.fixture
 def base_state():
-    """Base state for testing"""
+    """
+    Create a fresh default state dictionary used by tests.
+    
+    Returns:
+        dict: A new state mapping with the following keys:
+            - messages (list): Conversation messages.
+            - research_loop_count (int): Number of completed research/reflection loops.
+            - queries (list): Pending search or follow-up queries.
+            - web_research_results (list): Collected web research items.
+            - planning_steps (list): Generated planning steps for queries.
+            - planning_status (str|None): Current planning status (e.g., "auto_approved", "awaiting_confirmation") or None.
+            - planning_feedback (list): Feedback messages related to planning.
+    """
     return {
         "messages": [],
         "research_loop_count": 0,
@@ -47,7 +59,16 @@ def base_state():
 
 @pytest.fixture
 def config():
-    """Basic runnable config"""
+    """
+    Create a default RunnableConfig used by tests.
+    
+    Returns:
+        RunnableConfig: Configuration with defaults:
+            - model: "gemini-2.0-flash-exp"
+            - max_loops: 3
+            - num_queries: 3
+            - require_planning_confirmation: False
+    """
     return RunnableConfig(
         configurable={
             "model": TEST_MODEL,
@@ -60,7 +81,14 @@ def config():
 
 @pytest.fixture
 def config_with_confirmation():
-    """Config requiring planning confirmation"""
+    """
+    Return a RunnableConfig configured to require planning confirmation.
+    
+    Creates a RunnableConfig with sensible defaults for tests: model set to "gemini-2.0-flash-exp", max_loops 3, num_queries 3, and require_planning_confirmation enabled.
+    
+    Returns:
+        RunnableConfig: Configuration with planning confirmation required.
+    """
     return RunnableConfig(
         configurable={
             "model": TEST_MODEL,

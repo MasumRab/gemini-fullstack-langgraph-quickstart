@@ -1,62 +1,27 @@
-# Task: Restore Upstream Compatibility via `_nodes.py`
+# Upstream Compatibility Strategy
 
-**Status:** Proposed / Todo
-**Priority:** Low (Cleanup/Architecture)
+## Objective
+Maintain a clean path to the upstream "Deep Research" baseline while allowing the agent to evolve with advanced features (SearchRouter, Observability, MCP).
 
-## Context
-The file `backend/src/agent/nodes.py` has significantly diverged from the original upstream implementation to support features like:
-*   `SearchRouter` (reliability-first search)
-*   `observe_span` (Langfuse observability)
-*   Hybrid Validation (LLM claim-check + heuristics)
-*   Tiered Compression
+## Strategy: Node Splitting
+We will split the monolithic `nodes.py` into two distinct modules:
 
-While `backend/src/agent/graph.py` uses these evolved nodes, there is a desire to maintain an `_graph.py` (or similar) that represents the "standard" or "upstream" implementation for benchmarking and compatibility testing.
+1.  **`_nodes.py` (Legacy/Upstream):**
+    - Contains the original, un-refactored node functions exactly as they appear in the upstream repository.
+    - Used by the "Strict Linear" or "Legacy" graph variants.
+    - **Rule:** Do not modify this file unless pulling upstream changes.
 
-## Plan
+2.  **`nodes.py` (Evolved):**
+    - Contains the enhanced node functions (e.g., using `SearchRouter` instead of direct Tavily calls, adding `observe_span` decorators).
+    - Used by the "Production" or "Evolved" graph (`graph.py`).
+    - **Rule:** This is the active development file.
 
-### 1. Create `backend/src/agent/_nodes.py`
-This file should contain the **unmodified** or minimally modified node logic corresponding to the upstream repository state.
-*   **Web Research:** Direct call to Tavily/Google without `SearchRouter` fallback complexity.
-*   **Validation:** Simple heuristics or pass-through.
-*   **No Observability:** Remove `observe_span` decorators to keep it clean.
+## Implementation Plan
+1.  Copy the current `nodes.py` to `_nodes.py` (if we wanted to capture the current state, but better to fetch the actual upstream state).
+2.  Refactor `nodes.py` to import necessary shared utilities but keep the logic evolved.
+3.  Update `graph.py` to import from `nodes.py` (already doing this).
+4.  Create a new `legacy_graph.py` (or use `graphs/linear.py`) that imports from `_nodes.py`.
 
-### 2. Create/Update `backend/src/agent/_graph.py`
-This graph definition should import nodes from `_nodes.py` instead of `nodes.py`.
-```python
-from agent._nodes import (
-    load_context,
-    generate_query,
-    # ...
-)
-# Define StateGraph using these nodes
-```
-
-### 3. Integrate Decorators for Readability
-To clearly distinguish between "Standard" and "Evolved" nodes in tooling (like `GraphRegistry`), we should use decorators or metadata.
-
-**Proposal:** Update `graph_registry.describe` or add a new decorator `@upstream_compatible`.
-
-```python
-# In _nodes.py
-@graph_registry.describe(
-    "web_research",
-    tags=["upstream", "standard"],
-    summary="Standard web research using single provider."
-)
-def web_research(state): ...
-
-# In nodes.py
-@graph_registry.describe(
-    "web_research",
-    tags=["evolved", "production"],
-    summary="Reliability-first web research with fallback and observability."
-)
-def web_research(state): ...
-```
-
-This allows visualization tools to filter or highlight the differences.
-
-## Next Steps
-1.  Copy the original node logic (from git history or upstream) into `backend/src/agent/_nodes.py`.
-2.  Implement `backend/src/agent/_graph.py` using these nodes.
-3.  Update `backend/src/agent/registry.py` to handle `tags` in metadata if not already present.
+## Benefits
+- **Benchmarks:** We can run the same queries against `graph.py` (Evolved) and `legacy_graph.py` (Upstream) to measure improvements.
+- **Merge Conflicts:** Upstream changes to `nodes.py` will conflict with our `nodes.py`, but having `_nodes.py` gives us a reference to resolve them or to apply them to the legacy path first.
