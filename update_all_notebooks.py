@@ -35,7 +35,7 @@ def setup_environment():
     if src_dir.exists():
         if str(src_dir) not in sys.path:
             sys.path.append(str(src_dir))
-            print(f"✅ Added {src_dir} to sys.path")
+            print(f"  [OK] Added {src_dir} to sys.path")
     
     if str(backend_dir) not in sys.path:
         sys.path.append(str(backend_dir))
@@ -43,11 +43,11 @@ def setup_environment():
     # Verify backend/agent can be imported
     try:
         import agent
-        print("✅ Agent module found and imported.")
+        print("  [OK] Agent module found and imported.")
     except ImportError:
-        print("❌ Agent module not found. Installing dependencies...")
+        print("  [!] Agent module not found. Installing dependencies...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", str(backend_dir)])
-        print("✅ Backend installed in editable mode.")
+        print("  [OK] Backend installed in editable mode.")
 
 setup_environment()"""
 
@@ -107,20 +107,20 @@ else:
             contents="Explain how AI works in a few words"
         )
         
-        print(f"✅ Model verification successful!")
+        print(f"  [OK] Model verification successful!")
         print(f"   Model: {SELECTED_MODEL}")
         print(f"   Response: {response.text[:100]}...")
         
     except ImportError:
-        print("⚠️  google-genai package not installed!")
+        print("  [!] google-genai package not installed!")
         print("   Installing now...")
         import subprocess
         import sys
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "google-genai"])
-        print("✅ Installed! Please re-run this cell.")
+        print("  [OK] Installed! Please re-run this cell.")
         
     except Exception as e:
-        print(f"❌ Model verification failed: {e}")
+        print(f"  [X] Model verification failed: {e}")
         print(f"   This could mean:")
         print(f"   - Invalid API key")
         print(f"   - Model '{SELECTED_MODEL}' not available in your region")
@@ -139,14 +139,15 @@ if IN_COLAB:
     print("🔧 Running in Google Colab - Installing dependencies...")
     
     # Install backend package
-    !pip install -q git+https://github.com/yourusername/gemini-fullstack-langgraph-quickstart.git#subdirectory=backend
+    !rm -rf gemini-fullstack-langgraph-quickstart
+    !pip install -q git+https://github.com/MasumRab/gemini-fullstack-langgraph-quickstart.git#subdirectory=backend
     
     # Or if running from a local copy
     # !pip install -q -e ./backend
     
-    print("✅ Dependencies installed!")
+    print("  [OK] Dependencies installed!")
 else:
-    print("✅ Running locally")
+    print("  [OK] Running locally")
 # --- COLAB SETUP END ---"""
 
 
@@ -173,24 +174,24 @@ def update_or_insert_cell(nb, marker, new_content, position=0):
     if idx >= 0:
         # Update existing cell
         nb.cells[idx].source = new_content
-        print(f"  ✅ Updated existing cell at position {idx}")
+        print(f"  [OK] Updated existing cell at position {idx}")
         return idx
     else:
         # Insert new cell
         nb.cells.insert(position, new_code_cell(new_content))
-        print(f"  ✅ Inserted new cell at position {position}")
+        print(f"  [OK] Inserted new cell at position {position}")
         return position
 
 
 def process_notebook(notebook_path: Path, dry_run=False):
     """Process a single notebook to ensure it has the required cells."""
-    print(f"\n📓 Processing: {notebook_path.name}")
+    print(f"\n[..] Processing: {notebook_path.name}")
     
     try:
         with open(notebook_path, 'r', encoding='utf-8') as f:
             nb = nbformat.read(f, as_version=4)
     except Exception as e:
-        print(f"  ❌ Error reading notebook: {e}")
+        print(f"  [X] Error reading notebook: {e}")
         return False
     
     modified = False
@@ -247,16 +248,16 @@ def process_notebook(notebook_path: Path, dry_run=False):
         try:
             with open(notebook_path, 'w', encoding='utf-8') as f:
                 nbformat.write(nb, f)
-            print(f"  💾 Saved changes to {notebook_path.name}")
+            print(f"  [OK] Saved changes to {notebook_path.name}")
             return True
         except Exception as e:
-            print(f"  ❌ Error saving notebook: {e}")
+            print(f"  [X] Error saving notebook: {e}")
             return False
     elif modified and dry_run:
         print(f"  🔍 [DRY RUN] Would save changes to {notebook_path.name}")
         return True
     else:
-        print(f"  ℹ️  No changes needed")
+        print(f"  [i] No changes needed")
         return False
 
 
@@ -287,7 +288,7 @@ def main():
         print("❌ No notebooks found!")
         return
     
-    print(f"📚 Found {len(all_notebooks)} notebooks to process\n")
+    print(f"[..] Found {len(all_notebooks)} notebooks to process\n")
     print("=" * 60)
     
     # Process each notebook
@@ -298,7 +299,7 @@ def main():
     
     # Summary
     print("\n" + "=" * 60)
-    print(f"\n✅ Successfully processed {success_count}/{len(all_notebooks)} notebooks")
+    print(f"\n[OK] Successfully processed {success_count}/{len(all_notebooks)} notebooks")
     
     if dry_run:
         print("\n💡 Run without --dry-run to apply changes")

@@ -16,24 +16,26 @@ from threading import Lock
 
 logger = logging.getLogger(__name__)
 
+from agent.models import GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO
+
 
 # Gemini 2.5 Model Rate Limits (Free Tier)
 RATE_LIMITS = {
-    "gemini-2.5-flash": {
+    GEMINI_FLASH: {
         "rpm": 15,
         "tpm": 1_000_000,
         "rpd": 1_500,
         "max_tokens": 1_048_576,
         "max_output_tokens": 8_192,
     },
-    "gemini-2.5-flash-lite": {
+    GEMINI_FLASH_LITE: {
         "rpm": 15,
         "tpm": 1_000_000,
         "rpd": 1_500,
         "max_tokens": 1_048_576,
         "max_output_tokens": 8_192,
     },
-    "gemini-2.5-pro": {
+    GEMINI_PRO: {
         "rpm": 10,  # Lower RPM for Pro
         "tpm": 1_000_000,
         "rpd": 1_000,  # Lower daily limit
@@ -46,14 +48,14 @@ RATE_LIMITS = {
 class RateLimiter:
     """Thread-safe rate limiter for Gemini API calls."""
     
-    def __init__(self, model: str = "gemini-2.5-flash"):
+    def __init__(self, model: str = GEMINI_FLASH):
         """Initialize rate limiter for a specific model.
         
         Args:
             model: Model name to get rate limits for
         """
         self.model = model
-        self.limits = RATE_LIMITS.get(model, RATE_LIMITS["gemini-2.5-flash"])
+        self.limits = RATE_LIMITS.get(model, RATE_LIMITS[GEMINI_FLASH])
         
         # Thread-safe locks
         self._lock = Lock()
@@ -187,14 +189,14 @@ class RateLimiter:
 class ContextWindowManager:
     """Manage context window sizes to stay within model limits."""
     
-    def __init__(self, model: str = "gemini-2.5-flash"):
+    def __init__(self, model: str = GEMINI_FLASH):
         """Initialize context window manager.
         
         Args:
             model: Model name to get limits for
         """
         self.model = model
-        self.limits = RATE_LIMITS.get(model, RATE_LIMITS["gemini-2.5-flash"])
+        self.limits = RATE_LIMITS.get(model, RATE_LIMITS[GEMINI_FLASH])
         self.max_tokens = self.limits["max_tokens"]
         self.max_output_tokens = self.limits["max_output_tokens"]
         

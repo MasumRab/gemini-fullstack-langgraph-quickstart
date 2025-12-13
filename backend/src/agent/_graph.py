@@ -140,8 +140,9 @@ def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
     # Fallback to Google GenAI grounding
     if genai_client:
         try:
+            from agent.models import GEMINI_FLASH
             response = genai_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=GEMINI_FLASH,
                 contents=query,
                 config=types.GenerateContentConfig(
                     tools=[types.Tool(google_search=types.GoogleSearch())],

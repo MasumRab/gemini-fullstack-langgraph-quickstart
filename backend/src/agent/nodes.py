@@ -120,8 +120,10 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
         )
 
         # Use rate-limited Gemini to assess ambiguity
+        from agent.models import DEFAULT_SCOPING_MODEL
+        
         llm = _get_rate_limited_llm(
-            model="gemini-2.5-flash",
+            model=DEFAULT_SCOPING_MODEL,
             temperature=0,
             prompt=prompt
         )

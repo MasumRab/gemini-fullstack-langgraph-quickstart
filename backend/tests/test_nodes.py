@@ -27,6 +27,7 @@ from agent.nodes import (
     reflection,
     finalize_answer,
 )
+from agent.models import TEST_MODEL
 
 
 # Fixtures
@@ -49,7 +50,7 @@ def config():
     """Basic runnable config"""
     return RunnableConfig(
         configurable={
-            "model": "gemini-2.5-flash",
+            "model": TEST_MODEL,
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": False,
@@ -62,7 +63,7 @@ def config_with_confirmation():
     """Config requiring planning confirmation"""
     return RunnableConfig(
         configurable={
-            "model": "gemini-2.5-flash",
+            "model": TEST_MODEL,
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": True,

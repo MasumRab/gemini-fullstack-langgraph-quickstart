@@ -13,24 +13,28 @@ if sys.stdout.encoding != 'utf-8':
 
 from google import genai
 
+# Add backend/src to path to import models
+PROJECT_ROOT = Path(__file__).parent
+BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
+if str(BACKEND_SRC) not in sys.path:
+    sys.path.append(str(BACKEND_SRC))
+
+try:
+    from agent.models import GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, _DEPRECATED_MODELS
+except ImportError:
+    print("[ERROR] Could not import agent.models. Check backend/src path.")
+    sys.exit(1)
+
 # List of models to test
 MODELS_TO_TEST = [
-    # Gemini 1.5 series
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
-    "gemini-1.5-pro",
-    
-    # Gemini 2.0 series
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-exp",
-    "gemini-2.0-flash-lite",
-    "gemini-2.0-flash-lite-preview-02-05",
-    
-    # Gemini 2.5 series
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-2.5-pro",
+    # Active Models (from constants)
+    GEMINI_FLASH,
+    GEMINI_FLASH_LITE,
+    GEMINI_PRO,
 ]
+
+# Add deprecated models (optional, for verification they fail/warn)
+# MODELS_TO_TEST.extend(list(_DEPRECATED_MODELS))
 
 def test_model(client, model_name):
     """Test if a model is accessible."""

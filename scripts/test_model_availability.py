@@ -37,12 +37,20 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
     
-    models_to_test = [
-        "gemini-2.5-flash",
-        "gemini-2.5-pro",
-        "gemini-2.0-flash-exp",
-        "gemini-1.5-flash"
-    ]
+    # Add backend/src to path for imports
+    backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend', 'src'))
+    if backend_path not in sys.path:
+        sys.path.insert(0, backend_path)
+
+    try:
+        from agent.models import GEMINI_FLASH, GEMINI_PRO, GEMINI_FLASH_LITE
+        models_to_test = [GEMINI_FLASH, GEMINI_PRO, GEMINI_FLASH_LITE]
+    except ImportError:
+        print("Could not import agent.models, using defaults")
+        models_to_test = [
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+        ]
     
     results = {}
     for model in models_to_test:
