@@ -14,16 +14,16 @@ class Configuration(BaseModel):
     """The configuration for the agent."""
 
     query_generator_model: str = Field(
-        default=DEFAULT_QUERY_MODEL,
+        default="gemma-3-27b-it",
         json_schema_extra={
-            "description": "The name of the language model to use for the agent's query generation."
+            "description": "The name of the LLM to generate search queries. Uses Gemma 3 27B IT for efficiency."
         },
     )
 
     reflection_model: str = Field(
-        default=DEFAULT_REFLECTION_MODEL,
+        default="gemma-3-27b-it",
         json_schema_extra={
-            "description": "The name of the language model to use for the agent's reflection."
+            "description": "The name of the language model to use for the agent's reflection step. Uses Gemma 3 27B IT for balanced performance."
         },
     )
 

@@ -1,41 +1,49 @@
-# Gemma 27B Configuration
+# Gemma 3 & 27B Configuration
 
-User research indicates that `gemma-2-27b-it` (Gemma 2 27B Instruction Tuned) offers higher daily API limits compared to standard Gemini models on the current API tier. This model is available via the Google AI SDK and can be used as a robust fallback or primary model for specific high-volume tasks.
+User research has confirmed that `gemma-3-27b-it` (Gemma 3 27B Instruction Tuned) and its predecessor `gemma-2-27b-it` offer significantly higher daily API limits compared to standard Gemini models. These models are available via the Google AI SDK and can be used as the primary engine for high-volume research tasks.
 
 ## Key Specifications
 
-- **Model ID**: `gemma-2-27b-it`
-- **Context Window**: ~8,192 tokens (Safe limit)
-- **Use Case**: High-volume query generation, reasoning, and summarization where 1M context is not required.
+- **Model ID**: `gemma-3-27b-it` (and `gemma-2-27b-it`)
+- **Context Window**: ~8,192 tokens.
+- **Use Case**: High-volume query generation, reasoning, and summarization where extreme context length is not required.
 - **Availability**: Confirmed via Google GenAI SDK.
 
-## How to Use
+## Default Configuration
 
-To switch specific agents to use Gemma 27B:
+The project is now configured to use `gemma-3-27b-it` by default for:
+- Query Generation
+- Reflection
+- Scoping
+- Validation
+- Final Answer Synthesis
+
+## How to Override
+
+If you need the 1M+ context window of Gemini 2.5 for a specific task, you can override the defaults:
 
 ### 1. In `configuration.py` or `.env`
 Set the model overrides:
 
 ```env
-MODEL_QUERY_GENERATOR=gemma-2-27b-it
-MODEL_REFLECTION=gemma-2-27b-it
-MODEL_VALIDATION=gemma-2-27b-it
+MODEL_QUERY_GENERATOR=gemini-2.5-flash
+MODEL_ANSWER=gemini-2.5-pro
 ```
 
 ### 2. In CLI
 ```bash
-python examples/cli_research.py "My query" --reasoning-model gemma-2-27b-it
+python examples/cli_research.py "My query" --reasoning-model gemini-2.5-pro
 ```
 
 ### 3. Programmatic Usage
 ```python
-from agent.models import GEMMA_2_27B_IT
+from agent.models import GEMINI_PRO
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-llm = ChatGoogleGenerativeAI(model=GEMMA_2_27B_IT)
+llm = ChatGoogleGenerativeAI(model=GEMINI_PRO)
 ```
 
 ## Considerations
 
-- **Context Window**: Unlike Gemini's 1M/2M window, Gemma is limited to ~8k. Avoid using it for large-scale summarization of multiple long documents in a single pass.
-- **Reasoning**: Gemma 2 27B is highly capable (comparable to Llama 3 70B in some benchmarks) but may differ slightly in instruction following compared to Gemini 1.5 Pro.
+- **Context Window**: Unlike Gemini's 1M/2M window, Gemma is limited to ~8k. The agent automatically handles summarization, but for extremely large documents, Gemini Flash may be preferred.
+- **Reasoning**: Gemma 3 27B is highly capable and optimized for instruction following.
