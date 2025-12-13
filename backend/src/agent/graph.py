@@ -59,10 +59,11 @@ if os.getenv("GEMINI_API_KEY") is None:
 # Actually, let's just stick to what works and ignore the warning for now to avoid breaking changes if user downgrades.
 builder = StateGraph(OverallState, config_schema=Configuration)
 
-# If MCP is enabled, we would register MCP tools here or modify the schema
+# If MCP is enabled, we log it. Tools are loaded via lifespan in app.py to ensure event loop safety.
 if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
-    # In future: builder.bind_tools(mcp_tools)
+    # Note: Tools are loaded into agent.tools_and_schemas.MCP_TOOLS during app startup.
+    # Nodes can access them from there at runtime.
 
 builder.add_node("load_context", load_context)
 builder.add_node("scoping_node", scoping_node)
