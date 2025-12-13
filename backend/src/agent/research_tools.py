@@ -529,6 +529,10 @@ MODEL_TOKEN_LIMITS = {
     GEMINI_PRO: 2097152,
     GEMINI_FLASH: 1048576,
     GEMINI_FLASH_LITE: 1048576,
+    "gemma-2-27b-it": 8192,
+    "gemma-3-27b-it": 8192,
+    "google:gemma-2-27b-it": 8192,
+    "google:gemma-3-27b-it": 8192,
     # Legacy models (deprecated, kept for reference only - not accessible via API)
     "google:gemini-1.5-pro": 2097152,
     "google:gemini-1.5-flash": 1048576,

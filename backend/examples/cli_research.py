@@ -22,7 +22,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--reasoning-model",
-        default=DEFAULT_REFLECTION_MODEL,
+        default="gemma-3-27b-it",
         help="Model for reasoning and final answer",
     )
     args = parser.parse_args()
