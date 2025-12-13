@@ -41,7 +41,7 @@ def base_state():
             - messages (list): Conversation messages.
             - research_loop_count (int): Number of completed research/reflection loops.
             - queries (list): Pending search or follow-up queries.
-            - web_research_results (list): Collected web research items.
+            - web_research_result (list): Collected web research items.
             - planning_steps (list): Generated planning steps for queries.
             - planning_status (str|None): Current planning status (e.g., "auto_approved", "awaiting_confirmation") or None.
             - planning_feedback (list): Feedback messages related to planning.
