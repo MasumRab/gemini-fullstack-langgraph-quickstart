@@ -3,6 +3,9 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph, START, END
 from agent.state import OverallState
 from agent.configuration import Configuration
+import os
+from langchain_google_genai import ChatGoogleGenerativeAI
+from config.app_config import config as app_config
 from agent.nodes import (
     load_context,
     generate_query,
@@ -31,26 +34,47 @@ def compress_context(state: OverallState, config: RunnableConfig) -> Dict[str, A
     2. Merges it with existing 'web_research_result' (history).
     3. Uses an LLM to summarize/deduplicate into a 'Running Summary'.
     """
-    # For Phase 2 Prototype: Simple concatenation/truncation or lightweight summary.
-    # In a full implementation, this would call an LLM.
-
     new_results = state.get("validated_web_research_result", [])
     current_results = state.get("web_research_result", [])
 
-    # Simple compression: Keep unique items, maybe limit total count
+    # Combine all results
     all_results = current_results + new_results
 
-    # TODO: Add actual LLM summarization here.
-    # For now, we tag them as 'Compressed' to prove the architecture flow.
-    compressed = [f"[Compressed] {r[:100]}..." for r in new_results]
+    # If disabled, return full list
+    if not app_config.compression_enabled:
+        return {"web_research_result": all_results}
 
-    # We replace the raw results with the compressed version + full history if needed,
-    # or just keep the 'Running Summary' as the main context.
-    # Here we append to keep history but formatted differently.
+    # Deduplicate while preserving order
+    unique_results = list(dict.fromkeys(all_results))
 
-    return {
-        "web_research_result": all_results # Placeholder for actual compression logic
-    }
+    combined_text = "\n\n".join(unique_results)
+
+    # Truncate if too long
+    max_chars = 30000
+    if len(combined_text) > max_chars:
+        combined_text = combined_text[:max_chars] + "\n[... truncated]"
+
+    prompt = f"""
+    Compress the following research notes into a concise running summary.
+    CRITICAL: You MUST preserve all source citations in [Title](url) format.
+    Do not lose any factual claims. Merge similar information.
+
+    Notes:
+    {combined_text}
+    """
+
+    try:
+        llm = ChatGoogleGenerativeAI(
+            model=app_config.model_compression,
+            temperature=0,
+            api_key=os.getenv("GEMINI_API_KEY"),
+        )
+        response = llm.invoke(prompt)
+        compressed = response.content
+        return {"web_research_result": [compressed]}
+    except Exception as e:
+        # Fallback
+        return {"web_research_result": unique_results}
 
 builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("load_context", load_context)
