@@ -23,27 +23,33 @@ GEMINI_FLASH_LITE = "gemini-2.5-flash-lite"
 GEMINI_PRO = "gemini-2.5-pro"
 """High-capability model for complex tasks. 2M token context, 10 RPM free tier."""
 
+GEMMA_2_27B_IT = "gemma-2-27b-it"
+"""Open weights model (Gemma 2 27B IT). High daily limits, 8k context."""
+
+GEMMA_3_27B_IT = "gemma-3-27b-it"
+"""Gemma 3 27B IT. High daily limits, suitable for most tasks."""
+
 # ============================================================================
 # Default Model Assignments
 # ============================================================================
 
-# These are the recommended defaults for different tasks
-DEFAULT_QUERY_MODEL = GEMINI_FLASH
+# These are the recommended defaults for differnt tasks
+DEFAULT_QUERY_MODEL = GEMMA_3_27B_IT
 """Default model for query generation - fast and efficient."""
 
-DEFAULT_REFLECTION_MODEL = GEMINI_FLASH
+DEFAULT_REFLECTION_MODEL = GEMMA_3_27B_IT
 """Default model for reflection/reasoning - balanced performance."""
 
-DEFAULT_ANSWER_MODEL = GEMINI_FLASH
+DEFAULT_ANSWER_MODEL = GEMMA_3_27B_IT
 """Default model for final answer synthesis - high quality output."""
 
-DEFAULT_VALIDATION_MODEL = GEMINI_FLASH
+DEFAULT_VALIDATION_MODEL = GEMMA_3_27B_IT
 """Default model for validation tasks - quick verification."""
 
-DEFAULT_COMPRESSION_MODEL = GEMINI_FLASH_LITE
+DEFAULT_COMPRESSION_MODEL = GEMMA_3_27B_IT
 """Default model for compression - lightweight and fast."""
 
-DEFAULT_SCOPING_MODEL = GEMINI_FLASH
+DEFAULT_SCOPING_MODEL = GEMMA_3_27B_IT
 """Default model for scoping/planning - efficient analysis."""
 
 # ============================================================================
@@ -96,7 +102,7 @@ def is_valid_model(model_name: str) -> bool:
         True if model is valid and accessible, False otherwise
     """
     # Check if it's a known valid model
-    valid_models = {GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO}
+    valid_models = {GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT, GEMMA_3_27B_IT}
     
     if model_name in valid_models:
         return True
@@ -159,5 +165,5 @@ def get_model_or_default(model_name: str, default: str = GEMINI_FLASH) -> str:
 # All Valid Models (for iteration/validation)
 # ============================================================================
 
-ALL_VALID_MODELS = [GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO]
+ALL_VALID_MODELS = [GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT, GEMMA_3_27B_IT]
 """List of all valid, accessible Gemini models."""
