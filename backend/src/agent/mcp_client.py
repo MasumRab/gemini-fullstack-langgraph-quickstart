@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional
 import json
 import logging
+from backend.src.agent.llm_client import call_llm_robust
 
 logger = logging.getLogger(__name__)
 
@@ -101,17 +102,8 @@ ENSURE to use the full tool name (e.g. filesystem.write_file).
 """
 
         try:
-            # Adapt to llm_client interface
-            if hasattr(llm_client, "invoke"):
-                 response = llm_client.invoke(planning_prompt)
-                 if hasattr(response, "content"):
-                     response_text = response.content
-                 else:
-                     response_text = str(response)
-            elif hasattr(llm_client, "generate"):
-                response_text = llm_client.generate(planning_prompt)
-            else:
-                 response_text = str(llm_client(planning_prompt))
+            # Adapt to llm_client interface using robust caller
+            response_text = call_llm_robust(llm_client, planning_prompt)
 
             # Clean markdown
             response_text = response_text.strip()

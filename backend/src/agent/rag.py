@@ -7,6 +7,7 @@ import logging
 import os
 
 from backend.src.config.app_config import config
+from backend.src.agent.llm_client import call_llm_robust
 
 # Optional imports for RAG dependencies
 try:
@@ -315,13 +316,7 @@ Respond in JSON format:
 """
         import json
         try:
-            if hasattr(llm_client, "invoke"):
-                 response = llm_client.invoke(verification_prompt)
-                 response_text = response.content if hasattr(response, "content") else str(response)
-            elif hasattr(llm_client, "generate"):
-                response_text = llm_client.generate(verification_prompt)
-            else:
-                raise ValueError("Unknown LLM client interface")
+            response_text = call_llm_robust(llm_client, verification_prompt)
 
             response_text = response_text.strip()
             if "```json" in response_text:
