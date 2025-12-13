@@ -7,7 +7,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 from observability.config import is_enabled
-from observability.langfuse import get_langfuse_handler, observe_span
+from observability.langfuse import get_langfuse_handler, observe_span, _LANGFUSE_AVAILABLE
 
 class TestObservability(unittest.TestCase):
 
@@ -30,8 +30,9 @@ class TestObservability(unittest.TestCase):
             handler = get_langfuse_handler()
             self.assertIsNone(handler)
 
+    @unittest.skipUnless(_LANGFUSE_AVAILABLE, "langfuse not installed")
     def test_handler_creation_enabled(self):
-        # If langfuse is installed (which it is in this environment), it should return a handler
+        # If langfuse is installed, it should return a handler
         env = {
             "LANGFUSE_ENABLED": "true",
             "LANGFUSE_PUBLIC_KEY": "pk-123",
@@ -49,6 +50,7 @@ class TestObservability(unittest.TestCase):
             with observe_span("test_span") as span:
                 pass
 
+    @patch("observability.langfuse._LANGFUSE_AVAILABLE", True)
     @patch("observability.langfuse.observe")
     def test_observe_span_active_when_enabled(self, mock_observe):
         env = {
