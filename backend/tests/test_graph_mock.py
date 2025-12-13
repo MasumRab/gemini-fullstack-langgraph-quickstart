@@ -17,11 +17,17 @@ def mock_state():
 
 @pytest.fixture
 def mock_config():
-    return {"configurable": {
-        "query_generator_model": "gemini-2.5-flash",
-        "reflection_model": "gemini-2.5-flash",
-        "answer_model": "gemini-2.5-flash"
-    }}
+    """Fixture for test configuration."""
+    return {
+        "configurable": {
+            "thread_id": "test-thread",
+            "checkpoint_ns": "",
+            "checkpoint_id": "",
+        },
+        "query_generator_model": TEST_MODEL,
+        "reflection_model": TEST_MODEL,
+        "answer_model": TEST_MODEL
+    }
 
 class TestGraphNodes:
 

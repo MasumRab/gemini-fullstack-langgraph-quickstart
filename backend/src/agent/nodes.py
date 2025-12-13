@@ -1,3 +1,4 @@
+# TODO: See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
 import os
 import re
 import difflib
@@ -24,6 +25,8 @@ from agent.prompts import (
     reflection_instructions,
     answer_instructions,
 )
+from agent.scoping_prompts import scoping_instructions
+from agent.scoping_schema import ScopingAssessment
 from agent.tools_and_schemas import SearchQueryList, Reflection
 from agent.utils import (
     get_citations,
@@ -34,95 +37,116 @@ from agent.utils import (
 from agent.registry import graph_registry
 from agent.persistence import load_plan, save_plan
 from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
+from agent.rate_limiter import get_rate_limiter, get_context_manager
+from observability.langfuse import observe_span
 
-# Optional observability import
-try:
-    from observability.langfuse import observe_span
-except ImportError:
-    from contextlib import contextmanager
-
-    @contextmanager
-    def observe_span(name: str, config: Any = None):
-        """No-op observability span when langfuse is not available."""
-        yield
-
-# Optional config import with sensible defaults for standalone usage
-try:
-    from config.app_config import config as app_config
-except ImportError:
-    from dataclasses import dataclass
-
-    @dataclass
-    class _DefaultAppConfig:
-        """Default configuration for standalone agent usage."""
-        validation_mode: str = "heuristic"
-        require_citations: bool = False
-        compression_enabled: bool = False
-        compression_mode: str = "extractive"
-        model_validation: str = "gemini-2.5-flash-lite"
-        model_compression: str = "gemini-2.5-flash-lite"
-        search_provider: str = "google"
-        search_fallback: str = "duckduckgo"
-
-    app_config = _DefaultAppConfig()
-
-# Optional search router import with fallback implementation
-try:
-    from search.router import search_router
-except ImportError:
-    class _FallbackSearchResult:
-        """Simple search result for fallback router."""
-        def __init__(self, title: str, url: str, content: str):
-            self.title = title
-            self.url = url
-            self.content = content
-            self.raw_content = content
-
-    class _FallbackSearchRouter:
-        """Fallback search router using Google GenAI client directly."""
-
-        def search(self, query: str, max_results: int = 3) -> List[Any]:
-            """Execute search using Google's grounding API."""
-            from google.genai import Client
-            client = Client(api_key=os.getenv("GEMINI_API_KEY"))
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=query,
-                config={
-                    "tools": [{"google_search": {}}],
-                    "temperature": 0,
-                },
-            )
-            results = []
-            # Extract grounding metadata if available
-            if hasattr(response, "candidates") and response.candidates:
-                candidate = response.candidates[0]
-                if hasattr(candidate, "grounding_metadata"):
-                    grounding = candidate.grounding_metadata
-                    if hasattr(grounding, "grounding_chunks"):
-                        for chunk in grounding.grounding_chunks[:max_results]:
-                            web = getattr(chunk, "web", None)
-                            if web:
-                                results.append(_FallbackSearchResult(
-                                    title=getattr(web, "title", ""),
-                                    url=getattr(web, "uri", ""),
-                                    content=getattr(chunk, "text", ""),
-                                ))
-            # Fallback: use text response if no grounding data
-            if not results and hasattr(response, "text"):
-                results.append(_FallbackSearchResult(
-                    title="Search Results",
-                    url="",
-                    content=response.text,
-                ))
-            return results
-
-    search_router = _FallbackSearchRouter()
+from backend.src.config.app_config import config as app_config
+from backend.src.search.router import search_router
 
 logger = logging.getLogger(__name__)
 
 # Initialize Google Search Client
 genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
+def _get_rate_limited_llm(model: str, temperature: float = 0, max_retries: int = 2, prompt: str = "") -> ChatGoogleGenerativeAI:
+    """Get a rate-limited LLM instance with context management.
+    
+    Args:
+        model: Model name to use
+        temperature: Temperature setting
+        max_retries: Maximum retry attempts
+        prompt: Prompt text for token estimation
+        
+    Returns:
+        Configured ChatGoogleGenerativeAI instance
+    """
+    # Get rate limiter and context manager
+    rate_limiter = get_rate_limiter(model)
+    context_mgr = get_context_manager(model)
+    
+    # Estimate tokens if prompt provided
+    if prompt:
+        estimated_tokens = context_mgr.estimate_tokens(prompt)
+        
+        # Wait if necessary
+        wait_time = rate_limiter.wait_if_needed(estimated_tokens)
+        if wait_time > 0:
+            logger.info(f"Rate limited: waited {wait_time:.2f}s for {model}")
+        
+        # Log usage
+        usage = rate_limiter.get_current_usage()
+        logger.debug(f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}")
+    
+    return ChatGoogleGenerativeAI(
+        model=model,
+        temperature=temperature,
+        max_retries=max_retries,
+        api_key=os.getenv("GEMINI_API_KEY"),
+    )
+
+
+@graph_registry.describe(
+    "scoping_node",
+    summary="Analyzes query for ambiguity and asks clarifying questions if needed.",
+    tags=["planning", "scoping"],
+    outputs=["scoping_status", "clarification_questions", "messages"],
+)
+def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Scoping Phase:
+    Checks if the user's request is ambiguous.
+    If yes -> Generates questions and sets status to 'active' (interrupt).
+    If no -> Sets status to 'complete' (proceed).
+    """
+    with observe_span("scoping_node", config):
+        # 1. Check if we are processing a clarification answer
+        if state.get("scoping_status") == "active":
+            # We just got an answer back from the user (in messages)
+            # We assume the user's last message IS the answer.
+            # We treat this as "complete" for this turn, but ideally we loop back.
+            # For simplicity in V1: If we asked, and user answered, we assume it's clear enough to try planning.
+            return {"scoping_status": "complete"}
+
+        # 2. Analyze Initial Query
+        messages = state["messages"]
+        if not messages:
+            return {"scoping_status": "complete"} # Should not happen
+
+        # Format prompt first for token estimation
+        prompt = scoping_instructions.format(
+            current_date=get_current_date(),
+            research_topic=get_research_topic(messages)
+        )
+
+        # Use rate-limited Gemini to assess ambiguity
+        from agent.models import DEFAULT_SCOPING_MODEL
+        
+        llm = _get_rate_limited_llm(
+            model=DEFAULT_SCOPING_MODEL,
+            temperature=0,
+            prompt=prompt
+        )
+        structured_llm = llm.with_structured_output(ScopingAssessment)
+
+        try:
+            assessment = structured_llm.invoke(prompt)
+        except Exception as e:
+            logger.error(f"Scoping LLM failed: {e}")
+            return {"scoping_status": "complete"} # Fail open
+
+        if assessment.is_ambiguous:
+            # Create a message to ask the user
+            questions_text = "\n".join([f"- {q}" for q in assessment.clarifying_questions])
+            msg = f"To ensure I research this effectively, could you clarify:\n{questions_text}"
+
+            return {
+                "scoping_status": "active",
+                "clarification_questions": assessment.clarifying_questions,
+                "messages": [AIMessage(content=msg)]
+            }
+
+        return {"scoping_status": "complete"}
 
 
 @graph_registry.describe(
@@ -156,8 +180,8 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
 def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
     """LangGraph node that generates search queries based on the User's question.
 
-    Uses Gemini 2.0 Flash to create an optimized search queries for web research based on
-    the User's question.
+    Uses Gemini 2.5 Flash to create optimized search queries for web research based on
+    the User's question. Includes rate limiting and context window management.
     """
     with observe_span("generate_query", config):
         configurable = Configuration.from_runnable_config(config)
@@ -166,15 +190,6 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
         if state.get("initial_search_query_count") is None:
             state["initial_search_query_count"] = configurable.number_of_initial_queries
 
-        # init Gemini 2.0 Flash
-        llm = ChatGoogleGenerativeAI(
-            model=configurable.query_generator_model,
-            temperature=1.0,
-            max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
-        )
-        structured_llm = llm.with_structured_output(SearchQueryList)
-
         # Format the prompt
         current_date = get_current_date()
         formatted_prompt = query_writer_instructions.format(
@@ -182,6 +197,19 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             research_topic=get_research_topic(state["messages"]),
             number_queries=state["initial_search_query_count"],
         )
+
+        # Truncate if needed
+        context_mgr = get_context_manager(configurable.query_generator_model)
+        formatted_prompt = context_mgr.truncate_to_fit(formatted_prompt)
+
+        # Get rate-limited LLM
+        llm = _get_rate_limited_llm(
+            model=configurable.query_generator_model,
+            temperature=1.0,
+            max_retries=2,
+            prompt=formatted_prompt
+        )
+        structured_llm = llm.with_structured_output(SearchQueryList)
 
         # Generate the search queries
         result = structured_llm.invoke(formatted_prompt, config=config)
@@ -455,12 +483,6 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         if app_config.validation_mode == "hybrid" and heuristic_passed:
             validated_by_llm = []
 
-            llm = ChatGoogleGenerativeAI(
-                model=app_config.model_validation,
-                temperature=0,
-                api_key=os.getenv("GEMINI_API_KEY"),
-            )
-
             for candidate in heuristic_passed:
                 # Lightweight claim check
                 prompt = f"""
@@ -468,6 +490,14 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                 Snippet: "{candidate[:500]}..."
                 Reply with "YES" or "NO" only.
                 """
+                
+                # Use rate-limited LLM
+                llm = _get_rate_limited_llm(
+                    model=app_config.model_validation,
+                    temperature=0,
+                    prompt=prompt
+                )
+                
                 try:
                     # Assuming invoke returns AIMessage or similar
                     response = llm.invoke(prompt)
@@ -526,11 +556,6 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
         # Simple prompt construction
         combined_text = "\n\n".join(unique_results)
 
-        # Truncate if too long to avoid context overflow
-        max_chars = 30000  # Reasonable limit for most models
-        if len(combined_text) > max_chars:
-            combined_text = combined_text[:max_chars] + "\n[... truncated]"
-
         prompt = f"""
         Compress the following research notes into a concise summary.
         CRITICAL: You MUST preserve all source citations in [Title](url) format.
@@ -541,12 +566,17 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
         """
 
         try:
-            llm = ChatGoogleGenerativeAI(
-                model=app_config.model_compression, # e.g. "gemini-2.5-flash-lite" or similar
+            # Use context manager to truncate if needed
+            context_mgr = get_context_manager(app_config.model_compression)
+            truncated_prompt = context_mgr.truncate_to_fit(prompt)
+            
+            # Use rate-limited LLM
+            llm = _get_rate_limited_llm(
+                model=app_config.model_compression,
                 temperature=0,
-                api_key=os.getenv("GEMINI_API_KEY"),
+                prompt=truncated_prompt
             )
-            compressed = llm.invoke(prompt).content
+            compressed = llm.invoke(truncated_prompt).content
             return {"validated_web_research_result": [compressed]}
         except Exception as e:
             logger.warning(f"Compression failed: {e}. Returning originals.")
@@ -583,11 +613,12 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
             summaries="\n\n---\n\n".join(summaries_source),
         )
 
-        llm = ChatGoogleGenerativeAI(
+        # Use rate-limited LLM
+        llm = _get_rate_limited_llm(
             model=reasoning_model,
             temperature=1.0,
             max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
+            prompt=formatted_prompt
         )
         result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
 
@@ -654,11 +685,12 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
             summaries="\n---\n\n".join(summaries),
         )
 
-        llm = ChatGoogleGenerativeAI(
+        # Use rate-limited LLM
+        llm = _get_rate_limited_llm(
             model=reasoning_model,
             temperature=0,
             max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
+            prompt=formatted_prompt
         )
         result = llm.invoke(formatted_prompt)
 

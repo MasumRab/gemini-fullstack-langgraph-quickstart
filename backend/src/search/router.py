@@ -2,11 +2,13 @@ import logging
 from typing import List, Optional, Dict, Any
 from enum import Enum
 
-from config.app_config import config, AppConfig
+from backend.src.config.app_config import config, AppConfig
 from .provider import SearchProvider, SearchResult
 from .providers.google_adapter import GoogleSearchAdapter
 from .providers.duckduckgo_adapter import DuckDuckGoAdapter
 from .providers.brave_adapter import BraveSearchAdapter
+from .providers.tavily_adapter import TavilyAdapter
+from .providers.bing_adapter import BingAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +16,8 @@ class SearchProviderType(Enum):
     GOOGLE = "google"
     DUCKDUCKGO = "duckduckgo"
     BRAVE = "brave"
+    TAVILY = "tavily"
+    BING = "bing"
 
 class SearchRouter:
     """
@@ -45,6 +49,18 @@ class SearchRouter:
             self.providers[SearchProviderType.DUCKDUCKGO.value] = DuckDuckGoAdapter()
         except Exception as e:
             logger.debug(f"DuckDuckGo adapter failed to init: {e}")
+
+        # Tavily
+        try:
+            self.providers[SearchProviderType.TAVILY.value] = TavilyAdapter()
+        except Exception as e:
+            logger.debug(f"Tavily adapter failed to init: {e}")
+
+        # Bing
+        try:
+            self.providers[SearchProviderType.BING.value] = BingAdapter()
+        except Exception as e:
+            logger.debug(f"Bing adapter failed to init: {e}")
 
     def _get_provider(self, name: str) -> Optional[SearchProvider]:
         return self.providers.get(name)

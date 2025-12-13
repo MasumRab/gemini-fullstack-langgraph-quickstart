@@ -1,5 +1,5 @@
-from search.router import SearchRouter
-from config.app_config import AppConfig
+from backend.src.search.router import SearchRouter
+from backend.src.config.app_config import AppConfig
 
 def test_router():
     """Verify SearchRouter functionality."""
