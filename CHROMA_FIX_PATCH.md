@@ -33,7 +33,7 @@ Replace lines 111-120 with:
 
 ## Status
 - ✅ FAISS soft-delete documentation enhanced
-- ✅ RAG store selection logic clarified  
+- ✅ RAG store selection logic clarified
 - ⚠️ Chroma edge case fix documented (manual application needed)
 
 The Chroma fix is minor and can be applied manually or in a follow-up commit.

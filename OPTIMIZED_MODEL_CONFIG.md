@@ -1,6 +1,6 @@
 # Optimized Gemini 2.5 Model Configuration
 
-**Strategy:** Cost-Optimized Performance  
+**Strategy:** Cost-Optimized Performance
 **Updated:** 2025-12-11 15:12 AEDT
 
 ## Configuration Applied
@@ -72,11 +72,11 @@ class Configuration(BaseModel):
     query_generator_model: str = Field(
         default="gemini-2.5-flash-lite",  # ✓ Updated
     )
-    
+
     reflection_model: str = Field(
         default="gemini-2.5-flash",  # ✓ Already set
     )
-    
+
     answer_model: str = Field(
         default="gemini-2.5-pro",  # ✓ Already set
     )
@@ -102,34 +102,34 @@ ANSWER_MODEL=gemini-2.5-pro
 
 ### Query Generation (Flash-Lite)
 
-**Input:** User question  
-**Output:** 3-5 search queries  
-**Avg Tokens:** ~500 input, ~200 output  
-**Latency:** <1s  
+**Input:** User question
+**Output:** 3-5 search queries
+**Avg Tokens:** ~500 input, ~200 output
+**Latency:** <1s
 **Quality:** Excellent for this simple task
 
 ### Web Research (Flash-Lite)
 
-**Input:** Search query + prompt  
-**Output:** Grounded search results  
-**Avg Tokens:** ~1000 input, ~500 output  
-**Latency:** 1-2s (includes search API)  
+**Input:** Search query + prompt
+**Output:** Grounded search results
+**Avg Tokens:** ~1000 input, ~500 output
+**Latency:** 1-2s (includes search API)
 **Quality:** Excellent (uses Google Search grounding)
 
 ### Reflection (Flash)
 
-**Input:** All search results + summaries  
-**Output:** Gap analysis + follow-up queries  
-**Avg Tokens:** ~3000 input, ~500 output  
-**Latency:** 2-3s  
+**Input:** All search results + summaries
+**Output:** Gap analysis + follow-up queries
+**Avg Tokens:** ~3000 input, ~500 output
+**Latency:** 2-3s
 **Quality:** Excellent reasoning capability
 
 ### Final Answer (Pro)
 
-**Input:** All research + summaries  
-**Output:** Comprehensive report with citations  
-**Avg Tokens:** ~5000 input, ~2000 output  
-**Latency:** 3-5s  
+**Input:** All research + summaries
+**Output:** Comprehensive report with citations
+**Avg Tokens:** ~5000 input, ~2000 output
+**Latency:** 3-5s
 **Quality:** Premium synthesis with Deep Think
 
 ---
@@ -175,7 +175,7 @@ REFLECTION_MODEL=gemini-2.5-flash-lite
 ANSWER_MODEL=gemini-2.5-flash
 ```
 
-**Use Case:** High-volume, cost-sensitive applications  
+**Use Case:** High-volume, cost-sensitive applications
 **Trade-off:** Slightly lower quality on final answers
 
 ### Maximum Quality
@@ -186,7 +186,7 @@ REFLECTION_MODEL=gemini-2.5-pro
 ANSWER_MODEL=gemini-2.5-pro
 ```
 
-**Use Case:** Research, analysis, premium applications  
+**Use Case:** Research, analysis, premium applications
 **Trade-off:** ~2x higher cost
 
 ### Balanced (Previous Default)
@@ -197,7 +197,7 @@ REFLECTION_MODEL=gemini-2.5-flash
 ANSWER_MODEL=gemini-2.5-pro
 ```
 
-**Use Case:** General production use  
+**Use Case:** General production use
 **Trade-off:** Slightly higher cost than optimized
 
 ---

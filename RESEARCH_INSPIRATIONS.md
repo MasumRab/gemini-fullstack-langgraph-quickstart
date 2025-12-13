@@ -4,54 +4,31 @@ This document maps state-of-the-art (SOTA) research agent frameworks to the node
 
 ---
 
-## Quick Access Testing
-
-```python
-# Test different graph configurations inspired by SOTA frameworks
-from agent.graph_builder import build_graph
-
-# FlowSearch-inspired (DAG + Refinement)
-flowsearch_graph = build_graph(
-    enable_planning=True,
-    enable_reflection=True,
-    enable_validation=True,
-)
-
-# RhinoInsight-inspired (Checklist + Auditing)
-rhino_graph = build_graph(
-    enable_planning=True,      # Checklist via planning_mode
-    enable_validation=True,    # Evidence auditing via validate_web_results
-    enable_compression=True,   # Context pruning via compression_node
-)
-
-# TTD-DR-inspired (Multi-variant synthesis)
-ttd_graph = build_graph(
-    enable_reflection=True,    # Self-evolution via reflection loop
-    enable_compression=True,   # Synthesis optimization
-)
-```
-
----
-
 ## 1. Open Deep Research (LangChain)
 
 **Source:** [langchain-ai/open_deep_research](https://github.com/langchain-ai/open_deep_research)
 
 | Core Concept | This Project Implementation | Status |
 |--------------|----------------------------|--------|
-| Query Decomposition | `generate_query` node | ✅ Implemented |
-| Web Search | `web_research` node + `SearchRouter` | ✅ Implemented |
-| Reflection Loop | `reflection` + `evaluate_research` | ✅ Implemented |
-| Final Synthesis | `finalize_answer` node | ✅ Implemented |
-| Multi-agent Supervisor | `graphs/supervisor.py` | ✅ Implemented |
-
-**Graph:** `upstream.py` (minimal), `planning.py` (standard)
+| **Scoping Phase** | `planning_mode` (interactive) | ⚡ Partial |
+| **Research Loop** | `web_research` + `reflection` | ✅ Implemented |
 
 ---
 
-## 2. ThinkDepthAI Deep Research
+## 2. STORM (Stanford)
 
-**Source:** [ThinkDepthAI/deep-research-example](https://github.com/ThinkDepthAI/deep-research-example)
+**Source:** [stanford-oval/storm](https://github.com/stanford-oval/storm)
+
+| Core Concept | This Project Implementation | Status |
+|--------------|----------------------------|--------|
+| **Outline Generation** | `planning_mode` (steps generation) | ⚡ Partial |
+| **Co-STORM (Interaction)**| `planning_wait` / `human_feedback` | ✅ Implemented |
+
+---
+
+## 3. ThinkDepthAI Deep Research
+
+**Source:** [ThinkDepthAI/thinkdepthai](https://github.com/QishengLu/thinkdepthai)
 
 | Core Concept | This Project Implementation | Status |
 |--------------|----------------------------|--------|
@@ -60,11 +37,12 @@ ttd_graph = build_graph(
 | Structured Plans | `planning_steps` in state | ✅ Implemented |
 | Plan Persistence | `save_plan` / `load_plan` | ✅ Implemented |
 
+**Web:** [thinkdepth.ai](https://thinkdepth.ai/)
 **Graph:** `planning.py`
 
 ---
 
-## 3. RhinoInsight
+## 4. RhinoInsight
 
 **Paper/Concept:** Checklist-based verification with evidence auditing.
 
@@ -80,7 +58,7 @@ ttd_graph = build_graph(
 
 ---
 
-## 4. TTD-DR (Test-Time Diffusion for Deep Research)
+## 5. TTD-DR (Test-Time Diffusion for Deep Research)
 
 **Concept:** Generate multiple answer trajectories, iteratively refine via self-evolution.
 
@@ -96,86 +74,48 @@ ttd_graph = build_graph(
 
 ---
 
-## 5. ManuSearch
+## 6. FlowSearch (InternAgent)
 
-**Concept:** Modular, domain-aware search with transparent logging.
+**Source:** [InternScience/InternAgent](https://github.com/InternScience/InternAgent)
+**Docs:** [InternLM](https://internlm.intern-ai.org.cn/api/document)
 
-| Core Tool | This Project Implementation | Status | Notes |
-|-----------|----------------------------|--------|-------|
-| **Modular Planner** | `planning_mode` | ✅ Implemented | Structured decomposition |
-| **Domain-Specific Readers** | `SearchRouter` adapters | ⚡ Partial | Google, Tavily, DDG |
-| **Transparent Logger** | `graph_registry` + `observe_span` | ✅ Implemented | Langfuse integration |
-| **Multi-Domain Searcher** | `SearchRouter` with fallback | ✅ Implemented | Provider routing |
-
-**Enhancement Opportunity:** Add domain classification to route academic vs news queries.
+| Core Concept | This Project Implementation | Status |
+|--------------|----------------------------|--------|
+| **Dynamic Knowledge Flow** | `OverallState` transitions | ⚡ Partial (Linear flow) |
+| **Hierarchical Decomposition** | `planning_mode` (recursive steps) | ❌ Planned |
 
 ---
 
-## 6. FlowSearch (DAG-based Research)
+## 7. ManuSearch (RUCAIBox)
 
-**Concept:** Graph-based query flow with semantic reranking.
+**Source:** [RUCAIBox/ManuSearch](https://github.com/RUCAIBox/ManuSearch)
 
-| Core Tool | This Project Implementation | Status | Notes |
-|-----------|----------------------------|--------|-------|
-| **Web Search Engine** | `SearchRouter` (multi-provider) | ✅ Implemented | Google, Tavily, DDG |
-| **Content Extractor** | Search adapter `raw_content` | ✅ Implemented | Via provider APIs |
-| **Query Rewriter** | `generate_query` | ✅ Implemented | LLM-optimized queries |
-| **Knowledge Flow Tracker** | `OverallState` + `graph_registry` | ✅ Implemented | State machine tracking |
-| **Answer Refiner** | `reflection` loop | ✅ Implemented | Iterative improvement |
-| **Semantic Ranker** | Not implemented | ❌ Planned | Embedding-based rerank |
-
-**Planned Enhancement:** Add `semantic_rerank` node using embeddings.
+| Core Concept | This Project Implementation | Status |
+|--------------|----------------------------|--------|
+| **Structured Reader** | `web_research` (raw content) | ⚡ Partial (Need dedicated Reader node) |
 
 ---
 
-## 7. Google Pro Search (This Project's Core)
+## 8. GPT Researcher
 
-**Source:** [google-gemini/gemini-fullstack-langgraph-quickstart](https://github.com/google-gemini/gemini-fullstack-langgraph-quickstart)
+**Source:** [assafelovic/gpt-researcher](https://github.com/assafelovic/gpt-researcher)
 
-| Feature | Node/Module | Status |
-|---------|-------------|--------|
-| Gemini Integration | `ChatGoogleGenerativeAI` | ✅ Implemented |
-| Google Search Grounding | `GoogleSearchAdapter` | ✅ Implemented |
-| Parallel Search | `Send()` in `evaluate_research` | ✅ Implemented |
-| Planning UI | `planning_mode` + frontend | ✅ Implemented |
-| RAG Retrieval | `rag_retrieve` + FAISS/Chroma | ✅ Implemented |
-| KG Enrichment | `kg_enrich` (Cognee) | ✅ Implemented |
-| MCP Tools | `mcp_client.py`, `mcp_server.py` | ✅ Implemented |
+| Core Concept | This Project Implementation | Status |
+|--------------|----------------------------|--------|
+| **Recursive "Deep" Research**| N/A | ❌ Planned (Sub-task spawning) |
 
 ---
 
-## Implementation Status Legend
+## 9. Benchmarks (Planned)
 
-| Symbol | Meaning |
-|--------|---------|
-| ✅ | Fully implemented |
-| ⚡ | Partially implemented |
-| ❌ | Planned / Not implemented |
-
----
-
-## Planned Features (Roadmap)
-
-Based on SOTA inspirations:
-
-### High Priority
-1. **Semantic Reranker** (FlowSearch) - Embedding-based result reranking
-2. **Answer Variants** (TTD-DR) - Generate multiple answer trajectories
-3. **Domain Classifier** (ManuSearch) - Route queries by domain type
-
-### Medium Priority
-4. **Confidence Scorer** - Numeric confidence for each claim
-5. **Fact Checker** - Cross-reference claims against known sources
-6. **Timeline Analyzer** - Temporal reasoning for dated information
-
-### Low Priority / Experimental
-7. **Debate Mode** - Multi-agent adversarial fact-checking
-8. **Visual Evidence** - Image/chart extraction and analysis
-9. **Code Executor** - Run code snippets for technical queries
+| Benchmark | Source | Goal |
+|-----------|--------|------|
+| **MLE-bench** | [openai/mle-bench](https://github.com/openai/mle-bench) | Evaluate Engineering Capabilities |
+| **DeepResearch-Bench** | [muset-ai](https://huggingface.co/spaces/muset-ai/DeepResearch-Bench-Leaderboard) | Evaluate Research Quality |
 
 ---
 
-## Quick Test Commands
+## 10. Quick Test Commands
 
 ```bash
 # Test upstream (minimal)
@@ -183,9 +123,6 @@ python examples/cli_research.py "What is quantum computing?" --mode upstream
 
 # Test planning (standard)
 python examples/cli_research.py "Compare renewable energy sources" --mode planning
-
-# Test enriched (full features)
-python examples/cli_research.py "Latest AI research trends" --mode enriched
 ```
 
 ---
@@ -195,10 +132,11 @@ python examples/cli_research.py "Latest AI research trends" --mode enriched
 | Framework | Repository/Paper |
 |-----------|-----------------|
 | Open Deep Research | https://github.com/langchain-ai/open_deep_research |
-| ThinkDepthAI | https://github.com/ThinkDepthAI/deep-research-example |
+| ThinkDepthAI | https://github.com/QishengLu/thinkdepthai |
+| STORM | https://github.com/stanford-oval/storm |
 | RhinoInsight | (Conceptual - Checklist verification pattern) |
 | TTD-DR | (Conceptual - Diffusion-based research) |
-| ManuSearch | (Conceptual - Modular search) |
-| FlowSearch | (Conceptual - DAG-based research) |
+| ManuSearch | https://github.com/RUCAIBox/ManuSearch |
+| FlowSearch | https://github.com/InternScience/InternAgent |
 | Cognee (KG) | https://github.com/topoteretes/cognee |
 | LangGraph | https://github.com/langchain-ai/langgraph |

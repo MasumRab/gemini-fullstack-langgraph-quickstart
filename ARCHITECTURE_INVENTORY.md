@@ -250,4 +250,3 @@ User Query → Coordinator → [Route Decision]
 |-----------|-------------|
 | `graph_registry` | Metadata registry for node documentation |
 | `observe_span` | Langfuse observability wrapper (optional) |
-

@@ -17,6 +17,12 @@ os.environ["GEMINI_API_KEY"] = "dummy_key_for_tests"
 # Ensure the src directory is on the path
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
 SRC_PATH = PROJECT_ROOT / "src"
+# Add PROJECT_ROOT's parent to path to find 'backend' package
+if str(PROJECT_ROOT.parent) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT.parent))
+# Add PROJECT_ROOT to path to allow 'from src...' (if needed) or finding modules in backend root
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 

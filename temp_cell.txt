@@ -1,0 +1,31 @@
+# --- MODEL CONFIGURATION ---
+# @title Select Gemini Model
+# @markdown Choose the model strategy to use.
+# @markdown *Note: Experimental models (2.0/2.5) may require billing/quota enablement.*
+
+MODEL_STRATEGY = "Free Tier (Gemini 1.5 Flash)" # @param ["Free Tier (Gemini 1.5 Flash)", "Experimental (Gemini 2.0 Flash)", "Flash Lite (Gemini 2.0 Flash-Lite)", "Gemini 2.5 Flash (Experimental)", "Gemini 2.5 Pro (Experimental)"]
+
+import os
+
+# Map selection to actual model names
+if MODEL_STRATEGY == "Free Tier (Gemini 1.5 Flash)":
+    SELECTED_MODEL = "gemini-1.5-flash"
+    print("✅ Using Free Tier Model: gemini-1.5-flash")
+elif MODEL_STRATEGY == "Experimental (Gemini 2.0 Flash)":
+    SELECTED_MODEL = "gemini-2.0-flash-exp"
+    print("⚠️ Using Experimental Model: gemini-2.0-flash-exp (Quota Required)")
+elif MODEL_STRATEGY == "Flash Lite (Gemini 2.0 Flash-Lite)":
+    SELECTED_MODEL = "gemini-2.0-flash-lite-preview-02-05"
+    print("⚠️ Using Preview Model: gemini-2.0-flash-lite-preview-02-05 (Quota Required)")
+elif MODEL_STRATEGY == "Gemini 2.5 Flash (Experimental)":
+    SELECTED_MODEL = "gemini-2.5-flash"
+    print("🔥 Using Gemini 2.5 Flash: gemini-2.5-flash (Quota Required)")
+elif MODEL_STRATEGY == "Gemini 2.5 Pro (Experimental)":
+    SELECTED_MODEL = "gemini-2.5-pro"
+    print("🔥 Using Gemini 2.5 Pro: gemini-2.5-pro (Quota Required)")
+
+# Set Environment Variables to override defaults
+os.environ["QUERY_GENERATOR_MODEL"] = SELECTED_MODEL
+os.environ["REFLECTION_MODEL"] = SELECTED_MODEL
+os.environ["ANSWER_MODEL"] = SELECTED_MODEL
+os.environ["TOOLS_MODEL"] = SELECTED_MODEL

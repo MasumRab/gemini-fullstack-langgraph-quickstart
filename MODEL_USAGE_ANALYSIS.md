@@ -1,6 +1,6 @@
 # Model Usage Analysis
 
-**Generated:** 2025-12-11 14:25 AEDT  
+**Generated:** 2025-12-11 14:25 AEDT
 **Project:** gemini-fullstack-langgraph-quickstart
 
 ---
@@ -51,8 +51,8 @@ class Configuration(BaseModel):
 
 ### 1. Query Generation (`backend/src/agent/nodes.py:generate_query`)
 
-**Location:** Lines 64-109  
-**Model Used:** `configurable.query_generator_model`  
+**Location:** Lines 64-109
+**Model Used:** `configurable.query_generator_model`
 **Default:** `gemini-1.5-flash`
 
 ```python
@@ -65,16 +65,16 @@ llm = ChatGoogleGenerativeAI(
 structured_llm = llm.with_structured_output(SearchQueryList)
 ```
 
-**Purpose:** Generates initial search queries from user's question  
-**Output:** Structured list of search queries  
+**Purpose:** Generates initial search queries from user's question
+**Output:** Structured list of search queries
 **Temperature:** 1.0 (creative query generation)
 
 ---
 
 ### 2. Web Research (`backend/src/agent/nodes.py:web_research`)
 
-**Location:** Lines 140-220  
-**Model Used:** `configurable.query_generator_model`  
+**Location:** Lines 140-220
+**Model Used:** `configurable.query_generator_model`
 **Default:** `gemini-1.5-flash`
 
 ```python
@@ -88,18 +88,18 @@ response = genai_client.models.generate_content(
 )
 ```
 
-**Purpose:** Performs web research using Google Search tool  
-**Output:** Grounded search results with citations  
-**Temperature:** 0 (factual, deterministic)  
+**Purpose:** Performs web research using Google Search tool
+**Output:** Grounded search results with citations
+**Temperature:** 0 (factual, deterministic)
 **Special:** Uses `google.genai.Client` directly (not LangChain) for grounding metadata
 
 ---
 
 ### 3. Reflection (`backend/src/agent/nodes.py:reflection`)
 
-**Location:** Lines 474-524  
-**Model Used:** `state.get("reasoning_model", configurable.reflection_model)`  
-**Default:** `gemini-1.5-flash`  
+**Location:** Lines 474-524
+**Model Used:** `state.get("reasoning_model", configurable.reflection_model)`
+**Default:** `gemini-1.5-flash`
 **Override:** Can be set via `state["reasoning_model"]`
 
 ```python
@@ -114,17 +114,17 @@ llm = ChatGoogleGenerativeAI(
 result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
 ```
 
-**Purpose:** Evaluates research coverage and generates follow-up queries  
-**Output:** Structured reflection with `is_sufficient` flag and follow-up queries  
+**Purpose:** Evaluates research coverage and generates follow-up queries
+**Output:** Structured reflection with `is_sufficient` flag and follow-up queries
 **Temperature:** 1.0 (creative gap analysis)
 
 ---
 
 ### 4. Final Answer (`backend/src/agent/nodes.py:finalize_answer`)
 
-**Location:** Lines 569-623  
-**Model Used:** `state.get("reasoning_model") or configurable.answer_model`  
-**Default:** `gemini-1.5-pro`  
+**Location:** Lines 569-623
+**Model Used:** `state.get("reasoning_model") or configurable.answer_model`
+**Default:** `gemini-1.5-pro`
 **Override:** Can be set via `state["reasoning_model"]`
 
 ```python
@@ -139,9 +139,9 @@ llm = ChatGoogleGenerativeAI(
 result = llm.invoke(formatted_prompt)
 ```
 
-**Purpose:** Synthesizes final research answer with citations  
-**Output:** Formatted answer with deduplicated sources  
-**Temperature:** 0 (factual, deterministic)  
+**Purpose:** Synthesizes final research answer with citations
+**Output:** Formatted answer with deduplicated sources
+**Temperature:** 0 (factual, deterministic)
 **Note:** Uses higher-capability `gemini-1.5-pro` by default
 
 ---
@@ -160,7 +160,7 @@ const lastConfigRef = useRef({
 });
 ```
 
-**Usage:** Sent to backend in request configuration  
+**Usage:** Sent to backend in request configuration
 **Note:** This overrides backend defaults when set
 
 ### Model Selection in Frontend
@@ -205,7 +205,7 @@ thread.submit({
 writer_model = init_chat_model(model="gemini-1.5-pro", max_tokens=16000)
 ```
 
-**Purpose:** Used in research tools for content generation  
+**Purpose:** Used in research tools for content generation
 **Note:** Hardcoded, not configurable
 
 ### Token Limits Mapping
@@ -223,7 +223,7 @@ MODEL_TOKEN_LIMITS = {
 }
 ```
 
-**Purpose:** Token limit lookup for different model variants  
+**Purpose:** Token limit lookup for different model variants
 **Usage:** `get_model_token_limit(model_name)` function
 
 ---
