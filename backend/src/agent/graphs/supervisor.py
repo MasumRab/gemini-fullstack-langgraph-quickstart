@@ -20,19 +20,7 @@ from agent.nodes import (
 )
 from agent.registry import graph_registry
 
-# Optional config import with sensible defaults
-try:
-    from config.app_config import config as app_config
-except ImportError:
-    from dataclasses import dataclass
-
-    @dataclass
-    class _DefaultAppConfig:
-        compression_enabled: bool = True
-        compression_mode: str = "tiered"
-        model_compression: str = "gemini-1.5-flash"
-
-    app_config = _DefaultAppConfig()
+from config.app_config import config as app_config
 
 logger = logging.getLogger(__name__)
 
