@@ -3,6 +3,8 @@ from unittest.mock import Mock, patch
 from agent.nodes import generate_query, web_research, reflection, finalize_answer, load_context
 from langchain_core.messages import HumanMessage
 
+TEST_MODEL = "gemma-3-27b-it"
+
 @pytest.fixture
 def mock_state():
     return {
