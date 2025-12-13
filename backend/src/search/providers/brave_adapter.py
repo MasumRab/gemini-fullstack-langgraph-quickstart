@@ -11,14 +11,7 @@ class BraveSearchAdapter(SearchProvider):
     """Adapter for Brave Search."""
 
     def __init__(self, api_key: Optional[str] = None):
-        """
-        Create a BraveSearchAdapter and set its API key.
-        
-        If an explicit api_key is provided, it is stored; otherwise the BRAVE_API_KEY environment variable is used. Logs a warning if no API key is found.
-        
-        Parameters:
-            api_key (Optional[str]): Optional Brave Search API key to use for requests. If omitted, the adapter will attempt to read BRAVE_API_KEY from the environment.
-        """
+        """Initialize with API key."""
         self.api_key = api_key or os.getenv("BRAVE_API_KEY")
         if not self.api_key:
              # We don't raise here to allow instantiation, but search will fail/warn
@@ -33,21 +26,7 @@ class BraveSearchAdapter(SearchProvider):
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """
-        Perform a web search using the Brave Search API and return results mapped to SearchResult objects.
-        
-        Parameters:
-            region (Optional[str]): Region code for restricting results (currently unused).
-            time_range (Optional[str]): Time filter shorthand: 'd' = day, 'w' = week, 'm' = month, 'y' = year. When `tuned` is true and a valid shorthand is provided, it is mapped to Brave's freshness parameter.
-            safe_search (bool): If true, enable strict safesearch filtering.
-            tuned (bool): If true, apply `time_range` mapping to the request; if false, `time_range` is ignored.
-        
-        Returns:
-            List[SearchResult]: A list of search results with title, url, content (description), and source set to "brave".
-        
-        Raises:
-            ValueError: If no API key is configured (BRAVE_API_KEY).
-        """
+        """Execute search via Brave API."""
 
         if not self.api_key:
             raise ValueError("BRAVE_API_KEY is missing")

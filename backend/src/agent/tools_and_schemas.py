@@ -31,14 +31,3 @@ def get_mcp_tools() -> List:
     # In a sync context, we might need to be careful with async tools,
     # but LangGraph handles async tools fine.
     return manager.get_persistence_tools()
-
-def get_tools_from_mcp(mcp_config=None):
-    """
-    Placeholder to load tools via langchain-mcp-adapters.
-    In the future, this will connect to the MCP server defined in mcp_config.
-    For now, delegates to get_mcp_tools().
-    """
-    # Example integration:
-    # from langchain_mcp_adapters import MCPToolAdapter
-    # return MCPToolAdapter.load_tools(mcp_config)
-    return get_mcp_tools()

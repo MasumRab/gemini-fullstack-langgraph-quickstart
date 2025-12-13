@@ -15,16 +15,13 @@ except ImportError:
     observe = None
 
 def get_langfuse_handler(metadata: Optional[Dict[str, Any]] = None) -> Optional[Any]:
-    """
-    Return a Langfuse CallbackHandler instance when Langfuse is enabled and available.
-    
-    Attempts to locate and instantiate a compatible Langfuse CallbackHandler. If observability is disabled, Langfuse is not installed, the handler class cannot be found, or initialization fails, the function returns `None`.
-    
-    Parameters:
-        metadata (Optional[Dict[str, Any]]): Optional metadata intended for handler/trace association. Depending on the installed Langfuse version, the constructor may not accept metadata, so this argument may be unused.
-    
+    """Factory to create a Langfuse CallbackHandler if enabled and available.
+
+    Args:
+        metadata: Optional dictionary of metadata to attach to the trace.
+
     Returns:
-        A Langfuse CallbackHandler instance if available, `None` otherwise.
+        A Langfuse CallbackHandler instance or None.
     """
     if not is_enabled() or not _LANGFUSE_AVAILABLE:
         return None
@@ -71,18 +68,14 @@ def get_langfuse_handler(metadata: Optional[Dict[str, Any]] = None) -> Optional[
 
 @contextlib.contextmanager
 def observe_span(name: str, config: Optional[Dict] = None, **kwargs):
-    """
-    Create a Langfuse observation span and yield it for use within a context.
-    
-    Yields the Langfuse span object when Langfuse is enabled and available; otherwise yields None. If audit mode is enabled and the yielded span exposes an `update` method, the span's metadata will be updated with an `audit` flag and a `config_keys` list derived from `config`.
-    
-    Parameters:
-        name (str): Name of the span.
-        config (Optional[Dict]): Optional configuration whose keys are added to span metadata when in audit mode.
-        **kwargs: Additional metadata/attributes forwarded to the Langfuse `observe` call.
-    
-    Yields:
-        The Langfuse span object if available, `None` otherwise.
+    """Context manager to create a Langfuse span manually.
+
+    This is useful for non-LangChain code blocks or when we want explicit control.
+
+    Args:
+        name: Name of the span.
+        config: RunnableConfig object (optional) to extract existing trace context.
+        **kwargs: Additional metadata/attributes.
     """
     if not is_enabled() or not _LANGFUSE_AVAILABLE or not observe:
         yield

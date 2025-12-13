@@ -15,7 +15,6 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import InjectedToolArg, tool
-from agent.models import GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO
 
 # Try to import Tavily client, fall back to None if not available
 try:
@@ -34,11 +33,10 @@ from agent.prompts import summarize_webpage_prompt
 # =============================================================================
 
 def get_today_str() -> str:
-    """
-    Return the current local date formatted like 'Sun Dec 8, 2024'.
-    
+    """Get current date in a human-readable format.
+
     Returns:
-        The current date as a string in the form "DayAbbrev MonthAbbrev DD, YYYY" (e.g., "Sun Dec 8, 2024").
+        Formatted date string (e.g., 'Sun Dec 8, 2024')
     """
     return datetime.now().strftime("%a %b %d, %Y")
 
@@ -80,20 +78,17 @@ def tavily_search_multiple(
     include_raw_content: bool = True,
     config: Optional[RunnableConfig] = None,
 ) -> List[dict]:
-    """
-    Perform Tavily searches for multiple queries and return their raw results.
-    
-    Performs a separate Tavily search for each string in `search_queries` and returns a list of result dictionaries in the same order. If the Tavily client is unavailable, an empty list is returned. If an individual query fails, its entry will include the original `query` and an empty `results` list.
-    
-    Parameters:
-        search_queries (List[str]): Queries to execute.
-        max_results (int): Maximum number of results to return per query.
-        topic (Literal["general", "news", "finance"]): Topic filter applied to each search.
-        include_raw_content (bool): If True, request raw webpage content in results when available.
-        config (Optional[RunnableConfig]): Optional runtime configuration used to obtain the Tavily API key.
-    
+    """Perform search using Tavily API for multiple queries.
+
+    Args:
+        search_queries: List of search queries to execute
+        max_results: Maximum number of results per query
+        topic: Topic filter for search results
+        include_raw_content: Whether to include raw webpage content
+        config: Runtime configuration for API key
+
     Returns:
-        List[dict]: A list of result dictionaries (one per query). Each dictionary typically contains the originating `query` and a `results` list (empty on per-query failure).
+        List of search result dictionaries
     """
     if not TAVILY_AVAILABLE:
         logging.warning("Tavily client not available, returning empty results")
@@ -126,20 +121,17 @@ async def tavily_search_async(
     include_raw_content: bool = True,
     config: Optional[RunnableConfig] = None,
 ) -> List[dict]:
-    """
-    Perform multiple Tavily searches concurrently and return the results for each query.
-    
-    If the Tavily client is unavailable, returns an empty list. For individual query failures, the corresponding entry will be a dictionary of the form {"query": <original_query>, "results": []}.
-    
-    Parameters:
-        search_queries (List[str]): Queries to execute.
-        max_results (int): Maximum number of results to request per query.
-        topic (Literal["general", "news", "finance"]): Topic category to filter results.
-        include_raw_content (bool): If True, include full webpage content in each result when available.
-        config (Optional[RunnableConfig]): Optional runtime configuration used to obtain the Tavily API key.
-    
+    """Execute multiple Tavily search queries asynchronously.
+
+    Args:
+        search_queries: List of search query strings to execute
+        max_results: Maximum number of results per query
+        topic: Topic category for filtering results
+        include_raw_content: Whether to include full webpage content
+        config: Runtime configuration for API key access
+
     Returns:
-        List[dict]: A list of per-query result dictionaries returned by the Tavily API or placeholder dictionaries for failed queries.
+        List of search result dictionaries from Tavily API
     """
     if not TAVILY_AVAILABLE:
         logging.warning("Tavily async client not available, returning empty results")
@@ -177,14 +169,13 @@ async def tavily_search_async(
 # =============================================================================
 
 def deduplicate_search_results(search_results: List[dict]) -> Dict[str, dict]:
-    """
-    Deduplicates search result entries by URL.
-    
-    Parameters:
-        search_results (List[dict]): List of search response dictionaries, each expected to have a "results" list of result dicts and an optional "query" field.
-    
+    """Deduplicate search results by URL to avoid processing duplicate content.
+
+    Args:
+        search_results: List of search result dictionaries
+
     Returns:
-        Dict[str, dict]: Mapping from URL to a unique result dictionary. Each stored result is the original result dict augmented with a "query" key containing the originating search query.
+        Dictionary mapping URLs to unique results
     """
     unique_results = {}
 
@@ -205,20 +196,15 @@ def process_search_results(
     summarization_model: Optional[BaseChatModel] = None,
     max_content_length: int = 250000,
 ) -> Dict[str, dict]:
-    """
-    Process search results and produce a summary entry for each unique URL.
-    
-    For each input result, uses the provided summarization model to summarize the raw content up to max_content_length when both raw content and a model are available; if raw content is missing the function falls back to the short snippet, and if a model is not provided it truncates the raw content to max_content_length.
-    
-    Parameters:
-        unique_results: Mapping from URL to the original search result dictionary. Each result may include 'raw_content', 'content' (short snippet), and 'title'.
-        summarization_model: Optional chat model used to generate a concise summary of raw content when available.
-        max_content_length: Maximum number of characters of raw content to consider for summarization or truncation.
-    
+    """Process search results by summarizing content where available.
+
+    Args:
+        unique_results: Dictionary of unique search results
+        summarization_model: Optional model for content summarization
+        max_content_length: Maximum content length before truncation
+
     Returns:
-        dict: Mapping from URL to a processed result dictionary with keys:
-            - 'title': the result title (or "Untitled" if missing)
-            - 'content': the summarized text, fallback snippet, or truncated raw content
+        Dictionary of processed results with summaries
     """
     summarized_results = {}
 
@@ -247,14 +233,13 @@ def process_search_results(
 
 
 def format_search_output(summarized_results: Dict[str, dict]) -> str:
-    """
-    Format processed search results into a readable multi-source text block.
-    
-    Parameters:
-        summarized_results (Dict[str, dict]): Mapping from URL to a result dictionary that must contain the keys `"title"` and `"content"`, where `"title"` is the source title and `"content"` is the summary text.
-    
+    """Format search results into a well-structured string output.
+
+    Args:
+        summarized_results: Dictionary of processed search results
+
     Returns:
-        A single string containing numbered source sections; each section includes the source title, URL, and summary. If `summarized_results` is empty, returns a short message indicating that no valid results were found.
+        Formatted string of search results with clear source separation
     """
     if not summarized_results:
         return "No valid search results found. Please try different search queries."
@@ -279,17 +264,15 @@ def summarize_webpage_content(
     webpage_content: str,
     timeout: float = 60.0,
 ) -> str:
-    """
-    Produce a human-readable summary of webpage content, including key excerpts when available.
-    
-    Parameters:
-        model (BaseChatModel): Chat model used to generate the summary.
-        webpage_content (str): Raw HTML or text content of the webpage to summarize.
-        timeout (float): Maximum allowed time for summarization (seconds). Note: not all models enforce this parameter.
-    
+    """Summarize webpage content using AI model.
+
+    Args:
+        model: The chat model configured for summarization
+        webpage_content: Raw webpage content to be summarized
+        timeout: Timeout in seconds for summarization
+
     Returns:
-        summary (str): If the model returns structured fields `summary` and `key_excerpts`, returns them formatted as
-        "<summary>...</summary>\n\n<key_excerpts>...</key_excerpts>". Otherwise returns the model's plain-text response. If summarization fails, returns the original `webpage_content` truncated to 1000 characters with "..." appended when truncated.
+        Formatted summary with key excerpts, or original content if failed
     """
     try:
         prompt_content = summarize_webpage_prompt.format(
@@ -324,16 +307,15 @@ async def summarize_webpage_async(
     webpage_content: str,
     timeout: float = 60.0,
 ) -> str:
-    """
-    Produce a concise, formatted summary and key excerpts for the given webpage content.
-    
-    If the model returns structured fields `summary` and `key_excerpts`, the result is formatted with `<summary>` and `<key_excerpts>` blocks; otherwise the raw text response is returned. On timeout or other failure, returns the original content truncated to 1000 characters with an ellipsis when longer.
-    
-    Parameters:
-        timeout (float): Maximum seconds to wait for the model response.
-    
+    """Summarize webpage content using AI model asynchronously.
+
+    Args:
+        model: The chat model configured for summarization
+        webpage_content: Raw webpage content to be summarized
+        timeout: Timeout in seconds for the summarization task
+
     Returns:
-        str: Formatted summary or truncated original content on failure.
+        Formatted summary with key excerpts, or original content if failed
     """
     try:
         prompt_content = summarize_webpage_prompt.format(
@@ -381,16 +363,15 @@ def tavily_search(
     max_results: Annotated[int, InjectedToolArg] = 3,
     topic: Annotated[Literal["general", "news", "finance"], InjectedToolArg] = "general",
 ) -> str:
-    """
-    Perform a Tavily search for a single query, deduplicate and process results, and return a formatted summary string.
-    
-    Parameters:
-        query (str): The search query to execute.
-        max_results (int): Maximum number of results to return.
-        topic (Literal['general', 'news', 'finance']): Topic filter to apply to the search.
-    
+    """Fetch results from Tavily search API with content summarization.
+
+    Args:
+        query: A single search query to execute
+        max_results: Maximum number of results to return
+        topic: Topic to filter results by ('general', 'news', 'finance')
+
     Returns:
-        str: Formatted text with headers for each source and their summaries, or a message indicating no valid results.
+        Formatted string of search results with summaries
     """
     # Execute search for single query
     search_results = tavily_search_multiple(
@@ -450,16 +431,18 @@ def refine_draft_report(
     findings: Annotated[str, InjectedToolArg],
     draft_report: Annotated[str, InjectedToolArg],
 ) -> str:
-    """
-    Refine a draft research report by synthesizing findings and producing an improved report.
-    
-    Incorporates key findings, improves clarity and structure, adds relevant citations drawn from the findings, and fixes factual inconsistencies.
-    
+    """Refine draft report by synthesizing research findings.
+
+    Args:
+        research_brief: User's research request
+        findings: Collected research findings for the user request
+        draft_report: Draft report based on the findings and user request
+
     Returns:
-        Refined report text incorporating the findings and revisions.
+        Refined draft report
     """
     # Use default model for refinement
-    writer_model = init_chat_model(model=GEMINI_FLASH, max_tokens=16000)
+    writer_model = init_chat_model(model="gemini-2.5-flash", max_tokens=16000)
 
     prompt = f"""You are refining a research report based on the following:
 
@@ -494,15 +477,14 @@ Provide the refined report:
 # =============================================================================
 
 def is_token_limit_exceeded(exception: Exception, model_name: str = None) -> bool:
-    """
-    Detect whether an exception indicates that a model's token or context length limit was exceeded.
-    
-    Parameters:
-        exception (Exception): The exception to analyze.
-        model_name (str, optional): Model identifier to help recognize provider-specific error messages.
-    
+    """Determine if an exception indicates a token/context limit was exceeded.
+
+    Args:
+        exception: The exception to analyze
+        model_name: Optional model name to optimize provider detection
+
     Returns:
-        `true` if the exception text suggests a token or context-limit error, `false` otherwise.
+        True if the exception indicates a token limit was exceeded, False otherwise
     """
     error_str = str(exception).lower()
 
@@ -538,38 +520,34 @@ MODEL_TOKEN_LIMITS = {
     "anthropic:claude-3-opus": 200000,
     "anthropic:claude-3-haiku": 200000,
 
-
-    # Google/Gemini Models (Only 2.5 series accessible via API as of Dec 2024)
-    # Deprecated: 1.5 and 2.0 series models
-    "google:gemini-2.5-pro": 2097152,
-    "google:gemini-2.5-flash": 1048576,
-    "google:gemini-2.5-flash-lite": 1048576,
-    GEMINI_PRO: 2097152,
-    GEMINI_FLASH: 1048576,
-    GEMINI_FLASH_LITE: 1048576,
-    "gemini-2.5-pro": 2097152,
-    "gemini-2.5-flash": 1048576,
-    "gemini-2.5-flash-lite": 1048576,
-    "gemma-2-27b-it": 8192,
-    "gemma-3-27b-it": 8192,
-    "google:gemma-2-27b-it": 8192,
-    "google:gemma-3-27b-it": 8192,
-    # Legacy models (deprecated, kept for reference only - not accessible via API)
+    # Google/Gemini Models
+    # Gemini 1.5 series (legacy, retiring April 2025)
     "google:gemini-1.5-pro": 2097152,
     "google:gemini-1.5-flash": 1048576,
     "gemini-1.5-pro": 2097152,
     "gemini-1.5-flash": 1048576,
+    # Gemini 2.0 series
+    "google:gemini-2.0-flash": 1048576,
+    "gemini-2.0-flash": 1048576,
+    "gemini-2.0-flash-exp": 1048576,
+    "gemini-2.0-pro": 2097152,
+    # Gemini 2.5 series (current stable)
+    "google:gemini-2.5-flash": 1048576,
+    "google:gemini-2.5-flash-lite": 1048576,
+    "google:gemini-2.5-pro": 2097152,
+    "gemini-2.5-flash": 1048576,
+    "gemini-2.5-flash-lite": 1048576,
+    "gemini-2.5-pro": 2097152,
 }
 
 
 def get_model_token_limit(model_name: str) -> int:
-    """
-    Look up the token limit for a model identifier.
-    
-    Parameters:
-        model_name (str): Model identifier to query (e.g., 'gpt-4', 'gemini-2.5-flash').
-    
+    """Get the token limit for a given model.
+
+    Args:
+        model_name: Name of the model
+
     Returns:
-        int: The token limit for the specified model; defaults to 128000 if the model is not found.
+        Token limit, or default of 128000 if unknown
     """
     return MODEL_TOKEN_LIMITS.get(model_name, 128000)

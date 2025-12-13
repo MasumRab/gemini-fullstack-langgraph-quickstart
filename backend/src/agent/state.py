@@ -17,16 +17,9 @@ class OverallState(TypedDict):
     validated_web_research_result: Annotated[list, operator.add]
     validation_notes: Annotated[list, operator.add]
     sources_gathered: Annotated[list, operator.add]
-
-    # Planning & Scoping
-    scoping_status: str | None  # "pending", "active", "complete"
-    clarification_questions: List[str] | None
-    clarification_answers: Annotated[list, operator.add] # Stores user replies
-
     planning_steps: List[dict] | None
     planning_status: str | None
     planning_feedback: Annotated[list, operator.add]
-
     initial_search_query_count: int
     max_research_loops: int
     research_loop_count: int

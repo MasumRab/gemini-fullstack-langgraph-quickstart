@@ -8,24 +8,20 @@ from agent.configuration import Configuration
 from agent.registry import graph_registry
 from agent.nodes import (
     load_context,
-    scoping_node, # New Node
     generate_query,
     planning_mode,
     planning_wait,
     planning_router,
     web_research,
     validate_web_results,
-    compression_node,  # New Node
+    compression_node,
     reflection,
     finalize_answer,
     evaluate_research,
 )
-from agent.kg import kg_enrich # New Node
+from agent.kg import kg_enrich
 from agent.mcp_config import load_mcp_settings, validate
 # from agent.memory_tools import save_plan_tool, load_plan_tool # Removing as I'm using my wrapper
-
-# Ensure config is loaded
-from backend.src.config.app_config import config
 
 load_dotenv()
 
@@ -43,17 +39,17 @@ if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
 
 # Create our Agent Graph using the standard builder wiring
-# Note: LangGraph v1.0 deprecates config_schema in favor of context_schema,
-# but sticking to config_schema per existing pattern unless updated.
+# Using config_schema as per upstream (origin/main)
 builder = StateGraph(OverallState, config_schema=Configuration)
 
 # If MCP is enabled, we would register MCP tools here or modify the schema
+# For now, this is a placeholder wiring to satisfy the requirement of "Agent Wiring"
 if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
     # In future: builder.bind_tools(mcp_tools)
+    # builder.bind_tools([save_plan_tool, load_plan_tool]) # Example wiring
 
 builder.add_node("load_context", load_context)
-builder.add_node("scoping_node", scoping_node)
 # TODO: Phase 2 - Rename 'generate_query' to 'generate_plan'
 # This node will eventually generate a structured Todo list and bind MCP tools (load_thread_plan, save_thread_plan)
 # to allow the agent to manage long-term state.
@@ -62,26 +58,14 @@ builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
 builder.add_node("web_research", web_research)
 builder.add_node("validate_web_results", validate_web_results)
-builder.add_node("compression_node", compression_node) # Add Compression
-builder.add_node("kg_enrich", kg_enrich) # Add KG Pilot
+builder.add_node("compression_node", compression_node)
+builder.add_node("kg_enrich", kg_enrich)
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 
 builder.add_edge(START, "load_context")
-builder.add_edge("load_context", "scoping_node")
-
-def scoping_router(state: OverallState) -> str:
-    """Route based on scoping status."""
-    if state.get("scoping_status") == "active":
-        return "planning_wait" # Reusing planning_wait to pause for user input
-    return "generate_query"
-
-builder.add_conditional_edges(
-    "scoping_node", scoping_router, ["planning_wait", "generate_query"]
-)
-
+builder.add_edge("load_context", "generate_query")
 # TODO: Future - Insert 'save_plan' step here to persist the generated plan automatically
-# builder.add_edge("generate_query", "planning_mode") # Removed as it's destination of router
 builder.add_edge("generate_query", "planning_mode")
 builder.add_conditional_edges(
     "planning_mode", planning_router, ["planning_wait", "web_research"]
@@ -102,16 +86,6 @@ builder.add_conditional_edges(
 builder.add_edge("finalize_answer", END)
 
 # Document edges for registry/tooling
-graph_registry.document_edge(
-    "scoping_node",
-    "planning_wait",
-    description="If query is ambiguous, pause to ask user clarifying questions.",
-)
-graph_registry.document_edge(
-    "scoping_node",
-    "generate_query",
-    description="If query is clear, proceed to query generation.",
-)
 graph_registry.document_edge(
     "generate_query",
     "planning_mode",

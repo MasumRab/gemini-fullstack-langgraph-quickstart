@@ -35,15 +35,11 @@ class ChromaStore:
         allow_reset: bool = False
     ):
         """
-        Initialize a persistent ChromaDB-backed evidence collection and client.
-        
-        Creates a PersistentClient at the given persist_path (optionally allowing destructive reset) and gets or creates a collection with the provided name and optional embedding function.
-        
-        Parameters:
-            collection_name (str): Name of the Chroma collection to use or create.
-            persist_path (str): Filesystem path where the Chroma database is persisted.
-            embedding_function (Any): Optional embedding function compatible with the collection; if None, the collection's default embedding is used.
-            allow_reset (bool): If True, allow destructive reset of the underlying database.
+        Args:
+            collection_name: Name of the Chroma collection.
+            persist_path: Path to persist the DB.
+            embedding_function: Optional embedding function. If None, uses default (all-MiniLM-L6-v2 compatible).
+            allow_reset: Whether to allow resetting the database (destructive).
         """
         self.client = chromadb.PersistentClient(path=persist_path, settings=Settings(allow_reset=allow_reset))
 
@@ -56,13 +52,11 @@ class ChromaStore:
 
     def add_evidence(self, evidence_list: List[EvidenceChunk], embeddings: Optional[List[List[float]]] = None):
         """
-        Add a list of EvidenceChunk items to the Chroma collection.
-        
-        Each EvidenceChunk is converted into a document, an id, and a flattened metadata dictionary and upserted into the collection. If `embeddings` is provided, those embeddings are used; otherwise the collection's embedding function is used to generate embeddings.
-        
-        Parameters:
-            evidence_list (List[EvidenceChunk]): Evidence chunks to add; each must have a unique `chunk_id`.
-            embeddings (Optional[List[List[float]]]): Optional precomputed embeddings aligned with `evidence_list`.
+        Add evidence chunks to the store.
+
+        Args:
+            evidence_list: List of EvidenceChunk objects.
+            embeddings: Optional pre-computed embeddings. If None, Chroma computes them.
         """
         if not evidence_list:
             return
@@ -98,17 +92,17 @@ class ChromaStore:
         query_embedding: Optional[List[float]] = None
     ) -> List[Tuple[EvidenceChunk, float]]:
         """
-        Retrieve relevant evidence for a text query from the Chroma collection.
-        
-        Parameters:
-            query (str): Query text used when no precomputed embedding is provided.
-            top_k (int): Maximum number of results to return.
-            subgoal_filter (Optional[str]): If provided, restricts results to this subgoal_id.
-            min_score (float): Minimum similarity threshold in [0, 1]; results with similarity below this are excluded.
-            query_embedding (Optional[List[float]]): Precomputed embedding to use instead of the query text.
-        
+        Retrieve relevant evidence.
+
+        Args:
+            query: Search text.
+            top_k: Number of results.
+            subgoal_filter: Optional filter by subgoal_id.
+            min_score: Minimum similarity score (0-1).
+            query_embedding: Optional pre-computed query embedding.
+
         Returns:
-            List[Tuple[EvidenceChunk, float]]: Pairs of EvidenceChunk and similarity (0 to 1), sorted by descending similarity.
+            List of (EvidenceChunk, similarity_score).
         """
         where_filter = {}
         if subgoal_filter:
@@ -168,18 +162,7 @@ class ChromaStore:
         return parsed_results
 
     def count(self) -> int:
-        """
-        Return the number of items stored in the underlying Chroma collection.
-        
-        Returns:
-            int: The total count of documents in the collection.
-        """
         return self.collection.count()
 
     def reset(self):
-        """
-        Reset the underlying ChromaDB client and clear the store's persisted data.
-        
-        This forces the backend Chroma database to be reset to an empty state, removing all collections and stored embeddings associated with the client.
-        """
         self.client.reset()

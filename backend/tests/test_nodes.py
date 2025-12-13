@@ -17,7 +17,7 @@ from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import AIMessage, HumanMessage
 
-from agent.state import OverallState
+from agent.state import OverallState, WebResearch, PlanStep
 from agent.nodes import (
     generate_query,
     planning_mode,
@@ -27,30 +27,17 @@ from agent.nodes import (
     reflection,
     finalize_answer,
 )
-from agent.models import TEST_MODEL
 
 
 # Fixtures
 @pytest.fixture
 def base_state():
-    """
-    Create a fresh default state dictionary used by tests.
-    
-    Returns:
-        dict: A new state mapping with the following keys:
-            - messages (list): Conversation messages.
-            - research_loop_count (int): Number of completed research/reflection loops.
-            - queries (list): Pending search or follow-up queries.
-            - web_research_result (list): Collected web research items.
-            - planning_steps (list): Generated planning steps for queries.
-            - planning_status (str|None): Current planning status (e.g., "auto_approved", "awaiting_confirmation") or None.
-            - planning_feedback (list): Feedback messages related to planning.
-    """
+    """Base state for testing"""
     return {
         "messages": [],
         "research_loop_count": 0,
         "queries": [],
-        "web_research_result": [],
+        "web_research_results": [],
         "planning_steps": [],
         "planning_status": None,
         "planning_feedback": [],
@@ -59,19 +46,10 @@ def base_state():
 
 @pytest.fixture
 def config():
-    """
-    Create a default RunnableConfig used by tests.
-    
-    Returns:
-        RunnableConfig: Configuration with defaults:
-            - model: "gemini-2.0-flash-exp"
-            - max_loops: 3
-            - num_queries: 3
-            - require_planning_confirmation: False
-    """
+    """Basic runnable config"""
     return RunnableConfig(
         configurable={
-            "model": TEST_MODEL,
+            "model": "gemini-2.5-flash",
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": False,
@@ -81,17 +59,10 @@ def config():
 
 @pytest.fixture
 def config_with_confirmation():
-    """
-    Return a RunnableConfig configured to require planning confirmation.
-    
-    Creates a RunnableConfig with sensible defaults for tests: model set to "gemini-2.0-flash-exp", max_loops 3, num_queries 3, and require_planning_confirmation enabled.
-    
-    Returns:
-        RunnableConfig: Configuration with planning confirmation required.
-    """
+    """Config requiring planning confirmation"""
     return RunnableConfig(
         configurable={
-            "model": TEST_MODEL,
+            "model": "gemini-2.5-flash",
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": True,
@@ -329,8 +300,8 @@ class TestWebResearch:
         result = web_research(base_state, config)
 
         # Assert
-        assert "web_research_result" in result
-        assert len(result["web_research_result"]) == 2
+        assert "web_research_results" in result
+        assert len(result["web_research_results"]) == 2
 
     @patch("agent.nodes.tavily_search")
     @patch("agent.nodes.scrape_website")
@@ -344,7 +315,7 @@ class TestWebResearch:
         result = web_research(base_state, config)
 
         # Assert
-        assert "web_research_result" in result
+        assert "web_research_results" in result
 
     @patch("agent.nodes.tavily_search")
     @patch("agent.nodes.scrape_website")
@@ -359,7 +330,7 @@ class TestWebResearch:
         result = web_research(base_state, config)
 
         # Assert
-        assert "web_research_result" in result
+        assert "web_research_results" in result
 
     @patch("agent.nodes.tavily_search")
     @patch("agent.nodes.scrape_website")
@@ -372,8 +343,8 @@ class TestWebResearch:
         result = web_research(base_state, config)
 
         # Assert
-        assert "web_research_result" in result
-        assert result["web_research_result"] == []
+        assert "web_research_results" in result
+        assert result["web_research_results"] == []
         mock_search.assert_not_called()
 
     @patch("agent.nodes.tavily_search")
@@ -393,7 +364,7 @@ class TestWebResearch:
         result = web_research(base_state, config)
 
         # Assert - should only scrape once per unique URL
-        urls = [r["url"] for r in result["web_research_result"]]
+        urls = [r["url"] for r in result["web_research_results"]]
         assert len(urls) == len(set(urls))  # No duplicates
 
 
@@ -405,7 +376,7 @@ class TestValidateWebResults:
     def test_validate_web_results_filters_results(self, mock_validate, base_state, config):
         """Test that validate_web_results filters research results"""
         # Setup
-        base_state["web_research_result"] = [
+        base_state["web_research_results"] = [
             {"url": "http://example.com/1", "content": "good content"},
             {"url": "http://example.com/2", "content": "bad content"},
         ]
@@ -419,29 +390,29 @@ class TestValidateWebResults:
         result = validate_web_results(base_state, config)
 
         # Assert
-        assert "web_research_result" in result
-        assert len(result["web_research_result"]) == 1
+        assert "web_research_results" in result
+        assert len(result["web_research_results"]) == 1
 
     @patch("agent.nodes.validate_documents")
     def test_validate_web_results_with_empty_results(self, mock_validate, base_state, config):
         """Test validate_web_results with no research results"""
         # Setup
-        base_state["web_research_result"] = []
+        base_state["web_research_results"] = []
         base_state["messages"] = [HumanMessage(content="test question")]
 
         # Execute
         result = validate_web_results(base_state, config)
 
         # Assert
-        assert "web_research_result" in result
-        assert result["web_research_result"] == []
+        assert "web_research_results" in result
+        assert result["web_research_results"] == []
         mock_validate.assert_not_called()
 
     @patch("agent.nodes.validate_documents")
     def test_validate_web_results_handles_validation_error(self, mock_validate, base_state, config):
         """Test validate_web_results handles validation errors"""
         # Setup
-        base_state["web_research_result"] = [
+        base_state["web_research_results"] = [
             {"url": "http://example.com", "content": "content"}
         ]
         base_state["messages"] = [HumanMessage(content="test question")]
@@ -451,7 +422,7 @@ class TestValidateWebResults:
         result = validate_web_results(base_state, config)
 
         # Assert
-        assert "web_research_result" in result
+        assert "web_research_results" in result
 
 
 # Tests for reflection
@@ -463,7 +434,7 @@ class TestReflection:
         """Test that reflection identifies knowledge gaps"""
         # Setup
         base_state["messages"] = [HumanMessage(content="What is quantum computing?")]
-        base_state["web_research_result"] = [
+        base_state["web_research_results"] = [
             {"url": "http://example.com", "content": "basic info"}
         ]
         base_state["queries"] = ["quantum computing"]
@@ -488,7 +459,7 @@ class TestReflection:
         """Test that reflection can determine knowledge is sufficient"""
         # Setup
         base_state["messages"] = [HumanMessage(content="What is AI?")]
-        base_state["web_research_result"] = [
+        base_state["web_research_results"] = [
             {"url": "http://example.com", "content": "comprehensive info"}
         ]
         base_state["queries"] = ["AI basics"]
@@ -509,7 +480,7 @@ class TestReflection:
         """Test reflection behavior at maximum loop count"""
         # Setup
         base_state["messages"] = [HumanMessage(content="Complex question")]
-        base_state["web_research_result"] = [{"url": "http://example.com", "content": "info"}]
+        base_state["web_research_results"] = [{"url": "http://example.com", "content": "info"}]
         base_state["queries"] = ["query"]
         base_state["research_loop_count"] = 3  # At max
         config["configurable"]["max_loops"] = 3
@@ -529,7 +500,7 @@ class TestReflection:
         """Test reflection with no research results"""
         # Setup
         base_state["messages"] = [HumanMessage(content="Question")]
-        base_state["web_research_result"] = []
+        base_state["web_research_results"] = []
         base_state["queries"] = ["query"]
         base_state["research_loop_count"] = 1
 
@@ -555,7 +526,7 @@ class TestFinalizeAnswer:
         """Test that finalize_answer generates a final response"""
         # Setup
         base_state["messages"] = [HumanMessage(content="What is quantum computing?")]
-        base_state["web_research_result"] = [
+        base_state["web_research_results"] = [
             {"url": "http://example.com", "content": "Quantum computing uses qubits"}
         ]
 
@@ -578,7 +549,7 @@ class TestFinalizeAnswer:
         """Test finalize_answer with no research results"""
         # Setup
         base_state["messages"] = [HumanMessage(content="Question")]
-        base_state["web_research_result"] = []
+        base_state["web_research_results"] = []
 
         mock_chain = Mock()
         mock_chain.invoke.return_value = AIMessage(
@@ -598,7 +569,7 @@ class TestFinalizeAnswer:
         """Test that finalize_answer can include citations"""
         # Setup
         base_state["messages"] = [HumanMessage(content="Question")]
-        base_state["web_research_result"] = [
+        base_state["web_research_results"] = [
             {"url": "http://example.com/1", "content": "source 1"},
             {"url": "http://example.com/2", "content": "source 2"},
         ]
@@ -623,7 +594,7 @@ class TestFinalizeAnswer:
         """Test finalize_answer handles generation errors"""
         # Setup
         base_state["messages"] = [HumanMessage(content="Question")]
-        base_state["web_research_result"] = [
+        base_state["web_research_results"] = [
             {"url": "http://example.com", "content": "content"}
         ]
 
@@ -692,7 +663,7 @@ class TestNodeIntegration:
         state_after_validation = validate_web_results(state_after_research, config)
 
         # Assert
-        assert len(state_after_validation["web_research_result"]) == 1
+        assert len(state_after_validation["web_research_results"]) == 1
 
 
 # Edge case tests
@@ -730,7 +701,7 @@ class TestEdgeCases:
         """Test reflection with many research results"""
         # Setup
         base_state["messages"] = [HumanMessage(content="Question")]
-        base_state["web_research_result"] = [
+        base_state["web_research_results"] = [
             {"url": f"http://example.com/{i}", "content": f"content {i}"}
             for i in range(100)
         ]

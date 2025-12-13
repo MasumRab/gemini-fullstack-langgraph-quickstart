@@ -21,12 +21,6 @@ The project is divided into two main directories:
 -   `frontend/`: Contains the React application built with Vite.
 -   `backend/`: Contains the LangGraph/FastAPI application, including the research agent logic.
 
-## Guides available
-- **[Authentication Guide](docs/guides/AUTHENTICATION.md)**: Setup API Keys and OAuth (Colab & Local).
-- **[Visualization Examples](docs/guides/VISUALIZATION_EXAMPLES.md)**: Visualize the agent graph with Mermaid/ASCII.
-- **[Research Inspirations](RESEARCH_INSPIRATIONS.md)**: Deep dive into the research agent architecture.
-
-
 ## Getting Started: Development and Local Testing
 
 Follow these steps to get the application running locally for development and testing.
