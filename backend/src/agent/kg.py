@@ -1,7 +1,7 @@
 from typing import Dict, Any, List
 import logging
 import re
-from backend.src.config.app_config import config
+from config.app_config import config
 
 logger = logging.getLogger(__name__)
 
@@ -23,22 +23,8 @@ from agent.registry import graph_registry
     tags=["kg", "enrichment"],
     outputs=["artifacts"],
 )
-async def kg_enrich(state: OverallState, runnable_config: RunnableConfig) -> OverallState:
-    """
-    Enrich the knowledge graph with allowlisted web research results found in the provided state.
-    
-    Processes each research result in `state["validated_web_research_result"]` or `state["web_research_result"]`, extracts the URL and domain, filters by the application allowlist, and submits the result text (the portion before the first "[") to the Cognee service for enrichment. Errors during per-result enrichment are logged and do not stop processing.
-    
-    Parameters:
-        state (OverallState): Mutable execution state; expected to contain either
-            `"validated_web_research_result"` or `"web_research_result"` as an iterable of result strings.
-        runnable_config (RunnableConfig): Execution configuration (not inspected by this function).
-    
-    Returns:
-        dict: If at least one item was successfully processed, returns `{"artifacts": {"kg_enriched_count": <int>}}`
-        indicating how many results were enriched; otherwise returns an empty dict.
-    """
-    from backend.src.config.app_config import config as app_config
+async def kg_enrich(state: OverallState, config: RunnableConfig) -> OverallState:
+    from config.app_config import config as app_config
 
     if not app_config.kg_enabled:
         return {}

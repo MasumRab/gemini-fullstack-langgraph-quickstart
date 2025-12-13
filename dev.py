@@ -6,9 +6,8 @@ import time
 
 def main():
     """
-    Launches and monitors the frontend (Vite) and backend (LangGraph) development servers for the repository.
-    
-    Starts each server in the repository's frontend and backend subdirectories, prints startup and status messages, creates a new console window for each process on Windows, and monitors both processes until stopped. If a child process exits unexpectedly or the user presses Ctrl+C, it shuts down any remaining child processes (using taskkill on Windows, graceful terminate on other platforms).
+    Cross-platform dev server launcher.
+    Starts both frontend (Vite) and backend (LangGraph) servers.
     """
     root_dir = os.path.dirname(os.path.abspath(__file__))
     frontend_dir = os.path.join(root_dir, "frontend")

@@ -13,11 +13,13 @@ Tests cover:
 """
 
 import pytest
+import dataclasses
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.state import OverallState
+from agent import nodes
 from agent.nodes import (
     generate_query,
     planning_mode,
@@ -33,19 +35,7 @@ from agent.models import TEST_MODEL
 # Fixtures
 @pytest.fixture
 def base_state():
-    """
-    Create a fresh default state dictionary used by tests.
-    
-    Returns:
-        dict: A new state mapping with the following keys:
-            - messages (list): Conversation messages.
-            - research_loop_count (int): Number of completed research/reflection loops.
-            - queries (list): Pending search or follow-up queries.
-            - web_research_result (list): Collected web research items.
-            - planning_steps (list): Generated planning steps for queries.
-            - planning_status (str|None): Current planning status (e.g., "auto_approved", "awaiting_confirmation") or None.
-            - planning_feedback (list): Feedback messages related to planning.
-    """
+    """Base state for testing"""
     return {
         "messages": [],
         "research_loop_count": 0,
@@ -59,16 +49,7 @@ def base_state():
 
 @pytest.fixture
 def config():
-    """
-    Create a default RunnableConfig used by tests.
-    
-    Returns:
-        RunnableConfig: Configuration with defaults:
-            - model: "gemini-2.0-flash-exp"
-            - max_loops: 3
-            - num_queries: 3
-            - require_planning_confirmation: False
-    """
+    """Basic runnable config"""
     return RunnableConfig(
         configurable={
             "model": TEST_MODEL,
@@ -81,14 +62,7 @@ def config():
 
 @pytest.fixture
 def config_with_confirmation():
-    """
-    Return a RunnableConfig configured to require planning confirmation.
-    
-    Creates a RunnableConfig with sensible defaults for tests: model set to "gemini-2.0-flash-exp", max_loops 3, num_queries 3, and require_planning_confirmation enabled.
-    
-    Returns:
-        RunnableConfig: Configuration with planning confirmation required.
-    """
+    """Config requiring planning confirmation"""
     return RunnableConfig(
         configurable={
             "model": TEST_MODEL,
@@ -313,8 +287,13 @@ class TestValidateWebResults:
         ]
         base_state["search_query"] = ["quantum physics"]
 
-        # Execute
-        result = validate_web_results(base_state, config)
+        # Disable citation requirement for this test
+        original_config = nodes.app_config
+        new_config = dataclasses.replace(original_config, require_citations=False)
+
+        with patch("agent.nodes.app_config", new_config):
+            # Execute
+            result = validate_web_results(base_state, config)
 
         # Assert
         assert "validated_web_research_result" in result

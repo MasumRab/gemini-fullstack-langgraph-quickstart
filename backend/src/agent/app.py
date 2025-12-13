@@ -39,12 +39,6 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/health")
 async def health_check():
-    """
-    Report basic service health status.
-    
-    Returns:
-        dict: A JSON-serializable dictionary `{"status": "ok"}` indicating the service is healthy.
-    """
     return {"status": "ok"}
 
 

@@ -56,19 +56,7 @@ ENV_FILE = Path(".env")
 ENV_EXAMPLE = Path(".env.example")
 
 def update_file(file_path: Path, pattern: str, replacement: str):
-    """
-    Apply a regular-expression substitution to a file and write the file only if changes occur.
-    
-    The function reads the file as UTF-8, applies `re.sub` with MULTILINE mode using `pattern` and `replacement`, and writes the updated content back to the same path if the substitution produces a different content. If the file does not exist, the function prints a warning and returns without modifying anything. When a file is updated, the function prints an update message.
-    
-    Parameters:
-        file_path (Path): Path to the target file to read and potentially overwrite.
-        pattern (str): Regular expression pattern to search for. Evaluated with MULTILINE mode.
-        replacement (str): Replacement string passed to `re.sub`.
-    
-    Returns:
-        bool: `True` if the file was modified and written, `False` otherwise.
-    """
+    """Update a file using regex pattern."""
     if not file_path.exists():
         print(f"Warning: File not found: {file_path}")
         return False
@@ -83,11 +71,6 @@ def update_file(file_path: Path, pattern: str, replacement: str):
     return False
 
 def main():
-    """
-    Apply a named model strategy across the repository by updating configuration, tool, frontend, and environment files.
-    
-    Validates the provided strategy name (defaults to "optimized") and exits with code 1 if unknown. For a valid strategy, updates backend configuration.py model defaults for query_generator_model, reflection_model, and answer_model; updates research_tools.py writer_model; updates the frontend hook's default reasoning_model; and updates QUERY_GENERATOR_MODEL, REFLECTION_MODEL, and ANSWER_MODEL in .env and .env.example when present. Prints progress and a completion message.
-    """
     strategy_name = sys.argv[1] if len(sys.argv) > 1 else "optimized"
 
     if strategy_name not in STRATEGIES:

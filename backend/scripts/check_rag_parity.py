@@ -20,10 +20,7 @@ logger = logging.getLogger(__name__)
 
 def check_parity(test_config: Optional[AppConfig] = None):
     """
-    Ingests sample documents and verifies retrieval parity between FAISS and Chroma stores.
-    
-    Parameters:
-        test_config (Optional[AppConfig]): Optional AppConfig to use for the RAG instance. If omitted, the function attempts to create a default config with rag_store="faiss" and dual_write=True; if that fails, it proceeds with fallback defaults.
+    Ingest sample data and verify that both FAISS and Chroma return similar results.
     """
     # Create test configuration
     if test_config is None:

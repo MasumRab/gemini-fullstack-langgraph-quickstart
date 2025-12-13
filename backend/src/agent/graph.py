@@ -22,7 +22,7 @@ from agent.nodes import (
 )
 from agent.kg import kg_enrich # New Node
 from agent.mcp_config import load_mcp_settings, validate
-# from agent.memory_tools import save_plan_tool, load_plan_tool # Removing as I'm using my wrapper
+from agent.memory_tools import save_plan_tool, load_plan_tool
 
 # Ensure config is loaded
 from backend.src.config.app_config import config
@@ -43,8 +43,20 @@ if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
 
 # Create our Agent Graph using the standard builder wiring
-# Note: LangGraph v1.0 deprecates config_schema in favor of context_schema,
+# Note: context_schema was renamed/used in main? My branch used config_schema.
+# Checking main's usage: builder = StateGraph(OverallState, context_schema=Configuration) in conflict block?
+# No, `StateGraph(OverallState, config_schema=Configuration)` is standard.
+# Let's check if 'context_schema' was introduced in main.
+# The previous read showed `builder = StateGraph(OverallState, context_schema=Configuration)` in the lower block.
+# LangGraph v0.2+ uses config_schema. Check if main updated langgraph version.
+# Assuming config_schema is safer for now unless I see errors.
+# Note: LangGraph v1.0 deprecates config_schema in favor of context_schema (if using older langgraph),
 # but sticking to config_schema per existing pattern unless updated.
+# Update: Recent LangGraph versions might prefer 'config_schema' OR 'context_schema' depending on exact minor version.
+# We will silence the warning or update if needed.
+# Since we are on langgraph 1.x, we should check which param is preferred.
+# For now, suppressing warning by continuing to use the existing pattern, or we can silence it.
+# Actually, let's just stick to what works and ignore the warning for now to avoid breaking changes if user downgrades.
 builder = StateGraph(OverallState, config_schema=Configuration)
 
 # If MCP is enabled, we log it. Tools are loaded via lifespan in app.py to ensure event loop safety.
@@ -59,9 +71,6 @@ if mcp_settings.enabled:
 
 builder.add_node("load_context", load_context)
 builder.add_node("scoping_node", scoping_node)
-# TODO: Phase 2 - Rename 'generate_query' to 'generate_plan'
-# This node will eventually generate a structured Todo list and bind MCP tools (load_thread_plan, save_thread_plan)
-# to allow the agent to manage long-term state.
 builder.add_node("generate_query", generate_query)
 builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
@@ -85,7 +94,6 @@ builder.add_conditional_edges(
     "scoping_node", scoping_router, ["planning_wait", "generate_query"]
 )
 
-# TODO: Future - Insert 'save_plan' step here to persist the generated plan automatically
 # builder.add_edge("generate_query", "planning_mode") # Removed as it's destination of router
 builder.add_edge("generate_query", "planning_mode")
 

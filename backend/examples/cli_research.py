@@ -1,7 +1,7 @@
 import argparse
 from langchain_core.messages import HumanMessage
-from agent.graph import graph
-from agent.models import DEFAULT_REFLECTION_MODEL
+
+
 
 import asyncio
 
@@ -23,8 +23,8 @@ async def main() -> None:
     )
     parser.add_argument(
         "--reasoning-model",
-        default=DEFAULT_REFLECTION_MODEL,
-        help="Model for reasoning and final answer",
+        default="gemini-2.5-pro",
+        help="Model for the final answer",
     )
     parser.add_argument(
         "--mode",
