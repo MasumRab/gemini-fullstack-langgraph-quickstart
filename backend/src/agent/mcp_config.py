@@ -3,6 +3,7 @@ from typing import Optional, List, Tuple, Any
 import os
 import shutil
 import asyncio
+import logging
 
 from langchain_core.tools import StructuredTool
 
@@ -128,12 +129,26 @@ class McpConnectionManager:
         Returns:
             List[Any]: A list of tool objects provided by the external Filesystem MCP server. May be an empty list if the system dependency `npx` is not available or the external filesystem MCP integration is not configured; in that case a warning is printed and no tools are returned.
         """
+        logger = logging.getLogger(__name__)
+        
+        # Check for npx dependency
         if not shutil.which("npx"):
-            print("Warning: npx not found. Filesystem MCP server cannot be started.")
+            logger.warning("npx not found. Filesystem MCP server cannot be started. Install Node.js to enable filesystem tools.")
+            return []
+        
+        # Check if MCP endpoint is configured
+        if not self.settings.endpoint:
+            logger.warning("MCP endpoint not configured. Skipping filesystem tools.")
             return []
 
-        # TODO: Implement full MultiServerMCPClient connection here.
-        return []
+        try:
+            # TODO: Implement full MultiServerMCPClient connection when MCP SDK is available
+            # For now, return empty list with proper logging
+            logger.info(f"MCP filesystem tools not yet implemented. Mount directory: {mount_dir}")
+            return []
+        except Exception as e:
+            logger.error(f"Error initializing MCP filesystem tools: {e}")
+            return []
 
     async def get_tools(self):
         """

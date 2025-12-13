@@ -2,6 +2,7 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field, asdict
 import numpy as np
 import time
+import uuid
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import logging
 import os
@@ -152,9 +153,10 @@ class DeepSearchRAG:
             chunks = self.splitter.split_text(content)
 
             for i, chunk in enumerate(chunks):
-                # Common data
+                                # Common data
                 chunk_timestamp = time.time()
-                chunk_id_str = f"{subgoal_id}_{int(chunk_timestamp * 1000)}_{i}"
+                # Add UUID component to prevent ID collisions during rapid ingestion
+                chunk_id_str = f"{subgoal_id}_{int(chunk_timestamp * 1000)}_{i}_{uuid.uuid4().hex[:8]}"
                 embedding = self.embedder.encode(chunk)
 
                 # FAISS Logic
