@@ -1,4 +1,3 @@
-
 import sys
 import os
 from pathlib import Path
@@ -10,6 +9,20 @@ src_path = project_root / "examples" / "open_deep_research_example" / "src"
 sys.path.append(str(src_path))
 
 def visualize_graph(graph, name):
+    """
+    Render a graph's Mermaid and ASCII representations, print them to stdout, and save files for the Mermaid output.
+    
+    Parameters:
+    	graph: An object providing a get_graph() method whose returned graph supports:
+    		- draw_mermaid(): returns Mermaid source as a string
+    		- draw_mermaid_png(): returns PNG bytes (optional)
+    		- print_ascii(): prints an ASCII representation
+    	name (str): Human-readable name used in printed headers and to derive output filenames.
+    		Filenames are formed by lowercasing `name` and replacing spaces with underscores; the Mermaid source is saved as `<filename>.mermaid` and the PNG (if produced) as `<filename>.png`.
+    
+    Side effects:
+    	Prints headers and representations to stdout, writes the Mermaid source and optionally a PNG file to the current working directory, and flushes stdout.
+    """
     if graph is None:
         print(f"Skipping {name} as it was not imported.")
         return

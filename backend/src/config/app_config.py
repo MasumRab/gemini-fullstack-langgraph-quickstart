@@ -41,13 +41,24 @@ class AppConfig:
     log_level: str = os.getenv("LOG_LEVEL", "info")
 
     # Model Selection
-    model_planning: str = os.getenv("MODEL_PLANNING", "primary_llm")
-    model_validation: str = os.getenv("MODEL_VALIDATION", "cheaper_llm")
-    model_compression: str = os.getenv("MODEL_COMPRESSION", "cheaper_summarizer")
+    model_planning: str = os.getenv("MODEL_PLANNING", "gemini-2.5-flash")
+    model_validation: str = os.getenv("MODEL_VALIDATION", "gemini-2.5-flash-lite")
+    model_compression: str = os.getenv("MODEL_COMPRESSION", "gemini-2.5-flash-lite")
 
     @classmethod
     def load(cls) -> "AppConfig":
-        """Load configuration and log the effective settings."""
+        """
+        Load application configuration from environment and return an AppConfig.
+        
+        Returns:
+            AppConfig: Instantiated configuration with values loaded from environment variables.
+        
+        Raises:
+            ValueError: If configuration values are invalid.
+        
+        Notes:
+            If the loaded configuration's `audit_mode` is not "off", the configuration is logged.
+        """
         try:
             config = cls()
             if config.audit_mode != "off":

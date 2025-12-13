@@ -1,6 +1,6 @@
 from typing import List
 from pydantic import BaseModel, Field
-
+from agent.mcp_config import McpConnectionManager
 
 class SearchQueryList(BaseModel):
     query: List[str] = Field(
@@ -22,12 +22,23 @@ class Reflection(BaseModel):
         description="A list of follow-up queries to address the knowledge gap."
     )
 
+def get_mcp_tools() -> List:
+    """
+    Retrieves MCP-based tools.
+    Currently returns the Persistence tools (load_thread_plan, save_thread_plan).
+    """
+    manager = McpConnectionManager()
+    # In a sync context, we might need to be careful with async tools,
+    # but LangGraph handles async tools fine.
+    return manager.get_persistence_tools()
+
 def get_tools_from_mcp(mcp_config=None):
     """
     Placeholder to load tools via langchain-mcp-adapters.
     In the future, this will connect to the MCP server defined in mcp_config.
+    For now, delegates to get_mcp_tools().
     """
     # Example integration:
     # from langchain_mcp_adapters import MCPToolAdapter
     # return MCPToolAdapter.load_tools(mcp_config)
-    return []
+    return get_mcp_tools()

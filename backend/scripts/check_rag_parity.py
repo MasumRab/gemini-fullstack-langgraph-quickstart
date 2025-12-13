@@ -7,15 +7,23 @@ from typing import Optional
 # Ensure backend path is in pythonpath
 sys.path.append(os.getcwd())
 
+<<<<<<< HEAD
 from backend.src.config.app_config import AppConfig
 from backend.src.agent.rag import DeepSearchRAG
+=======
+from config.app_config import AppConfig
+from agent.rag import DeepSearchRAG
+>>>>>>> origin/main
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def check_parity(test_config: Optional[AppConfig] = None):
     """
-    Ingest sample data and verify that both FAISS and Chroma return similar results.
+    Ingests sample documents and verifies retrieval parity between FAISS and Chroma stores.
+    
+    Parameters:
+        test_config (Optional[AppConfig]): Optional AppConfig to use for the RAG instance. If omitted, the function attempts to create a default config with rag_store="faiss" and dual_write=True; if that fails, it proceeds with fallback defaults.
     """
     # Create test configuration
     if test_config is None:

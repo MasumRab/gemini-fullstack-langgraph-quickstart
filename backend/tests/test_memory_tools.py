@@ -6,11 +6,21 @@ import shutil
 
 class TestMemoryTools(unittest.TestCase):
     def setUp(self):
+        """
+        Prepare test environment by ensuring the PLAN_DIR directory exists and setting the test_thread identifier.
+        
+        This creates PLAN_DIR if it does not already exist and assigns "test_tool_thread" to self.test_thread for use by tests.
+        """
         os.makedirs(PLAN_DIR, exist_ok=True)
         self.test_thread = "test_tool_thread"
 
     def tearDown(self):
         # Cleanup
+        """
+        Remove the test plan directory and its contents if it exists.
+        
+        This is called after each test to clean up filesystem state by deleting the directory referenced by `PLAN_DIR`.
+        """
         if os.path.exists(PLAN_DIR):
             shutil.rmtree(PLAN_DIR)
 

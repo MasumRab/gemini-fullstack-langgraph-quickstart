@@ -3,12 +3,16 @@ from agent.persistence import save_plan as persist_save, load_plan as persist_lo
 
 @tool
 def save_plan_tool(thread_id: str, todo_list: list, artifacts: dict) -> str:
-    """Saves the current plan and artifacts to a local file.
-
-    Args:
-        thread_id: The unique ID of the conversation thread.
-        todo_list: The list of tasks/todos.
-        artifacts: A dictionary of artifacts (documents, code).
+    """
+    Save a plan and its associated artifacts to persistent storage for a conversation thread.
+    
+    Parameters:
+        thread_id (str): Unique identifier for the conversation thread.
+        todo_list (list): List of tasks or todo items representing the plan.
+        artifacts (dict): Mapping of artifact names to their data (e.g., documents, code).
+    
+    Returns:
+        str: A status message: "Plan saved successfully." on success or "Error saving plan: {error message}." on failure.
     """
     try:
         persist_save(thread_id, todo_list, artifacts)
@@ -18,10 +22,17 @@ def save_plan_tool(thread_id: str, todo_list: list, artifacts: dict) -> str:
 
 @tool
 def load_plan_tool(thread_id: str) -> str:
-    """Loads the plan and artifacts from a local file.
-
-    Args:
-        thread_id: The unique ID of the conversation thread.
+    """
+    Load the saved plan and artifacts for a conversation thread.
+    
+    Parameters:
+        thread_id (str): Unique identifier for the conversation thread to load.
+    
+    Returns:
+        str: A message indicating the result:
+            - "Plan loaded: {data}" when saved plan and artifacts are found (with {data} containing the loaded content).
+            - "No plan found." when no saved data exists for the given thread_id.
+            - "Error loading plan: {error message}" if an exception occurred during load.
     """
     try:
         data = persist_load(thread_id)
