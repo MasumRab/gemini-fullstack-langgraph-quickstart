@@ -98,6 +98,9 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
     Checks if the user's request is ambiguous.
     If yes -> Generates questions and sets status to 'active' (interrupt).
     If no -> Sets status to 'complete' (proceed).
+
+    TODO: [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
     with observe_span("scoping_node", config):
         # 1. Check if we are processing a clarification answer
@@ -182,6 +185,10 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
 
     Uses Gemini 2.5 Flash to create optimized search queries for web research based on
     the User's question. Includes rate limiting and context window management.
+
+    TODO: [Open SWE] Rename to 'generate_plan' or create a new node.
+    It should generate a structured 'Plan' (List[Todo]) instead of just queries.
+    See docs/tasks/02_OPEN_SWE_TASKS.md
     """
     with observe_span("generate_query", config):
         configurable = Configuration.from_runnable_config(config)
@@ -368,6 +375,32 @@ def planning_wait(state: OverallState) -> OverallState:
         ]
     }
 
+
+# TODO: [Open SWE] Implement 'update_plan' Node
+# Logic: Read state.plan & state.web_research_result -> Prompt LLM -> Update Plan.
+# See docs/tasks/02_OPEN_SWE_TASKS.md
+
+# TODO: [SOTA Deep Research] Implement 'outline_gen' Node (STORM)
+# Logic: Generate hierarchical outline (Sections -> Subsections).
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+
+# TODO: [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
+# Logic: Dynamic DAG expansion based on findings.
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+
+# TODO: [SOTA Deep Research] Implement 'content_reader' Node (ManuSearch)
+# Logic: Extract structured Evidence (Claim, Source, Context).
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+
+# TODO: [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
+# Logic: Recursive research call for sub-topics.
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+
+# TODO: [SOTA Deep Research] Implement 'checklist_verifier' & 'denoising_refiner'
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+
+# TODO: [Open Canvas] Implement 'update_artifact' tool/node
+# See docs/tasks/03_OPEN_CANVAS_TASKS.md
 
 def planning_router(state: OverallState, config: RunnableConfig):
     """Route based on planning status and user commands."""

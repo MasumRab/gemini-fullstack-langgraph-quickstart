@@ -62,7 +62,9 @@ builder = StateGraph(OverallState, config_schema=Configuration)
 # If MCP is enabled, we would register MCP tools here or modify the schema
 if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
-    # In future: builder.bind_tools(mcp_tools)
+    # TODO: [MCP Integration] Bind MCP tools to 'web_research' or new 'tool_node'.
+    # See docs/tasks/01_MCP_TASKS.md
+    # builder.bind_tools(mcp_tools)
 
 builder.add_node("load_context", load_context)
 builder.add_node("scoping_node", scoping_node)
@@ -91,6 +93,10 @@ builder.add_conditional_edges(
 
 # builder.add_edge("generate_query", "planning_mode") # Removed as it's destination of router
 builder.add_edge("generate_query", "planning_mode")
+
+# TODO: [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
+# See docs/tasks/02_OPEN_SWE_TASKS.md
+
 builder.add_conditional_edges(
     "planning_mode", planning_router, ["planning_wait", "web_research"]
 )
