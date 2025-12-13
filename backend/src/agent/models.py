@@ -23,6 +23,9 @@ GEMINI_FLASH_LITE = "gemini-2.5-flash-lite"
 GEMINI_PRO = "gemini-2.5-pro"
 """High-capability model for complex tasks. 2M token context, 10 RPM free tier."""
 
+GEMMA_2_27B_IT = "gemma-2-27b-it"
+"""Open weights model (Gemma 2 27B IT). High daily limits, 8k context."""
+
 # ============================================================================
 # Default Model Assignments
 # ============================================================================
@@ -96,7 +99,7 @@ def is_valid_model(model_name: str) -> bool:
         True if model is valid and accessible, False otherwise
     """
     # Check if it's a known valid model
-    valid_models = {GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO}
+    valid_models = {GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT}
     
     if model_name in valid_models:
         return True
@@ -159,5 +162,5 @@ def get_model_or_default(model_name: str, default: str = GEMINI_FLASH) -> str:
 # All Valid Models (for iteration/validation)
 # ============================================================================
 
-ALL_VALID_MODELS = [GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO]
+ALL_VALID_MODELS = [GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT]
 """List of all valid, accessible Gemini models."""
