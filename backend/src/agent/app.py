@@ -2,9 +2,19 @@
 import pathlib
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
+from backend.src.config.validation import check_env_strict
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup validation
+    if not check_env_strict():
+        print("WARNING: Environment validation failed. Check logs for details.")
+    yield
+    # Shutdown logic if any
 
 # Define the FastAPI app
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/health")
