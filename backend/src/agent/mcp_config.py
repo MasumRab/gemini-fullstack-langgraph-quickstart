@@ -40,6 +40,8 @@ def validate(settings: MCPSettings) -> None:
     if settings.enabled and not settings.endpoint:
         raise ValueError("MCP enabled but MCP_ENDPOINT missing")
 
+# TODO: [MCP Integration] Implement full McpConnectionManager with SSE support.
+# Should handle connection pooling and error recovery.
 class McpConnectionManager:
     def __init__(self, settings: MCPSettings):
         self.settings = settings
