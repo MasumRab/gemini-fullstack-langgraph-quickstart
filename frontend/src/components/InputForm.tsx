@@ -56,6 +56,7 @@ export const InputForm: React.FC<InputFormProps> = ({
         } break-words min-h-7 bg-neutral-700 px-4 pt-3 `}
       >
         <Textarea
+          aria-label="Search query"
           value={internalInputValue}
           onChange={(e) => setInternalInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -70,6 +71,7 @@ export const InputForm: React.FC<InputFormProps> = ({
               type="button"
               variant="ghost"
               size="icon"
+              aria-label="Stop generating"
               className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 cursor-pointer rounded-full transition-all duration-200"
               onClick={onCancel}
             >
