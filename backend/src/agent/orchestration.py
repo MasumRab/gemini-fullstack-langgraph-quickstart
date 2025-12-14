@@ -22,7 +22,7 @@ Usage:
     graph = build_orchestrated_graph(
         tools=registry,
         agents=agents,
-        coordinator_model=GEMINI_PRO,
+        coordinator_model="gemini-2.5-pro",
     )
 """
 
@@ -39,7 +39,6 @@ from langgraph.prebuilt import ToolNode
 
 from agent.state import OverallState
 from agent.configuration import Configuration
-from agent.models import GEMINI_PRO
 
 logger = logging.getLogger(__name__)
 
@@ -292,7 +291,7 @@ class AgentPool:
 def create_coordinator_node(
     tools: ToolRegistry,
     agents: AgentPool,
-    model: str = GEMINI_PRO,
+    model: str = "gemini-2.5-pro",
 ):
     """Create a coordinator node that routes to tools or agents.
 
@@ -391,7 +390,7 @@ def create_task_router(agents: AgentPool):
 def build_orchestrated_graph(
     tools: Optional[ToolRegistry] = None,
     agents: Optional[AgentPool] = None,
-    coordinator_model: str = GEMINI_PRO,
+    coordinator_model: str = "gemini-2.5-pro",
     name: str = "orchestrated-agent",
 ) -> StateGraph:
     """Build a graph with coordinator-based orchestration.
