@@ -4,21 +4,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock UI components to simplify testing
 vi.mock('@/components/ui/button', () => ({
-    Button: ({ children, onClick, disabled, type }: any) => (
-        <button onClick={onClick} disabled={disabled} type={type}>
+    Button: ({ children, onClick, disabled, type, 'aria-label': ariaLabel }: any) => (
+        <button onClick={onClick} disabled={disabled} type={type} aria-label={ariaLabel}>
             {children}
         </button>
     ),
 }));
 
 vi.mock('@/components/ui/textarea', () => ({
-    Textarea: ({ value, onChange, onKeyDown, placeholder }: any) => (
+    Textarea: ({ value, onChange, onKeyDown, placeholder, 'aria-label': ariaLabel }: any) => (
         <textarea
             value={value}
             onChange={onChange}
             onKeyDown={onKeyDown}
             placeholder={placeholder}
             role="textbox"
+            aria-label={ariaLabel}
         />
     ),
 }));
@@ -81,15 +82,16 @@ describe('InputForm', () => {
     it('calls onCancel when stop button is clicked while loading', () => {
         render(<InputForm {...defaultProps} isLoading={true} />);
 
-        // Stop button icon is StopCircle, but we mocked Button.
-        // In the real component, the button renders StopCircle icon.
-        // Since we mocked Button to just render children, and StopCircle is an icon...
-        // We can look for the button by role 'button'
-        const buttons = screen.getAllByRole('button');
-        // The stop button is the first one rendered in the loading state logic
-        fireEvent.click(buttons[0]);
+        // The stop button should now be accessible via its aria-label
+        const stopButton = screen.getByLabelText('Stop generating');
+        fireEvent.click(stopButton);
 
         expect(defaultProps.onCancel).toHaveBeenCalled();
+    });
+
+    it('input has correct accessible label', () => {
+        render(<InputForm {...defaultProps} />);
+        expect(screen.getByLabelText('Search query')).toBeInTheDocument();
     });
 
     it('submits on Ctrl+Enter', () => {
