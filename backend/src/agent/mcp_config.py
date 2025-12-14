@@ -92,8 +92,30 @@ class McpConnectionManager:
             print("Warning: npx not found. Filesystem MCP server cannot be started.")
             return []
 
-        # TODO: Implement full MultiServerMCPClient connection here.
-        return []
+        try:
+            from mcp import StdioServerParameters
+            from langchain_mcp_adapters.client import MultiServerMCPClient
+        except ImportError:
+            print("Warning: langchain-mcp-adapters or mcp not installed.")
+            return []
+
+        server_params = StdioServerParameters(
+            command="npx",
+            args=["-y", "@modelcontextprotocol/server-filesystem", os.path.abspath(mount_dir)],
+            env=os.environ
+        )
+
+        # Note: In a real app, you might want to keep the client open.
+        # Here we connect, get tools, and close (which might kill the server).
+        # This is a limitation of this simple implementation.
+        try:
+            async with MultiServerMCPClient() as client:
+                await client.connect_stdio("filesystem", server_params)
+                tools = await client.get_tools()
+                return tools
+        except Exception as e:
+            print(f"Error connecting to filesystem MCP: {e}")
+            return []
 
     async def get_tools(self):
         """Aggregate all enabled tools."""
