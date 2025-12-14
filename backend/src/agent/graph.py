@@ -64,6 +64,7 @@ if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
     # TODO: [MCP Integration] Bind MCP tools to 'web_research' or new 'tool_node'.
     # See docs/tasks/01_MCP_TASKS.md
+    # Subtask: In `web_research` (or new node), bind these tools to the LLM.
     # builder.bind_tools(mcp_tools)
 
 builder.add_node("load_context", load_context)
@@ -96,6 +97,7 @@ builder.add_edge("generate_query", "planning_mode")
 
 # TODO: [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
 # See docs/tasks/02_OPEN_SWE_TASKS.md
+# Subtask: Create routing logic: `if pending_tasks: return "web_research" else: return "finalize"`.
 
 builder.add_conditional_edges(
     "planning_mode", planning_router, ["planning_wait", "web_research"]

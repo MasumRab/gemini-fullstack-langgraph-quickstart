@@ -42,6 +42,8 @@ def validate(settings: MCPSettings) -> None:
 
 # TODO: [MCP Integration] Implement full McpConnectionManager with SSE support.
 # Should handle connection pooling and error recovery.
+# Subtask: Implement `McpConnectionManager` class.
+# Subtask: Support SSE transport via HTTP/S endpoint.
 class McpConnectionManager:
     def __init__(self, settings: MCPSettings):
         self.settings = settings

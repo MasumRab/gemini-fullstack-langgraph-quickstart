@@ -101,6 +101,7 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
 
     TODO: [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Implement `scoping_node` logic: Analyze input query. If ambiguous, generate clarifying questions and interrupt graph.
     """
     with observe_span("scoping_node", config):
         # 1. Check if we are processing a clarification answer
@@ -189,6 +190,8 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
     TODO: [Open SWE] Rename to 'generate_plan' or create a new node.
     It should generate a structured 'Plan' (List[Todo]) instead of just queries.
     See docs/tasks/02_OPEN_SWE_TASKS.md
+    Subtask: Update prompt `query_writer_instructions` to generate a `Plan` (List of Todos).
+    Subtask: Update output parser.
     """
     with observe_span("generate_query", config):
         configurable = Configuration.from_runnable_config(config)
@@ -379,28 +382,43 @@ def planning_wait(state: OverallState) -> OverallState:
 # TODO: [Open SWE] Implement 'update_plan' Node
 # Logic: Read state.plan & state.web_research_result -> Prompt LLM -> Update Plan.
 # See docs/tasks/02_OPEN_SWE_TASKS.md
+# Subtask: Read `state.plan` and `state.web_research_result`.
+# Subtask: Prompt LLM: "Given the result, update the plan (mark done, add new tasks)."
+# Subtask: Parse output -> Update state.
 
 # TODO: [SOTA Deep Research] Implement 'outline_gen' Node (STORM)
 # Logic: Generate hierarchical outline (Sections -> Subsections).
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: Input: Refined user query + initial context.
+# Subtask: Output: Populate `OverallState.outline`.
 
 # TODO: [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
 # Logic: Dynamic DAG expansion based on findings.
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: Analyze findings. Decide to (a) Mark task done, (b) Add new tasks (DAG expansion), (c) Refine existing tasks.
+# Subtask: Output: Updated `todo_list` (DAG structure).
 
 # TODO: [SOTA Deep Research] Implement 'content_reader' Node (ManuSearch)
 # Logic: Extract structured Evidence (Claim, Source, Context).
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: Input: Raw HTML/Text from search.
+# Subtask: Output: List of `Evidence` objects appended to `OverallState.evidence_bank`.
 
 # TODO: [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
 # Logic: Recursive research call for sub-topics.
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: Input: A sub-topic query.
+# Subtask: Logic: Compile and run a fresh instance of the `ResearchGraph`.
 
 # TODO: [SOTA Deep Research] Implement 'checklist_verifier' & 'denoising_refiner'
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: Audit the `evidence_bank` against the `outline` requirements.
+# Subtask: Generate N draft answers, critique them, and synthesize the best components.
 
 # TODO: [Open Canvas] Implement 'update_artifact' tool/node
 # See docs/tasks/03_OPEN_CANVAS_TASKS.md
+# Subtask: Create a helper function/tool `update_artifact(id, content, type)`.
+# Subtask: Update `finalize_answer` to optionally emit an artifact instead of just text.
 
 def planning_router(state: OverallState, config: RunnableConfig):
     """Route based on planning status and user commands."""

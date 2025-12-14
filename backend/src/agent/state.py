@@ -12,13 +12,17 @@ import operator
 
 # TODO: [Open SWE] Define 'Todo' TypedDict (id, task, status, result) for structured planning.
 # See docs/tasks/02_OPEN_SWE_TASKS.md
+# Subtask: Define fields: id (str), task (str), status (pending/done/in_progress), result (str).
+# Subtask: Update `OverallState` to include `plan: List[Todo]`.
 
 # TODO: [SOTA Deep Research] Define 'ScopingState' if separate from OverallState, or ensure
 # OverallState includes all fields: query, clarifications_needed, user_answers.
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: Define fields: query (str), clarifications_needed (List[str]), user_answers (List[str]).
 
 # TODO: [SOTA Deep Research] Define 'Evidence' object/TypedDict for ManuSearch (Claim, Source, Context).
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: Define fields: claim (str), source_url (str), context_snippet (str).
 
 class OverallState(TypedDict):
     messages: Annotated[list, add_messages]
@@ -38,7 +42,10 @@ class OverallState(TypedDict):
     planning_feedback: Annotated[list, operator.add]
 
     # TODO: [SOTA Deep Research] Add 'outline' (Section -> Subsection) for STORM implementation.
+    # Subtask: Define Outline TypedDict (sections: List[Section]).
+
     # TODO: [SOTA Deep Research] Add 'evidence_bank' (List[Evidence]) for ManuSearch.
+    # Subtask: Add `evidence_bank: Annotated[list, operator.add]` to OverallState.
 
     initial_search_query_count: int
     max_research_loops: int
@@ -49,6 +56,7 @@ class OverallState(TypedDict):
     # TODO: [Open Canvas] Add specific ArtifactState or update 'artifacts' to Dict[str, Artifact]
     # where Artifact is a TypedDict with content, type, version, etc.
     # See docs/tasks/03_OPEN_CANVAS_TASKS.md
+    # Subtask: Define Artifact TypedDict (id, content, type, version).
 
 
 class ReflectionState(TypedDict):
