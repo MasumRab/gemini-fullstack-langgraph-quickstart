@@ -1,6 +1,8 @@
 from typing import List, Optional, Any
 from pydantic import BaseModel, Field
 
+# Global list of loaded MCP tools
+MCP_TOOLS: List[Any] = []
 
 class SearchQueryList(BaseModel):
     query: List[str] = Field(
