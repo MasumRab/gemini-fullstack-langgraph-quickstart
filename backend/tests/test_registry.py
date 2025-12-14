@@ -197,8 +197,4 @@ class TestSingletonInstance:
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     pytest.main([__file__, "-v"])
-=======
-    pytest.main([__file__, "-v"])
->>>>>>> origin/main
