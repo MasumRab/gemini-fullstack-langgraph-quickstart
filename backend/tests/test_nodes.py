@@ -18,6 +18,7 @@ from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import AIMessage, HumanMessage
 
+from config.app_config import AppConfig, config as real_config
 from agent.state import OverallState
 from agent import nodes
 from agent.nodes import (
@@ -326,15 +327,22 @@ class TestValidateWebResults:
         """Test that validate_web_results filters research results based on keywords"""
         # Setup
         base_state["web_research_result"] = [
-            "Good content relevant to quantum",
-            "Bad content relevant to cooking"
+            "Good content relevant to quantum [Source](http://example.com)",
+            "Bad content relevant to cooking [Source](http://example.com)"
         ]
         base_state["search_query"] = ["quantum physics"]
 
-        # Disable citation requirement for this test
-        original_config = nodes.app_config
-        new_config = dataclasses.replace(original_config, require_citations=False)
+        # Modify config to disable strict citations for this test if needed,
+        # although we added citations above.
+        # But we also want to ensure that 'agent.nodes.app_config' is using our desired settings.
+        # Specifically, ensure require_citations is False so we don't hard fail on format issues
+        # (though we formatted correctly above).
+        # More importantly, let's just show how to patch the config object properly.
 
+        # Create a modified config
+        new_config = dataclasses.replace(real_config, require_citations=False)
+
+        # Patch 'agent.nodes.app_config' which is where the node code imported it
         with patch("agent.nodes.app_config", new_config):
             # Execute
             result = validate_web_results(base_state, config)
@@ -429,4 +437,3 @@ class TestFinalizeAnswer:
             assert "messages" in result
             assert len(result["messages"]) > 0
             assert isinstance(result["messages"][0], AIMessage)
-
