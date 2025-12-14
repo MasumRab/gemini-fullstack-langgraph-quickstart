@@ -379,46 +379,96 @@ def planning_wait(state: OverallState) -> OverallState:
     }
 
 
-# TODO: [Open SWE] Implement 'update_plan' Node
-# Logic: Read state.plan & state.web_research_result -> Prompt LLM -> Update Plan.
-# See docs/tasks/02_OPEN_SWE_TASKS.md
-# Subtask: Read `state.plan` and `state.web_research_result`.
-# Subtask: Prompt LLM: "Given the result, update the plan (mark done, add new tasks)."
-# Subtask: Parse output -> Update state.
+def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Refines the research plan based on new findings.
 
-# TODO: [SOTA Deep Research] Implement 'outline_gen' Node (STORM)
-# Logic: Generate hierarchical outline (Sections -> Subsections).
-# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-# Subtask: Input: Refined user query + initial context.
-# Subtask: Output: Populate `OverallState.outline`.
+    TODO: [Open SWE] Implement 'update_plan' Node
+    Logic: Read state.plan & state.web_research_result -> Prompt LLM -> Update Plan.
+    See docs/tasks/02_OPEN_SWE_TASKS.md
+    Subtask: Read `state.plan` and `state.web_research_result`.
+    Subtask: Prompt LLM: "Given the result, update the plan (mark done, add new tasks)."
+    Subtask: Parse output -> Update state.
+    """
+    raise NotImplementedError("update_plan not implemented")
 
-# TODO: [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
-# Logic: Dynamic DAG expansion based on findings.
-# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-# Subtask: Analyze findings. Decide to (a) Mark task done, (b) Add new tasks (DAG expansion), (c) Refine existing tasks.
-# Subtask: Output: Updated `todo_list` (DAG structure).
+def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Generates a hierarchical outline (Sections -> Subsections) for the research.
 
-# TODO: [SOTA Deep Research] Implement 'content_reader' Node (ManuSearch)
-# Logic: Extract structured Evidence (Claim, Source, Context).
-# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-# Subtask: Input: Raw HTML/Text from search.
-# Subtask: Output: List of `Evidence` objects appended to `OverallState.evidence_bank`.
+    TODO: [SOTA Deep Research] Implement 'outline_gen' Node (STORM)
+    Logic: Generate hierarchical outline (Sections -> Subsections).
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Input: Refined user query + initial context.
+    Subtask: Output: Populate `OverallState.outline`.
+    """
+    raise NotImplementedError("outline_gen not implemented")
 
-# TODO: [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
-# Logic: Recursive research call for sub-topics.
-# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-# Subtask: Input: A sub-topic query.
-# Subtask: Logic: Compile and run a fresh instance of the `ResearchGraph`.
+def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Dynamically expands the research DAG based on findings.
 
-# TODO: [SOTA Deep Research] Implement 'checklist_verifier' & 'denoising_refiner'
-# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-# Subtask: Audit the `evidence_bank` against the `outline` requirements.
-# Subtask: Generate N draft answers, critique them, and synthesize the best components.
+    TODO: [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
+    Logic: Dynamic DAG expansion based on findings.
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Analyze findings. Decide to (a) Mark task done, (b) Add new tasks (DAG expansion), (c) Refine existing tasks.
+    Subtask: Output: Updated `todo_list` (DAG structure).
+    """
+    raise NotImplementedError("flow_update not implemented")
 
-# TODO: [Open Canvas] Implement 'update_artifact' tool/node
-# See docs/tasks/03_OPEN_CANVAS_TASKS.md
-# Subtask: Create a helper function/tool `update_artifact(id, content, type)`.
-# Subtask: Update `finalize_answer` to optionally emit an artifact instead of just text.
+def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Extracts structured evidence from raw web content.
+
+    TODO: [SOTA Deep Research] Implement 'content_reader' Node (ManuSearch)
+    Logic: Extract structured Evidence (Claim, Source, Context).
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Input: Raw HTML/Text from search.
+    Subtask: Output: List of `Evidence` objects appended to `OverallState.evidence_bank`.
+    """
+    raise NotImplementedError("content_reader not implemented")
+
+def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Executes a recursive research subgraph for a specific sub-topic.
+
+    TODO: [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
+    Logic: Recursive research call for sub-topics.
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Input: A sub-topic query.
+    Subtask: Logic: Compile and run a fresh instance of the `ResearchGraph`.
+    """
+    raise NotImplementedError("research_subgraph not implemented")
+
+def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Audits gathered evidence against the outline requirements.
+
+    TODO: [SOTA Deep Research] Implement 'checklist_verifier'
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Audit the `evidence_bank` against the `outline` requirements.
+    """
+    raise NotImplementedError("checklist_verifier not implemented")
+
+def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Refines the final answer by synthesizing multiple drafts.
+
+    TODO: [SOTA Deep Research] Implement 'denoising_refiner'
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Generate N draft answers, critique them, and synthesize the best components.
+    """
+    raise NotImplementedError("denoising_refiner not implemented")
+
+def update_artifact(id: str, content: str, type: str) -> str:
+    """
+    Updates a collaborative artifact.
+
+    TODO: [Open Canvas] Implement 'update_artifact' tool
+    See docs/tasks/03_OPEN_CANVAS_TASKS.md
+    Subtask: Create a helper function/tool `update_artifact(id, content, type)`.
+    """
+    raise NotImplementedError("update_artifact not implemented")
 
 def planning_router(state: OverallState, config: RunnableConfig):
     """Route based on planning status and user commands."""
