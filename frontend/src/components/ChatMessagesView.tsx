@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Copy, CopyCheck } from "lucide-react";
 import { InputForm } from "@/components/InputForm";
 import { Button } from "@/components/ui/button";
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, memo, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -142,10 +142,11 @@ interface HumanMessageBubbleProps {
 }
 
 // HumanMessageBubble Component
-const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = ({
+// Bolt Optimization: Wrapped in memo to prevent unnecessary re-renders
+const HumanMessageBubble = memo(({
   message,
   mdComponents,
-}) => {
+}: HumanMessageBubbleProps) => {
   return (
     <div
       className={`text-white rounded-3xl break-words min-h-7 bg-neutral-700 max-w-[100%] sm:max-w-[90%] px-4 pt-3 rounded-br-lg`}
@@ -157,7 +158,8 @@ const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = ({
       </ReactMarkdown>
     </div>
   );
-};
+});
+HumanMessageBubble.displayName = "HumanMessageBubble";
 
 // Props for AiMessageBubble
 interface AiMessageBubbleProps {
@@ -172,7 +174,8 @@ interface AiMessageBubbleProps {
 }
 
 // AiMessageBubble Component
-const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
+// Bolt Optimization: Wrapped in memo to prevent unnecessary re-renders during streaming
+const AiMessageBubble = memo(({
   message,
   historicalActivity,
   liveActivity,
@@ -181,7 +184,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   mdComponents,
   handleCopy,
   copiedMessageId,
-}) => {
+}: AiMessageBubbleProps) => {
   // Determine which activity events to show and if it's for a live loading message
   const activityForThisBubble =
     isLastMessage && isOverallLoading ? liveActivity : historicalActivity;
@@ -220,7 +223,8 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
       </Button>
     </div>
   );
-};
+});
+AiMessageBubble.displayName = "AiMessageBubble";
 
 interface PlanningContext {
   steps: any[];
@@ -253,7 +257,8 @@ export function ChatMessagesView({
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
-  const handleCopy = async (text: string, messageId: string) => {
+  // Bolt Optimization: Wrapped in useCallback to ensure referential stability for memoized children
+  const handleCopy = useCallback(async (text: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedMessageId(messageId);
@@ -261,7 +266,8 @@ export function ChatMessagesView({
     } catch (err) {
       console.error("Failed to copy text: ", err);
     }
-  };
+  }, []); // Empty deps as setCopiedMessageId is stable
+
   return (
     <div className="flex flex-col h-full">
       {planningContext && (
@@ -364,9 +370,11 @@ export function ChatMessagesView({
                     <AiMessageBubble
                       message={message}
                       historicalActivity={historicalActivities[message.id!]}
-                      liveActivity={liveActivityEvents} // Pass global live events
+                      // Bolt Optimization: Only pass liveActivity to the last message to prevent
+                      // historical messages from re-rendering when new events arrive.
+                      liveActivity={isLast ? liveActivityEvents : undefined}
                       isLastMessage={isLast}
-                      isOverallLoading={isLoading} // Pass global loading state
+                      isOverallLoading={isLoading}
                       mdComponents={mdComponents}
                       handleCopy={handleCopy}
                       copiedMessageId={copiedMessageId}
