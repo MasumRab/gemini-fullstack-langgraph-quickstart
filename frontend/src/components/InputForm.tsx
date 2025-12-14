@@ -56,11 +56,13 @@ export const InputForm: React.FC<InputFormProps> = ({
         } break-words min-h-7 bg-neutral-700 px-4 pt-3 `}
       >
         <Textarea
+          aria-label="Search query"
           value={internalInputValue}
           onChange={(e) => setInternalInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Who won the Euro 2024 and scored the most goals?"
-          className={`w-full text-neutral-100 placeholder-neutral-500 resize-none border-0 focus:outline-none focus:ring-0 outline-none focus-visible:ring-2 focus-visible:ring-neutral-500/50 shadow-none
+          aria-label="Chat input"
+          className={`w-full text-neutral-100 placeholder-neutral-500 resize-none border-0 focus:outline-none focus:ring-0 outline-none focus-visible:ring-0 shadow-none
                         md:text-base  min-h-[56px] max-h-[200px]`}
           rows={1}
         />
@@ -70,8 +72,10 @@ export const InputForm: React.FC<InputFormProps> = ({
               type="button"
               variant="ghost"
               size="icon"
+              aria-label="Stop generating"
               className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 cursor-pointer rounded-full transition-all duration-200"
               onClick={onCancel}
+              aria-label="Stop generating"
             >
               <StopCircle className="h-5 w-5" />
             </Button>
