@@ -3,6 +3,16 @@ import pathlib
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
+from backend.src.config.validation import check_env_strict
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup validation
+    if not check_env_strict():
+        print("WARNING: Environment validation failed. Check logs for details.")
+    yield
+    # Shutdown logic if any
 
 from agent.mcp_config import load_mcp_settings
 from agent.tools_and_schemas import get_tools_from_mcp, MCP_TOOLS
