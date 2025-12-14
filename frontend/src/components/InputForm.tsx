@@ -73,8 +73,6 @@ export const InputForm: React.FC<InputFormProps> = ({
               size="icon"
               className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 cursor-pointer rounded-full transition-all duration-200"
               onClick={onCancel}
-              aria-label="Stop generating"
-              title="Stop generating"
             >
               <StopCircle className="h-5 w-5" />
             </Button>
