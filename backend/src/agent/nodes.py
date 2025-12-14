@@ -26,13 +26,13 @@ from agent.rate_limiter import get_context_manager, get_rate_limiter
 from agent.registry import graph_registry
 from agent.scoping_prompts import scoping_instructions
 from agent.scoping_schema import ScopingAssessment
+from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS
 from agent.state import (
     OverallState,
     QueryGenerationState,
     ReflectionState,
     WebSearchState,
 )
-from agent.tools_and_schemas import Reflection, SearchQueryList
 from agent.utils import (
     get_research_topic,
 )
@@ -194,6 +194,7 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
         if state.get("initial_search_query_count") is None:
             state["initial_search_query_count"] = configurable.number_of_initial_queries
 
+
         # Format the prompt
         current_date = get_current_date()
         formatted_prompt = query_writer_instructions.format(
@@ -213,6 +214,11 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             max_retries=2,
             prompt=formatted_prompt
         )
+        # Bind MCP tools if available
+        if MCP_TOOLS:
+             logger.info(f"Binding {len(MCP_TOOLS)} MCP tools to generate_query model.")
+             llm = llm.bind_tools(MCP_TOOLS)
+
         structured_llm = llm.with_structured_output(SearchQueryList)
 
         # Generate the search queries

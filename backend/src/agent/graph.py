@@ -59,9 +59,11 @@ if os.getenv("GEMINI_API_KEY") is None:
 # Actually, let's just stick to what works and ignore the warning for now to avoid breaking changes if user downgrades.
 builder = StateGraph(OverallState, config_schema=Configuration)
 
-# If MCP is enabled, we would register MCP tools here or modify the schema
+# If MCP is enabled, we log it. Tools are loaded via lifespan in app.py to ensure event loop safety.
 if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
+    # Note: Tools are loaded into agent.tools_and_schemas.MCP_TOOLS during app startup.
+    # Nodes can access them from there at runtime.
     # TODO: [MCP Integration] Bind MCP tools to 'web_research' or new 'tool_node'.
     # See docs/tasks/01_MCP_TASKS.md
     # Subtask: In `web_research` (or new node), bind these tools to the LLM.
