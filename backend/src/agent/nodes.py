@@ -1,47 +1,42 @@
 # TODO: See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+import concurrent.futures
+import difflib
+import logging
 import os
 import re
-import difflib
-from typing import List, Dict, Any, Optional
-import logging
+from typing import List
 
+from backend.src.config.app_config import config as app_config
+from backend.src.search.router import search_router
+from google.genai import Client
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.types import Send
-from google.genai import Client
 
+from agent.configuration import Configuration
+from agent.persistence import load_plan, save_plan
+from agent.prompts import (
+    answer_instructions,
+    get_current_date,
+    query_writer_instructions,
+    reflection_instructions,
+)
+from agent.rate_limiter import get_context_manager, get_rate_limiter
+from agent.registry import graph_registry
+from agent.scoping_prompts import scoping_instructions
+from agent.scoping_schema import ScopingAssessment
+from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS
 from agent.state import (
     OverallState,
     QueryGenerationState,
     ReflectionState,
     WebSearchState,
 )
-from agent.configuration import Configuration
-from agent.prompts import (
-    get_current_date,
-    query_writer_instructions,
-    web_searcher_instructions,
-    reflection_instructions,
-    answer_instructions,
-)
-from agent.scoping_prompts import scoping_instructions
-from agent.scoping_schema import ScopingAssessment
-from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS
 from agent.utils import (
-    get_citations,
     get_research_topic,
-    insert_citation_markers,
-    resolve_urls,
 )
-from agent.registry import graph_registry
-from agent.persistence import load_plan, save_plan
-from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
-from agent.rate_limiter import get_rate_limiter, get_context_manager
 from observability.langfuse import observe_span
-
-from backend.src.config.app_config import config as app_config
-from backend.src.search.router import search_router
 
 logger = logging.getLogger(__name__)
 
@@ -93,11 +88,14 @@ def _get_rate_limited_llm(model: str, temperature: float = 0, max_retries: int =
     outputs=["scoping_status", "clarification_questions", "messages"],
 )
 def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Scoping Phase:
+    """Scoping Phase:
     Checks if the user's request is ambiguous.
     If yes -> Generates questions and sets status to 'active' (interrupt).
     If no -> Sets status to 'complete' (proceed).
+
+    TODO: [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Implement `scoping_node` logic: Analyze input query. If ambiguous, generate clarifying questions and interrupt graph.
     """
     with observe_span("scoping_node", config):
         # 1. Check if we are processing a clarification answer
@@ -182,6 +180,12 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
 
     Uses Gemini 2.5 Flash to create optimized search queries for web research based on
     the User's question. Includes rate limiting and context window management.
+
+    TODO: [Open SWE] Rename to 'generate_plan' or create a new node.
+    It should generate a structured 'Plan' (List[Todo]) instead of just queries.
+    See docs/tasks/02_OPEN_SWE_TASKS.md
+    Subtask: Update prompt `query_writer_instructions` to generate a `Plan` (List of Todos).
+    Subtask: Update output parser.
     """
     with observe_span("generate_query", config):
         configurable = Configuration.from_runnable_config(config)
@@ -245,8 +249,7 @@ def continue_to_web_research(state: QueryGenerationState):
     outputs=["web_research_result", "sources_gathered"],
 )
 def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
-    """
-    LangGraph node that performs web research.
+    """LangGraph node that performs web research.
     Updated to use the unified SearchRouter and AppConfig.
     """
     with observe_span("web_research", config):
@@ -375,6 +378,97 @@ def planning_wait(state: OverallState) -> OverallState:
     }
 
 
+def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Refines the research plan based on new findings.
+
+    TODO: [Open SWE] Implement 'update_plan' Node
+    Logic: Read state.plan & state.web_research_result -> Prompt LLM -> Update Plan.
+    See docs/tasks/02_OPEN_SWE_TASKS.md
+    Subtask: Read `state.plan` and `state.web_research_result`.
+    Subtask: Prompt LLM: "Given the result, update the plan (mark done, add new tasks)."
+    Subtask: Parse output -> Update state.
+    """
+    raise NotImplementedError("update_plan not implemented")
+
+def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Generates a hierarchical outline (Sections -> Subsections) for the research.
+
+    TODO: [SOTA Deep Research] Implement 'outline_gen' Node (STORM)
+    Logic: Generate hierarchical outline (Sections -> Subsections).
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Input: Refined user query + initial context.
+    Subtask: Output: Populate `OverallState.outline`.
+    """
+    raise NotImplementedError("outline_gen not implemented")
+
+def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Dynamically expands the research DAG based on findings.
+
+    TODO: [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
+    Logic: Dynamic DAG expansion based on findings.
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Analyze findings. Decide to (a) Mark task done, (b) Add new tasks (DAG expansion), (c) Refine existing tasks.
+    Subtask: Output: Updated `todo_list` (DAG structure).
+    """
+    raise NotImplementedError("flow_update not implemented")
+
+def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Extracts structured evidence from raw web content.
+
+    TODO: [SOTA Deep Research] Implement 'content_reader' Node (ManuSearch)
+    Logic: Extract structured Evidence (Claim, Source, Context).
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Input: Raw HTML/Text from search.
+    Subtask: Output: List of `Evidence` objects appended to `OverallState.evidence_bank`.
+    """
+    raise NotImplementedError("content_reader not implemented")
+
+def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Executes a recursive research subgraph for a specific sub-topic.
+
+    TODO: [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
+    Logic: Recursive research call for sub-topics.
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Input: A sub-topic query.
+    Subtask: Logic: Compile and run a fresh instance of the `ResearchGraph`.
+    """
+    raise NotImplementedError("research_subgraph not implemented")
+
+def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Audits gathered evidence against the outline requirements.
+
+    TODO: [SOTA Deep Research] Implement 'checklist_verifier'
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Audit the `evidence_bank` against the `outline` requirements.
+    """
+    raise NotImplementedError("checklist_verifier not implemented")
+
+def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Refines the final answer by synthesizing multiple drafts.
+
+    TODO: [SOTA Deep Research] Implement 'denoising_refiner'
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Generate N draft answers, critique them, and synthesize the best components.
+    """
+    raise NotImplementedError("denoising_refiner not implemented")
+
+def update_artifact(id: str, content: str, type: str) -> str:
+    """
+    Updates a collaborative artifact.
+
+    TODO: [Open Canvas] Implement 'update_artifact' tool
+    See docs/tasks/03_OPEN_CANVAS_TASKS.md
+    Subtask: Create a helper function/tool `update_artifact(id, content, type)`.
+    """
+    raise NotImplementedError("update_artifact not implemented")
+
 def planning_router(state: OverallState, config: RunnableConfig):
     """Route based on planning status and user commands."""
     configurable = Configuration.from_runnable_config(config)
@@ -425,6 +519,35 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
     return keywords
 
 
+def _validate_single_candidate(candidate: str, flattened_queries: List[str]) -> tuple[str, bool, str | None]:
+    """Helper to validate a single candidate using LLM."""
+    prompt = f"""
+    Verify if the following snippet actually contains relevant information for the query: "{flattened_queries[0] if flattened_queries else 'research topic'}"
+    Snippet: "{candidate[:500]}..."
+    Reply with "YES" or "NO" only.
+    """
+
+    # Use rate-limited LLM
+    llm = _get_rate_limited_llm(
+        model=app_config.model_validation,
+        temperature=0,
+        prompt=prompt
+    )
+
+    try:
+        # Assuming invoke returns AIMessage or similar
+        response = llm.invoke(prompt)
+        content = response.content if hasattr(response, "content") else str(response)
+
+        if "YES" in content.upper():
+            return candidate, True, None
+        else:
+            return candidate, False, "Result rejected by LLM Validator: Content mismatch."
+    except Exception as e:
+        logger.warning(f"LLM validation failed: {e}. Accepting candidate.")
+        return candidate, True, None # Fail open on error
+
+
 @graph_registry.describe(
     "validate_web_results",
     summary="Hybrid validation (Heuristics + LLM) with citation hard-fail.",
@@ -432,8 +555,7 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
     outputs=["validated_web_research_result", "validation_notes"],
 )
 def validate_web_results(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Hybrid validation logic:
+    """Hybrid validation logic:
     1. Heuristic filtering (fuzzy match against query intent).
     2. LLM Claim-Check (if Validation Mode is hybrid).
     3. Citation Hard-Fail (if REQUIRE_CITATIONS is true).
@@ -489,33 +611,21 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         if app_config.validation_mode == "hybrid" and heuristic_passed:
             validated_by_llm = []
 
-            for candidate in heuristic_passed:
-                # Lightweight claim check
-                prompt = f"""
-                Verify if the following snippet actually contains relevant information for the query: "{flattened_queries[0] if flattened_queries else 'research topic'}"
-                Snippet: "{candidate[:500]}..."
-                Reply with "YES" or "NO" only.
-                """
+            # ⚡ Bolt Optimization: Parallelize validation calls
+            # Using ThreadPoolExecutor to run blocking LLM calls in parallel
+            # Since the RateLimiter is thread-safe and the network call happens outside the lock,
+            # this speeds up validation significantly (e.g. 5x faster for 5 candidates).
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                # Submit all validation tasks
+                # Collect results as they complete (order doesn't strictly matter for set, but we usually want to preserve it)
+                # To preserve order, we can map over heuristic_passed
+                results = list(executor.map(lambda c: _validate_single_candidate(c, flattened_queries), heuristic_passed))
                 
-                # Use rate-limited LLM
-                llm = _get_rate_limited_llm(
-                    model=app_config.model_validation,
-                    temperature=0,
-                    prompt=prompt
-                )
-                
-                try:
-                    # Assuming invoke returns AIMessage or similar
-                    response = llm.invoke(prompt)
-                    content = response.content if hasattr(response, "content") else str(response)
-
-                    if "YES" in content.upper():
+                for candidate, is_valid, note in results:
+                    if is_valid:
                         validated_by_llm.append(candidate)
-                    else:
-                        notes.append("Result rejected by LLM Validator: Content mismatch.")
-                except Exception as e:
-                    logger.warning(f"LLM validation failed: {e}. Accepting candidate.")
-                    validated_by_llm.append(candidate)
+                    if note:
+                        notes.append(note)
 
             validated = validated_by_llm
         else:
@@ -536,8 +646,7 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
     outputs=["web_research_result"],
 )
 def compression_node(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Tiered Compression:
+    """Tiered Compression:
     1. Extractive: Deduplicate and remove redundant phrases.
     2. Abstractive: Summarize while keeping citations (if enabled).
     """
