@@ -22,6 +22,11 @@ class Reflection(BaseModel):
         description="A list of follow-up queries to address the knowledge gap."
     )
 
+# TODO: [MCP Integration] Create 'get_global_tools()' to aggregate MCP + Custom tools.
+# See docs/tasks/01_MCP_TASKS.md
+# Subtask: Add `get_global_tools()` function.
+# Subtask: Ensure the list of tools includes `read_file`, `write_file` (from MCP).
+
 async def get_tools_from_mcp(mcp_config=None) -> List[Any]:
     """
     Load tools via langchain-mcp-adapters.

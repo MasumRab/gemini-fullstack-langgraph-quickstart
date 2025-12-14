@@ -1,5 +1,6 @@
 # mypy: disable - error - code = "no-untyped-def,misc"
 import pathlib
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
@@ -12,6 +13,31 @@ async def lifespan(app: FastAPI):
         print("WARNING: Environment validation failed. Check logs for details.")
     yield
     # Shutdown logic if any
+
+from agent.mcp_config import load_mcp_settings
+from agent.tools_and_schemas import get_tools_from_mcp, MCP_TOOLS
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load MCP Tools on startup
+    mcp_settings = load_mcp_settings()
+    if mcp_settings.enabled:
+        print(f"INFO: Initializing MCP tools from {mcp_settings.endpoint}...")
+        try:
+            tools = await get_tools_from_mcp(mcp_settings)
+            MCP_TOOLS.extend(tools)
+            print(f"INFO: Successfully loaded {len(tools)} MCP tools.")
+        except Exception as e:
+            print(f"ERROR: Failed to load MCP tools during startup: {e}")
+
+    yield
+
+    # Cleanup if needed (e.g. close MCP sessions if we held them)
+    # For now, langchain_mcp_adapters handles session lifecycle via tool execution context?
+    # Actually, if load_mcp_tools establishes a persistent session, we should close it here.
+    # But get_tools_from_mcp returns list of tools.
+    MCP_TOOLS.clear()
+
 
 # Define the FastAPI app
 app = FastAPI(lifespan=lifespan)
