@@ -40,15 +40,15 @@ class TestGraphNodes:
         assert "search_query" in result
         assert result["search_query"] == ["query1", "query2"]
 
-    @patch('agent.nodes.genai_client')
-    @patch('agent.nodes.TAVILY_AVAILABLE', False)
-    def test_web_research_google_success(self, mock_client, mock_state, mock_config):
-        # Mock Google GenAI response
-        mock_response = Mock()
-        mock_response.text = "Search content"
-        mock_response.candidates = [Mock(grounding_metadata=None)]
-
-        mock_client.models.generate_content.return_value = mock_response
+    @patch('agent.nodes.search_router')
+    def test_web_research_success(self, mock_router, mock_state, mock_config):
+        # Mock SearchRouter response
+        mock_result = Mock()
+        mock_result.title = "T1"
+        mock_result.url = "u1"
+        mock_result.content = "c1"
+        
+        mock_router.search.return_value = [mock_result]
 
         state = mock_state.copy()
         state["search_query"] = "test query"
@@ -56,27 +56,10 @@ class TestGraphNodes:
         result = web_research(state, mock_config)
 
         assert "web_research_result" in result
-        assert result["web_research_result"][0] == "Search content"
-
-    @patch('agent.nodes.tavily_search_multiple')
-    @patch('agent.nodes.TAVILY_AVAILABLE', True)
-    def test_web_research_tavily_success(self, mock_tavily, mock_state, mock_config, monkeypatch):
-        monkeypatch.setenv("TAVILY_API_KEY", "test-key")
-
-        mock_tavily.return_value = [{
-            "results": [
-                {"title": "T1", "url": "u1", "content": "c1"},
-                {"title": "T2", "url": "u2", "content": "c2"}
-            ]
-        }]
-
-        state = mock_state.copy()
-        state["search_query"] = "test query"
-
-        result = web_research(state, mock_config)
-
-        assert len(result["web_research_result"]) > 0
-        assert "c1 [T1](u1)" in result["web_research_result"][0]
+        # Check that it formats correctly (likely content + citation)
+        assert "c1" in result["web_research_result"][0]
+        assert "[T1](u1)" in result["web_research_result"][0]
+        assert len(result["sources_gathered"]) > 0
 
     @patch('agent.nodes.ChatGoogleGenerativeAI')
     def test_reflection_sufficient(self, MockLLM, mock_state, mock_config):

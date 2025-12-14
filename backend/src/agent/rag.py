@@ -4,6 +4,7 @@ import numpy as np
 import time
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import logging
+import uuid
 import os
 
 from config.app_config import config
@@ -173,7 +174,7 @@ class DeepSearchRAG:
             for i, chunk in enumerate(chunks):
                 # Common data
                 chunk_timestamp = time.time()
-                chunk_id_str = f"{subgoal_id}_{int(chunk_timestamp * 1000)}_{i}"
+                chunk_id_str = f"{subgoal_id}_{uuid.uuid4()}"
                 embedding = self.embedder.encode(chunk)
 
                 # FAISS Logic
