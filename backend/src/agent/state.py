@@ -87,8 +87,18 @@ class SearchStateOutput:
 
 
 def create_rag_resources(resource_uris: list[str]):
-    """Placeholder factory for RAG resources until a concrete implementation exists."""
-
+    """Placeholder factory for RAG resources until a concrete implementation exists.
+    
+    This is an intentional extension point. Users should override this function
+    to convert resource URIs into Resource objects for their specific RAG backend.
+    
+    Example implementation:
+        def create_rag_resources(resource_uris: list[str]) -> list[Resource]:
+            return [Resource(uri=uri, metadata={}) for uri in resource_uris]
+    
+    Raises:
+        NotImplementedError: Always raised - this must be implemented by the user.
+    """
     raise NotImplementedError(
         "create_rag_resources is not implemented. Provide agent.state.create_rag_resources"
         " to convert resource URIs into Resource objects consumed by rag_nodes."
