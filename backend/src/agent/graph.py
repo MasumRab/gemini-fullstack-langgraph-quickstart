@@ -181,4 +181,4 @@ graph_registry.document_edge(
     description="Graph terminates after final answer is produced.",
 )
 
-graph = builder.compile(name="pro-search-agent")
+graph = builder.compile()

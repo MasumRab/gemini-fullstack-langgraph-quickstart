@@ -42,6 +42,57 @@ async def health_check():
     return {"status": "ok"}
 
 
+# Import the graph to serve
+try:
+    from agent.graph import graph
+except ImportError as e:
+    print(f"ERROR: Failed to import graph. Agent endpoints will fail. {e}")
+    graph = None
+
+from pydantic import BaseModel, Field
+from typing import Any, Dict, Optional
+
+class InvokeRequest(BaseModel):
+    input: Dict[str, Any]
+    config: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
+@app.post("/agent/invoke")
+async def invoke_agent(request: InvokeRequest):
+    if not graph:
+        # Response is imported from fastapi at top of file
+        return Response("Graph not loaded", status_code=500)
+
+    # Simple adapter to expose graph.invoke
+    # This allows using uvicorn instead of langgraph-cli
+    try:
+        result = await graph.invoke(request.input, request.config)
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response(f"Execution Error: {str(e)}", status_code=500)
+
+from fastapi.responses import StreamingResponse
+import json
+
+@app.post("/agent/stream")
+async def stream_agent(request: InvokeRequest):
+    if not graph:
+         return Response("Graph not loaded", status_code=500)
+
+    async def _stream_generator():
+        try:
+            async for chunk in graph.astream(request.input, request.config):
+                # LangGraph stream output needs to be serialized
+                # Chunk is usually a dict of node updates
+                # We yield it as JSON lines
+                yield json.dumps(chunk, default=str) + "\n"
+        except Exception as e:
+            yield json.dumps({"error": str(e)}) + "\n"
+
+    return StreamingResponse(_stream_generator(), media_type="application/x-ndjson")
+
+
 
 def create_frontend_router(build_dir="../frontend/dist"):
     """Creates a router to serve the React frontend.
