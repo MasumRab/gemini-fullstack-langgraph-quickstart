@@ -230,7 +230,7 @@ def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
     try:
         with open(notebook_path, 'r', encoding='utf-8') as f:
             nb = nbformat.read(f, as_version=4)
-    except Exception as e:
+    except Exception as e: # noqa: BLE001
         print(f"  [X] Error reading notebook: {e}")
         return False
     
@@ -293,14 +293,14 @@ def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
                 nbformat.write(nb, f)
             print(f"  [OK] Saved changes to {notebook_path.name}")
             return True
-        except Exception as e:
+        except Exception as e: # noqa: BLE001
             print(f"  [X] Error saving notebook: {e}")
             return False
     elif modified and dry_run:
         print(f"  🔍 [DRY RUN] Would save changes to {notebook_path.name}")
         return True
     else:
-        print(f"  [i] No changes needed")
+        print("  [i] No changes needed")
         return False
 
 
