@@ -44,7 +44,7 @@ const mdComponents = {
     </p>
   ),
   a: ({ className, children, href, ...props }: MdComponentProps) => (
-    <Badge className="text-xs mx-0.5">
+    <Badge className="text-xs mx-0.5" asChild>
       <a
         className={cn("text-blue-400 hover:text-blue-300 text-xs", className)}
         href={href}
@@ -182,7 +182,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
   isOverallLoading,
   mdComponents,
   handleCopy,
-  copiedMessageId,
+  isCopied,
 }: AiMessageBubbleProps) => {
   // Determine which activity events to show and if it's for a live loading message
   const activityForThisBubble =
