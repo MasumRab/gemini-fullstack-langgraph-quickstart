@@ -145,7 +145,7 @@ interface HumanMessageBubbleProps {
 const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
   message,
   mdComponents,
-}) => {
+}: HumanMessageBubbleProps) => {
   return (
     <div
       className={`text-white rounded-3xl break-words min-h-7 bg-neutral-700 max-w-[100%] sm:max-w-[90%] px-4 pt-3 rounded-br-lg`}
@@ -158,6 +158,7 @@ const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
     </div>
   );
 });
+HumanMessageBubble.displayName = "HumanMessageBubble";
 
 // Props for AiMessageBubble
 interface AiMessageBubbleProps {
@@ -181,8 +182,8 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
   isOverallLoading,
   mdComponents,
   handleCopy,
-  isCopied,
-}) => {
+  copiedMessageId,
+}: AiMessageBubbleProps) => {
   // Determine which activity events to show and if it's for a live loading message
   const activityForThisBubble =
     isLastMessage && isOverallLoading ? liveActivity : historicalActivity;
@@ -222,6 +223,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
     </div>
   );
 });
+AiMessageBubble.displayName = "AiMessageBubble";
 
 interface PlanningContext {
   steps: any[];
@@ -254,6 +256,7 @@ export function ChatMessagesView({
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
+  // Bolt Optimization: Wrapped in useCallback to ensure referential stability for memoized children
   // ⚡ Bolt Optimization: useCallback ensures handleCopy reference remains stable
   // allowing memoized child components to avoid re-renders
   const handleCopy = useCallback(async (text: string, messageId: string) => {
@@ -264,7 +267,7 @@ export function ChatMessagesView({
     } catch (err) {
       console.error("Failed to copy text: ", err);
     }
-  }, []);
+  }, []); // Empty deps as setCopiedMessageId is stable
 
   return (
     <div className="flex flex-col h-full">
@@ -368,9 +371,11 @@ export function ChatMessagesView({
                     <AiMessageBubble
                       message={message}
                       historicalActivity={historicalActivities[message.id!]}
-                      liveActivity={liveActivityEvents} // Pass global live events
+                      // Bolt Optimization: Only pass liveActivity to the last message to prevent
+                      // historical messages from re-rendering when new events arrive.
+                      liveActivity={isLast ? liveActivityEvents : undefined}
                       isLastMessage={isLast}
-                      isOverallLoading={isLoading} // Pass global loading state
+                      isOverallLoading={isLoading}
                       mdComponents={mdComponents}
                       handleCopy={handleCopy}
                       isCopied={copiedMessageId === message.id}
