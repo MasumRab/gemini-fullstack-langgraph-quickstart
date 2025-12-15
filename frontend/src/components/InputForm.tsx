@@ -26,8 +26,8 @@ export const InputForm: React.FC<InputFormProps> = ({
 }) => {
   const [internalInputValue, setInternalInputValue] = useState("");
   const [effort, setEffort] = useState("medium");
-  // Default to gemini-2.5-flash as it is the standard accessible flash model
-  const [model, setModel] = useState("gemini-2.5-flash");
+  // Default to gemma-3-27b-it as it is the standard accessible model
+  const [model, setModel] = useState("gemma-3-27b-it");
 
   const handleInternalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();

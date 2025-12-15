@@ -67,7 +67,7 @@ describe('InputForm', () => {
         const submitButton = screen.getByText(/Search/i);
         fireEvent.click(submitButton);
 
-        expect(defaultProps.onSubmit).toHaveBeenCalledWith('test query', 'medium', 'gemini-2.5-flash');
+        expect(defaultProps.onSubmit).toHaveBeenCalledWith('test query', 'medium', 'gemma-3-27b-it');
     });
 
     it('does not call onSubmit when input is empty', () => {
@@ -101,7 +101,7 @@ describe('InputForm', () => {
         fireEvent.change(input, { target: { value: 'test query' } });
         fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
 
-        expect(defaultProps.onSubmit).toHaveBeenCalledWith('test query', 'medium', 'gemini-2.5-flash');
+        expect(defaultProps.onSubmit).toHaveBeenCalledWith('test query', 'medium', 'gemma-3-27b-it');
     });
 
     it('shows New Search button when history exists', () => {
