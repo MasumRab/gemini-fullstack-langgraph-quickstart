@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import Mock, patch
 from agent.nodes import generate_query, web_research, reflection, finalize_answer, load_context
 from langchain_core.messages import HumanMessage
+from agent.models import TEST_MODEL
 
 @pytest.fixture
 def mock_state():
@@ -44,15 +45,16 @@ class TestGraphNodes:
         assert "search_query" in result
         assert result["search_query"] == ["query1", "query2"]
 
-    @patch('agent.nodes.genai_client')
-    @patch('agent.nodes.TAVILY_AVAILABLE', False)
-    def test_web_research_google_success(self, mock_client, mock_state, mock_config):
-        # Mock Google GenAI response
-        mock_response = Mock()
-        mock_response.text = "Search content"
-        mock_response.candidates = [Mock(grounding_metadata=None)]
+    @patch('agent.nodes.search_router')
+    def test_web_research_google_success(self, mock_search_router, mock_state, mock_config):
+        # Mock SearchRouter response
+        mock_result = Mock()
+        mock_result.title = "Search content"
+        mock_result.url = "http://google.com"
+        mock_result.content = "Search content"
+        mock_result.raw_content = None
 
-        mock_client.models.generate_content.return_value = mock_response
+        mock_search_router.search.return_value = [mock_result]
 
         state = mock_state.copy()
         state["search_query"] = "test query"
@@ -60,19 +62,15 @@ class TestGraphNodes:
         result = web_research(state, mock_config)
 
         assert "web_research_result" in result
-        assert result["web_research_result"][0] == "Search content"
+        assert "Search content [Search content](http://google.com)" in result["web_research_result"][0]
 
-    @patch('agent.nodes.tavily_search_multiple')
-    @patch('agent.nodes.TAVILY_AVAILABLE', True)
-    def test_web_research_tavily_success(self, mock_tavily, mock_state, mock_config, monkeypatch):
-        monkeypatch.setenv("TAVILY_API_KEY", "test-key")
+    @patch('agent.nodes.search_router')
+    def test_web_research_tavily_success(self, mock_search_router, mock_state, mock_config):
+        # Mock SearchRouter response to simulate Tavily-like results
+        r1 = Mock(title="T1", url="u1", content="c1", raw_content=None)
+        r2 = Mock(title="T2", url="u2", content="c2", raw_content=None)
 
-        mock_tavily.return_value = [{
-            "results": [
-                {"title": "T1", "url": "u1", "content": "c1"},
-                {"title": "T2", "url": "u2", "content": "c2"}
-            ]
-        }]
+        mock_search_router.search.return_value = [r1, r2]
 
         state = mock_state.copy()
         state["search_query"] = "test query"
