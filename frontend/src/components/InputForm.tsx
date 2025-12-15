@@ -26,7 +26,8 @@ export const InputForm: React.FC<InputFormProps> = ({
 }) => {
   const [internalInputValue, setInternalInputValue] = useState("");
   const [effort, setEffort] = useState("medium");
-  const [model, setModel] = useState("gemini-2.5-flash-preview-04-17");
+  // Default to gemma-3-27b-it as it is the standard accessible model
+  const [model, setModel] = useState("gemma-3-27b-it");
 
   const handleInternalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -81,8 +82,8 @@ export const InputForm: React.FC<InputFormProps> = ({
               type="submit"
               variant="ghost"
               className={`${isSubmitDisabled
-                  ? "text-neutral-500"
-                  : "text-blue-500 hover:text-blue-400 hover:bg-blue-500/10"
+                ? "text-neutral-500"
+                : "text-blue-500 hover:text-blue-400 hover:bg-blue-500/10"
                 } p-2 cursor-pointer rounded-full transition-all duration-200 text-base`}
               disabled={isSubmitDisabled}
             >
@@ -100,7 +101,7 @@ export const InputForm: React.FC<InputFormProps> = ({
               Effort
             </div>
             <Select value={effort} onValueChange={setEffort}>
-              <SelectTrigger className="w-[120px] bg-transparent border-none cursor-pointer">
+              <SelectTrigger aria-label="Effort selection" className="w-[120px] bg-transparent border-none cursor-pointer">
                 <SelectValue placeholder="Effort" />
               </SelectTrigger>
               <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer">
@@ -131,12 +132,12 @@ export const InputForm: React.FC<InputFormProps> = ({
               Model
             </div>
             <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="w-[150px] bg-transparent border-none cursor-pointer">
+              <SelectTrigger aria-label="Model selection" className="w-[150px] bg-transparent border-none cursor-pointer">
                 <SelectValue placeholder="Model" />
               </SelectTrigger>
               <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer">
                 <SelectItem
-                  value="gemini-2.5-flash-preview-04-17"
+                  value="gemini-2.5-flash"
                   className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
                 >
                   <div className="flex items-center">
@@ -144,11 +145,19 @@ export const InputForm: React.FC<InputFormProps> = ({
                   </div>
                 </SelectItem>
                 <SelectItem
-                  value="gemini-2.5-pro-preview-05-06"
+                  value="gemini-2.5-pro"
                   className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
                 >
                   <div className="flex items-center">
                     <Cpu className="h-4 w-4 mr-2 text-purple-400" /> 2.5 Pro
+                  </div>
+                </SelectItem>
+                <SelectItem
+                  value="gemma-3-27b-it"
+                  className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
+                >
+                  <div className="flex items-center">
+                    <Brain className="h-4 w-4 mr-2 text-blue-400" /> Gemma 3
                   </div>
                 </SelectItem>
               </SelectContent>

@@ -12,6 +12,7 @@ import pytest
 from typing import Dict, Any
 from langchain_core.runnables import RunnableConfig
 
+from unittest.mock import patch
 from agent.state import OverallState
 from agent.graphs.supervisor import compress_context, graph
 
@@ -19,6 +20,19 @@ from agent.graphs.supervisor import compress_context, graph
 # =============================================================================
 # Fixtures
 # =============================================================================
+
+import dataclasses
+from agent.graphs import supervisor
+
+@pytest.fixture(autouse=True)
+def disable_compression():
+    """Disable compression for deterministic testing."""
+    # Since AppConfig is frozen, we must replace the entire config object
+    original_config = supervisor.app_config
+    new_config = dataclasses.replace(original_config, compression_enabled=False)
+
+    with patch("agent.graphs.supervisor.app_config", new_config):
+        yield
 
 @pytest.fixture
 def base_supervisor_state() -> Dict[str, Any]:

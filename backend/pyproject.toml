@@ -18,7 +18,7 @@ dependencies = [
     "langgraph-api",
     "fastapi",
     "google-genai",
-    "langchain-mcp-adapters",
+    "langchain-mcp-adapters==0.1.0",
     "langchain-text-splitters",
     "mcp",
     "sentence-transformers",
@@ -68,6 +68,7 @@ convention = "google"
 
 [tool.pytest.ini_options]
 norecursedirs = ["scripts"]
+asyncio_mode = "auto"
 
 [dependency-groups]
 dev = [
@@ -75,4 +76,5 @@ dev = [
     "pytest>=8.3.5",
     "pytest-cov>=5.0.0",
     "hypothesis>=6.100.0",
+    "pytest-asyncio",
 ]

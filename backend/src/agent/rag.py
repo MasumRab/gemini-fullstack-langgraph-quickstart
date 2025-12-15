@@ -163,57 +163,77 @@ class DeepSearchRAG:
         ingested_ids = []
         chroma_chunks = []
         embeddings_list = []
+        chunks_to_process = []
 
         for doc in documents:
             content = doc.get("content", "")
             if not content:
                 continue
 
-            chunks = self.splitter.split_text(content)
+            doc_chunks = self.splitter.split_text(content)
 
-            for i, chunk in enumerate(chunks):
-                # Common data
-                chunk_timestamp = time.time()
-                chunk_id_str = f"{subgoal_id}_{uuid.uuid4()}"
-                embedding = self.embedder.encode(chunk)
+            for chunk in doc_chunks:
+                # ⚡ Bolt Optimization: Prepare for batch processing
+                chunks_to_process.append({
+                    "chunk": chunk,
+                    "doc": doc
+                })
 
-                # FAISS Logic
-                if self.use_faiss:
-                    evidence = EvidenceChunk(
-                        content=chunk,
-                        source_url=doc.get("url", "unknown"),
-                        subgoal_id=subgoal_id,
-                        relevance_score=doc.get("score", 0.0),
-                        timestamp=chunk_timestamp,
-                        chunk_id=chunk_id_str,
-                        metadata=metadata or {}
-                    )
+        # ⚡ Bolt Optimization: Batch Embedding
+        # Call the model once for all chunks instead of N times (N=docs*chunks)
+        if not chunks_to_process:
+            return []
 
-                    self.index_with_ids.add_with_ids(
-                        np.array([embedding], dtype=np.float32),
-                        np.array([self.next_id])
-                    )
-                    self.doc_store[self.next_id] = evidence
-                    ingested_ids.append(self.next_id)
+        texts = [c["chunk"] for c in chunks_to_process]
+        embeddings = self.embedder.encode(texts)
 
-                    if subgoal_id not in self.subgoal_evidence_map:
-                        self.subgoal_evidence_map[subgoal_id] = []
-                    self.subgoal_evidence_map[subgoal_id].append(self.next_id)
+        # Process embeddings and store
+        current_time = time.time()
 
-                    self.next_id += 1
+        for i, item in enumerate(chunks_to_process):
+            chunk = item["chunk"]
+            doc = item["doc"]
+            # Use UUID to prevent collisions in batch
+            chunk_id_str = f"{subgoal_id}_{uuid.uuid4()}"
+            embedding = embeddings[i]
 
-                # Chroma Logic (Buffer for batch insert)
-                if self.use_chroma and CHROMA_AVAILABLE:
-                    chroma_chunks.append(ChromaEvidenceChunk(
-                        content=chunk,
-                        source_url=doc.get("url", "unknown"),
-                        subgoal_id=subgoal_id,
-                        relevance_score=doc.get("score", 0.0),
-                        timestamp=chunk_timestamp,
-                        chunk_id=chunk_id_str,
-                        metadata=metadata or {}
-                    ))
-                    embeddings_list.append(embedding.tolist())
+            # FAISS Logic
+            if self.use_faiss:
+                evidence = EvidenceChunk(
+                    content=chunk,
+                    source_url=doc.get("url", "unknown"),
+                    subgoal_id=subgoal_id,
+                    relevance_score=doc.get("score", 0.0),
+                    timestamp=current_time,
+                    chunk_id=chunk_id_str,
+                    metadata=metadata or {}
+                )
+
+                self.index_with_ids.add_with_ids(
+                    np.array([embedding], dtype=np.float32),
+                    np.array([self.next_id])
+                )
+                self.doc_store[self.next_id] = evidence
+                ingested_ids.append(self.next_id)
+
+                if subgoal_id not in self.subgoal_evidence_map:
+                    self.subgoal_evidence_map[subgoal_id] = []
+                self.subgoal_evidence_map[subgoal_id].append(self.next_id)
+
+                self.next_id += 1
+
+            # Chroma Logic (Buffer for batch insert)
+            if self.use_chroma and CHROMA_AVAILABLE:
+                chroma_chunks.append(ChromaEvidenceChunk(
+                    content=chunk,
+                    source_url=doc.get("url", "unknown"),
+                    subgoal_id=subgoal_id,
+                    relevance_score=doc.get("score", 0.0),
+                    timestamp=current_time,
+                    chunk_id=chunk_id_str,
+                    metadata=metadata or {}
+                ))
+                embeddings_list.append(embedding.tolist())
 
         # Batch insert to Chroma
         if self.use_chroma and chroma_chunks and CHROMA_AVAILABLE:
