@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Copy, CopyCheck } from "lucide-react";
 import { InputForm } from "@/components/InputForm";
 import { Button } from "@/components/ui/button";
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, memo, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -141,8 +141,8 @@ interface HumanMessageBubbleProps {
   mdComponents: typeof mdComponents;
 }
 
-// HumanMessageBubble Component
-const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = ({
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
+const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
   message,
   mdComponents,
 }) => {
@@ -157,7 +157,7 @@ const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = ({
       </ReactMarkdown>
     </div>
   );
-};
+});
 
 // Props for AiMessageBubble
 interface AiMessageBubbleProps {
@@ -168,11 +168,12 @@ interface AiMessageBubbleProps {
   isOverallLoading: boolean;
   mdComponents: typeof mdComponents;
   handleCopy: (text: string, messageId: string) => void;
-  copiedMessageId: string | null;
+  isCopied: boolean;
 }
 
-// AiMessageBubble Component
-const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
+// The `isCopied` prop ensures only the specific bubble being interacted with re-renders
+const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
   message,
   historicalActivity,
   liveActivity,
@@ -180,7 +181,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   isOverallLoading,
   mdComponents,
   handleCopy,
-  copiedMessageId,
+  isCopied,
 }) => {
   // Determine which activity events to show and if it's for a live loading message
   const activityForThisBubble =
@@ -215,12 +216,12 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           )
         }
       >
-        {copiedMessageId === message.id ? "Copied" : "Copy"}
-        {copiedMessageId === message.id ? <CopyCheck /> : <Copy />}
+        {isCopied ? "Copied" : "Copy"}
+        {isCopied ? <CopyCheck /> : <Copy />}
       </Button>
     </div>
   );
-};
+});
 
 interface PlanningContext {
   steps: any[];
@@ -253,7 +254,9 @@ export function ChatMessagesView({
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
-  const handleCopy = async (text: string, messageId: string) => {
+  // ⚡ Bolt Optimization: useCallback ensures handleCopy reference remains stable
+  // allowing memoized child components to avoid re-renders
+  const handleCopy = useCallback(async (text: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedMessageId(messageId);
@@ -261,7 +264,8 @@ export function ChatMessagesView({
     } catch (err) {
       console.error("Failed to copy text: ", err);
     }
-  };
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
       {planningContext && (
@@ -369,7 +373,7 @@ export function ChatMessagesView({
                       isOverallLoading={isLoading} // Pass global loading state
                       mdComponents={mdComponents}
                       handleCopy={handleCopy}
-                      copiedMessageId={copiedMessageId}
+                      isCopied={copiedMessageId === message.id}
                     />
                   )}
                 </div>
