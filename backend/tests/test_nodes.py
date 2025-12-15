@@ -13,11 +13,13 @@ Tests cover:
 """
 
 import pytest
+import dataclasses
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.state import OverallState
+from agent import nodes
 from agent.nodes import (
     generate_query,
     planning_mode,
@@ -285,8 +287,13 @@ class TestValidateWebResults:
         ]
         base_state["search_query"] = ["quantum physics"]
 
-        # Execute
-        result = validate_web_results(base_state, config)
+        # Disable citation requirement for this test
+        original_config = nodes.app_config
+        new_config = dataclasses.replace(original_config, require_citations=False)
+
+        with patch("agent.nodes.app_config", new_config):
+            # Execute
+            result = validate_web_results(base_state, config)
 
         # Assert
         assert "validated_web_research_result" in result
