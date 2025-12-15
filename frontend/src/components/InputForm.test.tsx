@@ -91,7 +91,7 @@ describe('InputForm', () => {
 
     it('input has correct accessible label', () => {
         render(<InputForm {...defaultProps} />);
-        expect(screen.getByLabelText('Search query')).toBeInTheDocument();
+        expect(screen.getByLabelText('Chat input')).toBeInTheDocument();
     });
 
     it('submits on Ctrl+Enter', () => {
