@@ -60,6 +60,9 @@ lint.ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.pytest.ini_options]
+norecursedirs = ["scripts"]
+
 [dependency-groups]
 dev = [
     "langgraph-cli[inmem]>=0.1.71",
