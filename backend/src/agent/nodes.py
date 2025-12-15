@@ -6,8 +6,8 @@ import os
 import re
 from typing import List
 
-from backend.src.config.app_config import config as app_config
-from backend.src.search.router import search_router
+from config.app_config import config as app_config
+from search.router import search_router
 from google.genai import Client
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
