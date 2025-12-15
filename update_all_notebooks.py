@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-Script to ensure all notebooks have model configuration options enabled.
+Script to ensure all notebooks have model configuration options enabled and correct Colab setup.
 This script will:
-1. Add/update the setup cell for backend environment
-2. Add/update the model configuration cell with all available Gemini models
-3. Process all notebooks in the project
+1. Add/update the Colab setup cell (Clone + CD + Install)
+2. Add/update the setup cell for backend environment (Local path setup)
+3. Add/update the model configuration cell
+4. Process all notebooks in the project
 """
 
 import nbformat
 from nbformat.v4 import new_code_cell, new_markdown_cell
 from pathlib import Path
 import sys
+import os
 
 # Define the setup cell content
 SETUP_CELL = """# Universal Setup for Backend Environment
@@ -63,14 +65,14 @@ import os
 # Map selection to model ID
 # Note: Gemini 1.5 and 2.0 models are deprecated/not accessible via this API
 if MODEL_STRATEGY == "Gemini 2.5 Flash (Recommended)":
-    SELECTED_MODEL = "gemini-2.5-flash"
+    SELECTED_MODEL = "gemma-3-27b-it"
 elif MODEL_STRATEGY == "Gemini 2.5 Flash-Lite (Fastest)":
-    SELECTED_MODEL = "gemini-2.5-flash-lite"
+    SELECTED_MODEL = "gemma-3-27b-it-lite"
 elif MODEL_STRATEGY == "Gemini 2.5 Pro (Best Quality)":
-    SELECTED_MODEL = "gemini-2.5-pro"
+    SELECTED_MODEL = "gemma-3-27b-it"
 else:
     # Default fallback
-    SELECTED_MODEL = "gemini-2.5-flash"
+    SELECTED_MODEL = "gemma-3-27b-it"
 
 print(f"Selected Model: {SELECTED_MODEL}")
 print(f"Strategy: {MODEL_STRATEGY}")
@@ -79,7 +81,12 @@ print(f"Strategy: {MODEL_STRATEGY}")
 os.environ["QUERY_GENERATOR_MODEL"] = SELECTED_MODEL
 os.environ["REFLECTION_MODEL"] = SELECTED_MODEL
 os.environ["ANSWER_MODEL"] = SELECTED_MODEL
-os.environ["TOOLS_MODEL"] = SELECTED_MODEL"""
+os.environ["TOOLS_MODEL"] = SELECTED_MODEL
+
+# Ensure GOOGLE_API_KEY is set if GEMINI_API_KEY is present (for LangChain compatibility)
+if "GEMINI_API_KEY" in os.environ:
+    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+    print("  [OK] Synced GEMINI_API_KEY to GOOGLE_API_KEY for LangChain")"""
 
 # Define the model verification cell content
 MODEL_VERIFICATION_CELL = """# --- MODEL VERIFICATION (Optional) ---
@@ -127,8 +134,17 @@ else:
         print(f"   - Quota/billing issues (for experimental models)")
         print(f"   - Network connectivity issues")"""
 
-# Define Colab-specific setup cell
-COLAB_SETUP_CELL = """# --- COLAB SETUP START ---
+def get_colab_setup_cell(rel_path):
+    """
+    Generates a Colab setup cell that clones the repo and cds to the correct directory.
+    rel_path: path of the notebook relative to repo root (e.g. 'notebooks', 'backend')
+    """
+
+    # Calculate path to cd into after cloning
+    # If notebook is in 'notebooks/', we cd to 'gemini.../notebooks'
+    # If notebook is in 'backend/', we cd to 'gemini.../backend'
+
+    return f"""# --- COLAB SETUP START ---
 try:
     import google.colab
     IN_COLAB = True
@@ -138,13 +154,37 @@ except ImportError:
 if IN_COLAB:
     print("🔧 Running in Google Colab - Installing dependencies...")
     
-    # Install backend package
+    # 1. Clone the repository
     !rm -rf gemini-fullstack-langgraph-quickstart
-    !pip install -q git+https://github.com/MasumRab/gemini-fullstack-langgraph-quickstart.git#subdirectory=backend
+    !git clone https://github.com/MasumRab/gemini-fullstack-langgraph-quickstart.git
+
+    # 2. Navigate to the correct directory
+    import os
+    repo_name = "gemini-fullstack-langgraph-quickstart"
+    target_dir = os.path.join(repo_name, "{rel_path}")
+
+    if os.path.exists(target_dir):
+        os.chdir(target_dir)
+        print(f"  [OK] Changed directory to {{os.getcwd()}}")
+    else:
+        # Fallback to repo root if specific dir not found
+        if os.path.exists(repo_name):
+            os.chdir(repo_name)
+            print(f"  [OK] Changed directory to {{os.getcwd()}} (Fallback)")
     
-    # Or if running from a local copy
-    # !pip install -q -e ./backend
+    # 3. Install Backend (Quietly)
+    # We install from the backend directory which should be reachable
+    # relative to current dir or absolute
     
+    # Find backend relative to current position
+    import sys
+    if os.path.exists("backend"):
+        !pip install -q -e backend
+    elif os.path.exists("../backend"):
+        !pip install -q -e ../backend
+    elif os.path.exists("src"): # We might be IN backend
+        !pip install -q -e .
+
     print("  [OK] Dependencies installed!")
 else:
     print("  [OK] Running locally")
@@ -183,7 +223,7 @@ def update_or_insert_cell(nb, marker, new_content, position=0):
         return position
 
 
-def process_notebook(notebook_path: Path, dry_run=False):
+def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
     """Process a single notebook to ensure it has the required cells."""
     print(f"\n[..] Processing: {notebook_path.name}")
     
@@ -196,51 +236,54 @@ def process_notebook(notebook_path: Path, dry_run=False):
     
     modified = False
     
-    # Determine if this is a Colab-focused notebook
-    is_colab_notebook = "colab" in notebook_path.name.lower()
+    # Calculate relative path for Colab setup
+    try:
+        rel_path = notebook_path.parent.relative_to(project_root)
+    except ValueError:
+        rel_path = Path(".") # Fallback
+
+    colab_setup_content = get_colab_setup_cell(str(rel_path))
     
-    # Step 1: Ensure Colab setup cell (if applicable)
-    if is_colab_notebook:
-        if not has_cell_with_marker(nb, "COLAB SETUP"):
-            update_or_insert_cell(nb, "COLAB SETUP", COLAB_SETUP_CELL, 0)
-            modified = True
-    
-    # Step 2: Ensure setup cell exists
-    setup_marker = "Universal Setup for Backend Environment"
-    if not has_cell_with_marker(nb, setup_marker):
-        # Insert after Colab setup if it exists, otherwise at position 0
-        pos = 1 if is_colab_notebook else 0
-        update_or_insert_cell(nb, setup_marker, SETUP_CELL, pos)
+    # Step 1: Ensure Colab setup cell
+    if not has_cell_with_marker(nb, "COLAB SETUP"):
+        update_or_insert_cell(nb, "COLAB SETUP", colab_setup_content, 0)
         modified = True
     else:
-        # Update existing setup cell to latest version
-        idx = update_or_insert_cell(nb, setup_marker, SETUP_CELL)
+        # Update existing
+        update_or_insert_cell(nb, "COLAB SETUP", colab_setup_content)
+        modified = True
+    
+    # Step 2: Ensure setup cell exists (Backend setup)
+    setup_marker = "Universal Setup for Backend Environment"
+    if not has_cell_with_marker(nb, setup_marker):
+        # Insert after Colab setup (position 1)
+        update_or_insert_cell(nb, setup_marker, SETUP_CELL, 1)
+        modified = True
+    else:
+        # Update existing setup cell
+        update_or_insert_cell(nb, setup_marker, SETUP_CELL)
         modified = True
     
     # Step 3: Ensure model configuration cell exists
     model_marker = "MODEL CONFIGURATION"
     if not has_cell_with_marker(nb, model_marker):
-        # Insert after setup cell
         setup_idx = get_cell_index_with_marker(nb, setup_marker)
-        pos = setup_idx + 1 if setup_idx >= 0 else 1
+        pos = setup_idx + 1 if setup_idx >= 0 else 2
         update_or_insert_cell(nb, model_marker, MODEL_CONFIG_CELL, pos)
         modified = True
     else:
-        # Update existing model config cell to latest version
-        idx = update_or_insert_cell(nb, model_marker, MODEL_CONFIG_CELL)
+        update_or_insert_cell(nb, model_marker, MODEL_CONFIG_CELL)
         modified = True
     
     # Step 4: Ensure model verification cell exists
     verify_marker = "MODEL VERIFICATION"
     if not has_cell_with_marker(nb, verify_marker):
-        # Insert after model config cell
         model_idx = get_cell_index_with_marker(nb, model_marker)
-        pos = model_idx + 1 if model_idx >= 0 else 2
+        pos = model_idx + 1 if model_idx >= 0 else 3
         update_or_insert_cell(nb, verify_marker, MODEL_VERIFICATION_CELL, pos)
         modified = True
     else:
-        # Update existing verification cell to latest version
-        idx = update_or_insert_cell(nb, verify_marker, MODEL_VERIFICATION_CELL)
+        update_or_insert_cell(nb, verify_marker, MODEL_VERIFICATION_CELL)
         modified = True
     
     # Save the notebook if modified
@@ -269,7 +312,7 @@ def main():
         print("🔍 DRY RUN MODE - No files will be modified\n")
     
     # Find all notebooks
-    project_root = Path(__file__).parent
+    project_root = Path(__file__).parent.resolve()
     
     # Define notebook directories to process
     notebook_dirs = [
@@ -294,7 +337,7 @@ def main():
     # Process each notebook
     success_count = 0
     for notebook_path in all_notebooks:
-        if process_notebook(notebook_path, dry_run):
+        if process_notebook(notebook_path, project_root, dry_run):
             success_count += 1
     
     # Summary
