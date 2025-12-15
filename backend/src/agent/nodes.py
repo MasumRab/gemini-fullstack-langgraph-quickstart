@@ -87,10 +87,11 @@ def _get_rate_limited_llm(model: str, temperature: float = 0, max_retries: int =
         usage = rate_limiter.get_current_usage()
         logger.debug(f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}")
     
+    # max_retries=0 to pass pydantic validation but hopefully avoid passing it to client
     return ChatGoogleGenerativeAI(
         model=model,
         temperature=temperature,
-        max_retries=max_retries,
+        max_retries=0,
         api_key=os.getenv("GEMINI_API_KEY"),
     )
 
@@ -237,7 +238,6 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
         llm = _get_rate_limited_llm(
             model=configurable.query_generator_model,
             temperature=1.0,
-            max_retries=2,
             prompt=formatted_prompt
         )
 
@@ -950,7 +950,6 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
         llm = _get_rate_limited_llm(
             model=reasoning_model,
             temperature=1.0,
-            max_retries=2,
             prompt=formatted_prompt
         )
 
@@ -1042,7 +1041,6 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
         llm = _get_rate_limited_llm(
             model=reasoning_model,
             temperature=0,
-            max_retries=2,
             prompt=formatted_prompt
         )
         result = llm.invoke(formatted_prompt)
