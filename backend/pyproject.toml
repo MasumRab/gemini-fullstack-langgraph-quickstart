@@ -18,7 +18,7 @@ dependencies = [
     "langgraph-api",
     "fastapi",
     "google-genai",
-    "langchain-mcp-adapters",
+    "langchain-mcp-adapters==0.1.0",
     "langchain-text-splitters",
     "mcp",
     "sentence-transformers",
