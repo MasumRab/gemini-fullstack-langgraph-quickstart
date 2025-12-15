@@ -141,9 +141,8 @@ interface HumanMessageBubbleProps {
   mdComponents: typeof mdComponents;
 }
 
-// HumanMessageBubble Component
-// Bolt Optimization: Wrapped in memo to prevent unnecessary re-renders
-const HumanMessageBubble = memo(({
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
+const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
   message,
   mdComponents,
 }: HumanMessageBubbleProps) => {
@@ -170,12 +169,12 @@ interface AiMessageBubbleProps {
   isOverallLoading: boolean;
   mdComponents: typeof mdComponents;
   handleCopy: (text: string, messageId: string) => void;
-  copiedMessageId: string | null;
+  isCopied: boolean;
 }
 
-// AiMessageBubble Component
-// Bolt Optimization: Wrapped in memo to prevent unnecessary re-renders during streaming
-const AiMessageBubble = memo(({
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
+// The `isCopied` prop ensures only the specific bubble being interacted with re-renders
+const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
   message,
   historicalActivity,
   liveActivity,
@@ -218,8 +217,8 @@ const AiMessageBubble = memo(({
           )
         }
       >
-        {copiedMessageId === message.id ? "Copied" : "Copy"}
-        {copiedMessageId === message.id ? <CopyCheck /> : <Copy />}
+        {isCopied ? "Copied" : "Copy"}
+        {isCopied ? <CopyCheck /> : <Copy />}
       </Button>
     </div>
   );
@@ -258,6 +257,8 @@ export function ChatMessagesView({
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   // Bolt Optimization: Wrapped in useCallback to ensure referential stability for memoized children
+  // ⚡ Bolt Optimization: useCallback ensures handleCopy reference remains stable
+  // allowing memoized child components to avoid re-renders
   const handleCopy = useCallback(async (text: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -377,7 +378,7 @@ export function ChatMessagesView({
                       isOverallLoading={isLoading}
                       mdComponents={mdComponents}
                       handleCopy={handleCopy}
-                      copiedMessageId={copiedMessageId}
+                      isCopied={copiedMessageId === message.id}
                     />
                   )}
                 </div>
