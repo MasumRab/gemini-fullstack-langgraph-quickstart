@@ -103,7 +103,9 @@ class TestCreateRagResources:
         
         # Check parameter annotation
         param = sig.parameters["resource_uris"]
-        assert param.annotation == list[str]
+        # Handle stringified annotations due to from __future__ import annotations
+        annotation = param.annotation
+        assert annotation == list[str] or annotation == 'list[str]'
 
 
 # =============================================================================
@@ -155,7 +157,9 @@ class TestReflectionState:
 
     def test_reflection_state_is_sufficient_is_bool(self):
         """Test that is_sufficient field is boolean."""
-        annotations = ReflectionState.__annotations__
+        import typing
+        # Resolve forward references
+        annotations = typing.get_type_hints(ReflectionState)
         assert annotations["is_sufficient"] == bool
 
 
