@@ -17,9 +17,11 @@ class TestConfiguration:
         """Configuration should have sensible defaults."""
         config = Configuration()
 
-        assert config.query_generator_model == TEST_MODEL
-        assert config.reflection_model == TEST_MODEL
-        assert config.answer_model == TEST_MODEL
+        # Updated defaults to match code (gemma-3-27b-it)
+        assert config.query_generator_model == "gemma-3-27b-it"
+        assert config.reflection_model == "gemma-3-27b-it"
+        # answer_model defaults to DEFAULT_ANSWER_MODEL which is gemma-3-27b-it
+        assert config.answer_model == "gemma-3-27b-it"
         assert config.number_of_initial_queries == 3
         assert config.max_research_loops == 2
         assert config.require_planning_confirmation is True
@@ -28,7 +30,7 @@ class TestConfiguration:
         """from_runnable_config with None should use defaults."""
         config = Configuration.from_runnable_config(None)
 
-        assert config.query_generator_model == TEST_MODEL
+        assert config.query_generator_model == "gemma-3-27b-it"
         assert config.number_of_initial_queries == 3
 
     def test_from_runnable_config_with_empty_dict(self):
@@ -123,7 +125,7 @@ class TestConfiguration:
 
         assert config.query_generator_model == "new-model"
         # Other fields should have defaults
-        assert config.reflection_model == TEST_MODEL
+        assert config.reflection_model == "gemma-3-27b-it"
         assert config.number_of_initial_queries == 3
 
 
