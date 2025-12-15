@@ -7,7 +7,7 @@ This task list tracks the integration of features from verified state-of-the-art
 ## 1. Scoping & Clarification (Open Deep Research)
 *Goal: Prevent "garbage in, garbage out" by ensuring the agent understands the user's intent.*
 
-- [ ] **Implement `scoping_node`**
+- [ ] **Implement `scoping_node`** (See `docs/tasks/05_IMPLEMENTATION_GUIDE.md` for detailed flow)
     - [ ] **State**: Define `ScopingState` (query, clarifications_needed, user_answers).
     - [ ] **Logic**: Analyze input query. If ambiguous, generate clarifying questions and interrupt graph.
     - [ ] **Integration**: Place before `planning_mode` in the main graph.
