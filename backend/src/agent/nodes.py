@@ -1,4 +1,9 @@
 # TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+# TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: Review 'deepagents' repo for relevant nodes (e.g. hierarchical planning).
+# Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
+
 import concurrent.futures
 import difflib
 import logging

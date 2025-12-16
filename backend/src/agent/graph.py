@@ -182,3 +182,8 @@ graph_registry.document_edge(
 )
 
 graph = builder.compile(name="pro-search-agent")
+
+# TODO(priority=High, complexity=Low): Add visualization support for notebooks.
+# See docs/tasks/03_OPEN_CANVAS_TASKS.md
+# Subtask: Implement `get_graph().draw_mermaid_png()` compatible method.
+# Subtask: Ensure `visualize_graphs.py` uses this method.
