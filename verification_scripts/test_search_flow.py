@@ -72,9 +72,9 @@ def test_full_search_flow():
 
             print("Page loaded.", flush=True)
 
-            # Since Trigger 1 is "2.5 Flash Lite", we are already on the correct model!
+            # Since Trigger 1 is "Gemma 3", we are already on the correct model!
             # No need to change it.
-            print("Model is already 2.5 Flash Lite.", flush=True)
+            print("Model is already Gemma 3.", flush=True)
 
             input_selector = 'textarea[aria-label="Chat input"]'
             page.wait_for_selector(input_selector, timeout=10000)

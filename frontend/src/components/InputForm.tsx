@@ -30,8 +30,8 @@ export const InputForm: React.FC<InputFormProps> = memo(({
 }) => {
   const [internalInputValue, setInternalInputValue] = useState("");
   const [effort, setEffort] = useState("medium");
-  // Default to gemini-2.5-flash-lite
-  const [model, setModel] = useState("gemini-2.5-flash-lite");
+  // Default to gemma-3-27b-it
+  const [model, setModel] = useState("gemma-3-27b-it");
 
   const handleInternalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
