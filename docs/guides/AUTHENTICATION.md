@@ -99,3 +99,4 @@ If you encounter `429 RESOURCE_EXHAUSTED` with `limit: 0` for models like `gemin
 1.  Navigate to **IAM & Admin** > **Quotas**.
 2.  Filter by "generativelanguage" API.
 3.  Check limits for `Generate content requests`. If they are 0, you may need to "Edit Quota" and request an increase.
+

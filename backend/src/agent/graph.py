@@ -59,10 +59,15 @@ if os.getenv("GEMINI_API_KEY") is None:
 # Actually, let's just stick to what works and ignore the warning for now to avoid breaking changes if user downgrades.
 builder = StateGraph(OverallState, config_schema=Configuration)
 
-# If MCP is enabled, we would register MCP tools here or modify the schema
+# If MCP is enabled, we log it. Tools are loaded via lifespan in app.py to ensure event loop safety.
 if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
-    # In future: builder.bind_tools(mcp_tools)
+    # Note: Tools are loaded into agent.tools_and_schemas.MCP_TOOLS during app startup.
+    # Nodes can access them from there at runtime.
+    # TODO(priority=High, complexity=Medium): [MCP Integration] Bind MCP tools to 'web_research' or new 'tool_node'.
+    # See docs/tasks/01_MCP_TASKS.md
+    # Subtask: In `web_research` (or new node), bind these tools to the LLM.
+    # builder.bind_tools(mcp_tools)
 
 builder.add_node("load_context", load_context)
 builder.add_node("scoping_node", scoping_node)
@@ -91,6 +96,11 @@ builder.add_conditional_edges(
 
 # builder.add_edge("generate_query", "planning_mode") # Removed as it's destination of router
 builder.add_edge("generate_query", "planning_mode")
+
+# TODO(priority=Medium, complexity=Medium): [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
+# See docs/tasks/02_OPEN_SWE_TASKS.md
+# Subtask: Create routing logic: `if pending_tasks: return "web_research" else: return "finalize"`.
+
 builder.add_conditional_edges(
     "planning_mode", planning_router, ["planning_wait", "web_research"]
 )
@@ -172,3 +182,8 @@ graph_registry.document_edge(
 )
 
 graph = builder.compile(name="pro-search-agent")
+
+# TODO(priority=High, complexity=Low): Add visualization support for notebooks.
+# See docs/tasks/03_OPEN_CANVAS_TASKS.md
+# Subtask: Implement `get_graph().draw_mermaid_png()` compatible method.
+# Subtask: Ensure `visualize_graphs.py` uses this method.

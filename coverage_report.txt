@@ -1,0 +1,508 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app/backend
+configfile: pyproject.toml
+plugins: langsmith-0.4.59, hypothesis-6.148.7, anyio-4.12.0, cov-7.0.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 258 items
+
+backend/tests/test_configuration.py FF.......F........                   [  6%]
+backend/tests/test_graph_mock.py EEEEE..                                 [  9%]
+backend/tests/test_mcp.py ..                                             [ 10%]
+backend/tests/test_mcp_config.py ....                                    [ 12%]
+backend/tests/test_mcp_integration.py ...                                [ 13%]
+backend/tests/test_mcp_tools.py ....                                     [ 14%]
+backend/tests/test_memory_tools.py .                                     [ 15%]
+backend/tests/test_node_routers.py ...............                       [ 20%]
+backend/tests/test_nodes.py ............F...                             [ 27%]
+backend/tests/test_nodes_helpers.py ........................             [ 36%]
+backend/tests/test_notebook_logic.py .                                   [ 36%]
+backend/tests/test_persistence.py ..........                             [ 40%]
+backend/tests/test_planning.py ..........................                [ 50%]
+backend/tests/test_pr19_analysis_validation.py Fsssssssssss              [ 55%]
+backend/tests/test_rag_nodes.py ......                                   [ 57%]
+backend/tests/test_rag_nodes_mock.py ...                                 [ 58%]
+backend/tests/test_registry.py ................                          [ 65%]
+backend/tests/test_research_tools.py .....................               [ 73%]
+backend/tests/test_state.py .....F..F..                                  [ 77%]
+backend/tests/test_supervisor.py FFFFFFF...                              [ 81%]
+backend/tests/test_utils.py .........................                    [ 91%]
+backend/tests/test_utils_hypothesis.py ..                                [ 91%]
+backend/tests/test_validate_web_results.py .....................         [100%]
+
+==================================== ERRORS ====================================
+_________ ERROR at setup of TestGraphNodes.test_generate_query_success _________
+
+    @pytest.fixture
+    def mock_config():
+        """Fixture for test configuration."""
+        return {
+            "configurable": {
+                "thread_id": "test-thread",
+                "checkpoint_ns": "",
+                "checkpoint_id": "",
+            },
+>           "query_generator_model": TEST_MODEL,
+                                     ^^^^^^^^^^
+            "reflection_model": TEST_MODEL,
+            "answer_model": TEST_MODEL
+        }
+E       NameError: name 'TEST_MODEL' is not defined
+
+backend/tests/test_graph_mock.py:27: NameError
+______ ERROR at setup of TestGraphNodes.test_web_research_google_success _______
+
+    @pytest.fixture
+    def mock_config():
+        """Fixture for test configuration."""
+        return {
+            "configurable": {
+                "thread_id": "test-thread",
+                "checkpoint_ns": "",
+                "checkpoint_id": "",
+            },
+>           "query_generator_model": TEST_MODEL,
+                                     ^^^^^^^^^^
+            "reflection_model": TEST_MODEL,
+            "answer_model": TEST_MODEL
+        }
+E       NameError: name 'TEST_MODEL' is not defined
+
+backend/tests/test_graph_mock.py:27: NameError
+______ ERROR at setup of TestGraphNodes.test_web_research_tavily_success _______
+
+    @pytest.fixture
+    def mock_config():
+        """Fixture for test configuration."""
+        return {
+            "configurable": {
+                "thread_id": "test-thread",
+                "checkpoint_ns": "",
+                "checkpoint_id": "",
+            },
+>           "query_generator_model": TEST_MODEL,
+                                     ^^^^^^^^^^
+            "reflection_model": TEST_MODEL,
+            "answer_model": TEST_MODEL
+        }
+E       NameError: name 'TEST_MODEL' is not defined
+
+backend/tests/test_graph_mock.py:27: NameError
+_________ ERROR at setup of TestGraphNodes.test_reflection_sufficient __________
+
+    @pytest.fixture
+    def mock_config():
+        """Fixture for test configuration."""
+        return {
+            "configurable": {
+                "thread_id": "test-thread",
+                "checkpoint_ns": "",
+                "checkpoint_id": "",
+            },
+>           "query_generator_model": TEST_MODEL,
+                                     ^^^^^^^^^^
+            "reflection_model": TEST_MODEL,
+            "answer_model": TEST_MODEL
+        }
+E       NameError: name 'TEST_MODEL' is not defined
+
+backend/tests/test_graph_mock.py:27: NameError
+____________ ERROR at setup of TestGraphNodes.test_finalize_answer _____________
+
+    @pytest.fixture
+    def mock_config():
+        """Fixture for test configuration."""
+        return {
+            "configurable": {
+                "thread_id": "test-thread",
+                "checkpoint_ns": "",
+                "checkpoint_id": "",
+            },
+>           "query_generator_model": TEST_MODEL,
+                                     ^^^^^^^^^^
+            "reflection_model": TEST_MODEL,
+            "answer_model": TEST_MODEL
+        }
+E       NameError: name 'TEST_MODEL' is not defined
+
+backend/tests/test_graph_mock.py:27: NameError
+=================================== FAILURES ===================================
+____________________ TestConfiguration.test_default_values _____________________
+
+self = <test_configuration.TestConfiguration object at 0x7fe573bf2cc0>
+
+    def test_default_values(self):
+        """Configuration should have sensible defaults."""
+        config = Configuration()
+
+>       assert config.query_generator_model == TEST_MODEL
+E       AssertionError: assert 'gemma-3-27b-it' == 'gemini-2.5-flash'
+E
+E         - gemini-2.5-flash
+E         + gemma-3-27b-it
+
+backend/tests/test_configuration.py:20: AssertionError
+____________ TestConfiguration.test_from_runnable_config_with_none _____________
+
+self = <test_configuration.TestConfiguration object at 0x7fe573ba2f00>
+
+    def test_from_runnable_config_with_none(self):
+        """from_runnable_config with None should use defaults."""
+        config = Configuration.from_runnable_config(None)
+
+>       assert config.query_generator_model == TEST_MODEL
+E       AssertionError: assert 'gemma-3-27b-it' == 'gemini-2.5-flash'
+E
+E         - gemini-2.5-flash
+E         + gemma-3-27b-it
+
+backend/tests/test_configuration.py:31: AssertionError
+___________________ TestConfiguration.test_partial_override ____________________
+
+self = <test_configuration.TestConfiguration object at 0x7fe573bc84a0>
+
+    def test_partial_override(self):
+        """Partial overrides should leave other fields at defaults."""
+        runnable_config = {
+            "configurable": {
+                "query_generator_model": "new-model",
+            }
+        }
+
+        config = Configuration.from_runnable_config(runnable_config)
+
+        assert config.query_generator_model == "new-model"
+        # Other fields should have defaults
+>       assert config.reflection_model == TEST_MODEL
+E       AssertionError: assert 'gemma-3-27b-it' == 'gemini-2.5-flash'
+E
+E         - gemini-2.5-flash
+E         + gemma-3-27b-it
+
+backend/tests/test_configuration.py:126: AssertionError
+_________ TestValidateWebResults.test_validate_web_results_heuristics __________
+
+self = <test_nodes.TestValidateWebResults object at 0x7fe456b1cec0>
+base_state = {'messages': [], 'planning_feedback': [], 'planning_status': None, 'planning_steps': [], ...}
+config = {'configurable': {'max_loops': 3, 'model': 'gemini-2.5-flash', 'num_queries': 3, 'require_planning_confirmation': False}}
+
+    def test_validate_web_results_heuristics(self, base_state, config):
+        """Test that validate_web_results filters research results based on keywords"""
+        # Setup
+        base_state["web_research_result"] = [
+            "Good content relevant to quantum",
+            "Bad content relevant to cooking"
+        ]
+        base_state["search_query"] = ["quantum physics"]
+
+        # Execute
+        result = validate_web_results(base_state, config)
+
+        # Assert
+        assert "validated_web_research_result" in result
+        # The exact matching logic might vary, but "quantum" matches "quantum"
+>       assert len(result["validated_web_research_result"]) >= 1
+E       assert 0 >= 1
+E        +  where 0 = len([])
+
+backend/tests/test_nodes.py:294: AssertionError
+___________ TestPR19AnalysisStructure.test_pr19_analysis_file_exists ___________
+
+self = <test_pr19_analysis_validation.TestPR19AnalysisStructure object at 0x7fe456b53ef0>
+pr19_analysis_path = PosixPath('/app/PR19_ANALYSIS.md')
+
+    def test_pr19_analysis_file_exists(self, pr19_analysis_path):
+        """Test that PR19_ANALYSIS.md file exists."""
+>       assert pr19_analysis_path.exists(), "PR19_ANALYSIS.md file not found"
+E       AssertionError: PR19_ANALYSIS.md file not found
+E       assert False
+E        +  where False = exists()
+E        +    where exists = PosixPath('/app/PR19_ANALYSIS.md').exists
+
+backend/tests/test_pr19_analysis_validation.py:38: AssertionError
+_____ TestCreateRagResources.test_create_rag_resources_function_signature ______
+
+self = <test_state.TestCreateRagResources object at 0x7fe457eb74a0>
+
+    def test_create_rag_resources_function_signature(self):
+        """Test that create_rag_resources has correct function signature."""
+        import inspect
+
+        # Get function signature
+        sig = inspect.signature(create_rag_resources)
+        params = list(sig.parameters.keys())
+
+        # Assert signature is as expected
+        assert len(params) == 1
+        assert params[0] == "resource_uris"
+
+        # Check parameter annotation
+        param = sig.parameters["resource_uris"]
+>       assert param.annotation == list[str]
+E       assert 'list[str]' == list[str]
+E        +  where 'list[str]' = <Parameter "resource_uris: 'list[str]'">.annotation
+
+backend/tests/test_state.py:106: AssertionError
+_______ TestReflectionState.test_reflection_state_is_sufficient_is_bool ________
+
+self = <test_state.TestReflectionState object at 0x7fe457ecd580>
+
+    def test_reflection_state_is_sufficient_is_bool(self):
+        """Test that is_sufficient field is boolean."""
+        annotations = ReflectionState.__annotations__
+>       assert annotations["is_sufficient"] == bool
+E       AssertionError: assert ForwardRef('bool', module='agent.state') == bool
+
+backend/tests/test_state.py:159: AssertionError
+__ TestCompressContext.test_compress_context_merges_new_and_existing_results ___
+
+self = <test_supervisor.TestCompressContext object at 0x7fe457ef5580>
+base_supervisor_state = {'artifacts': None, 'clarification_answers': [], 'clarification_questions': None, 'initial_search_query_count': 3, ...}
+config = {'configurable': {'checkpoint_id': '', 'checkpoint_ns': '', 'thread_id': 'test-thread'}}
+
+    def test_compress_context_merges_new_and_existing_results(self, base_supervisor_state, config):
+        """Test that compress_context merges new and existing results."""
+        # Setup
+        base_supervisor_state["web_research_result"] = [
+            "existing result 1",
+            "existing result 2",
+        ]
+        base_supervisor_state["validated_web_research_result"] = [
+            "new result 1",
+            "new result 2",
+        ]
+
+        # Execute
+        result = compress_context(base_supervisor_state, config)
+
+        # Assert
+        assert "web_research_result" in result
+>       assert len(result["web_research_result"]) == 4
+E       AssertionError: assert 1 == 4
+E        +  where 1 = len([<MagicMock name='mock.ChatGoogleGenerativeAI().invoke().content' id='140618143622368'>])
+
+backend/tests/test_supervisor.py:84: AssertionError
+____ TestCompressContext.test_compress_context_with_empty_validated_results ____
+
+self = <test_supervisor.TestCompressContext object at 0x7fe457ef5a60>
+base_supervisor_state = {'artifacts': None, 'clarification_answers': [], 'clarification_questions': None, 'initial_search_query_count': 3, ...}
+config = {'configurable': {'checkpoint_id': '', 'checkpoint_ns': '', 'thread_id': 'test-thread'}}
+
+    def test_compress_context_with_empty_validated_results(self, base_supervisor_state, config):
+        """Test compress_context when no new validated results exist."""
+        # Setup
+        base_supervisor_state["web_research_result"] = ["existing result"]
+        base_supervisor_state["validated_web_research_result"] = []
+
+        # Execute
+        result = compress_context(base_supervisor_state, config)
+
+        # Assert
+        assert "web_research_result" in result
+        assert len(result["web_research_result"]) == 1
+>       assert result["web_research_result"][0] == "existing result"
+E       AssertionError: assert <MagicMock name='mock.ChatGoogleGenerativeAI().invoke().content' id='140618143622368'> == 'existing result'
+
+backend/tests/test_supervisor.py:102: AssertionError
+____ TestCompressContext.test_compress_context_with_empty_existing_results _____
+
+self = <test_supervisor.TestCompressContext object at 0x7fe457ef5eb0>
+base_supervisor_state = {'artifacts': None, 'clarification_answers': [], 'clarification_questions': None, 'initial_search_query_count': 3, ...}
+config = {'configurable': {'checkpoint_id': '', 'checkpoint_ns': '', 'thread_id': 'test-thread'}}
+
+    def test_compress_context_with_empty_existing_results(self, base_supervisor_state, config):
+        """Test compress_context when no existing results."""
+        # Setup
+        base_supervisor_state["web_research_result"] = []
+        base_supervisor_state["validated_web_research_result"] = [
+            "new result 1",
+            "new result 2",
+        ]
+
+        # Execute
+        result = compress_context(base_supervisor_state, config)
+
+        # Assert
+        assert "web_research_result" in result
+>       assert len(result["web_research_result"]) == 2
+E       AssertionError: assert 1 == 2
+E        +  where 1 = len([<MagicMock name='mock.ChatGoogleGenerativeAI().invoke().content' id='140618143622368'>])
+
+backend/tests/test_supervisor.py:118: AssertionError
+__________ TestCompressContext.test_compress_context_with_both_empty ___________
+
+self = <test_supervisor.TestCompressContext object at 0x7fe457ef62d0>
+base_supervisor_state = {'artifacts': None, 'clarification_answers': [], 'clarification_questions': None, 'initial_search_query_count': 3, ...}
+config = {'configurable': {'checkpoint_id': '', 'checkpoint_ns': '', 'thread_id': 'test-thread'}}
+
+    def test_compress_context_with_both_empty(self, base_supervisor_state, config):
+        """Test compress_context when both result lists are empty."""
+        # Setup
+        base_supervisor_state["web_research_result"] = []
+        base_supervisor_state["validated_web_research_result"] = []
+
+        # Execute
+        result = compress_context(base_supervisor_state, config)
+
+        # Assert
+        assert "web_research_result" in result
+>       assert result["web_research_result"] == []
+E       AssertionError: assert [<MagicMock n...18143622368'>] == []
+E
+E         Left contains one more item: <MagicMock name='mock.ChatGoogleGenerativeAI().invoke().content' id='140618143622368'>
+E         Use -v to get more diff
+
+backend/tests/test_supervisor.py:133: AssertionError
+_________ TestCompressContext.test_compress_context_with_missing_keys __________
+
+self = <test_supervisor.TestCompressContext object at 0x7fe457ef6720>
+config = {'configurable': {'checkpoint_id': '', 'checkpoint_ns': '', 'thread_id': 'test-thread'}}
+
+    def test_compress_context_with_missing_keys(self, config):
+        """Test compress_context handles missing state keys gracefully."""
+        # Setup - minimal state without the expected keys
+        minimal_state = {
+            "messages": [],
+            "research_loop_count": 0,
+        }
+
+        # Execute
+        result = compress_context(minimal_state, config)
+
+        # Assert - should handle missing keys with get() defaults
+        assert "web_research_result" in result
+>       assert result["web_research_result"] == []
+E       AssertionError: assert [<MagicMock n...18143622368'>] == []
+E
+E         Left contains one more item: <MagicMock name='mock.ChatGoogleGenerativeAI().invoke().content' id='140618143622368'>
+E         Use -v to get more diff
+
+backend/tests/test_supervisor.py:148: AssertionError
+__________ TestCompressContext.test_compress_context_preserves_order ___________
+
+self = <test_supervisor.TestCompressContext object at 0x7fe457ef6a50>
+base_supervisor_state = {'artifacts': None, 'clarification_answers': [], 'clarification_questions': None, 'initial_search_query_count': 3, ...}
+config = {'configurable': {'checkpoint_id': '', 'checkpoint_ns': '', 'thread_id': 'test-thread'}}
+
+    def test_compress_context_preserves_order(self, base_supervisor_state, config):
+        """Test that compress_context preserves order (existing then new)."""
+        # Setup
+        base_supervisor_state["web_research_result"] = ["first", "second"]
+        base_supervisor_state["validated_web_research_result"] = ["third", "fourth"]
+
+        # Execute
+        result = compress_context(base_supervisor_state, config)
+
+        # Assert
+>       assert result["web_research_result"] == ["first", "second", "third", "fourth"]
+E       AssertionError: assert [<MagicMock n...18143622368'>] == ['first', 'se...rd', 'fourth']
+E
+E         At index 0 diff: <MagicMock name='mock.ChatGoogleGenerativeAI().invoke().content' id='140618143622368'> != 'first'
+E         Right contains 3 more items, first extra item: 'second'
+E         Use -v to get more diff
+
+backend/tests/test_supervisor.py:160: AssertionError
+_______ TestCompressContext.test_compress_context_with_large_result_set ________
+
+self = <test_supervisor.TestCompressContext object at 0x7fe457ef6d80>
+base_supervisor_state = {'artifacts': None, 'clarification_answers': [], 'clarification_questions': None, 'initial_search_query_count': 3, ...}
+config = {'configurable': {'checkpoint_id': '', 'checkpoint_ns': '', 'thread_id': 'test-thread'}}
+
+    def test_compress_context_with_large_result_set(self, base_supervisor_state, config):
+        """Test compress_context handles large numbers of results."""
+        # Setup
+        base_supervisor_state["web_research_result"] = [f"existing_{i}" for i in range(100)]
+        base_supervisor_state["validated_web_research_result"] = [f"new_{i}" for i in range(100)]
+
+        # Execute
+        result = compress_context(base_supervisor_state, config)
+
+        # Assert
+>       assert len(result["web_research_result"]) == 200
+E       AssertionError: assert 1 == 200
+E        +  where 1 = len([<MagicMock name='mock.ChatGoogleGenerativeAI().invoke().content' id='140618143622368'>])
+
+backend/tests/test_supervisor.py:172: AssertionError
+=============================== warnings summary ===============================
+backend/src/agent/graph.py:60
+  /app/backend/src/agent/graph.py:60: LangGraphDeprecatedSinceV10: `config_schema` is deprecated and will be removed. Please use `context_schema` instead. Deprecated in LangGraph V1.0 to be removed in V2.0.
+    builder = StateGraph(OverallState, config_schema=Configuration)
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+backend/src/agent/graphs/supervisor.py:99
+  /app/backend/src/agent/graphs/supervisor.py:99: LangGraphDeprecatedSinceV10: `config_schema` is deprecated and will be removed. Please use `context_schema` instead. Deprecated in LangGraph V1.0 to be removed in V2.0.
+    builder = StateGraph(OverallState, config_schema=Configuration)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.12-final-0 _______________
+
+Name                                                 Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------------
+backend/src/agent/configuration.py                      29      0   100%
+backend/src/agent/graph.py                              62      7    89%   37-40, 43, 64, 89-91
+backend/src/agent/graphs/supervisor.py                  56      6    89%   51, 63, 92-97
+backend/src/agent/kg.py                                 46     31    33%   11, 27-70
+backend/src/agent/llm_client.py                         24     18    25%   30-57
+backend/src/agent/mcp_config.py                         33      7    79%   24-25, 49-50, 53-56
+backend/src/agent/memory_tools.py                       18      5    72%   16-17, 30-32
+backend/src/agent/models.py                             49     18    63%   105-114, 126, 140-161
+backend/src/agent/nodes.py                             315     95    70%   60-76, 100-147, 169, 219-220, 323, 356, 392, 404, 416, 428, 440, 450, 460, 470, 480, 524-548, 602-603, 612-630, 653-700, 815-821
+backend/src/agent/persistence.py                        30      2    93%   30-31
+backend/src/agent/prompts.py                             9      0   100%
+backend/src/agent/rag.py                               204    158    23%   16-18, 23, 57-111, 115-121, 144-202, 216-248, 258-286, 296-331, 334-360, 363-369, 384, 390-391
+backend/src/agent/rag_nodes.py                          81     20    75%   55-56, 64, 73-74, 79-81, 90-91, 111-116, 134, 141-142, 148-149
+backend/src/agent/rate_limiter.py                      127     87    31%   57-71, 75-88, 94-98, 109-150, 158-163, 178, 186, 241-246, 258-276, 291-302, 319-322
+backend/src/agent/registry.py                           34      1    97%   63
+backend/src/agent/research_tools.py                    140     49    65%   23, 98-115, 137-165, 220, 294, 321-348, 378-392, 446-473
+backend/src/agent/scoping_prompts.py                     1      0   100%
+backend/src/agent/scoping_schema.py                      6      0   100%
+backend/src/agent/state.py                              44      0   100%
+backend/src/agent/tools_and_schemas.py                  33      7    79%   42-47, 55-57
+backend/src/agent/utils.py                              57      0   100%
+backend/src/config/__init__.py                           2      0   100%
+backend/src/config/app_config.py                        38      4    89%   54, 56-58
+backend/src/config/validation.py                        34     34     0%   1-73
+backend/src/observability/__init__.py                    0      0   100%
+backend/src/observability/config.py                     11      4    64%   12-16, 20
+backend/src/observability/langfuse.py                   54     38    30%   12, 26-67, 90-117
+backend/src/rag/chroma_store.py                         57     52     9%   6-163
+backend/src/search/__init__.py                           3      0   100%
+backend/src/search/provider.py                          15      1    93%   39
+backend/src/search/providers/bing_adapter.py            40     27    32%   32-82
+backend/src/search/providers/brave_adapter.py           35     23    34%   31-68
+backend/src/search/providers/duckduckgo_adapter.py      18      9    50%   32-61
+backend/src/search/providers/google_adapter.py          28     16    43%   17, 33-66
+backend/src/search/providers/tavily_adapter.py          33     16    52%   26, 42-79
+backend/src/search/router.py                            71     35    51%   38-39, 44-45, 50-51, 56-57, 62-63, 66, 85-121
+----------------------------------------------------------------------------------
+TOTAL                                                 1837    770    58%
+=========================== short test summary info ============================
+FAILED backend/tests/test_configuration.py::TestConfiguration::test_default_values
+FAILED backend/tests/test_configuration.py::TestConfiguration::test_from_runnable_config_with_none
+FAILED backend/tests/test_configuration.py::TestConfiguration::test_partial_override
+FAILED backend/tests/test_nodes.py::TestValidateWebResults::test_validate_web_results_heuristics
+FAILED backend/tests/test_pr19_analysis_validation.py::TestPR19AnalysisStructure::test_pr19_analysis_file_exists
+FAILED backend/tests/test_state.py::TestCreateRagResources::test_create_rag_resources_function_signature
+FAILED backend/tests/test_state.py::TestReflectionState::test_reflection_state_is_sufficient_is_bool
+FAILED backend/tests/test_supervisor.py::TestCompressContext::test_compress_context_merges_new_and_existing_results
+FAILED backend/tests/test_supervisor.py::TestCompressContext::test_compress_context_with_empty_validated_results
+FAILED backend/tests/test_supervisor.py::TestCompressContext::test_compress_context_with_empty_existing_results
+FAILED backend/tests/test_supervisor.py::TestCompressContext::test_compress_context_with_both_empty
+FAILED backend/tests/test_supervisor.py::TestCompressContext::test_compress_context_with_missing_keys
+FAILED backend/tests/test_supervisor.py::TestCompressContext::test_compress_context_preserves_order
+FAILED backend/tests/test_supervisor.py::TestCompressContext::test_compress_context_with_large_result_set
+ERROR backend/tests/test_graph_mock.py::TestGraphNodes::test_generate_query_success
+ERROR backend/tests/test_graph_mock.py::TestGraphNodes::test_web_research_google_success
+ERROR backend/tests/test_graph_mock.py::TestGraphNodes::test_web_research_tavily_success
+ERROR backend/tests/test_graph_mock.py::TestGraphNodes::test_reflection_sufficient
+ERROR backend/tests/test_graph_mock.py::TestGraphNodes::test_finalize_answer
+====== 14 failed, 228 passed, 11 skipped, 5 warnings, 5 errors in 21.59s =======

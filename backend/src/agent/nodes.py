@@ -1,52 +1,89 @@
-# TODO: See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+# TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+# TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: Review 'deepagents' repo for relevant nodes (e.g. hierarchical planning).
+# Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
+
+import concurrent.futures
+import difflib
+import logging
 import os
 import re
-import difflib
-from typing import List, Dict, Any, Optional
-import logging
+from typing import List
 
+from config.app_config import config as app_config
+from search.router import search_router
+from google.genai import Client
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.types import Send
-from google.genai import Client
 
+from agent.configuration import Configuration
+from agent.persistence import load_plan, save_plan
+from agent.prompts import (
+    answer_instructions,
+    get_current_date,
+    query_writer_instructions,
+    reflection_instructions,
+)
+from agent.rate_limiter import get_context_manager, get_rate_limiter
+from agent.registry import graph_registry
+from agent.scoping_prompts import scoping_instructions
+from agent.scoping_schema import ScopingAssessment
+from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS
 from agent.state import (
     OverallState,
     QueryGenerationState,
     ReflectionState,
     WebSearchState,
 )
-from agent.configuration import Configuration
-from agent.prompts import (
-    get_current_date,
-    query_writer_instructions,
-    web_searcher_instructions,
-    reflection_instructions,
-    answer_instructions,
-)
-from agent.scoping_prompts import scoping_instructions
-from agent.scoping_schema import ScopingAssessment
-from agent.tools_and_schemas import SearchQueryList, Reflection
 from agent.utils import (
-    get_citations,
     get_research_topic,
-    insert_citation_markers,
-    resolve_urls,
 )
-from agent.registry import graph_registry
-from agent.persistence import load_plan, save_plan
-from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
-from agent.rate_limiter import get_rate_limiter, get_context_manager
 from observability.langfuse import observe_span
-
-from backend.src.config.app_config import config as app_config
-from backend.src.search.router import search_router
 
 logger = logging.getLogger(__name__)
 
 # Initialize Google Search Client
 genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
+def _get_rate_limited_llm(model: str, temperature: float = 0, max_retries: int = 2, prompt: str = "") -> ChatGoogleGenerativeAI:
+    """Get a rate-limited LLM instance with context management.
+    
+    Args:
+        model: Model name to use
+        temperature: Temperature setting
+        max_retries: Maximum retry attempts
+        prompt: Prompt text for token estimation
+        
+    Returns:
+        Configured ChatGoogleGenerativeAI instance
+    """
+    # Get rate limiter and context manager
+    rate_limiter = get_rate_limiter(model)
+    context_mgr = get_context_manager(model)
+    
+    # Estimate tokens if prompt provided
+    if prompt:
+        estimated_tokens = context_mgr.estimate_tokens(prompt)
+        
+        # Wait if necessary
+        wait_time = rate_limiter.wait_if_needed(estimated_tokens)
+        if wait_time > 0:
+            logger.info(f"Rate limited: waited {wait_time:.2f}s for {model}")
+        
+        # Log usage
+        usage = rate_limiter.get_current_usage()
+        logger.debug(f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}")
+    
+    return ChatGoogleGenerativeAI(
+        model=model,
+        temperature=temperature,
+        max_retries=max_retries,
+        api_key=os.getenv("GEMINI_API_KEY"),
+    )
 
 
 @graph_registry.describe(
@@ -56,11 +93,14 @@ genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
     outputs=["scoping_status", "clarification_questions", "messages"],
 )
 def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Scoping Phase:
+    """Scoping Phase:
     Checks if the user's request is ambiguous.
     If yes -> Generates questions and sets status to 'active' (interrupt).
     If no -> Sets status to 'complete' (proceed).
+
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Implement `scoping_node` logic: Analyze input query. If ambiguous, generate clarifying questions and interrupt graph.
     """
     with observe_span("scoping_node", config):
         # 1. Check if we are processing a clarification answer
@@ -76,18 +116,21 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
         if not messages:
             return {"scoping_status": "complete"} # Should not happen
 
-        # Use Gemini to assess ambiguity
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash", # Use a fast model
-            temperature=0,
-            api_key=os.getenv("GEMINI_API_KEY"),
-        )
-        structured_llm = llm.with_structured_output(ScopingAssessment)
-
+        # Format prompt first for token estimation
         prompt = scoping_instructions.format(
             current_date=get_current_date(),
             research_topic=get_research_topic(messages)
         )
+
+        # Use rate-limited Gemini to assess ambiguity
+        from agent.models import DEFAULT_SCOPING_MODEL
+        
+        llm = _get_rate_limited_llm(
+            model=DEFAULT_SCOPING_MODEL,
+            temperature=0,
+            prompt=prompt
+        )
+        structured_llm = llm.with_structured_output(ScopingAssessment)
 
         try:
             assessment = structured_llm.invoke(prompt)
@@ -142,6 +185,12 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
 
     Uses Gemini 2.5 Flash to create optimized search queries for web research based on
     the User's question. Includes rate limiting and context window management.
+
+    TODO(priority=Medium, complexity=Medium): [Open SWE] Rename to 'generate_plan' or create a new node.
+    It should generate a structured 'Plan' (List[Todo]) instead of just queries.
+    See docs/tasks/02_OPEN_SWE_TASKS.md
+    Subtask: Update prompt `query_writer_instructions` to generate a `Plan` (List of Todos).
+    Subtask: Update output parser.
     """
     with observe_span("generate_query", config):
         configurable = Configuration.from_runnable_config(config)
@@ -150,10 +199,6 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
         if state.get("initial_search_query_count") is None:
             state["initial_search_query_count"] = configurable.number_of_initial_queries
 
-        # Get rate limiter and context manager for this model
-        model = configurable.query_generator_model
-        rate_limiter = get_rate_limiter(model)
-        context_mgr = get_context_manager(model)
 
         # Format the prompt
         current_date = get_current_date()
@@ -163,28 +208,22 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             number_queries=state["initial_search_query_count"],
         )
 
-        # Truncate prompt if needed to fit context window
+        # Truncate if needed
+        context_mgr = get_context_manager(configurable.query_generator_model)
         formatted_prompt = context_mgr.truncate_to_fit(formatted_prompt)
 
-        # Estimate tokens for rate limiting
-        estimated_tokens = context_mgr.estimate_tokens(formatted_prompt)
-
-        # Wait if necessary to stay within rate limits
-        wait_time = rate_limiter.wait_if_needed(estimated_tokens)
-        if wait_time > 0:
-            logger.info(f"Rate limited: waited {wait_time:.2f}s for {model}")
-
-        # Log current usage
-        usage = rate_limiter.get_current_usage()
-        logger.info(f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}")
-
-        # init Gemini model
-        llm = ChatGoogleGenerativeAI(
-            model=model,
+        # Get rate-limited LLM
+        llm = _get_rate_limited_llm(
+            model=configurable.query_generator_model,
             temperature=1.0,
             max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
+            prompt=formatted_prompt
         )
+        # Bind MCP tools if available
+        if MCP_TOOLS:
+             logger.info(f"Binding {len(MCP_TOOLS)} MCP tools to generate_query model.")
+             llm = llm.bind_tools(MCP_TOOLS)
+
         structured_llm = llm.with_structured_output(SearchQueryList)
 
         # Generate the search queries
@@ -215,8 +254,7 @@ def continue_to_web_research(state: QueryGenerationState):
     outputs=["web_research_result", "sources_gathered"],
 )
 def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
-    """
-    LangGraph node that performs web research.
+    """LangGraph node that performs web research.
     Updated to use the unified SearchRouter and AppConfig.
     """
     with observe_span("web_research", config):
@@ -345,6 +383,97 @@ def planning_wait(state: OverallState) -> OverallState:
     }
 
 
+def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Refines the research plan based on new findings.
+
+    TODO(priority=Medium, complexity=Medium): [Open SWE] Implement 'update_plan' Node
+    Logic: Read state.plan & state.web_research_result -> Prompt LLM -> Update Plan.
+    See docs/tasks/02_OPEN_SWE_TASKS.md
+    Subtask: Read `state.plan` and `state.web_research_result`.
+    Subtask: Prompt LLM: "Given the result, update the plan (mark done, add new tasks)."
+    Subtask: Parse output -> Update state.
+    """
+    raise NotImplementedError("update_plan not implemented")
+
+def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Generates a hierarchical outline (Sections -> Subsections) for the research.
+
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'outline_gen' Node (STORM)
+    Logic: Generate hierarchical outline (Sections -> Subsections).
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Input: Refined user query + initial context.
+    Subtask: Output: Populate `OverallState.outline`.
+    """
+    raise NotImplementedError("outline_gen not implemented")
+
+def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Dynamically expands the research DAG based on findings.
+
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
+    Logic: Dynamic DAG expansion based on findings.
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Analyze findings. Decide to (a) Mark task done, (b) Add new tasks (DAG expansion), (c) Refine existing tasks.
+    Subtask: Output: Updated `todo_list` (DAG structure).
+    """
+    raise NotImplementedError("flow_update not implemented")
+
+def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Extracts structured evidence from raw web content.
+
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'content_reader' Node (ManuSearch)
+    Logic: Extract structured Evidence (Claim, Source, Context).
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Input: Raw HTML/Text from search.
+    Subtask: Output: List of `Evidence` objects appended to `OverallState.evidence_bank`.
+    """
+    raise NotImplementedError("content_reader not implemented")
+
+def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Executes a recursive research subgraph for a specific sub-topic.
+
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
+    Logic: Recursive research call for sub-topics.
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Input: A sub-topic query.
+    Subtask: Logic: Compile and run a fresh instance of the `ResearchGraph`.
+    """
+    raise NotImplementedError("research_subgraph not implemented")
+
+def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Audits gathered evidence against the outline requirements.
+
+    TODO(priority=High, complexity=Medium): [SOTA Deep Research] Implement 'checklist_verifier'
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Audit the `evidence_bank` against the `outline` requirements.
+    """
+    raise NotImplementedError("checklist_verifier not implemented")
+
+def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Refines the final answer by synthesizing multiple drafts.
+
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'denoising_refiner'
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Subtask: Generate N draft answers, critique them, and synthesize the best components.
+    """
+    raise NotImplementedError("denoising_refiner not implemented")
+
+def update_artifact(id: str, content: str, type: str) -> str:
+    """
+    Updates a collaborative artifact.
+
+    TODO(priority=Low, complexity=Medium): [Open Canvas] Implement 'update_artifact' tool
+    See docs/tasks/03_OPEN_CANVAS_TASKS.md
+    Subtask: Create a helper function/tool `update_artifact(id, content, type)`.
+    """
+    raise NotImplementedError("update_artifact not implemented")
+
 def planning_router(state: OverallState, config: RunnableConfig):
     """Route based on planning status and user commands."""
     configurable = Configuration.from_runnable_config(config)
@@ -395,6 +524,35 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
     return keywords
 
 
+def _validate_single_candidate(candidate: str, flattened_queries: List[str]) -> tuple[str, bool, str | None]:
+    """Helper to validate a single candidate using LLM."""
+    prompt = f"""
+    Verify if the following snippet actually contains relevant information for the query: "{flattened_queries[0] if flattened_queries else 'research topic'}"
+    Snippet: "{candidate[:500]}..."
+    Reply with "YES" or "NO" only.
+    """
+
+    # Use rate-limited LLM
+    llm = _get_rate_limited_llm(
+        model=app_config.model_validation,
+        temperature=0,
+        prompt=prompt
+    )
+
+    try:
+        # Assuming invoke returns AIMessage or similar
+        response = llm.invoke(prompt)
+        content = response.content if hasattr(response, "content") else str(response)
+
+        if "YES" in content.upper():
+            return candidate, True, None
+        else:
+            return candidate, False, "Result rejected by LLM Validator: Content mismatch."
+    except Exception as e:
+        logger.warning(f"LLM validation failed: {e}. Accepting candidate.")
+        return candidate, True, None # Fail open on error
+
+
 @graph_registry.describe(
     "validate_web_results",
     summary="Hybrid validation (Heuristics + LLM) with citation hard-fail.",
@@ -402,8 +560,7 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
     outputs=["validated_web_research_result", "validation_notes"],
 )
 def validate_web_results(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Hybrid validation logic:
+    """Hybrid validation logic:
     1. Heuristic filtering (fuzzy match against query intent).
     2. LLM Claim-Check (if Validation Mode is hybrid).
     3. Citation Hard-Fail (if REQUIRE_CITATIONS is true).
@@ -443,8 +600,9 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                 if any(keyword in normalized_summary for keyword in keywords):
                     match_found = True
                 else:
+                    # ⚡ Bolt Optimization: Move split() outside loop to avoid redundant computation
+                    summary_words = normalized_summary.split()
                     for keyword in keywords:
-                        summary_words = normalized_summary.split()
                         matches = difflib.get_close_matches(keyword, summary_words, n=1, cutoff=0.8)
                         if matches:
                             match_found = True
@@ -459,31 +617,21 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         if app_config.validation_mode == "hybrid" and heuristic_passed:
             validated_by_llm = []
 
-            llm = ChatGoogleGenerativeAI(
-                model=app_config.model_validation,
-                temperature=0,
-                api_key=os.getenv("GEMINI_API_KEY"),
-            )
-
-            for candidate in heuristic_passed:
-                # Lightweight claim check
-                prompt = f"""
-                Verify if the following snippet actually contains relevant information for the query: "{flattened_queries[0] if flattened_queries else 'research topic'}"
-                Snippet: "{candidate[:500]}..."
-                Reply with "YES" or "NO" only.
-                """
-                try:
-                    # Assuming invoke returns AIMessage or similar
-                    response = llm.invoke(prompt)
-                    content = response.content if hasattr(response, "content") else str(response)
-
-                    if "YES" in content.upper():
+            # ⚡ Bolt Optimization: Parallelize validation calls
+            # Using ThreadPoolExecutor to run blocking LLM calls in parallel
+            # Since the RateLimiter is thread-safe and the network call happens outside the lock,
+            # this speeds up validation significantly (e.g. 5x faster for 5 candidates).
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                # Submit all validation tasks
+                # Collect results as they complete (order doesn't strictly matter for set, but we usually want to preserve it)
+                # To preserve order, we can map over heuristic_passed
+                results = list(executor.map(lambda c: _validate_single_candidate(c, flattened_queries), heuristic_passed))
+                
+                for candidate, is_valid, note in results:
+                    if is_valid:
                         validated_by_llm.append(candidate)
-                    else:
-                        notes.append("Result rejected by LLM Validator: Content mismatch.")
-                except Exception as e:
-                    logger.warning(f"LLM validation failed: {e}. Accepting candidate.")
-                    validated_by_llm.append(candidate)
+                    if note:
+                        notes.append(note)
 
             validated = validated_by_llm
         else:
@@ -504,8 +652,7 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
     outputs=["web_research_result"],
 )
 def compression_node(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Tiered Compression:
+    """Tiered Compression:
     1. Extractive: Deduplicate and remove redundant phrases.
     2. Abstractive: Summarize while keeping citations (if enabled).
     """
@@ -530,11 +677,6 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
         # Simple prompt construction
         combined_text = "\n\n".join(unique_results)
 
-        # Truncate if too long to avoid context overflow
-        max_chars = 30000  # Reasonable limit for most models
-        if len(combined_text) > max_chars:
-            combined_text = combined_text[:max_chars] + "\n[... truncated]"
-
         prompt = f"""
         Compress the following research notes into a concise summary.
         CRITICAL: You MUST preserve all source citations in [Title](url) format.
@@ -545,12 +687,17 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
         """
 
         try:
-            llm = ChatGoogleGenerativeAI(
-                model=app_config.model_compression, # e.g. "gemini-2.0-flash-lite" or similar
+            # Use context manager to truncate if needed
+            context_mgr = get_context_manager(app_config.model_compression)
+            truncated_prompt = context_mgr.truncate_to_fit(prompt)
+            
+            # Use rate-limited LLM
+            llm = _get_rate_limited_llm(
+                model=app_config.model_compression,
                 temperature=0,
-                api_key=os.getenv("GEMINI_API_KEY"),
+                prompt=truncated_prompt
             )
-            compressed = llm.invoke(prompt).content
+            compressed = llm.invoke(truncated_prompt).content
             return {"validated_web_research_result": [compressed]}
         except Exception as e:
             logger.warning(f"Compression failed: {e}. Returning originals.")
@@ -587,11 +734,12 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
             summaries="\n\n---\n\n".join(summaries_source),
         )
 
-        llm = ChatGoogleGenerativeAI(
+        # Use rate-limited LLM
+        llm = _get_rate_limited_llm(
             model=reasoning_model,
             temperature=1.0,
             max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
+            prompt=formatted_prompt
         )
         result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
 
@@ -658,11 +806,12 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
             summaries="\n---\n\n".join(summaries),
         )
 
-        llm = ChatGoogleGenerativeAI(
+        # Use rate-limited LLM
+        llm = _get_rate_limited_llm(
             model=reasoning_model,
             temperature=0,
             max_retries=2,
-            api_key=os.getenv("GEMINI_API_KEY"),
+            prompt=formatted_prompt
         )
         result = llm.invoke(formatted_prompt)
 

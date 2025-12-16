@@ -61,28 +61,28 @@ logger = logging.getLogger(__name__)
 def generate_query(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
     """Generate search queries based on the user's question."""
     configurable = Configuration.from_runnable_config(config)
-
+    
     messages = state.get("messages", [])
     research_topic = get_research_topic(messages) if messages else "General research"
-
+    
     initial_count = state.get("initial_search_query_count", configurable.number_of_initial_queries)
-
+    
     formatted_prompt = query_writer_instructions.format(
         current_date=get_current_date(),
         research_topic=research_topic,
         number_of_queries=initial_count,
     )
-
+    
     llm = LLMFactory.create_llm(
         model_name=configurable.query_generator_model,
         temperature=1.0,
         max_retries=2,
     )
-
+    
     try:
         result = llm.invoke(formatted_prompt)
         content = getattr(result, "content", str(result))
-
+        
         # Parse queries from response
         queries = []
         for line in content.strip().split("\n"):
@@ -92,10 +92,10 @@ def generate_query(state: OverallState, config: RunnableConfig) -> Dict[str, Any
                 cleaned = re.sub(r"^[\d\.\-\*\s]+", "", line).strip()
                 if cleaned:
                     queries.append(cleaned)
-
+        
         if not queries:
             queries = [research_topic]
-
+        
         return {"search_query": queries[:initial_count]}
     except Exception as e:
         logger.error(f"Query generation failed: {e}")
@@ -105,23 +105,23 @@ def generate_query(state: OverallState, config: RunnableConfig) -> Dict[str, Any
 def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
     """Perform web research using available search providers."""
     configurable = Configuration.from_runnable_config(config)
-
+    
     search_query = state.get("search_query", [])
     if isinstance(search_query, list):
         query = search_query[-1] if search_query else ""
     else:
         query = search_query
-
+    
     if not query:
         return {"web_research_result": [], "sources_gathered": []}
-
+    
     # Try Tavily first if available
     if TAVILY_AVAILABLE and tavily_search_multiple and os.getenv("TAVILY_API_KEY"):
         try:
             results = tavily_search_multiple([query])
             formatted_results = []
             sources = []
-
+            
             for result_set in results:
                 for item in result_set.get("results", []):
                     content = item.get("content", "")
@@ -129,30 +129,31 @@ def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
                     url = item.get("url", "")
                     formatted_results.append(f"{content} [{title}]({url})")
                     sources.append({"title": title, "url": url, "snippet": content[:200]})
-
+            
             return {
                 "web_research_result": formatted_results,
                 "sources_gathered": sources,
             }
         except Exception as e:
             logger.warning(f"Tavily search failed, falling back to Google: {e}")
-
+    
     # Fallback to Google GenAI grounding
     if genai_client:
         try:
+            from agent.models import GEMINI_FLASH
             response = genai_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=GEMINI_FLASH,
                 contents=query,
                 config=types.GenerateContentConfig(
                     tools=[types.Tool(google_search=types.GoogleSearch())],
                     temperature=0,
                 ),
             )
-
+            
             grounding_metadata = None
             if response.candidates:
                 grounding_metadata = getattr(response.candidates[0], "grounding_metadata", None)
-
+            
             sources = []
             if grounding_metadata:
                 chunks = getattr(grounding_metadata, "grounding_chunks", []) or []
@@ -164,50 +165,50 @@ def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
                             "url": getattr(web_info, "uri", ""),
                             "snippet": "",
                         })
-
+            
             return {
                 "web_research_result": [response.text] if response.text else [],
                 "sources_gathered": sources,
             }
         except Exception as e:
             logger.error(f"Google search failed: {e}")
-
+    
     return {"web_research_result": [], "sources_gathered": []}
 
 
 def reflection(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
     """Identify knowledge gaps and propose follow-up queries."""
     configurable = Configuration.from_runnable_config(config)
-
+    
     state["research_loop_count"] = state.get("research_loop_count", 0) + 1
     reasoning_model = state.get("reasoning_model", configurable.reflection_model)
-
+    
     web_research_result = state.get("web_research_result", [])
     summaries_text = "\n\n---\n\n".join(web_research_result) if web_research_result else "No research content available."
-
+    
     messages = state.get("messages", [])
     research_topic = get_research_topic(messages) if messages else "General research"
-
+    
     formatted_prompt = reflection_instructions.format(
         current_date=get_current_date(),
         research_topic=research_topic,
         summaries=summaries_text,
     )
-
+    
     llm = LLMFactory.create_llm(
         model_name=reasoning_model or configurable.reflection_model,
         temperature=1.0,
         max_retries=2,
     )
-
+    
     result = llm.invoke(formatted_prompt)
     content = getattr(result, "content", str(result))
-
+    
     # Parse reflection response
     is_sufficient = False
     knowledge_gap = ""
     follow_up_queries: List[str] = []
-
+    
     try:
         json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
         json_content = json_match.group(1) if json_match else content
@@ -230,9 +231,9 @@ def reflection(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
             elif upper.startswith("FOLLOW_UP"):
                 rest = line.split(":", 1)[-1]
                 follow_up_queries = [s.strip() for s in rest.split(",") if s.strip()]
-
+    
     query_count = len(state.get("search_query", []) or [])
-
+    
     return {
         "is_sufficient": is_sufficient,
         "knowledge_gap": knowledge_gap,
@@ -247,7 +248,7 @@ def evaluate_research(state: ReflectionState, config: RunnableConfig) -> str:
     configurable = Configuration.from_runnable_config(config)
     max_loops = state.get("max_research_loops", configurable.max_research_loops)
     loop_count = state.get("research_loop_count", 0)
-
+    
     if state.get("is_sufficient") or loop_count >= max_loops:
         return "finalize_answer"
     return "continue_research"
@@ -258,7 +259,7 @@ def continue_research(state: OverallState) -> Dict[str, Any]:
     follow_up_queries = state.get("follow_up_queries", [])
     if not follow_up_queries:
         return {}
-
+    
     next_query = follow_up_queries[0]
     return {
         "search_query": [next_query],
@@ -270,41 +271,41 @@ def finalize_answer(state: OverallState, config: RunnableConfig) -> Dict[str, An
     """Combine RAG documents and web research into the final answer."""
     configurable = Configuration.from_runnable_config(config)
     reasoning_model = state.get("reasoning_model") or configurable.answer_model
-
+    
     all_summaries: List[str] = []
-
+    
     # Include RAG documents if available
     rag_documents = state.get("rag_documents", [])
     for idx, doc in enumerate(rag_documents or []):
         labeled_doc = f"=== KNOWLEDGE BASE SOURCE {idx + 1} ===\n{doc}\n=== END KNOWLEDGE BASE SOURCE {idx + 1} ==="
         all_summaries.append(labeled_doc)
-
+    
     # Include web research results
     web_research_result = state.get("web_research_result", [])
     for idx, result in enumerate(web_research_result or []):
         labeled_result = f"=== WEB RESEARCH SOURCE {idx + 1} ===\n{result}\n=== END WEB RESEARCH SOURCE {idx + 1} ==="
         all_summaries.append(labeled_result)
-
+    
     summaries_text = "\n\n".join(all_summaries) if all_summaries else "No research content available."
-
+    
     messages = state.get("messages", [])
     research_topic = get_research_topic(messages) if messages else "General research"
-
+    
     formatted_prompt = answer_instructions.format(
         current_date=get_current_date(),
         research_topic=research_topic,
         summaries=summaries_text,
     )
-
+    
     llm = LLMFactory.create_llm(
         model_name=reasoning_model or configurable.answer_model,
         temperature=0,
         max_retries=2,
     )
-
+    
     result = llm.invoke(formatted_prompt)
     final_answer = getattr(result, "content", str(result))
-
+    
     # Handle truncated responses
     response_metadata = getattr(result, "response_metadata", {})
     finish_reason = response_metadata.get("finish_reason")
@@ -314,7 +315,7 @@ def finalize_answer(state: OverallState, config: RunnableConfig) -> Dict[str, An
         response_metadata = getattr(continuation, "response_metadata", {})
         finish_reason = response_metadata.get("finish_reason")
         time.sleep(2)
-
+    
     return {"messages": [AIMessage(content=final_answer)]}
 
 
@@ -325,7 +326,7 @@ def finalize_answer(state: OverallState, config: RunnableConfig) -> Dict[str, An
 def build_graph() -> StateGraph:
     """Build the experimental multi-provider LangGraph workflow."""
     workflow = StateGraph(OverallState, config_schema=Configuration)
-
+    
     # Add nodes
     workflow.add_node("generate_query", generate_query)
     workflow.add_node("web_research", web_research)
@@ -333,10 +334,10 @@ def build_graph() -> StateGraph:
     workflow.add_node("continue_research", continue_research)
     workflow.add_node("finalize_answer", finalize_answer)
     workflow.add_node("rag_retrieve", rag_nodes.rag_retrieve)
-
+    
     # Define edges
     workflow.add_edge(START, "generate_query")
-
+    
     # RAG routing: check if RAG should be used
     workflow.add_conditional_edges(
         "generate_query",
@@ -346,7 +347,7 @@ def build_graph() -> StateGraph:
             "web_research": "web_research",
         },
     )
-
+    
     # After RAG, decide whether to also do web search
     workflow.add_conditional_edges(
         "rag_retrieve",
@@ -356,9 +357,9 @@ def build_graph() -> StateGraph:
             "reflection": "reflection",
         },
     )
-
+    
     workflow.add_edge("web_research", "reflection")
-
+    
     # Reflection routing
     workflow.add_conditional_edges(
         "reflection",
@@ -368,7 +369,7 @@ def build_graph() -> StateGraph:
             "continue_research": "continue_research",
         },
     )
-
+    
     # Continue research loops back via RAG check
     workflow.add_conditional_edges(
         "continue_research",
@@ -378,9 +379,9 @@ def build_graph() -> StateGraph:
             "web_research": "web_research",
         },
     )
-
+    
     workflow.add_edge("finalize_answer", END)
-
+    
     return workflow.compile(name="experimental-research-graph")
 
 

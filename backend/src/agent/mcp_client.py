@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional
 import json
 import logging
+from backend.src.agent.llm_client import call_llm_robust
 
 logger = logging.getLogger(__name__)
 
@@ -33,15 +34,26 @@ class MCPToolUser:
         # Handle cases where tool_name might be just "read_file" or "filesystem.read_file"
         if tool_name not in self.tool_registry:
             # Try finding it without server prefix
-            found = False
+            candidates = []
             for key in self.tool_registry:
+                # We check for suffix match, assuming the registry key format is server.tool_name
+                # The check ensures that we match a full tool name component (preceded by dot)
                 if key.endswith(f".{tool_name}"):
-                    tool_name = key
-                    found = True
-                    break
+                    candidates.append(key)
 
-            if not found:
+            if len(candidates) == 0:
                 return {"success": False, "error": f"Tool {tool_name} not found"}
+            elif len(candidates) == 1:
+                # Unambiguous match
+                matched_tool = candidates[0]
+                logger.warning(f"Tool '{tool_name}' matched to '{matched_tool}'. Please use the full tool name in the future.")
+                tool_name = matched_tool
+            else:
+                # Ambiguous match
+                return {
+                    "success": False,
+                    "error": f"Ambiguous tool name '{tool_name}'. Candidates: {', '.join(candidates)}"
+                }
 
         tool_info = self.tool_registry[tool_name]
         handler = tool_info["tool"].handler
@@ -90,17 +102,8 @@ ENSURE to use the full tool name (e.g. filesystem.write_file).
 """
 
         try:
-            # Adapt to llm_client interface
-            if hasattr(llm_client, "invoke"):
-                 response = llm_client.invoke(planning_prompt)
-                 if hasattr(response, "content"):
-                     response_text = response.content
-                 else:
-                     response_text = str(response)
-            elif hasattr(llm_client, "generate"):
-                response_text = llm_client.generate(planning_prompt)
-            else:
-                 response_text = str(llm_client(planning_prompt))
+            # Adapt to llm_client interface using robust caller
+            response_text = call_llm_robust(llm_client, planning_prompt)
 
             # Clean markdown
             response_text = response_text.strip()

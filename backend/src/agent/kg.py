@@ -6,6 +6,11 @@ from backend.src.config.app_config import config
 logger = logging.getLogger(__name__)
 
 # Try to import cognee, fail gracefully
+# TODO(priority=Medium, complexity=Medium): Integrate with Cognee for Knowledge Graph enrichment.
+# See docs/tasks/03_OPEN_CANVAS_TASKS.md
+# Subtask: Ensure `cognee` is installed/mocked in tests.
+# Subtask: Implement `cognee.add` and `cognee.cognify` in `kg_enrich`.
+
 try:
     import cognee
     COGNEE_AVAILABLE = True
