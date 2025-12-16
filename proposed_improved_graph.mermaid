@@ -6,30 +6,23 @@ config:
 graph TD;
 	__start__([<p>__start__</p>]):::first
 	load_context(load_context)
-	scoping_node(scoping_node)
 	generate_query(generate_query)
 	planning_mode(planning_mode)
 	planning_wait(planning_wait)
 	web_research(web_research)
 	validate_web_results(validate_web_results)
-	compression_node(compression_node)
-	kg_enrich(kg_enrich)
 	reflection(reflection)
 	finalize_answer(finalize_answer)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> load_context;
-	compression_node --> kg_enrich;
 	generate_query --> planning_mode;
-	kg_enrich --> reflection;
-	load_context --> scoping_node;
+	load_context --> generate_query;
 	planning_mode -.-> planning_wait;
 	planning_mode -.-> web_research;
 	planning_wait -.-> web_research;
 	reflection -.-> finalize_answer;
 	reflection -.-> web_research;
-	scoping_node -.-> generate_query;
-	scoping_node -.-> planning_wait;
-	validate_web_results --> compression_node;
+	validate_web_results --> reflection;
 	web_research --> validate_web_results;
 	finalize_answer --> __end__;
 	planning_wait -.-> planning_wait;

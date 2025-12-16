@@ -78,7 +78,7 @@ builder.add_edge("load_context", "generate_query")
 # TODO: Future - Insert 'save_plan' step here to persist the generated plan automatically
 builder.add_edge("generate_query", "planning_mode")
 
-# TODO(priority=Medium, complexity=Medium): [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
+# TODO: [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
 # See docs/tasks/02_OPEN_SWE_TASKS.md
 # Subtask: Create routing logic: `if pending_tasks: return "web_research" else: return "finalize"`.
 
@@ -153,8 +153,3 @@ graph_registry.document_edge(
 )
 
 graph = builder.compile(name="pro-search-agent")
-
-# TODO(priority=High, complexity=Low): Add visualization support for notebooks.
-# See docs/tasks/03_OPEN_CANVAS_TASKS.md
-# Subtask: Implement `get_graph().draw_mermaid_png()` compatible method.
-# Subtask: Ensure `visualize_graphs.py` uses this method.

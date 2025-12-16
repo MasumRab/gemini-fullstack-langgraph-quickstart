@@ -4,7 +4,7 @@ This document outlines the strategic roadmap for evolving the current "Research 
 
 **Detailed Strategy:** For technical trade-offs, architecture, and granular task breakdowns, please refer to [INTEGRATION_STRATEGY.md](./INTEGRATION_STRATEGY.md).
 
-**Deep Research Analysis:** For a comparative analysis of this agent vs. state-of-the-art "Deep Research" implementations (and integration plans), see [docs/analysis/DEEP_RESEARCH_COMPARISON.md](./docs/analysis/DEEP_RESEARCH_COMPARISON.md).
+**Deep Research Analysis:** For a comparative analysis of this agent vs. state-of-the-art "Deep Research" implementations (and integration plans), see [docs/analysis/DEEP_RESEARCH_LANDSCAPE.md](./docs/analysis/DEEP_RESEARCH_LANDSCAPE.md).
 
 ## Current Status
 - **Core Functionality:** Functional Research Agent with Basic Planning Mode (`planning_mode`, `planning_wait`).
@@ -19,50 +19,49 @@ This document outlines the strategic roadmap for evolving the current "Research 
 - [ ] **Standardize Tooling (MCP):**
     - [x] Foundation: Config module `mcp_config.py` created and tested.
     - [x] Wiring: Agent graph updated to load MCP settings (disabled by default).
-    - [x] Install `langchain-mcp-adapters` (Included in `pyproject.toml`).
+    - [x] Install `langchain-mcp-adapters`.
     - [x] Refactor `tools_and_schemas.py` to use MCP adapters for tool definitions.
 - [ ] **Implement File-based Memory:**
-    - [x] Create simple `load_plan` and `save_plan` tools. (Implemented in `persistence.py` & wrapped).
+    - [x] Create simple `load_plan` and `save_plan` tools (using MCP or direct implementation).
     - [x] Allow the agent to persist the `TodoState` to a local JSON file to survive server restarts.
 
-### Low Priority
-- [ ] **CLI Interface:** Add a CLI entry point for headless operation of the planning loop.
+## Phase 2: SOTA Deep Research Features
+*Goal: Integrate verified patterns from Open Deep Research, STORM, FlowSearch, ManuSearch, and GPT Researcher.*
 
-## Phase 2: Planning & Interaction (Open SWE Patterns)
+### High Priority
+- [ ] **Scoping & Clarification (Open Deep Research):**
+    - [ ] Implement a pre-planning "Scoping Node" that asks the user clarifying questions.
+- [ ] **Hierarchical Outlines (STORM):**
+    - [ ] Upgrade `planning_mode` to generate structured outlines (Section -> Subsection).
+- [ ] **Dynamic Knowledge Flow (FlowSearch):**
+    - [ ] Enable the planner to dynamically expand the graph (DAG) based on intermediate findings.
+- [ ] **Structured Content Reading (ManuSearch):**
+    - [ ] Implement a specialized `ContentReader` node that extracts evidence from retrieved pages.
+- [ ] **Recursive Research (GPT Researcher):**
+    - [ ] Enable the `web_research` node to "recurse" (call the graph again) for complex sub-topics.
+
+## Phase 3: Planning & Interaction (Open SWE Patterns)
 *Goal: Transform the agent from a "Search Query Approver" to a "Task Manager".*
 
 ### High Priority
 - [ ] **Enhance `planning_mode`:**
-    - [ ] Transition from simple `search_query` lists to structured `Todo` objects (Status: Pending, InProgress, Done).
-    - [ ] Implement logic to update the plan based on `reflection` output (e.g., adding new sub-tasks).
+    - [ ] Transition from simple `search_query` lists to structured `Todo` objects.
+    - [ ] Implement logic to update the plan based on `reflection` output.
 - [ ] **Dynamic Re-planning:**
-    - [ ] Update `reflection` node to output *Plan Updates* in addition to *Follow-up Queries*.
-    - [ ] Ensure the graph loops back to `planning_mode` to confirm the updated plan.
+    - [ ] Update `reflection` node to output *Plan Updates*.
 
-### Low Priority
-- [ ] **Background Task Execution:**
-    - [ ] Enable the agent to run long-duration tasks without blocking the UI.
-
-## Phase 3: Artifacts & Collaboration (Open Canvas Integration)
-*Goal: Move beyond chat bubbles. The agent should produce and maintain live "artifacts" (documents, schedules, code) that the user can co-edit.*
+## Phase 4: Artifacts & Collaboration (Open Canvas Integration)
+*Goal: Move beyond chat bubbles. The agent should produce and maintain live "artifacts" that the user can co-edit.*
 
 ### High Priority
 - [ ] **Artifact UI State:**
     - [ ] Frontend: Split the view into "Chat" (left) and "Artifact/Canvas" (right).
-    - [ ] Backend: Define `ArtifactState` in `OverallState` to track the content of the "Final Report" or "Plan".
 - [ ] **Real-time Artifact Streaming:**
     - [ ] Stream updates to the Artifact panel separately from the chat stream.
-
-## Backlog / Jobs
-*Open engineering tasks for contributors.*
-
-1.  **Refactor `graph.py`:** Break down the monolithic graph definition into modular sub-graphs (e.g., `ResearchGraph`, `PlanningGraph`) to support complexity.
-2.  **Frontend State Sync:** Improve the React hook (`useStream`) handling to support complex, multi-channel state (Chat + Artifacts + Plan).
-3.  **Testing Infrastructure:** Add integration tests for the full graph flow using LangSmith.
 
 ## Architecture Log
 *Record of significant architectural decisions.*
 
-- **[Date]:** Added Deep Research Analysis and Benchmarking integration strategy.
+- **[Date]:** Roadmap updated to align with verified SOTA Deep Research architectures (Open Deep Research, STORM, FlowSearch, ManuSearch, GPT Researcher).
 - **[Date]:** Roadmap updated to reflect "Iterative Chained Planning" vision and existing `planning_mode` implementation.
 - **[Date]:** Initial Roadmap creation. Decision to prioritize Deep Agents memory patterns before UI overhauls.

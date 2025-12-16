@@ -171,11 +171,11 @@ if IN_COLAB:
         if os.path.exists(repo_name):
             os.chdir(repo_name)
             print(f"  [OK] Changed directory to {{os.getcwd()}} (Fallback)")
-    
+
     # 3. Install Backend (Quietly)
     # We install from the backend directory which should be reachable
     # relative to current dir or absolute
-    
+
     # Find backend relative to current position
     import sys
     if os.path.exists("backend"):
@@ -184,6 +184,9 @@ if IN_COLAB:
         !pip install -q -e ../backend
     elif os.path.exists("src"): # We might be IN backend
         !pip install -q -e .
+    else:
+        print("  [X] Error: Could not find backend directory to install.")
+        sys.exit(1)
 
     print("  [OK] Dependencies installed!")
 else:

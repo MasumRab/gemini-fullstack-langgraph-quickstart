@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock
 from langchain_core.runnables import RunnableConfig
 
 from agent.nodes import validate_web_results
-from config.app_config import AppConfig
+from backend.src.config.app_config import AppConfig
 
 # =============================================================================
 # Tests for validate_web_results
