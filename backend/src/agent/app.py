@@ -3,7 +3,7 @@ import pathlib
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
-from backend.src.config.validation import check_env_strict
+from config.validation import check_env_strict
 from agent.mcp_config import load_mcp_settings
 from agent.tools_and_schemas import get_tools_from_mcp, MCP_TOOLS
 

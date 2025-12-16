@@ -36,10 +36,31 @@ def get_mcp_tools() -> List:
     # but LangGraph handles async tools fine.
     return manager.get_persistence_tools()
 
-def get_tools_from_mcp(mcp_config=None):
+async def get_tools_from_mcp(mcp_config=None):
     """
-    Placeholder to load tools via langchain-mcp-adapters.
-    In the future, this will connect to the MCP server defined in mcp_config.
-    For now, delegates to get_mcp_tools().
+    Connects to an MCP server and loads available tools.
     """
-    return get_mcp_tools()
+    if not mcp_config or not mcp_config.enabled or not mcp_config.endpoint:
+        return []
+
+    try:
+        from langchain_mcp_adapters.tools import load_mcp_tools
+        from langchain_mcp_adapters.sessions import SSEConnection
+        # TODO: Support Stdio connection if schema allows? For now assuming SSE via endpoint URL
+        # headers = {"Authorization": f"Bearer {mcp_config.api_key}"} if mcp_config.api_key else {}
+        # NOTE: Test mocks SSEConnection(url=..., headers=...).
+        
+        # We need to construct arguments for SSEConnection dynamically based on availability
+        conn_kwargs = {"url": mcp_config.endpoint}
+        if mcp_config.api_key:
+             conn_kwargs["headers"] = {"Authorization": f"Bearer {mcp_config.api_key}"}
+
+        async with SSEConnection(**conn_kwargs) as session:
+            return await load_mcp_tools(session)
+    except ImportError:
+        # Fallback or log if adapters not installed (though dependency is listed)
+        return []
+    except Exception as e:
+        # Log error or return empty list so app startup doesn't crash on optional tool load
+        print(f"Error loading MCP tools: {e}")
+        return []
