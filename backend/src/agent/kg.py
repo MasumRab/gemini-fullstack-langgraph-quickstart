@@ -1,11 +1,16 @@
 from typing import Dict, Any, List
 import logging
 import re
-from backend.src.config.app_config import config
+from config.app_config import config
 
 logger = logging.getLogger(__name__)
 
 # Try to import cognee, fail gracefully
+# TODO(priority=Medium, complexity=Medium): Integrate with Cognee for Knowledge Graph enrichment.
+# See docs/tasks/03_OPEN_CANVAS_TASKS.md
+# Subtask: Ensure `cognee` is installed/mocked in tests.
+# Subtask: Implement `cognee.add` and `cognee.cognify` in `kg_enrich`.
+
 try:
     import cognee
     COGNEE_AVAILABLE = True
@@ -23,8 +28,8 @@ from agent.registry import graph_registry
     tags=["kg", "enrichment"],
     outputs=["artifacts"],
 )
-async def kg_enrich(state: OverallState, runnable_config: RunnableConfig) -> OverallState:
-    from backend.src.config.app_config import config as app_config
+async def kg_enrich(state: OverallState, config: RunnableConfig) -> OverallState:
+    from config.app_config import config as app_config
 
     if not app_config.kg_enabled:
         return {}

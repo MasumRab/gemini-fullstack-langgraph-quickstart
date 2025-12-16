@@ -7,7 +7,7 @@ authors = [
 ]
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.10,<4.0"
 dependencies = [
     "langgraph~=0.2.6",
     "langchain~=0.3.19",
@@ -18,7 +18,7 @@ dependencies = [
     "langgraph-api",
     "fastapi",
     "google-genai",
-    "langchain-mcp-adapters",
+    "langchain-mcp-adapters==0.1.0",
     "langchain-text-splitters",
     "mcp",
     "sentence-transformers",
@@ -26,6 +26,7 @@ dependencies = [
     "pandas",
     "google-ai-generativelanguage>=0.9.0",
     "tenacity>=8.0.0",
+    "matplotlib",
     "duckduckgo-search",
 ]
 
@@ -36,6 +37,10 @@ dev = ["mypy>=1.11.1", "ruff>=0.6.1"]
 [build-system]
 requires = ["setuptools>=73.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["agent*", "config*", "search*", "observability*", "rag*", "evaluation*"]
 
 [tool.ruff]
 lint.select = [

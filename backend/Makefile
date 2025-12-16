@@ -62,3 +62,16 @@ help:
 	@echo 'test TEST_FILE=<test_file>   - run all tests in file'
 	@echo 'test_watch                   - run unit tests in watch mode'
 
+
+######################
+# LANGGRAPH STUDIO
+######################
+
+dev studio:
+	uv run langgraph dev
+
+build:
+	uv run langgraph build
+
+up:
+	uv run langgraph up
