@@ -16,10 +16,11 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 
 export interface ProcessedEvent {
   title: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
 }
 
@@ -28,7 +29,9 @@ interface ActivityTimelineProps {
   isLoading: boolean;
 }
 
-export function ActivityTimeline({
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent (AiMessageBubble)
+// updates due to UI interactions (like Copy button state) but the timeline data hasn't changed.
+export const ActivityTimeline = memo(function ActivityTimeline({
   processedEvents,
   isLoading,
 }: ActivityTimelineProps) {
@@ -145,4 +148,4 @@ export function ActivityTimeline({
       )}
     </Card>
   );
-}
+});
