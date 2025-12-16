@@ -64,7 +64,7 @@ if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
     # Note: Tools are loaded into agent.tools_and_schemas.MCP_TOOLS during app startup.
     # Nodes can access them from there at runtime.
-    # TODO: [MCP Integration] Bind MCP tools to 'web_research' or new 'tool_node'.
+    # TODO(priority=High, complexity=Medium): [MCP Integration] Bind MCP tools to 'web_research' or new 'tool_node'.
     # See docs/tasks/01_MCP_TASKS.md
     # Subtask: In `web_research` (or new node), bind these tools to the LLM.
     # builder.bind_tools(mcp_tools)
@@ -97,7 +97,7 @@ builder.add_conditional_edges(
 # builder.add_edge("generate_query", "planning_mode") # Removed as it's destination of router
 builder.add_edge("generate_query", "planning_mode")
 
-# TODO: [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
+# TODO(priority=Medium, complexity=Medium): [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
 # See docs/tasks/02_OPEN_SWE_TASKS.md
 # Subtask: Create routing logic: `if pending_tasks: return "web_research" else: return "finalize"`.
 
@@ -182,3 +182,8 @@ graph_registry.document_edge(
 )
 
 graph = builder.compile(name="pro-search-agent")
+
+# TODO(priority=High, complexity=Low): Add visualization support for notebooks.
+# See docs/tasks/03_OPEN_CANVAS_TASKS.md
+# Subtask: Implement `get_graph().draw_mermaid_png()` compatible method.
+# Subtask: Ensure `visualize_graphs.py` uses this method.

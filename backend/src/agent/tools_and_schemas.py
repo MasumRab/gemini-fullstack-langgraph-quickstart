@@ -1,7 +1,8 @@
 from typing import List, Optional, Any
 from pydantic import BaseModel, Field
+from agent.mcp_config import McpConnectionManager
 
-# Global list of loaded MCP tools
+# Global list of loaded MCP tools/Persistent tools
 MCP_TOOLS: List[Any] = []
 
 class SearchQueryList(BaseModel):
@@ -24,59 +25,21 @@ class Reflection(BaseModel):
         description="A list of follow-up queries to address the knowledge gap."
     )
 
-# Global list of tools populated at runtime
-MCP_TOOLS = []
 
-# TODO: [MCP Integration] Create 'get_global_tools()' to aggregate MCP + Custom tools.
-# See docs/tasks/01_MCP_TASKS.md
-# Subtask: Add `get_global_tools()` function.
-# Subtask: Ensure the list of tools includes `read_file`, `write_file` (from MCP).
-
-async def get_tools_from_mcp(mcp_config=None) -> List[Any]:
+def get_mcp_tools() -> List:
     """
-    Load tools via langchain-mcp-adapters.
-    Connects to the MCP server defined in mcp_config.
-
-    Note: This function is asynchronous because connecting to an MCP server
-    (especially via SSE) involves network operations. Callers must await this function.
+    Retrieves MCP-based tools.
+    Currently returns the Persistence tools (load_thread_plan, save_thread_plan).
     """
-    if mcp_config is None:
-        try:
-            from .mcp_config import load_mcp_settings
-            mcp_config = load_mcp_settings()
-        except ImportError:
-             # Fallback if mcp_config module is not available or path issues
-             return []
+    manager = McpConnectionManager()
+    # In a sync context, we might need to be careful with async tools,
+    # but LangGraph handles async tools fine.
+    return manager.get_persistence_tools()
 
-    if not mcp_config.enabled or not mcp_config.endpoint:
-        return []
-
-    try:
-        from langchain_mcp_adapters.tools import load_mcp_tools
-        from langchain_mcp_adapters.sessions import SSEConnection
-    except ImportError:
-        # langchain-mcp-adapters not installed
-        return []
-
-    # Headers for authentication if API key is present
-    headers = {}
-    if mcp_config.api_key:
-         headers["Authorization"] = f"Bearer {mcp_config.api_key}"
-
-    # We currently support SSE transport via HTTP/S endpoint
-    connection = SSEConnection(
-        transport="sse",
-        url=mcp_config.endpoint,
-        headers=headers if headers else None,
-        timeout=mcp_config.timeout_seconds
-    )
-
-    try:
-        # load_mcp_tools establishes the connection and returns LangChain compatible tools.
-        # Ensure the environment supports async execution.
-        tools = await load_mcp_tools(connection=connection)
-        return tools
-    except Exception as e:
-        # Log error in a real app, here we just print or return empty
-        # print(f"Error loading MCP tools: {e}")
-        return []
+def get_tools_from_mcp(mcp_config=None):
+    """
+    Placeholder to load tools via langchain-mcp-adapters.
+    In the future, this will connect to the MCP server defined in mcp_config.
+    For now, delegates to get_mcp_tools().
+    """
+    return get_mcp_tools()

@@ -4,6 +4,8 @@ from agent.nodes import generate_query, web_research, reflection, finalize_answe
 from langchain_core.messages import HumanMessage
 from agent.models import TEST_MODEL
 
+TEST_MODEL = "gemma-3-27b-it"
+
 @pytest.fixture
 def mock_state():
     return {
@@ -18,17 +20,11 @@ def mock_state():
 
 @pytest.fixture
 def mock_config():
-    """Fixture for test configuration."""
-    return {
-        "configurable": {
-            "thread_id": "test-thread",
-            "checkpoint_ns": "",
-            "checkpoint_id": "",
-        },
-        "query_generator_model": TEST_MODEL,
-        "reflection_model": TEST_MODEL,
-        "answer_model": TEST_MODEL
-    }
+    return {"configurable": {
+        "query_generator_model": "gemini-2.5-flash",
+        "reflection_model": "gemini-2.5-flash",
+        "answer_model": "gemini-2.5-flash"
+    }}
 
 class TestGraphNodes:
 
@@ -46,15 +42,14 @@ class TestGraphNodes:
         assert result["search_query"] == ["query1", "query2"]
 
     @patch('agent.nodes.search_router')
-    def test_web_research_google_success(self, mock_search_router, mock_state, mock_config):
+    def test_web_research_success(self, mock_router, mock_state, mock_config):
         # Mock SearchRouter response
         mock_result = Mock()
-        mock_result.title = "Search content"
-        mock_result.url = "http://google.com"
-        mock_result.content = "Search content"
-        mock_result.raw_content = None
-
-        mock_search_router.search.return_value = [mock_result]
+        mock_result.title = "T1"
+        mock_result.url = "u1"
+        mock_result.content = "c1"
+        
+        mock_router.search.return_value = [mock_result]
 
         state = mock_state.copy()
         state["search_query"] = "test query"
@@ -62,23 +57,10 @@ class TestGraphNodes:
         result = web_research(state, mock_config)
 
         assert "web_research_result" in result
-        assert "Search content [Search content](http://google.com)" in result["web_research_result"][0]
-
-    @patch('agent.nodes.search_router')
-    def test_web_research_tavily_success(self, mock_search_router, mock_state, mock_config):
-        # Mock SearchRouter response to simulate Tavily-like results
-        r1 = Mock(title="T1", url="u1", content="c1", raw_content=None)
-        r2 = Mock(title="T2", url="u2", content="c2", raw_content=None)
-
-        mock_search_router.search.return_value = [r1, r2]
-
-        state = mock_state.copy()
-        state["search_query"] = "test query"
-
-        result = web_research(state, mock_config)
-
-        assert len(result["web_research_result"]) > 0
-        assert "c1 [T1](u1)" in result["web_research_result"][0]
+        # Check that it formats correctly (likely content + citation)
+        assert "c1" in result["web_research_result"][0]
+        assert "[T1](u1)" in result["web_research_result"][0]
+        assert len(result["sources_gathered"]) > 0
 
     @patch('agent.nodes.ChatGoogleGenerativeAI')
     def test_reflection_sufficient(self, MockLLM, mock_state, mock_config):

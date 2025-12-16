@@ -1,0 +1,6 @@
+[submodule "examples/open_deep_research_example"]
+	path = examples/open_deep_research_example
+	url = https://github.com/langchain-ai/open_deep_research
+[submodule "examples/thinkdepthai_deep_research_example"]
+	path = examples/thinkdepthai_deep_research_example
+	url = https://github.com/Alibaba-NLP/DeepResearch
