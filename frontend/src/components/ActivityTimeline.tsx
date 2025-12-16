@@ -20,6 +20,7 @@ import { useEffect, useState } from "react";
 
 export interface ProcessedEvent {
   title: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
 }
 

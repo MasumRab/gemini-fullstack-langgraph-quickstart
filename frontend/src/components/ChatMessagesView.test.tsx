@@ -5,10 +5,11 @@ import React from 'react';
 
 // Mock child components to avoid dependency issues
 vi.mock('@/components/InputForm', () => ({
-  InputForm: ({ onSubmit }: any) => <div data-testid="input-form">InputForm</div>
+  InputForm: () => <div data-testid="input-form">InputForm</div>
 }));
 
 vi.mock('@/components/ui/scroll-area', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ScrollArea: ({ children }: any) => <div data-testid="scroll-area">{children}</div>
 }));
 

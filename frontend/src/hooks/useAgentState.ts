@@ -11,6 +11,7 @@ export function useAgentState() {
     Record<string, ProcessedEvent[]>
   >({});
   const [planningContext, setPlanningContext] = useState<{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     steps: any[];
     status?: string | null;
     feedback?: string[];
@@ -38,6 +39,7 @@ export function useAgentState() {
       : "http://localhost:8123"),
     assistantId: "agent",
     messagesKey: "messages",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onUpdateEvent: (event: any) => {
       let processedEvent: ProcessedEvent | null = null;
       if (event.generate_query) {
@@ -61,6 +63,7 @@ export function useAgentState() {
         const sources = event.web_research.sources_gathered || [];
         const numSources = sources.length;
         const uniqueLabels = [
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ...new Set(sources.map((s: any) => s.label).filter(Boolean)),
         ];
         const exampleLabels = uniqueLabels.slice(0, 3).join(", ");
@@ -96,6 +99,7 @@ export function useAgentState() {
         ]);
       }
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       setError(error.message);
     },

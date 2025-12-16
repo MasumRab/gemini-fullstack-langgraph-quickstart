@@ -18,6 +18,7 @@ import {
 type MdComponentProps = {
   className?: string;
   children?: ReactNode;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 };
 
@@ -226,6 +227,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
 AiMessageBubble.displayName = "AiMessageBubble";
 
 interface PlanningContext {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   steps: any[];
   status?: string | null;
   feedback?: string[];

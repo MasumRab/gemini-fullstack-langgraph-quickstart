@@ -5,6 +5,7 @@ import React from 'react';
 
 // Mock scroll area to avoid ResizeObserver issues
 vi.mock('@/components/ui/scroll-area', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ScrollArea: ({ children }: any) => <div data-testid="scroll-area">{children}</div>
 }));
 
@@ -50,8 +51,8 @@ describe('ActivityTimeline', () => {
     // So it should be false (expanded).
 
     // Let's check for ChevronUp
-    let chevronUp = screen.queryByTestId('chevron-up');
-    let chevronDown = screen.queryByTestId('chevron-down');
+    const chevronUp = screen.queryByTestId('chevron-up');
+    const chevronDown = screen.queryByTestId('chevron-down');
 
     // If we see ChevronDown initially, then my understanding of previous failure was correct (it was collapsed).
     // If we see ChevronUp, it is expanded.

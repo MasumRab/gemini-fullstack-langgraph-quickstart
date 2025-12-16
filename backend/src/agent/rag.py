@@ -8,6 +8,7 @@ import uuid
 import os
 
 from config.app_config import config
+from agent.llm_client import call_llm_robust
 
 # Optional imports for RAG dependencies
 try:

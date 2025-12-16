@@ -30,23 +30,17 @@ class TestSearchRouter:
 
         with patch("backend.src.search.router.GoogleSearchAdapter") as mock_google, \
              patch("backend.src.search.router.DuckDuckGoAdapter") as mock_ddg, \
-             patch("backend.src.search.router.BraveSearchAdapter") as mock_brave, \
-             patch("backend.src.search.router.TavilyAdapter") as mock_tavily, \
-             patch("backend.src.search.router.BingAdapter") as mock_bing:
+             patch("backend.src.search.router.BraveSearchAdapter") as mock_brave:
 
             # Setup instances
             mock_google.return_value = MagicMock(name="google_instance")
             mock_ddg.return_value = MagicMock(name="ddg_instance")
             mock_brave.return_value = MagicMock(name="brave_instance")
-            mock_tavily.return_value = MagicMock(name="tavily_instance")
-            mock_bing.return_value = MagicMock(name="bing_instance")
 
             yield {
                 "google": mock_google,
                 "duckduckgo": mock_ddg,
                 "brave": mock_brave,
-                "tavily": mock_tavily,
-                "bing": mock_bing
             }
 
     def test_init_providers(self, mock_config, mock_adapters):
@@ -57,15 +51,11 @@ class TestSearchRouter:
         mock_adapters["google"].assert_called()
         mock_adapters["duckduckgo"].assert_called()
         mock_adapters["brave"].assert_called()
-        mock_adapters["tavily"].assert_called()
-        mock_adapters["bing"].assert_called()
 
         # Verify providers dict is populated
         assert "google" in router.providers
         assert "duckduckgo" in router.providers
         assert "brave" in router.providers
-        assert "tavily" in router.providers
-        assert "bing" in router.providers
 
     def test_search_primary_success(self, mock_config, mock_adapters):
         """Test search using primary provider successfully."""

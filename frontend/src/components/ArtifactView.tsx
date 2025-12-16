@@ -10,7 +10,7 @@ interface ArtifactViewProps {
   onClose: () => void;
 }
 
-export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, isOpen, onClose }) => {
+export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
