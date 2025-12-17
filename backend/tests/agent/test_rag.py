@@ -41,18 +41,18 @@ def mock_dependencies():
 # AND cleaned up afterwards to prevent pollution
 @pytest.fixture
 def rag_classes(mock_dependencies):
-    import backend.src.agent.rag as rag_module
+    import agent.rag as rag_module
     importlib.reload(rag_module)
 
     yield rag_module
 
     # Teardown: Remove the module from sys.modules so next import reloads it fresh (with real deps or whatever environment has)
-    if 'backend.src.agent.rag' in sys.modules:
-        del sys.modules['backend.src.agent.rag']
+    if 'agent.rag' in sys.modules:
+        del sys.modules['agent.rag']
 
 @pytest.fixture
 def mock_config():
-    with patch('backend.src.config.app_config.config') as mock_cfg:
+    with patch('config.app_config.config') as mock_cfg:
         mock_cfg.rag_store = "faiss"
         mock_cfg.dual_write = False
         yield mock_cfg
@@ -138,7 +138,7 @@ def test_get_context_for_synthesis(rag_classes, mock_config):
     assert "Content A" in context
     assert "---" in context
 
-@patch('backend.src.agent.rag.call_llm_robust')
+@patch('agent.rag.call_llm_robust')
 def test_verify_subgoal_coverage(mock_llm, rag_classes, mock_config):
     rag = rag_classes.DeepSearchRAG(config=mock_config)
     rag.retrieve = MagicMock(return_value=[
@@ -159,12 +159,12 @@ def test_initialization_no_deps(mock_config):
         for mod in ['sentence_transformers', 'faiss', 'chromadb']:
              sys.modules[mod] = None
 
-        import backend.src.agent.rag as rag_module
+        import agent.rag as rag_module
         importlib.reload(rag_module)
 
         with pytest.raises(ImportError, match="sentence-transformers required"):
             rag_module.DeepSearchRAG(config=mock_config)
 
     # Cleanup here too
-    if 'backend.src.agent.rag' in sys.modules:
-        del sys.modules['backend.src.agent.rag']
+    if 'agent.rag' in sys.modules:
+        del sys.modules['agent.rag']
