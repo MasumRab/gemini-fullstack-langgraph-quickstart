@@ -108,15 +108,20 @@ class ChromaStore:
         if subgoal_filter:
             where_filter["subgoal_id"] = subgoal_filter
 
-        # If we have pre-computed embedding, use query_embeddings
-        results = self.collection.query(
-            query_texts=[query] if query_embedding is None else None,
-            query_embeddings=[query_embedding] if query_embedding is not None else None,
-            n_results=top_k,
-            where=where_filter if where_filter else None
-        )
+        try:
+            # If we have pre-computed embedding, use query_embeddings
+            results = self.collection.query(
+                query_texts=[query] if query_embedding is None else None,
+                query_embeddings=[query_embedding] if query_embedding is not None else None,
+                n_results=top_k,
+                where=where_filter if where_filter else None
+            )
+        except Exception as e:
+            logger.error(f"Chroma query failed: {e}")
+            return []
 
-        if not results["ids"] or not results["ids"][0]:
+        if not results or not results.get("ids") or not results["ids"][0]:
+            logger.debug("Chroma query returned empty results")
             return []
 
         # Parse results

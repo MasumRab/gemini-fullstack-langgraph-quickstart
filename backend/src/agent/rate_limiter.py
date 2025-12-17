@@ -16,7 +16,7 @@ from threading import Lock
 
 logger = logging.getLogger(__name__)
 
-from agent.models import GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO
+from agent.models import GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT, GEMMA_3_27B_IT
 
 
 # Gemini 2.5 Model Rate Limits (Free Tier)
@@ -40,6 +40,20 @@ RATE_LIMITS = {
         "tpm": 1_000_000,
         "rpd": 1_000,  # Lower daily limit
         "max_tokens": 2_097_152,
+        "max_output_tokens": 8_192,
+    },
+    GEMMA_2_27B_IT: {
+        "rpm": 15,
+        "tpm": 1_000_000,
+        "rpd": 1_500,
+        "max_tokens": 8_192,
+        "max_output_tokens": 8_192,
+    },
+    GEMMA_3_27B_IT: {
+        "rpm": 15,
+        "tpm": 1_000_000,
+        "rpd": 1_500,
+        "max_tokens": 8_192,
         "max_output_tokens": 8_192,
     },
 }
@@ -90,7 +104,7 @@ class RateLimiter:
     def _check_daily_reset(self):
         """Check if we need to reset daily counters (midnight Pacific time)."""
         # For simplicity, reset after 24 hours
-        # TODO: Implement proper Pacific time midnight reset
+        # TODO(priority=Low, complexity=Low): Implement proper Pacific time midnight reset
         now = datetime.now()
         if (now - self._last_reset).total_seconds() >= 86400:
             self._requests_per_day.clear()

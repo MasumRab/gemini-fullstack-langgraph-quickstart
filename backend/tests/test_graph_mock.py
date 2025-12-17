@@ -3,6 +3,9 @@ from unittest.mock import Mock, patch
 from agent.nodes import generate_query, web_research, reflection, finalize_answer, load_context
 from agent.models import TEST_MODEL
 from langchain_core.messages import HumanMessage
+from agent.models import TEST_MODEL
+
+TEST_MODEL = "gemma-3-27b-it"
 
 @pytest.fixture
 def mock_state():
@@ -18,17 +21,11 @@ def mock_state():
 
 @pytest.fixture
 def mock_config():
-    """Fixture for test configuration."""
-    return {
-        "configurable": {
-            "thread_id": "test-thread",
-            "checkpoint_ns": "",
-            "checkpoint_id": "",
-        },
-        "query_generator_model": TEST_MODEL,
-        "reflection_model": TEST_MODEL,
-        "answer_model": TEST_MODEL
-    }
+    return {"configurable": {
+        "query_generator_model": "gemini-2.5-flash",
+        "reflection_model": "gemini-2.5-flash",
+        "answer_model": "gemini-2.5-flash"
+    }}
 
 class TestGraphNodes:
 

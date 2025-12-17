@@ -16,10 +16,11 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 
 export interface ProcessedEvent {
   title: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
 }
 
@@ -28,7 +29,11 @@ interface ActivityTimelineProps {
   isLoading: boolean;
 }
 
-export function ActivityTimeline({
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent (AiMessageBubble)
+// updates due to UI interactions (like Copy button state) but the timeline data hasn't changed.
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent re-renders
+// but events haven't changed (e.g. streaming tokens in AiMessageBubble).
+export const ActivityTimeline = memo(function ActivityTimeline({
   processedEvents,
   isLoading,
 }: ActivityTimelineProps) {
@@ -62,8 +67,10 @@ export function ActivityTimeline({
     <Card className="border-none rounded-lg bg-neutral-700 max-h-96">
       <CardHeader>
         <CardDescription className="flex items-center justify-between">
-          <div
-            className="flex items-center justify-start text-sm w-full cursor-pointer gap-2 text-neutral-100"
+          <button
+            type="button"
+            aria-expanded={!isTimelineCollapsed}
+            className="flex items-center justify-start text-sm w-full cursor-pointer gap-2 text-neutral-100 bg-transparent border-none p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 rounded"
             onClick={() => setIsTimelineCollapsed(!isTimelineCollapsed)}
           >
             Research
@@ -72,7 +79,7 @@ export function ActivityTimeline({
             ) : (
               <ChevronUp className="h-4 w-4 mr-2" />
             )}
-          </div>
+          </button>
         </CardDescription>
       </CardHeader>
       {!isTimelineCollapsed && (
@@ -143,4 +150,4 @@ export function ActivityTimeline({
       )}
     </Card>
   );
-}
+});

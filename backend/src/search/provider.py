@@ -10,7 +10,6 @@ class SearchResult:
     content: str
     raw_content: Optional[str] = None
     source: str = "unknown"
-    metadata: Optional[dict] = None
 
 class SearchProvider(ABC):
     """Abstract base class for search providers."""
