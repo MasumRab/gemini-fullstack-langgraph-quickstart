@@ -15,6 +15,7 @@ from config.app_config import config as app_config
 from search.router import search_router
 from google.genai import Client
 from langchain_core.messages import AIMessage
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.types import Send
@@ -130,13 +131,25 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
             temperature=0,
             prompt=prompt
         )
-        structured_llm = llm.with_structured_output(ScopingAssessment)
 
-        try:
-            assessment = structured_llm.invoke(prompt)
-        except Exception as e:
-            logger.error(f"Scoping LLM failed: {e}")
-            return {"scoping_status": "complete"} # Fail open
+        is_gemma = "gemma" in DEFAULT_SCOPING_MODEL.lower()
+        if is_gemma:
+            parser = PydanticOutputParser(pydantic_object=ScopingAssessment)
+            prompt_with_format = f"{prompt}\n\n{parser.get_format_instructions()}"
+            try:
+                response = llm.invoke(prompt_with_format)
+                content = response.content if hasattr(response, "content") else str(response)
+                assessment = parser.parse(content)
+            except Exception as e:
+                logger.error(f"Scoping LLM failed (Gemma): {e}")
+                return {"scoping_status": "complete"}
+        else:
+            structured_llm = llm.with_structured_output(ScopingAssessment)
+            try:
+                assessment = structured_llm.invoke(prompt)
+            except Exception as e:
+                logger.error(f"Scoping LLM failed: {e}")
+                return {"scoping_status": "complete"} # Fail open
 
         if assessment.is_ambiguous:
             # Create a message to ask the user
@@ -220,14 +233,40 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             prompt=formatted_prompt
         )
         # Bind MCP tools if available
-        if MCP_TOOLS:
+        # Note: Gemma models do not support function calling, so we skip binding tools for them.
+        is_gemma = "gemma" in configurable.query_generator_model.lower()
+        if MCP_TOOLS and not is_gemma:
              logger.info(f"Binding {len(MCP_TOOLS)} MCP tools to generate_query model.")
              llm = llm.bind_tools(MCP_TOOLS)
+        elif MCP_TOOLS and is_gemma:
+             logger.info(f"Skipping MCP tool binding for Gemma model: {configurable.query_generator_model}")
 
-        structured_llm = llm.with_structured_output(SearchQueryList)
+        if is_gemma:
+            # Use PydanticOutputParser for Gemma (no function calling support)
+            parser = PydanticOutputParser(pydantic_object=SearchQueryList)
+            # Append format instructions to prompt
+            prompt_with_format = f"{formatted_prompt}\n\n{parser.get_format_instructions()}"
 
-        # Generate the search queries
-        result = structured_llm.invoke(formatted_prompt, config=config)
+            # Estimate tokens for updated prompt
+            context_mgr = get_context_manager(configurable.query_generator_model)
+            prompt_with_format = context_mgr.truncate_to_fit(prompt_with_format)
+
+            # Invoke raw LLM
+            response = llm.invoke(prompt_with_format, config=config)
+            content = response.content if hasattr(response, "content") else str(response)
+
+            # Parse result
+            try:
+                result = parser.parse(content)
+            except Exception as e:
+                logger.error(f"Failed to parse Gemma output: {e}. Content: {content}")
+                # Fallback to empty list or basic regex extraction if needed
+                return {"search_query": []}
+        else:
+            # Use structured output (function calling) for Gemini
+            structured_llm = llm.with_structured_output(SearchQueryList)
+            result = structured_llm.invoke(formatted_prompt, config=config)
+
         return {"search_query": result.query}
 
 
@@ -741,7 +780,27 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
             max_retries=2,
             prompt=formatted_prompt
         )
-        result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
+
+        is_gemma = "gemma" in reasoning_model.lower()
+        if is_gemma:
+            parser = PydanticOutputParser(pydantic_object=Reflection)
+            prompt_with_format = f"{formatted_prompt}\n\n{parser.get_format_instructions()}"
+            try:
+                response = llm.invoke(prompt_with_format, config=config)
+                content = response.content if hasattr(response, "content") else str(response)
+                result = parser.parse(content)
+            except Exception as e:
+                logger.error(f"Reflection LLM failed (Gemma): {e}")
+                # Fallback to sufficient to avoid infinite loops on error
+                return {
+                    "is_sufficient": True,
+                    "knowledge_gap": "Error parsing reflection.",
+                    "follow_up_queries": [],
+                    "research_loop_count": state["research_loop_count"],
+                    "number_of_ran_queries": len(state["search_query"]),
+                }
+        else:
+            result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
 
         return {
             "is_sufficient": result.is_sufficient,
