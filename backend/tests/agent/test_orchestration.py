@@ -201,11 +201,19 @@ class TestOrchestratedGraphBuilder:
         mock_graph = AsyncMock()
         pool.register("subagent", mock_graph, "Sub Agent")
 
-        # Build the orchestrated graph
-        graph = build_orchestrated_graph(registry, pool)
-        
-        # Verify successful compilation
-        assert graph is not None
+        # Mock StateGraph to verify structure without full compilation (which needs langgraph installed)
+        # However, we have langgraph installed, so we can check the compiled graph nodes.
+
+        # We need to mock StateGraph because 'OverallState' might import things.
+        # But let's try to just build it and catch if dependencies miss.
+
+        # Actually, we can check the nodes in the compiled graph object if possible.
+        try:
+            graph = build_orchestrated_graph(registry, pool)
+            # Just asserting it compiled successfully is a good start
+            assert graph is not None
+        except Exception as e:
+            pytest.fail(f"Graph build failed: {e}")
 
     def test_router_logic(self):
         """Test the router function mapping."""
