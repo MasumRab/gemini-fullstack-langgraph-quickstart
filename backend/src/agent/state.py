@@ -10,21 +10,38 @@ from typing_extensions import Annotated
 import operator
 
 
-# TODO(priority=Medium, complexity=Low): [Open SWE] Define 'Todo' TypedDict (id, task, status, result) for structured planning.
-# See docs/tasks/02_OPEN_SWE_TASKS.md
-# Subtask: Define fields: id (str), task (str), status (pending/done/in_progress), result (str).
-# Subtask: Update `OverallState` to include `plan: List[Todo]`.
-
-# TODO(priority=High, complexity=Low): [SOTA Deep Research] Define 'ScopingState' if separate from OverallState, or ensure
-# OverallState includes all fields: query, clarifications_needed, user_answers.
-# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-# Subtask: Define fields: query (str), clarifications_needed (List[str]), user_answers (List[str]).
-
 # TODO(priority=High, complexity=Low): [SOTA Deep Research] Define 'Evidence' object/TypedDict for ManuSearch (Claim, Source, Context).
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: Define fields: claim (str), source_url (str), context_snippet (str).
 
-class OverallState(TypedDict):
+class Todo(TypedDict, total=False):
+    """
+    Represents a single unit of work in the plan.
+    Use total=False to allow for partial updates and backward compatibility.
+    """
+    id: str
+    title: str
+    description: str | None
+    done: bool
+    status: str | None  # pending/done/in_progress
+    result: str | None
+
+
+class ScopingState(TypedDict, total=False):
+    """
+    Scoping fields used during the agent's initial question scoping phase.
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    """
+    query: str
+    clarifications_needed: List[str]
+    user_answers: List[str]
+
+
+class OverallState(ScopingState, TypedDict, total=False):
+    """
+    Overall agent state. Extends ScopingState and adds plan and other fields.
+    Inheritance from ScopingState ensures scoping fields are available.
+    """
     messages: Annotated[list, add_messages]
     search_query: Annotated[list, operator.add]
     web_research_result: Annotated[list, operator.add]
@@ -37,6 +54,7 @@ class OverallState(TypedDict):
     clarification_questions: List[str] | None
     clarification_answers: Annotated[list, operator.add] # Stores user replies
 
+    plan: List[Todo]
     planning_steps: List[dict] | None
     planning_status: str | None
     planning_feedback: Annotated[list, operator.add]
@@ -51,7 +69,7 @@ class OverallState(TypedDict):
     max_research_loops: int
     research_loop_count: int
     reasoning_model: str
-    todo_list: List[dict] | None  # TODO(priority=Medium, complexity=Low): [Open SWE] Transition to List[Todo]
+    todo_list: List[dict] | None  # Deprecated: Migration to 'plan' in progress. See docs/tasks/02_OPEN_SWE_TASKS.md
     artifacts: dict | None
     # TODO(priority=Low, complexity=Medium): [Open Canvas] Add specific ArtifactState or update 'artifacts' to Dict[str, Artifact]
     # where Artifact is a TypedDict with content, type, version, etc.
@@ -81,9 +99,18 @@ class WebSearchState(TypedDict):
     id: str
 
 
+def validate_scoping(state: OverallState) -> bool:
+    """
+    Runtime validation helper to check if required scoping fields are present.
+    Returns True if valid, False otherwise.
+    """
+    required_fields = ["query", "clarifications_needed", "user_answers"]
+    return all(field in state for field in required_fields)
+
+
 @dataclass(kw_only=True)
 class SearchStateOutput:
-    running_summary: str = field(default=None)  # Final report
+    running_summary: str | None = field(default=None)  # Final report
 
 
 def create_rag_resources(resource_uris: list[str]):

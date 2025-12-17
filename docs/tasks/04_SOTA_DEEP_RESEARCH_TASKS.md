@@ -8,7 +8,9 @@ This task list tracks the integration of features from verified state-of-the-art
 *Goal: Prevent "garbage in, garbage out" by ensuring the agent understands the user's intent.*
 
 - [ ] **Implement `scoping_node`** (See `docs/tasks/05_IMPLEMENTATION_GUIDE.md` for detailed flow)
-    - [ ] **State**: Define `ScopingState` (query, clarifications_needed, user_answers).
+    - [x] **State**: Define `ScopingState` (query, clarifications_needed, user_answers).
+        - Implemented in `backend/src/agent/state.py` (inherits from `TypedDict` with `total=False`).
+        - `OverallState` extends `ScopingState` and includes `plan: List[Todo]`.
     - [ ] **Logic**: Analyze input query. If ambiguous, generate clarifying questions and interrupt graph.
     - [ ] **Integration**: Place before `planning_mode` in the main graph.
 
