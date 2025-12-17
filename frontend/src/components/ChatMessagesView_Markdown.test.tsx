@@ -10,6 +10,7 @@ vi.mock('@/components/InputForm', () => ({
 }));
 
 vi.mock('@/components/ui/scroll-area', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ScrollArea: ({ children }: any) => <div data-testid="scroll-area">{children}</div>
 }));
 

@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 
 // Mock scroll area to avoid ResizeObserver issues
 vi.mock('@/components/ui/scroll-area', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ScrollArea: ({ children }: any) => <div data-testid="scroll-area">{children}</div>
 }));
 
@@ -68,7 +69,9 @@ describe('ActivityTimeline', () => {
     // A simpler way: Pass a prop that isn't in the interface but check if it triggers update?
     // No, typescript.
 
-    // Let's create a parent component that updates unrelated state.
+    // Let's check for ChevronUp
+    const chevronUp = screen.queryByTestId('chevron-up');
+    const chevronDown = screen.queryByTestId('chevron-down');
 
     // We can spy on console.log if we added one, but we didn't.
     // We can spy on a child component.
