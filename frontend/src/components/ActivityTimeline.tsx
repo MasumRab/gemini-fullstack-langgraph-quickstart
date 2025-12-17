@@ -29,6 +29,8 @@ interface ActivityTimelineProps {
   isLoading: boolean;
 }
 
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent (AiMessageBubble)
+// updates due to UI interactions (like Copy button state) but the timeline data hasn't changed.
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent re-renders
 // but events haven't changed (e.g. streaming tokens in AiMessageBubble).
 export const ActivityTimeline = memo(function ActivityTimeline({
