@@ -16,7 +16,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 
 export interface ProcessedEvent {
   title: string;
@@ -29,7 +29,9 @@ interface ActivityTimelineProps {
   isLoading: boolean;
 }
 
-export function ActivityTimeline({
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent re-renders
+// but events haven't changed (e.g. streaming tokens in AiMessageBubble).
+export const ActivityTimeline = memo(function ActivityTimeline({
   processedEvents,
   isLoading,
 }: ActivityTimelineProps) {
@@ -146,4 +148,4 @@ export function ActivityTimeline({
       )}
     </Card>
   );
-}
+});
