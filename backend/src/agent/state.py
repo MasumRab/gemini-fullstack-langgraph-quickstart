@@ -37,6 +37,21 @@ class ScopingState(TypedDict, total=False):
     user_answers: List[str]
 
 
+class Subsection(TypedDict):
+    title: str
+    description: str | None  # Optional description of what to cover
+
+
+class Section(TypedDict):
+    title: str
+    subsections: List[Subsection]
+
+
+class Outline(TypedDict):
+    title: str  # Overall title of the report/outline
+    sections: List[Section]
+
+
 class OverallState(ScopingState, TypedDict, total=False):
     """
     Overall agent state. Extends ScopingState and adds plan and other fields.
@@ -59,8 +74,7 @@ class OverallState(ScopingState, TypedDict, total=False):
     planning_status: str | None
     planning_feedback: Annotated[list, operator.add]
 
-    # TODO(priority=High, complexity=Low): [SOTA Deep Research] Add 'outline' (Section -> Subsection) for STORM implementation.
-    # Subtask: Define Outline TypedDict (sections: List[Section]).
+    outline: Outline | None
 
     # TODO(priority=High, complexity=Low): [SOTA Deep Research] Add 'evidence_bank' (List[Evidence]) for ManuSearch.
     # Subtask: Add `evidence_bank: Annotated[list, operator.add]` to OverallState.
