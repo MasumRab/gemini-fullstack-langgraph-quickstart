@@ -377,7 +377,9 @@ export function ChatMessagesView({
                       // historical messages from re-rendering when new events arrive.
                       liveActivity={isLast ? liveActivityEvents : undefined}
                       isLastMessage={isLast}
-                      isOverallLoading={isLoading}
+                      // Bolt Optimization: Only pass loading state to the last message to prevent
+                      // historical messages from re-rendering when global loading toggles.
+                      isOverallLoading={isLast ? isLoading : false}
                       mdComponents={mdComponents}
                       handleCopy={handleCopy}
                       isCopied={copiedMessageId === message.id}

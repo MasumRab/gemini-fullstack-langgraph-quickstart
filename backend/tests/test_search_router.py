@@ -9,8 +9,8 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 # Import SUT
-from backend.src.search.router import SearchRouter, SearchProviderType
-from backend.src.search.provider import SearchResult
+from search.router import SearchRouter, SearchProviderType
+from search.provider import SearchResult
 
 class TestSearchRouter:
     """Tests for SearchRouter logic."""
@@ -28,9 +28,9 @@ class TestSearchRouter:
         """Mock the adapter classes used by SearchRouter."""
         # Patch the classes where they are imported in router.py
 
-        with patch("backend.src.search.router.GoogleSearchAdapter") as mock_google, \
-             patch("backend.src.search.router.DuckDuckGoAdapter") as mock_ddg, \
-             patch("backend.src.search.router.BraveSearchAdapter") as mock_brave:
+        with patch("search.router.GoogleSearchAdapter") as mock_google, \
+             patch("search.router.DuckDuckGoAdapter") as mock_ddg, \
+             patch("search.router.BraveSearchAdapter") as mock_brave:
 
             # Setup instances
             mock_google.return_value = MagicMock(name="google_instance")

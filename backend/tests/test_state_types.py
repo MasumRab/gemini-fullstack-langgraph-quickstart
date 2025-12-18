@@ -1,6 +1,6 @@
 import json
 import pytest
-from backend.src.agent.state import OverallState, Todo, validate_scoping
+from agent.state import OverallState, Todo, validate_scoping
 
 def test_typing_smoke():
     """Ensure OverallState can be instantiated with new fields."""
