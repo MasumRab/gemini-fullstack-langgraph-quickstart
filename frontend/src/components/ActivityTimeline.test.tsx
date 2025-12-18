@@ -33,7 +33,7 @@ describe('ActivityTimeline', () => {
     render(<ActivityTimeline {...defaultProps} />);
     const button = screen.getByRole('button');
     expect(button).toBeInTheDocument();
-    expect(button).toHaveTextContent('Research');
+    expect(button).toHaveTextContent('Research Activity');
     expect(button.className).toContain('focus-visible:ring-2');
   });
 
@@ -79,6 +79,6 @@ describe('ActivityTimeline', () => {
 
     fireEvent.click(btn);
     expect(screen.getByTestId('count')).toHaveTextContent('1');
-    expect(screen.getByRole('button', { name: /Research/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Research Activity/i })).toBeInTheDocument();
   });
 });

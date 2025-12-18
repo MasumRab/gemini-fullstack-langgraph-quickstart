@@ -71,12 +71,13 @@ export const ActivityTimeline = memo(function ActivityTimeline({
             type="button"
             className="flex items-center justify-start text-sm w-full cursor-pointer gap-2 text-neutral-100 bg-transparent border-none p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 rounded"
             onClick={() => setIsTimelineCollapsed(!isTimelineCollapsed)}
+            title={isTimelineCollapsed ? "Show research activity" : "Hide research activity"}
           >
-            Research
+            Research Activity
             {isTimelineCollapsed ? (
-              <ChevronDown className="h-4 w-4 mr-2" />
+              <ChevronDown className="h-4 w-4 mr-2" aria-hidden="true" />
             ) : (
-              <ChevronUp className="h-4 w-4 mr-2" />
+              <ChevronUp className="h-4 w-4 mr-2" aria-hidden="true" />
             )}
           </button>
         </CardDescription>
