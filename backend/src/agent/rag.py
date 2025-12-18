@@ -191,15 +191,21 @@ class DeepSearchRAG:
         # Process embeddings and store
         current_time = time.time()
 
+        faiss_embeddings = []
+        faiss_ids = []
+        start_id = self.next_id
+
         for i, item in enumerate(chunks_to_process):
             chunk = item["chunk"]
             doc = item["doc"]
-            # Use UUID to prevent collisions in batch
-            chunk_id_str = f"{subgoal_id}_{uuid.uuid4()}"
             embedding = embeddings[i]
+            # Use same UUID for both stores to maintain consistency
+            chunk_id_str = f"{subgoal_id}_{uuid.uuid4()}"
 
             # FAISS Logic
             if self.use_faiss:
+                current_id = start_id + i # Incremental ID for FAISS
+
                 evidence = EvidenceChunk(
                     content=chunk,
                     source_url=doc.get("url", "unknown"),
@@ -210,20 +216,16 @@ class DeepSearchRAG:
                     metadata=metadata or {}
                 )
 
-                self.index_with_ids.add_with_ids(
-                    np.array([embedding], dtype=np.float32),
-                    np.array([self.next_id])
-                )
-                self.doc_store[self.next_id] = evidence
-                ingested_ids.append(self.next_id)
+                self.doc_store[current_id] = evidence
+                ingested_ids.append(current_id)
+                faiss_embeddings.append(embedding)
+                faiss_ids.append(current_id)
 
                 if subgoal_id not in self.subgoal_evidence_map:
                     self.subgoal_evidence_map[subgoal_id] = []
-                self.subgoal_evidence_map[subgoal_id].append(self.next_id)
+                self.subgoal_evidence_map[subgoal_id].append(current_id)
 
-                self.next_id += 1
-
-            # Chroma Logic (Buffer for batch insert)
+            # Chroma Logic
             if self.use_chroma and CHROMA_AVAILABLE:
                 chroma_chunks.append(ChromaEvidenceChunk(
                     content=chunk,
@@ -235,6 +237,14 @@ class DeepSearchRAG:
                     metadata=metadata or {}
                 ))
                 embeddings_list.append(embedding.tolist())
+
+        # ⚡ Bolt Optimization: Batch FAISS Add
+        if self.use_faiss and faiss_embeddings:
+            self.index_with_ids.add_with_ids(
+                np.array(faiss_embeddings, dtype=np.float32),
+                np.array(faiss_ids, dtype=np.int64)
+            )
+            self.next_id += len(faiss_ids)
 
         # Batch insert to Chroma
         if self.use_chroma and chroma_chunks and CHROMA_AVAILABLE:
