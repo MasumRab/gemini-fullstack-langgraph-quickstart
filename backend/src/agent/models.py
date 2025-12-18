@@ -167,3 +167,7 @@ def get_model_or_default(model_name: str, default: str = GEMINI_FLASH) -> str:
 
 ALL_VALID_MODELS = [GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT, GEMMA_3_27B_IT]
 """List of all valid, accessible Gemini models."""
+
+def is_gemma_model(model_name: str) -> bool:
+    """Check if the model is a Gemma model (requires custom tool handling)."""
+    return "gemma" in model_name.lower()
