@@ -5,7 +5,7 @@ from agent.state import OverallState, ReflectionState
 from agent.configuration import Configuration
 from agent.nodes import (
     load_context,
-    generate_query,
+    generate_plan,
     planning_mode,
     planning_wait,
     planning_router,
@@ -62,7 +62,7 @@ def queue_manager(state: OverallState) -> Dict[str, Any]:
         return {"search_query": next_q, "follow_up_queries": follow_ups[1:]}
 
     # If we are coming from Generate Query (list of queries),
-    # the 'generate_query' node outputs a list.
+    # the 'generate_plan' node outputs a list.
     # We might need a 'dispatcher' node if we want to process the *initial* list linearly.
     # However, 'web_research' expects 'search_query' to be a single string or list.
 
@@ -76,7 +76,7 @@ def queue_manager(state: OverallState) -> Dict[str, Any]:
 
 builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("load_context", load_context)
-builder.add_node("generate_query", generate_query)
+builder.add_node("generate_plan", generate_plan)
 builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
 
@@ -88,8 +88,8 @@ builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 
 builder.add_edge(START, "load_context")
-builder.add_edge("load_context", "generate_query")
-builder.add_edge("generate_query", "planning_mode")
+builder.add_edge("load_context", "generate_plan")
+builder.add_edge("generate_plan", "planning_mode")
 
 # Modified routing for planning
 builder.add_conditional_edges(

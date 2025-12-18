@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from agent.nodes import generate_query, web_research, reflection, finalize_answer, load_context
+from agent.nodes import generate_plan, web_research, reflection, finalize_answer, load_context
 from langchain_core.messages import HumanMessage
 from agent.models import TEST_MODEL
 
@@ -29,15 +29,17 @@ def mock_config():
 class TestGraphNodes:
 
     @patch('agent.nodes.ChatGoogleGenerativeAI')
-    def test_generate_query_success(self, MockLLM, mock_state, mock_config):
+    def test_generate_plan_success(self, MockLLM, mock_state, mock_config):
         # Mock LLM instance and response
         mock_instance = MockLLM.return_value
         mock_instance.with_structured_output.return_value.invoke.return_value = Mock(
-            query=["query1", "query2"]
+            plan=[Mock(title="query1", description="desc", status="pending"), Mock(title="query2", description="desc", status="pending")],
+            rationale="rationale"
         )
 
-        result = generate_query(mock_state, mock_config)
+        result = generate_plan(mock_state, mock_config)
 
+        assert "plan" in result
         assert "search_query" in result
         assert result["search_query"] == ["query1", "query2"]
 

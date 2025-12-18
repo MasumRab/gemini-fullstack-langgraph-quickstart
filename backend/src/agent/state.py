@@ -21,6 +21,7 @@ class Todo(TypedDict, total=False):
     """
     id: str
     title: str
+    query: str | None # Search query derived from title or explicit
     description: str | None
     done: bool
     status: str | None  # pending/done/in_progress
