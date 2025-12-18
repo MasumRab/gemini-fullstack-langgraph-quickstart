@@ -2,7 +2,7 @@
 
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from langchain_core.messages import AIMessage
 from langchain_core.tools import BaseTool
@@ -40,17 +40,31 @@ def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
     """
     tool_schemas = []
     for tool in tools:
+        # Pydantic v1 uses .args, v2 uses .args_schema or model_json_schema()
+        # BaseTool.args usually returns just the properties, not the full JSON schema with "type": "object" wrapper
+        # We want the full schema usually
+        if hasattr(tool, "get_input_schema"):
+             input_schema = tool.get_input_schema()
+             if hasattr(input_schema, "model_json_schema"):
+                 parameters = input_schema.model_json_schema()
+             elif hasattr(input_schema, "schema"):
+                 parameters = input_schema.schema()
+             else:
+                 parameters = tool.args
+        else:
+             parameters = tool.args
+
         schema = {
             "name": tool.name,
             "description": tool.description,
-            "parameters": tool.args  # BaseTool.args is a property returning the pydantic schema
+            "parameters": parameters
         }
         tool_schemas.append(schema)
 
     return json.dumps(tool_schemas, indent=2)
 
 
-def parse_tool_calls(content: str) -> List[Dict[str, Any]]:
+def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """
     Parses the LLM output for JSON tool calls.
     Expects format:
@@ -63,9 +77,13 @@ def parse_tool_calls(content: str) -> List[Dict[str, Any]]:
     ```
     or just the raw JSON object.
 
+    Args:
+        content: The text output from the LLM.
+        allowed_tools: Optional list of allowed tool names to validate against.
+
     Returns:
         List of tool call dicts compatible with LangChain's tool_calls structure:
-        [{'name': str, 'args': dict, 'id': str}]
+        [{'name': str, 'args': dict, 'id': str, 'type': 'tool_call'}]
     """
     tool_calls = []
 
@@ -86,30 +104,44 @@ def parse_tool_calls(content: str) -> List[Dict[str, Any]]:
     try:
         data = json.loads(json_str)
 
-        # Normalize structure
-        # Implementation expects: {"tool_calls": [...]}
-        calls = data.get("tool_calls", [])
-
-        # Handle case where model outputs a single tool call object directly
-        if isinstance(data, dict) and "name" in data and "arguments" in data:
-            calls = [data]
+        # Handle list of tool calls (some models might output a list directly)
+        if isinstance(data, list):
+             calls = data
+        # Handle standard wrapper
+        elif isinstance(data, dict):
+            if "tool_calls" in data:
+                calls = data["tool_calls"]
+            elif "name" in data and ("arguments" in data or "args" in data):
+                # Single tool call object
+                calls = [data]
+            else:
+                # Not a recognizable tool call structure
+                return []
+        else:
+            return []
 
         for call in calls:
             name = call.get("name")
-            arguments = call.get("arguments", {})
+            if not name:
+                continue
 
-            if name:
-                # Generate a dummy ID since Gemma doesn't provide one
-                # Using a deterministic hash or random string
-                import uuid
-                call_id = f"call_{uuid.uuid4().hex[:8]}"
+            # Validate allowed tools
+            if allowed_tools and name not in allowed_tools:
+                continue
 
-                tool_calls.append({
-                    "name": name,
-                    "args": arguments,
-                    "id": call_id,
-                    "type": "tool_call" # Standard LangChain field
-                })
+            arguments = call.get("arguments") or call.get("args") or {}
+
+            # Generate a dummy ID since Gemma doesn't provide one
+            # Using a deterministic hash or random string
+            import uuid
+            call_id = f"call_{uuid.uuid4().hex[:8]}"
+
+            tool_calls.append({
+                "name": name,
+                "args": arguments,
+                "id": call_id,
+                "type": "tool_call" # Standard LangChain field
+            })
 
     except json.JSONDecodeError:
         # Log warning or handle silently?

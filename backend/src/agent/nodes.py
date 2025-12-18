@@ -34,7 +34,7 @@ from agent.registry import graph_registry
 from agent.scoping_prompts import scoping_instructions
 from agent.scoping_schema import ScopingAssessment
 from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS
-from agent.models import is_gemma_model
+from agent.models import is_gemma_model, is_gemini_model
 from agent.tool_adapter import (
     format_tools_to_json_schema,
     GEMMA_TOOL_INSTRUCTION,
@@ -331,51 +331,177 @@ def continue_to_web_research(state: QueryGenerationState):
 
 @graph_registry.describe(
     "web_research",
-    summary="Executes web search using configured providers via SearchRouter.",
+    summary="Executes web search using configured providers via SearchRouter, with MCP tool support.",
     tags=["search", "tool"],
     outputs=["web_research_result", "sources_gathered"],
 )
 def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
-    """LangGraph node that performs web research.
+    """LangGraph node that performs web research or executes MCP tools.
     Updated to use the unified SearchRouter and AppConfig.
+    If MCP tools are available, uses an LLM to decide whether to search or use a tool.
     """
     with observe_span("web_research", config):
         query = state["search_query"]
+        configurable = Configuration.from_runnable_config(config)
 
-        # Use the SearchRouter for standardized search with fallback
-        try:
-            results = search_router.search(query, max_results=3)
-        except Exception as e:
-            logger.error(f"Web research failed: {e}")
-            return {
-                "sources_gathered": [],
-                "search_query": [query],
-                "web_research_result": [],
-                "validation_notes": [f"Search failed for query '{query}': {e}"],
-            }
+        # Helper to format search results (used by both paths)
+        def format_results(results_list):
+            sources = []
+            texts = []
+            for r in results_list:
+                source = {
+                    "label": r.title,
+                    "short_url": r.url,
+                    "value": r.url
+                }
+                sources.append(source)
+                snippet = r.content or r.raw_content or ""
+                texts.append(f"{snippet} [{r.title}]({r.url})")
+            return sources, texts
 
+        # If no MCP tools, use direct deterministic search path
+        if not MCP_TOOLS:
+            try:
+                results = search_router.search(query, max_results=3)
+                sources_gathered, web_research_results = format_results(results)
+                combined_result = "\n\n".join(web_research_results)
+                return {
+                    "sources_gathered": sources_gathered,
+                    "search_query": [query],
+                    "web_research_result": [combined_result],
+                }
+            except Exception as e:
+                logger.error(f"Web research failed: {e}")
+                return {
+                    "sources_gathered": [],
+                    "search_query": [query],
+                    "web_research_result": [],
+                    "validation_notes": [f"Search failed for query '{query}': {e}"],
+                }
+
+        # --- MCP Enabled Path ---
+        # We define a "search" tool so the LLM can choose between search and other tools
+        from langchain_core.tools import StructuredTool
+        from langchain_core.pydantic_v1 import BaseModel, Field
+
+        class SearchInput(BaseModel):
+            query: str = Field(description="The query to search for.")
+
+        # Accumulate sources in outer scope
         sources_gathered = []
-        web_research_results = []
 
-        for r in results:
-            # Create source
-            source = {
-                "label": r.title,
-                "short_url": r.url,
-                "value": r.url
-            }
-            sources_gathered.append(source)
+        def run_search(query: str) -> str:
+            """Perform a web search."""
+            res = search_router.search(query, max_results=3)
+            new_sources, texts = format_results(res)
+            sources_gathered.extend(new_sources)
+            return "\n\n".join(texts)
 
-            # Append to result text with citation
-            snippet = r.content or r.raw_content or ""
-            web_research_results.append(f"{snippet} [{r.title}]({r.url})")
+        search_tool = StructuredTool.from_function(
+            func=run_search,
+            name="web_search",
+            description="Search the web for information.",
+            args_schema=SearchInput
+        )
 
-        combined_result = "\n\n".join(web_research_results)
+        all_tools = [search_tool] + MCP_TOOLS
+
+        # Determine model
+        model_name = configurable.query_generator_model # Reusing query model for research agent
+
+        # Construct prompt
+        system_prompt = f"""You are a resourceful researcher. You have a query: "{query}".
+Use the available tools to answer it.
+If the query requires up-to-date web info, use 'web_search'.
+If it matches another tool's capability, use that tool.
+Provide the raw result from the tool."""
+
+        # Get LLM
+        llm = _get_rate_limited_llm(
+            model=model_name,
+            temperature=0,
+            prompt=system_prompt
+        )
+
+        tool_output = ""
+        # sources_gathered is already initialized above for closure capture
+
+        if is_gemini_model(model_name):
+            # Gemini Native Binding
+            llm_with_tools = llm.bind_tools(all_tools)
+            response = llm_with_tools.invoke(system_prompt)
+
+            # Execute tool calls
+            if response.tool_calls:
+                for tool_call in response.tool_calls:
+                    tool_name = tool_call["name"]
+                    tool_args = tool_call["args"]
+
+                    # Find tool
+                    selected_tool = next((t for t in all_tools if t.name == tool_name), None)
+                    if selected_tool:
+                        try:
+                            res = selected_tool.invoke(tool_args)
+                            tool_output += f"\nResult from {tool_name}:\n{res}\n"
+                            # If it was search, we might want to capture sources, but the tool just returns string.
+                            # For simplicity in this polymorphic node, we rely on the string output.
+                            # If the tool was web_search, we can re-parse sources if needed,
+                            # but for now we just treat it as text content.
+                        except Exception as e:
+                            tool_output += f"\nError executing {tool_name}: {e}\n"
+            else:
+                # If no tool called, just use response text
+                tool_output = response.content
+
+        elif is_gemma_model(model_name):
+            # Gemma Adapter Path
+            schema_str = format_tools_to_json_schema(all_tools)
+            instruction = GEMMA_TOOL_INSTRUCTION.format(tool_schemas=schema_str)
+            full_prompt = f"{instruction}\n\n{system_prompt}"
+
+            response = llm.invoke(full_prompt)
+            content = response.content if hasattr(response, "content") else str(response)
+
+            tool_calls = parse_tool_calls(content, allowed_tools=[t.name for t in all_tools])
+
+            if tool_calls:
+                for tc in tool_calls:
+                    tool_name = tc["name"]
+                    tool_args = tc["args"]
+                    selected_tool = next((t for t in all_tools if t.name == tool_name), None)
+                    if selected_tool:
+                        try:
+                            # LangChain tools expect input as dict or str depending on schema
+                            # StructuredTool handles dict input
+                            res = selected_tool.invoke(tool_args)
+                            tool_output += f"\nResult from {tool_name}:\n{res}\n"
+                        except Exception as e:
+                            tool_output += f"\nError executing {tool_name}: {e}\n"
+            else:
+                 # Fallback: if no tool called, assume the model tried to answer directly or failed
+                 # If it failed to pick a tool, we might fallback to default search?
+                 # For now, treat content as answer
+                 tool_output = content
+
+        if not tool_output.strip():
+            # Fallback to direct search if LLM did nothing
+            logger.warning(f"LLM produced no output for research. Falling back to direct search for {query}")
+            try:
+                results = search_router.search(query, max_results=3)
+                sources_gathered, web_research_results = format_results(results)
+                tool_output = "\n\n".join(web_research_results)
+            except Exception as e:
+                return {
+                    "sources_gathered": [],
+                    "search_query": [query],
+                    "web_research_result": [],
+                    "validation_notes": [f"Fallback search failed: {e}"]
+                }
 
         return {
-            "sources_gathered": sources_gathered,
+            "sources_gathered": sources_gathered, # Note: Empty if not direct search path or parsed
             "search_query": [query],
-            "web_research_result": [combined_result],
+            "web_research_result": [tool_output],
         }
 
 

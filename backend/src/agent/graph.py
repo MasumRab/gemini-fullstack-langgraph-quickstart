@@ -63,11 +63,8 @@ builder = StateGraph(OverallState, config_schema=Configuration)
 if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
     # Note: Tools are loaded into agent.tools_and_schemas.MCP_TOOLS during app startup.
-    # Nodes can access them from there at runtime.
-    # TODO(priority=High, complexity=Medium): [MCP Integration] Bind MCP tools to 'web_research' or new 'tool_node'.
-    # See docs/tasks/01_MCP_TASKS.md
-    # Subtask: In `web_research` (or new node), bind these tools to the LLM.
-    # builder.bind_tools(mcp_tools)
+    # Nodes (like 'web_research') access them dynamically from there at runtime.
+    # Binding is handled inside the nodes to support both Gemini (native) and Gemma (adapter).
 
 builder.add_node("load_context", load_context)
 builder.add_node("scoping_node", scoping_node)
