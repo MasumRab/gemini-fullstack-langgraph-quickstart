@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import re
+from datetime import datetime
 from typing import List
 
 from config.app_config import config as app_config
@@ -675,12 +676,15 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
 def update_artifact(id: str, content: str, type: str) -> str:
     """
     Updates a collaborative artifact.
-
-    TODO(priority=Low, complexity=Medium): [Open Canvas] Implement 'update_artifact' tool
-    See docs/tasks/03_OPEN_CANVAS_TASKS.md
-    Subtask: Create a helper function/tool `update_artifact(id, content, type)`.
+    Returns a JSON string representation of the updated artifact.
     """
-    raise NotImplementedError("update_artifact not implemented")
+    artifact = {
+        "id": id,
+        "content": content,
+        "type": type,
+        "created_at": datetime.now().isoformat(),
+    }
+    return json.dumps(artifact)
 
 def planning_router(state: OverallState, config: RunnableConfig):
     """Route based on planning status and user commands."""
