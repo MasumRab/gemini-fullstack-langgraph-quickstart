@@ -6,6 +6,7 @@
 
 import concurrent.futures
 import difflib
+import json
 import logging
 import os
 import re
@@ -32,6 +33,12 @@ from agent.registry import graph_registry
 from agent.scoping_prompts import scoping_instructions
 from agent.scoping_schema import ScopingAssessment
 from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS
+from agent.models import is_gemma_model
+from agent.tool_adapter import (
+    format_tools_to_json_schema,
+    GEMMA_TOOL_INSTRUCTION,
+    parse_tool_calls
+)
 from agent.state import (
     OverallState,
     QueryGenerationState,
@@ -219,16 +226,78 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             max_retries=2,
             prompt=formatted_prompt
         )
-        # Bind MCP tools if available
-        if MCP_TOOLS:
-             logger.info(f"Binding {len(MCP_TOOLS)} MCP tools to generate_query model.")
-             llm = llm.bind_tools(MCP_TOOLS)
 
-        structured_llm = llm.with_structured_output(SearchQueryList)
+        # Check if we are using a Gemma model (requires prompt-based tool calling)
+        if is_gemma_model(configurable.query_generator_model):
+            logger.info(f"Using Gemma adapter for structured output (and {len(MCP_TOOLS)} MCP tools if present).")
 
-        # Generate the search queries
-        result = structured_llm.invoke(formatted_prompt, config=config)
-        return {"search_query": result.query}
+            # Strategy for Gemma in this node:
+            # We primarily want `SearchQueryList` as the structured output.
+            # We construct a prompt that asks for `SearchQueryList` JSON by defining it as a tool.
+            # We also include available MCP tools in the prompt to enable potential usage,
+            # though this specific node logic focuses on extracting queries.
+
+            # 1. Define the expected output structure as a tool schema for the adapter
+            search_tool_schema = {
+                "name": "SearchQueryList",
+                "description": "Output structured search queries.",
+                "parameters": SearchQueryList.model_json_schema()
+            }
+
+            # 2. Add this "output tool" to the schemas
+            schemas_list = [search_tool_schema]
+
+            # 3. Add MCP tools schemas
+            if MCP_TOOLS:
+                other_schemas_str = format_tools_to_json_schema(MCP_TOOLS)
+                schemas_list.extend(json.loads(other_schemas_str))
+
+            schemas_str = json.dumps(schemas_list, indent=2)
+
+            # 4. Construct instruction
+            instruction = GEMMA_TOOL_INSTRUCTION.format(tool_schemas=schemas_str)
+            instruction += "\n\nCRITICAL: You MUST call the 'SearchQueryList' tool to provide your answer."
+
+            full_prompt = f"{instruction}\n\n{formatted_prompt}"
+
+            # 5. Invoke LLM (raw)
+            response = llm.invoke(full_prompt)
+            content = response.content if hasattr(response, "content") else str(response)
+
+            tool_calls = parse_tool_calls(content)
+
+            # 6. Extract queries from SearchQueryList tool call
+            queries = []
+            for tc in tool_calls:
+                if tc["name"] == "SearchQueryList":
+                    args = tc["args"]
+                    if "query" in args:
+                        queries = args["query"]
+                    break
+
+            # Fallback if parsing failed or model didn't use tool
+            if not queries:
+                logger.warning("Gemma did not use SearchQueryList tool. Attempting fallback parsing.")
+                lines = [line.strip("- *") for line in content.split("\n") if "?" in line]
+                if lines:
+                    queries = lines
+                else:
+                    queries = [content] # Treat whole response as one query
+
+            return {"search_query": queries}
+
+        else:
+            # Standard Gemini Path
+            # Bind MCP tools if available
+            if MCP_TOOLS:
+                 logger.info(f"Binding {len(MCP_TOOLS)} MCP tools to generate_query model.")
+                 llm = llm.bind_tools(MCP_TOOLS)
+
+            structured_llm = llm.with_structured_output(SearchQueryList)
+
+            # Generate the search queries
+            result = structured_llm.invoke(formatted_prompt, config=config)
+            return {"search_query": result.query}
 
 
 @graph_registry.describe(

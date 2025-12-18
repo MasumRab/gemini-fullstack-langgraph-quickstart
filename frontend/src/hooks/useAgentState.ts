@@ -105,6 +105,13 @@ export function useAgentState() {
     },
   });
 
+  // Bolt Optimization: Keep a ref to the latest thread to avoid re-creating handlers
+  // when thread state changes (e.g. streaming updates).
+  const threadRef = useRef(thread);
+  useEffect(() => {
+    threadRef.current = thread;
+  }, [thread]);
+
   // Auto-scroll logic
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -158,8 +165,11 @@ export function useAgentState() {
           break;
       }
 
+      // Use the ref to access the latest thread state without creating a dependency
+      const currentThread = threadRef.current;
+
       const newMessages: Message[] = [
-        ...(thread.messages || []),
+        ...(currentThread.messages || []),
         {
           type: "human",
           content: submittedInputValue,
@@ -173,37 +183,38 @@ export function useAgentState() {
       };
       lastConfigRef.current = config;
       setPlanningContext(null);
-      thread.submit({
+      currentThread.submit({
         messages: newMessages,
         ...config,
       });
     },
-    [thread]
+    [] // Stable reference
   );
 
   const handlePlanningCommand = useCallback(
     (command: string) => {
       const config = lastConfigRef.current;
+      const currentThread = threadRef.current;
       const newMessages: Message[] = [
-        ...(thread.messages || []),
+        ...(currentThread.messages || []),
         {
           type: "human",
           content: command,
           id: Date.now().toString(),
         },
       ];
-      thread.submit({
+      currentThread.submit({
         messages: newMessages,
         ...config,
       });
     },
-    [thread]
+    [] // Stable reference
   );
 
   const handleCancel = useCallback(() => {
-    thread.stop();
+    threadRef.current.stop();
     window.location.reload();
-  }, [thread]);
+  }, []); // Stable reference
 
   return {
     thread,
@@ -217,5 +228,3 @@ export function useAgentState() {
     handleCancel,
   };
 }
-
-

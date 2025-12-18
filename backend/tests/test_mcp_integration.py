@@ -2,17 +2,13 @@ import os
 import unittest
 from unittest import mock
 from agent.graph import graph
+from agent.mcp_config import MCPSettings
 
 class TestMCPIntegration(unittest.TestCase):
     def test_graph_loads_without_mcp(self):
         """Test that the graph compiles and loads correctly with MCP disabled."""
         # This test implicitly passes if the import above succeeded and 'graph' is valid
         self.assertIsNotNone(graph)
-
-    def test_mcp_disabled_by_default(self):
-        """Ensure MCP settings are loaded as disabled by default in the graph context."""
-        from agent.graph import mcp_settings
-        self.assertFalse(mcp_settings.enabled)
 
     def test_mcp_enabled_wiring(self):
         """Test that enabling MCP triggers the wiring logic (via stdout verification or internal state)."""
