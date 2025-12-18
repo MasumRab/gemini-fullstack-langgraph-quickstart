@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { SquarePen, Brain, Send, StopCircle, Zap, Cpu } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +18,11 @@ interface InputFormProps {
   hasHistory: boolean;
 }
 
-export const InputForm: React.FC<InputFormProps> = ({
+// ⚡ Bolt Optimization: Memoize InputForm to prevent re-renders on every token update
+// caused by parent ChatMessagesView re-rendering.
+// Since onSubmit/onCancel are now stable (via useAgentState optimization),
+// and isLoading/hasHistory change infrequently, this component will stay idle during streaming.
+export const InputForm: React.FC<InputFormProps> = memo(({
   onSubmit,
   onCancel,
   isLoading,
@@ -177,4 +181,6 @@ export const InputForm: React.FC<InputFormProps> = ({
       </div>
     </form>
   );
-};
+});
+
+InputForm.displayName = "InputForm";
