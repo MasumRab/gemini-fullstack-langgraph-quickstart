@@ -40,6 +40,11 @@ class AppConfig:
     audit_mode: str = os.getenv("AUDIT_MODE", "off")
     log_level: str = os.getenv("LOG_LEVEL", "info")
 
+    # Security
+    cors_origins: Tuple[str, ...] = tuple(
+        filter(None, os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","))
+    )
+
     # Model Selection
     model_planning: str = os.getenv("MODEL_PLANNING", "gemma-3-27b-it")
     model_validation: str = os.getenv("MODEL_VALIDATION", "gemma-3-27b-it")
