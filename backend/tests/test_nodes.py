@@ -100,10 +100,9 @@ class TestGeneratePlan:
         is_gemma = "gemma" in TEST_MODEL.lower()
 
         if is_gemma:
-            # Mock raw invoke response content for tool call parsing
-            # It expects a tool call to 'Plan'
-            # Note: generate_plan uses `parse_tool_calls` and Gemma adapter
-            # We mock the response to include the tool call format
+            # Mock raw invoke response content for tool adapter
+            # It expects a JSON block with tool_calls in markdown or raw
+            # PR #93 style but with PR #92 Plan data
             import json
             tool_call_args = {
                 "plan": [
@@ -112,34 +111,23 @@ class TestGeneratePlan:
                 ],
                 "rationale": "Rationale"
             }
-            # Gemma adapter expects structured prompt response usually, but here we just mock the invoke return
-            # simulating a tool use
-            # The code checks `response.tool_calls` if available or parses content.
-            # Gemma path does `parse_tool_calls(content)`
-            # We construct a content string that looks like a tool call if we were using a real model,
-            # but since we mock `invoke`, we can just control what `parse_tool_calls` sees?
-            # Actually `parse_tool_calls` parses specific format.
-            # Easier to mock `parse_tool_calls` or make the content robust.
-            # But wait, `generate_plan` for Gemma does:
-            # response = llm.invoke(...)
-            # tool_calls = parse_tool_calls(response.content)
-            # So we need response.content to be parseable.
+            
+            tool_call_response = {
+                "tool_calls": [
+                    {
+                        "name": "Plan",
+                        "args": tool_call_args
+                    }
+                ]
+            }
+            # Ensure proper JSON formatting for tool adapter compatibility
+            json_response = f"```json\n{json.dumps(tool_call_response)}\n```"
+            mock_message = AIMessage(content=json_response)
+            mock_chain.invoke.return_value = mock_message
 
-            # For simplicity, let's assume we can patch parse_tool_calls or provide valid content
-            # But wait, the previous test used `json.dumps` which works for `PydanticOutputParser`
-            # `generate_plan` uses `GemmaToolAdapter` logic.
-
-            # Let's mock `parse_tool_calls` to return our desired tool call
-            with patch("agent.nodes.parse_tool_calls") as mock_parse:
-                mock_parse.return_value = [{
-                    "name": "Plan",
-                    "args": tool_call_args
-                }]
-                mock_chain.invoke.return_value = AIMessage(content="<tool_code>...") # Content ignored by mock
-
-                with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
-                    mock_get_llm.return_value = mock_chain
-                    result = generate_plan(base_state, config)
+            with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
+                mock_get_llm.return_value = mock_chain
+                result = generate_plan(base_state, config)
         else:
             # Standard Gemini
             mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
