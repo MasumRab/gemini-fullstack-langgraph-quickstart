@@ -12,7 +12,7 @@ def _get_plan_path(thread_id: str) -> str:
     safe_id = "".join(c for c in thread_id if c.isalnum() or c in ('-', '_'))
     return os.path.join(PLAN_DIR, f"{safe_id}.json")
 
-def save_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, str]) -> None:
+def save_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, Any]) -> None:
     """Saves the current plan and artifacts to a JSON file."""
     if not thread_id:
         return
