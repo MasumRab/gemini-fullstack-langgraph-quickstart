@@ -70,6 +70,9 @@ async def kg_enrich(state: OverallState, config: RunnableConfig) -> OverallState
             logger.error(f"Cognee enrichment failed for {url}: {e}")
 
     if processed_count > 0:
-        return {"artifacts": {"kg_enriched_count": processed_count}}
+        logger.info(f"Enriched {processed_count} items in KG.")
+        # Do not return 'artifacts' here as it violates the Artifact TypedDict schema.
+        # The enrichment is a side-effect.
+        return {}
 
     return {}
