@@ -18,11 +18,10 @@ from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import AIMessage, HumanMessage
 
-from config.app_config import AppConfig, config as real_config
 from agent.state import OverallState
 from agent import nodes
 from agent.nodes import (
-    generate_query,
+    generate_plan,
     planning_mode,
     planning_wait,
     web_research,
@@ -74,58 +73,83 @@ def config_with_confirmation():
     )
 
 
-# Tests for generate_query
-class TestGenerateQuery:
-    """Test suite for generate_query node"""
+# Tests for generate_plan
+class TestGeneratePlan:
+    """Test suite for generate_plan node"""
 
-    @patch("agent.nodes.query_writer_instructions")
-    def test_generate_query_creates_queries(self, mock_instructions, base_state, config):
-        """Test that generate_query creates the correct number of queries"""
+    @patch("agent.nodes.plan_writer_instructions")
+    def test_generate_plan_creates_plan(self, mock_instructions, base_state, config):
+        """Test that generate_plan creates the correct number of tasks"""
         # Setup
         base_state["messages"] = [HumanMessage(content="What is quantum computing?")]
 
         # Use MagicMock to simulate the chain
         mock_chain = MagicMock()
         mock_result = MagicMock()
-        mock_result.query = ["query1", "query2", "query3"]
+        # Mock structured output for Plan
+        mock_task1 = Mock(title="Task 1", description="Desc 1", status="pending")
+        mock_task2 = Mock(title="Task 2", description="Desc 2", status="pending")
+        mock_result.plan = [mock_task1, mock_task2]
+        mock_result.rationale = "Rationale"
 
         # Determine behavior based on model (Gemma vs others)
-        # In tests, TEST_MODEL is typically gemma-3-27b-it
         is_gemma = "gemma" in TEST_MODEL.lower()
 
         if is_gemma:
-            # Mock raw invoke response content for PydanticParser
-            # It expects a JSON string matching the Pydantic model
+            # Mock raw invoke response content for tool call parsing
+            # It expects a tool call to 'Plan'
+            # Note: generate_plan uses `parse_tool_calls` and Gemma adapter
+            # We mock the response to include the tool call format
             import json
-            json_response = json.dumps({
-                "tool_calls": [{
-                    "name": "SearchQueryList",
-                    "args": {
-                        "query": ["query1", "query2", "query3"]
-                    }
+            tool_call_args = {
+                "plan": [
+                    {"title": "Task 1", "description": "Desc 1", "status": "pending"},
+                    {"title": "Task 2", "description": "Desc 2", "status": "pending"}
+                ],
+                "rationale": "Rationale"
+            }
+            # Gemma adapter expects structured prompt response usually, but here we just mock the invoke return
+            # simulating a tool use
+            # The code checks `response.tool_calls` if available or parses content.
+            # Gemma path does `parse_tool_calls(content)`
+            # We construct a content string that looks like a tool call if we were using a real model,
+            # but since we mock `invoke`, we can just control what `parse_tool_calls` sees?
+            # Actually `parse_tool_calls` parses specific format.
+            # Easier to mock `parse_tool_calls` or make the content robust.
+            # But wait, `generate_plan` for Gemma does:
+            # response = llm.invoke(...)
+            # tool_calls = parse_tool_calls(response.content)
+            # So we need response.content to be parseable.
+
+            # For simplicity, let's assume we can patch parse_tool_calls or provide valid content
+            # But wait, the previous test used `json.dumps` which works for `PydanticOutputParser`
+            # `generate_plan` uses `GemmaToolAdapter` logic.
+
+            # Let's mock `parse_tool_calls` to return our desired tool call
+            with patch("agent.nodes.parse_tool_calls") as mock_parse:
+                mock_parse.return_value = [{
+                    "name": "Plan",
+                    "args": tool_call_args
                 }]
-            })
-            mock_message = AIMessage(content=json_response)
-            mock_chain.invoke.return_value = mock_message
+                mock_chain.invoke.return_value = AIMessage(content="<tool_code>...") # Content ignored by mock
+
+                with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
+                    mock_get_llm.return_value = mock_chain
+                    result = generate_plan(base_state, config)
         else:
-            # Mock structured output for non-Gemma
+            # Standard Gemini
             mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
 
-        # We need to mock _get_rate_limited_llm
-        with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
-            mock_get_llm.return_value = mock_chain
+            with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
+                mock_get_llm.return_value = mock_chain
+                result = generate_plan(base_state, config)
 
-            # Execute
-            result = generate_query(base_state, config)
-
-            # Assert
-            assert "search_query" in result
-            assert len(result["search_query"]) == 3
-
-            if is_gemma:
-                mock_chain.invoke.assert_called_once()
-            else:
-                mock_chain.with_structured_output.return_value.invoke.assert_called_once()
+        # Assert
+        assert "plan" in result
+        assert len(result["plan"]) == 2
+        assert "search_query" in result
+        assert len(result["search_query"]) == 2
+        assert result["plan"][0]["title"] == "Task 1"
 
 
 # Tests for planning_mode
@@ -308,22 +332,15 @@ class TestValidateWebResults:
         """Test that validate_web_results filters research results based on keywords"""
         # Setup
         base_state["web_research_result"] = [
-            "Good content relevant to quantum [Source](http://example.com)",
-            "Bad content relevant to cooking [Source](http://example.com)"
+            "Good content relevant to quantum",
+            "Bad content relevant to cooking"
         ]
         base_state["search_query"] = ["quantum physics"]
 
-        # Modify config to disable strict citations for this test if needed,
-        # although we added citations above.
-        # But we also want to ensure that 'agent.nodes.app_config' is using our desired settings.
-        # Specifically, ensure require_citations is False so we don't hard fail on format issues
-        # (though we formatted correctly above).
-        # More importantly, let's just show how to patch the config object properly.
+        # Disable citation requirement for this test
+        original_config = nodes.app_config
+        new_config = dataclasses.replace(original_config, require_citations=False)
 
-        # Create a modified config
-        new_config = dataclasses.replace(real_config, require_citations=False)
-
-        # Patch 'agent.nodes.app_config' which is where the node code imported it
         with patch("agent.nodes.app_config", new_config):
             # Execute
             result = validate_web_results(base_state, config)
@@ -418,3 +435,4 @@ class TestFinalizeAnswer:
             assert "messages" in result
             assert len(result["messages"]) > 0
             assert isinstance(result["messages"][0], AIMessage)
+

@@ -19,6 +19,16 @@ class SearchQueryList(BaseModel):
     )
 
 
+class Todo(BaseModel):
+    title: str = Field(description="A concise title for the task (acting as the search query).")
+    description: Optional[str] = Field(description="A brief description of what to look for.")
+    status: str = Field(description="Set to 'pending' by default.", default="pending")
+
+class Plan(BaseModel):
+    plan: List[Todo] = Field(description="A list of tasks (Todos) to execute.")
+    rationale: str = Field(description="Brief explanation of the research strategy.")
+
+
 class Reflection(BaseModel):
     is_sufficient: bool = Field(
         description="Whether the provided summaries are sufficient to answer the user's question."

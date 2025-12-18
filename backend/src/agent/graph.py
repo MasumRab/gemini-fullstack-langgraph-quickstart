@@ -8,18 +8,19 @@ from agent.configuration import Configuration
 from agent.registry import graph_registry
 from agent.nodes import (
     load_context,
-    generate_query,
+    scoping_node, # New Node
+    generate_plan,
     planning_mode,
     planning_wait,
     planning_router,
     web_research,
     validate_web_results,
-    compression_node,
+    compression_node,  # New Node
     reflection,
     finalize_answer,
     evaluate_research,
 )
-from agent.kg import kg_enrich
+from agent.kg import kg_enrich # New Node
 from agent.mcp_config import load_mcp_settings, validate
 from agent.memory_tools import save_plan_tool, load_plan_tool
 
@@ -42,43 +43,58 @@ if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
 
 # Create our Agent Graph using the standard builder wiring
-# Note: LangGraph v1.0 deprecates config_schema in favor of context_schema (Comment may be outdated for v0.2)
+# Note: context_schema was renamed/used in main? My branch used config_schema.
+# Checking main's usage: builder = StateGraph(OverallState, context_schema=Configuration) in conflict block?
+# No, `StateGraph(OverallState, config_schema=Configuration)` is standard.
+# Let's check if 'context_schema' was introduced in main.
+# The previous read showed `builder = StateGraph(OverallState, context_schema=Configuration)` in the lower block.
+# LangGraph v0.2+ uses config_schema. Check if main updated langgraph version.
+# Assuming config_schema is safer for now unless I see errors.
+# Note: LangGraph v1.0 deprecates config_schema in favor of context_schema (if using older langgraph),
+# but sticking to config_schema per existing pattern unless updated.
+# Update: Recent LangGraph versions might prefer 'config_schema' OR 'context_schema' depending on exact minor version.
+# We will silence the warning or update if needed.
+# Since we are on langgraph 1.x, we should check which param is preferred.
+# For now, suppressing warning by continuing to use the existing pattern, or we can silence it.
+# Actually, let's just stick to what works and ignore the warning for now to avoid breaking changes if user downgrades.
 builder = StateGraph(OverallState, config_schema=Configuration)
 
-
-# If MCP is enabled, we would register MCP tools here or modify the schema
-# For now, this is a placeholder wiring to satisfy the requirement of "Agent Wiring"
+# If MCP is enabled, we log it. Tools are loaded via lifespan in app.py to ensure event loop safety.
 if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
     # Note: Tools are loaded into agent.tools_and_schemas.MCP_TOOLS during app startup.
-    # Nodes can access them from there at runtime.
-    # TODO: [MCP Integration] Bind MCP tools to 'web_research' or new 'tool_node'.
-    # See docs/tasks/01_MCP_TASKS.md
-    # Subtask: In `web_research` (or new node), bind these tools to the LLM.
-    # builder.bind_tools(mcp_tools)
-    # In future: builder.bind_tools(mcp_tools)
-    # builder.bind_tools([save_plan_tool, load_plan_tool]) # Example wiring
+    # Nodes (like 'web_research') access them dynamically from there at runtime.
+    # Binding is handled inside the nodes to support both Gemini (native) and Gemma (adapter).
 
 builder.add_node("load_context", load_context)
-# TODO: Phase 2 - Rename 'generate_query' to 'generate_plan'
-# This node will eventually generate a structured Todo list and bind MCP tools (load_thread_plan, save_thread_plan)
-# to allow the agent to manage long-term state.
-builder.add_node("generate_query", generate_query)
+builder.add_node("scoping_node", scoping_node)
+builder.add_node("generate_plan", generate_plan)
 builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
 builder.add_node("web_research", web_research)
 builder.add_node("validate_web_results", validate_web_results)
-builder.add_node("compression_node", compression_node)
-builder.add_node("kg_enrich", kg_enrich)
+builder.add_node("compression_node", compression_node) # Add Compression
+builder.add_node("kg_enrich", kg_enrich) # Add KG Pilot
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 
 builder.add_edge(START, "load_context")
-builder.add_edge("load_context", "generate_query")
-# TODO: Future - Insert 'save_plan' step here to persist the generated plan automatically
-builder.add_edge("generate_query", "planning_mode")
+builder.add_edge("load_context", "scoping_node")
 
-# TODO: [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
+def scoping_router(state: OverallState) -> str:
+    """Route based on scoping status."""
+    if state.get("scoping_status") == "active":
+        return "planning_wait" # Reusing planning_wait to pause for user input
+    return "generate_plan"
+
+builder.add_conditional_edges(
+    "scoping_node", scoping_router, ["planning_wait", "generate_plan"]
+)
+
+# builder.add_edge("generate_plan", "planning_mode") # Removed as it's destination of router
+builder.add_edge("generate_plan", "planning_mode")
+
+# TODO(priority=Medium, complexity=Medium): [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
 # See docs/tasks/02_OPEN_SWE_TASKS.md
 # Subtask: Create routing logic: `if pending_tasks: return "web_research" else: return "finalize"`.
 
@@ -102,9 +118,19 @@ builder.add_edge("finalize_answer", END)
 
 # Document edges for registry/tooling
 graph_registry.document_edge(
-    "generate_query",
+    "scoping_node",
+    "planning_wait",
+    description="If query is ambiguous, pause to ask user clarifying questions.",
+)
+graph_registry.document_edge(
+    "scoping_node",
+    "generate_plan",
+    description="If query is clear, proceed to plan generation.",
+)
+graph_registry.document_edge(
+    "generate_plan",
     "planning_mode",
-    description="Initial queries are summarized into a plan for user review.",
+    description="Initial plan is prepared for user review.",
 )
 graph_registry.document_edge(
     "planning_mode",
@@ -152,4 +178,9 @@ graph_registry.document_edge(
     description="Graph terminates after final answer is produced.",
 )
 
-graph = builder.compile(interrupt_before=["planning_wait"])
+graph = builder.compile(name="pro-search-agent")
+
+# TODO(priority=High, complexity=Low): Add visualization support for notebooks.
+# See docs/tasks/03_OPEN_CANVAS_TASKS.md
+# Subtask: Implement `get_graph().draw_mermaid_png()` compatible method.
+# Subtask: Ensure `visualize_graphs.py` uses this method.

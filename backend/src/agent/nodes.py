@@ -27,14 +27,14 @@ from agent.persistence import load_plan, save_plan
 from agent.prompts import (
     answer_instructions,
     get_current_date,
-    query_writer_instructions,
+    plan_writer_instructions,
     reflection_instructions,
 )
 from agent.rate_limiter import get_context_manager, get_rate_limiter
 from agent.registry import graph_registry
 from agent.scoping_prompts import scoping_instructions
 from agent.scoping_schema import ScopingAssessment
-from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS
+from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS, Plan
 from agent.models import is_gemma_model, is_gemini_model
 from agent.tool_adapter import (
     format_tools_to_json_schema,
@@ -196,34 +196,27 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
 
 
 @graph_registry.describe(
-    "generate_query",
-    summary="LLM generates structured search queries from the conversation context.",
-    tags=["llm", "search"],
-    outputs=["search_query"],
+    "generate_plan",
+    summary="LLM generates a structured research plan (Todos) from the conversation context.",
+    tags=["llm", "planning"],
+    outputs=["plan", "search_query"],
 )
-def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerationState:
-    """LangGraph node that generates search queries based on the User's question.
+def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
+    """LangGraph node that generates a research plan based on the User's question.
 
-    Uses Gemini 2.5 Flash to create optimized search queries for web research based on
-    the User's question. Includes rate limiting and context window management.
-
-    TODO(priority=Medium, complexity=Medium): [Open SWE] Rename to 'generate_plan' or create a new node.
-    It should generate a structured 'Plan' (List[Todo]) instead of just queries.
-    See docs/tasks/02_OPEN_SWE_TASKS.md
-    Subtask: Update prompt `query_writer_instructions` to generate a `Plan` (List of Todos).
-    Subtask: Update output parser.
+    Uses Gemini 2.5 Flash to create an optimized plan (list of Todos).
+    Each Todo serves as a step in the research process.
     """
-    with observe_span("generate_query", config):
+    with observe_span("generate_plan", config):
         configurable = Configuration.from_runnable_config(config)
 
         # check for custom initial search query count
         if state.get("initial_search_query_count") is None:
             state["initial_search_query_count"] = configurable.number_of_initial_queries
 
-
         # Format the prompt
         current_date = get_current_date()
-        formatted_prompt = query_writer_instructions.format(
+        formatted_prompt = plan_writer_instructions.format(
             current_date=current_date,
             research_topic=get_research_topic(state["messages"]),
             number_queries=state["initial_search_query_count"],
@@ -240,25 +233,25 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             prompt=formatted_prompt
         )
 
+        plan_todos = []
+        search_queries = []
+
         # Check if we are using a Gemma model (requires prompt-based tool calling)
         if is_gemma_model(configurable.query_generator_model):
             logger.info(f"Using Gemma adapter for structured output (and {len(MCP_TOOLS)} MCP tools if present).")
 
             # Strategy for Gemma in this node:
-            # We primarily want `SearchQueryList` as the structured output.
-            # We construct a prompt that asks for `SearchQueryList` JSON by defining it as a tool.
-            # We also include available MCP tools in the prompt to enable potential usage,
-            # though this specific node logic focuses on extracting queries.
+            # We want `Plan` as the structured output.
 
             # 1. Define the expected output structure as a tool schema for the adapter
-            search_tool_schema = {
-                "name": "SearchQueryList",
-                "description": "Output structured search queries.",
-                "parameters": SearchQueryList.model_json_schema()
+            plan_tool_schema = {
+                "name": "Plan",
+                "description": "Output structured research plan.",
+                "parameters": Plan.model_json_schema()
             }
 
             # 2. Add this "output tool" to the schemas
-            schemas_list = [search_tool_schema]
+            schemas_list = [plan_tool_schema]
 
             # 3. Add MCP tools schemas
             if MCP_TOOLS:
@@ -269,7 +262,7 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
 
             # 4. Construct instruction
             instruction = GEMMA_TOOL_INSTRUCTION.format(tool_schemas=schemas_str)
-            instruction += "\n\nCRITICAL: You MUST call the 'SearchQueryList' tool to provide your answer."
+            instruction += "\n\nCRITICAL: You MUST call the 'Plan' tool to provide your answer."
 
             full_prompt = f"{instruction}\n\n{formatted_prompt}"
 
@@ -279,38 +272,76 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
 
             tool_calls = parse_tool_calls(content)
 
-            # 6. Extract queries from SearchQueryList tool call
-            queries = []
+            # 6. Extract plan from Plan tool call
             for tc in tool_calls:
-                if tc["name"] == "SearchQueryList":
+                if tc["name"] == "Plan":
                     args = tc["args"]
-                    if "query" in args:
-                        queries = args["query"]
+                    if "plan" in args:
+                        # Convert dicts to Todo typed dict if needed, or leave as list of dicts
+                        # Pydantic model dump might be dicts already
+                        raw_plan = args["plan"]
+                        for item in raw_plan:
+                            # Normalize
+                            todo = {
+                                "title": item.get("title", ""),
+                                "description": item.get("description", ""),
+                                "status": item.get("status", "pending"),
+                                "query": item.get("title", ""),  # Fallback query
+                            }
+                            plan_todos.append(todo)
+                            search_queries.append(todo["title"])
                     break
 
             # Fallback if parsing failed or model didn't use tool
-            if not queries:
-                logger.warning("Gemma did not use SearchQueryList tool. Attempting fallback parsing.")
-                lines = [line.strip("- *") for line in content.split("\n") if "?" in line]
-                if lines:
-                    queries = lines
-                else:
-                    queries = [content] # Treat whole response as one query
-
-            return {"search_query": queries}
+            if not plan_todos:
+                logger.warning("Gemma did not use Plan tool. Attempting fallback parsing.")
+                # Basic fallback: Treat bullet points as tasks
+                lines = [line.strip("- *") for line in content.split("\n") if line.strip().startswith(("-", "*"))]
+                for line in lines:
+                    todo = {
+                        "title": line,
+                        "description": "",
+                        "status": "pending",
+                        "query": line
+                    }
+                    plan_todos.append(todo)
+                    search_queries.append(line)
 
         else:
             # Standard Gemini Path
             # Bind MCP tools if available
             if MCP_TOOLS:
-                 logger.info(f"Binding {len(MCP_TOOLS)} MCP tools to generate_query model.")
+                 logger.info(f"Binding {len(MCP_TOOLS)} MCP tools to generate_plan model.")
                  llm = llm.bind_tools(MCP_TOOLS)
 
-            structured_llm = llm.with_structured_output(SearchQueryList)
+            structured_llm = llm.with_structured_output(Plan)
 
-            # Generate the search queries
-            result = structured_llm.invoke(formatted_prompt, config=config)
-            return {"search_query": result.query}
+            # Generate the plan
+            try:
+                result = structured_llm.invoke(formatted_prompt, config=config)
+                for item in result.plan:
+                    todo = {
+                        "title": item.title,
+                        "description": item.description,
+                        "status": item.status,
+                        "query": item.title
+                    }
+                    plan_todos.append(todo)
+                    search_queries.append(item.title)
+            except Exception as e:
+                logger.error(f"Failed to generate plan: {e}")
+                # Fallback to single query based on research topic
+                topic = get_research_topic(state["messages"])
+                todo = {
+                    "title": f"Research {topic}",
+                    "description": "Fallback research task",
+                    "status": "pending",
+                    "query": topic
+                }
+                plan_todos.append(todo)
+                search_queries.append(topic)
+
+        return {"plan": plan_todos, "search_query": search_queries}
 
 
 @graph_registry.describe(
@@ -515,7 +546,37 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
     """Create structured plan steps from generated queries for user review."""
     with observe_span("planning_mode", config):
         configurable = Configuration.from_runnable_config(config)
-        queries = state.get("search_query", []) or []
+
+        # Prefer pre-generated plan if available
+        plan = state.get("plan", [])
+        if plan:
+            # If we have a plan, map it to planning_steps format
+            plan_steps = []
+            for idx, todo in enumerate(plan):
+                 plan_steps.append({
+                    "id": f"plan-{idx}",
+                    "title": todo["title"],
+                    "query": todo.get("query", todo["title"]), # Ensure query field
+                    "description": todo.get("description", ""),
+                    "suggested_tool": "web_research",
+                    "status": "pending",
+                })
+        else:
+             # Backward compatibility: generate from search_query
+            queries = state.get("search_query", []) or []
+            plan_steps = []
+            for idx, query in enumerate(queries):
+                label = query if isinstance(query, str) else str(query)
+                plan_steps.append(
+                    {
+                        "id": f"plan-{idx}",
+                        "title": f"Investigate: {label}",
+                        "query": label,
+                        "suggested_tool": "web_research",
+                        "status": "pending",
+                    }
+                )
+
         planning_status = state.get("planning_status")
 
         last_message = state["messages"][-1] if state.get("messages") else None
@@ -532,24 +593,12 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
                 "planning_feedback": ["Planning skipped via /end_plan."]
             }
 
-        if planning_status == "auto_approved" and not state.get("planning_steps"):
+        if planning_status == "auto_approved" and not state.get("planning_steps") and not plan_steps:
+             # Only return empty if truly empty
             return {"planning_steps": [], "planning_feedback": ["Planning skipped."]}
 
         if last_content.startswith("/plan"):
             state["planning_status"] = "awaiting_confirmation"
-
-        plan_steps = []
-        for idx, query in enumerate(queries):
-            label = query if isinstance(query, str) else str(query)
-            plan_steps.append(
-                {
-                    "id": f"plan-{idx}",
-                    "title": f"Investigate: {label}",
-                    "query": label,
-                    "suggested_tool": "web_research",
-                    "status": "pending",
-                }
-            )
 
         if not planning_status:
             status = (
@@ -560,9 +609,9 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
         else:
             status = planning_status
 
-        feedback = [f"Generated {len(plan_steps)} plan steps from initial queries."]
+        feedback = [f"Generated {len(plan_steps)} plan steps."]
         if not plan_steps:
-            feedback.append("No queries available; planning mode produced an empty plan.")
+            feedback.append("No plan available.")
 
         thread_id = config.get("configurable", {}).get("thread_id")
         if thread_id:
