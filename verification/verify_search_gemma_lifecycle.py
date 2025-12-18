@@ -12,7 +12,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 # Config (override with env vars)
-BACKEND_PORT = int(os.environ.get("BACKEND_PORT", "8000"))
+BACKEND_PORT = int(os.environ.get("BACKEND_PORT", "8123"))
 FRONTEND_PORT = int(os.environ.get("FRONTEND_PORT", "5173"))
 BACKEND_URL = f"http://localhost:{BACKEND_PORT}"
 FRONTEND_URL = f"http://localhost:{FRONTEND_PORT}"
@@ -26,7 +26,7 @@ ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 ENV_VARS = os.environ.copy()
 REPO_ROOT = Path.cwd()
 BACKEND_SRC = REPO_ROOT / "backend" / "src"
-ENV_VARS["PYTHONPATH"] = f"{BACKEND_SRC}:{ENV_VARS.get('PYTHONPATH','')}"
+ENV_VARS["PYTHONPATH"] = f"{REPO_ROOT}:{BACKEND_SRC}:{ENV_VARS.get('PYTHONPATH','')}"
 ENV_VARS.update({
     "QUERY_MODEL": GEMMA_MODEL,
     "REFLECTION_MODEL": GEMMA_MODEL,
@@ -37,6 +37,7 @@ ENV_VARS.update({
     "PLANNER_MODEL": GEMMA_MODEL,
     "OPTIMIZER_MODEL": GEMMA_MODEL,
     "MCP_ENABLED": "false",
+    "VITE_API_URL": BACKEND_URL,
 })
 
 def wait_for_service(url, name, timeout=TIMEOUT):
@@ -92,14 +93,14 @@ def run_verification():
 
     try:
         # Backend
-        print("[run] Starting backend (uvicorn)...")
+        print("[run] Starting backend (langgraph_cli dev)...")
         backend_stdout = ARTIFACT_DIR / "backend.stdout.log"
         backend_stderr = ARTIFACT_DIR / "backend.stderr.log"
-        # Use python -m uvicorn explicitly to avoid path issues
-        backend_cmd = [sys.executable, "-m", "uvicorn", "agent.app:app", "--host", "0.0.0.0", "--port", str(BACKEND_PORT)]
+        # Use python -m langgraph_cli dev to run the standard server
+        backend_cmd = [sys.executable, "-m", "langgraph_cli", "dev", "--host", "0.0.0.0", "--port", str(BACKEND_PORT), "--no-browser"]
         backend_proc = start_process(backend_cmd, cwd=REPO_ROOT / "backend", env=ENV_VARS, stdout_path=backend_stdout, stderr_path=backend_stderr)
 
-        if not wait_for_service(f"{BACKEND_URL}/health", "Backend", timeout=TIMEOUT):
+        if not wait_for_service(f"{BACKEND_URL}/ok", "Backend", timeout=TIMEOUT):
             print("[error] Backend failed to start; see logs")
             exit_code = 2
             return exit_code
@@ -137,8 +138,10 @@ def run_verification():
                     f.write(f"[{msg.type}] {msg.text}\n")
             page.on("console", on_console)
 
-            print(f"[run] Navigating to {FRONTEND_URL}")
-            page.goto(FRONTEND_URL, wait_until="domcontentloaded", timeout=30000)
+            # Vite serves at /app/ base path
+            target_url = f"{FRONTEND_URL}/app/" if not FRONTEND_URL.endswith("/app/") else FRONTEND_URL
+            print(f"[run] Navigating to {target_url}")
+            page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
             try:
                 page.wait_for_load_state("networkidle", timeout=10000)
             except Exception:

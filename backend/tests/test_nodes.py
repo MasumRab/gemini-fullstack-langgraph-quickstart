@@ -87,7 +87,24 @@ class TestGenerateQuery:
         mock_chain = MagicMock()
         mock_result = MagicMock()
         mock_result.query = ["query1", "query2", "query3"]
-        mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
+
+        # Determine behavior based on model (Gemma vs others)
+        # In tests, TEST_MODEL is typically gemma-3-27b-it
+        is_gemma = "gemma" in TEST_MODEL.lower()
+
+        if is_gemma:
+            # Mock raw invoke response content for PydanticParser
+            # It expects a JSON string matching the Pydantic model
+            import json
+            json_response = json.dumps({
+                "query": ["query1", "query2", "query3"],
+                "rationale": "Testing generation"
+            })
+            mock_message = AIMessage(content=json_response)
+            mock_chain.invoke.return_value = mock_message
+        else:
+            # Mock structured output for non-Gemma
+            mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
 
         # We need to mock _get_rate_limited_llm
         with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
@@ -99,7 +116,11 @@ class TestGenerateQuery:
             # Assert
             assert "search_query" in result
             assert len(result["search_query"]) == 3
-            mock_chain.with_structured_output.return_value.invoke.assert_called_once()
+
+            if is_gemma:
+                mock_chain.invoke.assert_called_once()
+            else:
+                mock_chain.with_structured_output.return_value.invoke.assert_called_once()
 
 
 # Tests for planning_mode
@@ -332,7 +353,19 @@ class TestReflection:
         mock_result.is_sufficient = False
         mock_result.knowledge_gap = "Gap"
         mock_result.follow_up_queries = ["query1"]
-        mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
+
+        is_gemma = "gemma" in TEST_MODEL.lower()
+        if is_gemma:
+            import json
+            json_response = json.dumps({
+                "is_sufficient": False,
+                "knowledge_gap": "Gap",
+                "follow_up_queries": ["query1"]
+            })
+            mock_message = AIMessage(content=json_response)
+            mock_chain.invoke.return_value = mock_message
+        else:
+            mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
 
         with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
             mock_get_llm.return_value = mock_chain
