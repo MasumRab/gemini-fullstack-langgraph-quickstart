@@ -68,11 +68,24 @@ class RateLimiter:
         # Daily reset tracking
         self._last_reset = datetime.now()
         
+        # ⚡ Bolt Optimization: Lazy cleanup timestamp
+        # Only cleanup if we are close to the limit or periodically (e.g. every 1 second).
+        # This prevents cleaning up on every single token estimation/check if calls are bursty.
+        self._last_cleanup = 0.0
+
         logger.info(f"Initialized RateLimiter for {model}: RPM={self.limits['rpm']}, TPM={self.limits['tpm']}, RPD={self.limits['rpd']}")
     
     def _cleanup_old_requests(self):
         """Remove requests older than tracking windows."""
         now = time.time()
+
+        # ⚡ Bolt Optimization: Throttle cleanup
+        # If less than 1 second passed since last cleanup, skip.
+        # This drastically reduces lock contention and overhead in high-throughput scenarios.
+        if now - self._last_cleanup < 1.0:
+            return
+
+        self._last_cleanup = now
         minute_ago = now - 60
         day_ago = now - 86400
         
