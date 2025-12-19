@@ -93,12 +93,19 @@ class TestGenerateQuery:
         is_gemma = "gemma" in TEST_MODEL.lower()
 
         if is_gemma:
-            # Mock raw invoke response content for PydanticParser
-            # It expects a JSON string matching the Pydantic model
+            # Mock raw invoke response content for tool adapter parsing.
+            # The tool adapter expects a JSON structure with "tool_calls" or a single tool call object.
             import json
             json_response = json.dumps({
-                "query": ["query1", "query2", "query3"],
-                "rationale": "Testing generation"
+                "tool_calls": [
+                    {
+                        "name": "SearchQueryList",
+                        "args": {
+                            "query": ["query1", "query2", "query3"],
+                            "rationale": "Testing generation"
+                        }
+                    }
+                ]
             })
             mock_message = AIMessage(content=json_response)
             mock_chain.invoke.return_value = mock_message
