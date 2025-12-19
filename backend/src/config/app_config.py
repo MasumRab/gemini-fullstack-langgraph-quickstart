@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Tuple, List
 import os
 import logging
 
@@ -44,6 +44,13 @@ class AppConfig:
     model_planning: str = os.getenv("MODEL_PLANNING", "gemini-2.5-flash")
     model_validation: str = os.getenv("MODEL_VALIDATION", "gemini-2.5-flash-lite")
     model_compression: str = os.getenv("MODEL_COMPRESSION", "gemini-2.5-flash-lite")
+
+    # Security Configuration
+    CORS_ORIGINS: List[str] = field(
+        default_factory=lambda: os.getenv(
+            "CORS_ORIGINS", "http://localhost:5173"
+        ).split(",")
+    )
 
     @classmethod
     def load(cls) -> "AppConfig":

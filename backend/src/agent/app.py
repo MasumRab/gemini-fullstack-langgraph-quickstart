@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from agent.mcp_config import load_mcp_settings
 from agent.security import SecurityHeadersMiddleware
 from agent.tools_and_schemas import MCP_TOOLS, get_tools_from_mcp
+from config.app_config import app_config
 from config.validation import check_env_strict
 
 
@@ -53,7 +54,8 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # Sentinel: Restrict CORS to allowed origins from config
+    allow_origins=app_config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
