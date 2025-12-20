@@ -96,11 +96,19 @@ class TestGenerateQuery:
             # Mock raw invoke response content for PydanticParser
             # It expects a JSON string matching the Pydantic model
             import json
+            # Correctly mock tool calls format for Gemma
             json_response = json.dumps({
-                "query": ["query1", "query2", "query3"],
-                "rationale": "Testing generation"
+                "tool_calls": [
+                    {
+                        "name": "SearchQueryList",
+                        "args": {
+                            "query": ["query1", "query2", "query3"],
+                            "rationale": "Testing generation"
+                        }
+                    }
+                ]
             })
-            mock_message = AIMessage(content=json_response)
+            mock_message = AIMessage(content=f"```json\n{json_response}\n```")
             mock_chain.invoke.return_value = mock_message
         else:
             # Mock structured output for non-Gemma
@@ -357,6 +365,8 @@ class TestReflection:
         is_gemma = "gemma" in TEST_MODEL.lower()
         if is_gemma:
             import json
+            # Correctly mock tool calls format for Gemma if used, OR just the Pydantic JSON since reflection uses PydanticOutputParser for Gemma
+            # Looking at nodes.py: reflection uses PydanticOutputParser for Gemma
             json_response = json.dumps({
                 "is_sufficient": False,
                 "knowledge_gap": "Gap",
@@ -375,7 +385,6 @@ class TestReflection:
 
             # Assert
             assert "follow_up_queries" in result
-            assert "research_loop_count" in result
             assert result["research_loop_count"] == 2
 
 
@@ -406,4 +415,3 @@ class TestFinalizeAnswer:
             assert "messages" in result
             assert len(result["messages"]) > 0
             assert isinstance(result["messages"][0], AIMessage)
-
