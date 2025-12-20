@@ -130,11 +130,16 @@ class DeepSearchRAG:
         self.max_context_chunks = max_context_chunks
         self.subgoal_evidence_map: Dict[str, List[int]] = {} # Primarily tracks FAISS IDs if active
 
-    def retrieve_from_chroma(self, query: str, top_k: int) -> List[Tuple[EvidenceChunk, float]]:
+    def retrieve_from_chroma(self, query: str, top_k: int, query_embedding: Optional[List[float]] = None) -> List[Tuple[EvidenceChunk, float]]:
         """Retrieve directly from Chroma store if enabled."""
         if not self.use_chroma:
             raise ValueError("Chroma not enabled")
-        embedding = self.embedder.encode(query).tolist()
+
+        # ⚡ Bolt Optimization: Use pre-computed embedding if provided
+        if query_embedding is not None:
+            embedding = query_embedding
+        else:
+            embedding = self.embedder.encode(query).tolist()
 
         # Map ChromaEvidenceChunk back to EvidenceChunk
         results = self.chroma.retrieve(query, top_k=top_k, query_embedding=embedding)
@@ -257,7 +262,8 @@ class DeepSearchRAG:
         query: str,
         top_k: int = 10,
         subgoal_filter: Optional[str] = None,
-        min_score: float = 0.0
+        min_score: float = 0.0,
+        query_embedding: Optional[List[float]] = None
     ) -> List[Tuple[EvidenceChunk, float]]:
         """
         Retrieve relevant evidence.
@@ -267,17 +273,23 @@ class DeepSearchRAG:
         read_source = self.config.rag_store
 
         if read_source == "chroma" and self.use_chroma and CHROMA_AVAILABLE:
-            return self.retrieve_from_chroma(query, top_k)
+            return self.retrieve_from_chroma(query, top_k, query_embedding=query_embedding)
 
         elif self.use_faiss:
             # Existing FAISS logic
             if self.index_with_ids.ntotal == 0:
                 return []
 
-            query_embedding = self.embedder.encode(query)
+            # ⚡ Bolt Optimization: Use pre-computed embedding if provided
+            if query_embedding is not None:
+                q_emb = np.array([query_embedding], dtype=np.float32)
+            else:
+                raw_emb = self.embedder.encode(query)
+                q_emb = np.array([raw_emb], dtype=np.float32)
+
             k_search = min(top_k * 2, self.index_with_ids.ntotal)
             distances, indices = self.index_with_ids.search(
-                np.array([query_embedding], dtype=np.float32),
+                q_emb,
                 k=k_search
             )
 
@@ -396,12 +408,36 @@ Respond in JSON format:
 
     def get_context_for_synthesis(self, query: str, max_tokens: int = 4000, subgoal_ids: Optional[List[str]] = None) -> str:
         all_chunks = []
+
+        # ⚡ Bolt Optimization: Pre-compute query embedding once for all subgoals
+        # This avoids re-encoding the same query N times (where N = len(subgoal_ids))
+        query_embedding = None
+        if self.embedder:
+            try:
+                raw_emb = self.embedder.encode(query)
+                # Handle numpy array vs list
+                if hasattr(raw_emb, "tolist"):
+                    query_embedding = raw_emb.tolist()
+                else:
+                    query_embedding = raw_emb
+            except Exception as e:
+                logger.warning(f"Failed to pre-compute embedding: {e}")
+
         if subgoal_ids:
             for sg_id in subgoal_ids:
-                chunks = self.retrieve(query=query, subgoal_filter=sg_id, top_k=self.max_context_chunks)
+                chunks = self.retrieve(
+                    query=query,
+                    subgoal_filter=sg_id,
+                    top_k=self.max_context_chunks,
+                    query_embedding=query_embedding
+                )
                 all_chunks.extend(chunks)
         else:
-            all_chunks = self.retrieve(query=query, top_k=self.max_context_chunks)
+            all_chunks = self.retrieve(
+                query=query,
+                top_k=self.max_context_chunks,
+                query_embedding=query_embedding
+            )
 
         seen_content = set()
         unique_chunks = []
