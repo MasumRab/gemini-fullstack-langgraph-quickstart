@@ -3,12 +3,16 @@ import os
 import sys
 
 # Setup Path
-sys.path.append(os.getcwd())
-sys.path.append(os.path.join(os.getcwd(), "backend", "src"))
+# Setup Path
+# If running from backend root
+sys.path.append(os.path.join(os.getcwd(), "src"))
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from langchain_core.messages import HumanMessage
-from backend.src.agent.graph import graph
-from backend.src.config.app_config import config
+from agent.graph import graph
+from config.app_config import config
 
 async def run_full_flow():
     """Execute full agent flow verification."""

@@ -91,7 +91,6 @@ def _get_rate_limited_llm(model: str, temperature: float = 0, max_retries: int =
     return ChatGoogleGenerativeAI(
         model=model,
         temperature=temperature,
-        max_retries=0,
         api_key=os.getenv("GEMINI_API_KEY"),
     )
 
