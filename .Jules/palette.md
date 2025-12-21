@@ -1,9 +1,11 @@
 # Palette's Journal
 
-## 2025-02-18 - First Impressions
-**Learning:** The codebase uses `SidebarProvider` which conveniently wraps the app in `TooltipProvider`. This is a good pattern as it avoids prop drilling or repeated wrapping for tooltips.
-**Action:** Always check `root.tsx` or main layout providers before adding global providers like `TooltipProvider`.
+This journal tracks critical UX and accessibility learnings. It is NOT a log of routine work.
 
-## 2025-02-18 - Dependency Constraints
-**Learning:** Adding new dependencies (even devDependencies like `@tailwindcss/vite`) to a `pnpm` workspace can cause major lockfile churn and conflicts.
-**Action:** Strictly adhere to "Zero Dependency" for micro-UX tasks unless explicitly authorized. Use native HTML attributes or existing utilities.
+## 2024-05-24 - Focus Visibility Constraints
+**Learning:** The design system intentionally suppressed default focus rings (`focus:ring-0`) on the main input to create a "clean" look, inadvertently confusing keyboard users who rely on focus indicators.
+**Action:** When customizing input styles, explicitly define `focus-visible` states that harmonize with the design (e.g., using neutral rings) rather than removing them entirely.
+## 2024-05-22 - Accessibility Gaps in Icon-Only Buttons
+**Learning:** The codebase frequently uses icon-only buttons (like the "Stop Generating" button) without associated `aria-label` or accessible names, making them invisible to screen readers.
+**Action:** Audit icon-only buttons during component creation and strictly enforce `aria-label` or `sr-only` text descriptions.
+## 2024-05-23 - Accessibility Gaps in Input Forms **Learning:** Several interactive elements (Textarea, icon-only Buttons) in the main `InputForm` lacked accessible names (`aria-label` or `<label>`), making them difficult for screen reader users to identify. **Action:** Audit all new interactive components for visible labels or `aria-label` attributes, especially when using icon-only designs or custom inputs.

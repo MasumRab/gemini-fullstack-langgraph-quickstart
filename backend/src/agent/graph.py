@@ -47,6 +47,12 @@ builder = StateGraph(OverallState, context_schema=Configuration)
 # For now, this is a placeholder wiring to satisfy the requirement of "Agent Wiring"
 if mcp_settings.enabled:
     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
+    # Note: Tools are loaded into agent.tools_and_schemas.MCP_TOOLS during app startup.
+    # Nodes can access them from there at runtime.
+    # TODO: [MCP Integration] Bind MCP tools to 'web_research' or new 'tool_node'.
+    # See docs/tasks/01_MCP_TASKS.md
+    # Subtask: In `web_research` (or new node), bind these tools to the LLM.
+    # builder.bind_tools(mcp_tools)
     # In future: builder.bind_tools(mcp_tools)
     # builder.bind_tools([save_plan_tool, load_plan_tool]) # Example wiring
 
@@ -68,6 +74,11 @@ builder.add_edge(START, "load_context")
 builder.add_edge("load_context", "generate_query")
 # TODO: Future - Insert 'save_plan' step here to persist the generated plan automatically
 builder.add_edge("generate_query", "planning_mode")
+
+# TODO: [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
+# See docs/tasks/02_OPEN_SWE_TASKS.md
+# Subtask: Create routing logic: `if pending_tasks: return "web_research" else: return "finalize"`.
+
 builder.add_conditional_edges(
     "planning_mode", planning_router, ["planning_wait", "web_research"]
 )

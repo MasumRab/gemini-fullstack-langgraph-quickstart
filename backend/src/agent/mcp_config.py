@@ -46,6 +46,10 @@ def validate(settings: MCPSettings) -> None:
     if settings.enabled and not settings.endpoint:
         raise ValueError("MCP enabled but MCP_ENDPOINT missing")
 
+# TODO: [MCP Integration] Implement full McpConnectionManager with SSE support.
+# Should handle connection pooling and error recovery.
+# Subtask: Implement `McpConnectionManager` class.
+# Subtask: Support SSE transport via HTTP/S endpoint.
 class McpConnectionManager:
     """
     Manages connections to MCP servers (both internal and external).
