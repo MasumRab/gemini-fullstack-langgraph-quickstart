@@ -136,6 +136,11 @@ const mdComponents = {
   ),
 };
 
+// ⚡ Bolt Optimization: Define remark plugins as a constant to ensure referential stability.
+// Passing a new array [remarkGfm] on every render breaks ReactMarkdown's internal memoization
+// and can cause unnecessary re-processing/re-rendering of the entire markdown tree.
+const markdownPlugins = [remarkGfm];
+
 // Props for HumanMessageBubble
 interface HumanMessageBubbleProps {
   message: Message;
@@ -151,7 +156,7 @@ const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
     <div
       className={`text-white rounded-3xl break-words min-h-7 bg-neutral-700 max-w-[100%] sm:max-w-[90%] px-4 pt-3 rounded-br-lg`}
     >
-      <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown components={mdComponents} remarkPlugins={markdownPlugins}>
         {typeof message.content === "string"
           ? message.content
           : JSON.stringify(message.content)}
@@ -200,7 +205,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
           />
         </div>
       )}
-      <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown components={mdComponents} remarkPlugins={markdownPlugins}>
         {typeof message.content === "string"
           ? message.content
           : JSON.stringify(message.content)}
