@@ -100,12 +100,19 @@ export const InputForm: React.FC<InputFormProps> = memo(({
       <div className="flex items-center justify-between">
         <div className="flex flex-row gap-2">
           <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 rounded-xl rounded-t-sm pl-2  max-w-[100%] sm:max-w-[90%]">
-            <label htmlFor="effort-select" className="flex flex-row items-center text-sm cursor-pointer">
+            <label
+              htmlFor="effort-select"
+              className="flex flex-row items-center text-sm cursor-pointer"
+            >
               <Brain className="h-4 w-4 mr-2" />
               Effort
             </label>
             <Select value={effort} onValueChange={setEffort}>
-              <SelectTrigger id="effort-select" aria-label="Effort selection" className="w-[120px] bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-neutral-500">
+              <SelectTrigger
+                id="effort-select"
+                aria-label="Effort selection"
+                className="w-[120px] bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-neutral-500"
+              >
                 <SelectValue placeholder="Effort" />
               </SelectTrigger>
               <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer">
@@ -131,12 +138,19 @@ export const InputForm: React.FC<InputFormProps> = memo(({
             </Select>
           </div>
           <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 rounded-xl rounded-t-sm pl-2  max-w-[100%] sm:max-w-[90%]">
-            <label htmlFor="model-select" className="flex flex-row items-center text-sm ml-2 cursor-pointer">
+            <label
+              htmlFor="model-select"
+              className="flex flex-row items-center text-sm ml-2 cursor-pointer"
+            >
               <Cpu className="h-4 w-4 mr-2" />
               Model
             </label>
             <Select value={model} onValueChange={setModel}>
-              <SelectTrigger id="model-select" aria-label="Model selection" className="w-[150px] bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-neutral-500">
+              <SelectTrigger
+                id="model-select"
+                aria-label="Model selection"
+                className="w-[150px] bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-neutral-500"
+              >
                 <SelectValue placeholder="Model" />
               </SelectTrigger>
               <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer">
