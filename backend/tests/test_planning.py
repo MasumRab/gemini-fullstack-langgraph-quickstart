@@ -115,7 +115,7 @@ class TestPlanningMode:
         result = planning_mode(base_planning_state, config=no_confirmation_config)
 
         assert result["planning_steps"] == []
-        assert "empty plan" in " ".join(result["planning_feedback"]).lower()
+        assert "generated 0 plan steps. no plan available." in " ".join(result["planning_feedback"]).lower()
 
     def test_generates_feedback_message(self, base_planning_state, no_confirmation_config):
         """Should generate feedback about the number of steps."""
@@ -291,7 +291,7 @@ def test_planning_mode_handles_empty_search_query():
     )
 
     assert result["planning_steps"] == []
-    assert "No queries available" in " ".join(result["planning_feedback"])
+    assert "Generated 0 plan steps. No plan available." in " ".join(result["planning_feedback"])
 
 
 def test_planning_mode_with_require_confirmation_flag():
