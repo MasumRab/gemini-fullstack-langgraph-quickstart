@@ -90,6 +90,7 @@ class OverallState(ScopingState, TypedDict, total=False):
 
     outline: Outline | None
     evidence_bank: Annotated[list[Evidence], operator.add]
+    current_task_idx: int | None
     initial_search_query_count: int
     max_research_loops: int
     research_loop_count: int

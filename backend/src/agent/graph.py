@@ -19,6 +19,9 @@ from agent.nodes import (
     reflection,
     finalize_answer,
     evaluate_research,
+    update_plan,
+    select_next_task,
+    execution_router,
 )
 from agent.kg import kg_enrich # New Node
 from agent.mcp_config import load_mcp_settings, validate
@@ -77,6 +80,8 @@ builder.add_node("compression_node", compression_node) # Add Compression
 builder.add_node("kg_enrich", kg_enrich) # Add KG Pilot
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
+builder.add_node("update_plan", update_plan)
+builder.add_node("select_next_task", select_next_task)
 
 builder.add_edge(START, "load_context")
 builder.add_edge("load_context", "scoping_node")
@@ -99,11 +104,14 @@ builder.add_edge("generate_plan", "planning_mode")
 # Subtask: Create routing logic: `if pending_tasks: return "web_research" else: return "finalize"`.
 
 builder.add_conditional_edges(
-    "planning_mode", planning_router, ["planning_wait", "web_research"]
+    "planning_mode", planning_router, ["planning_wait", "select_next_task"]
 )
 builder.add_conditional_edges(
-    "planning_wait", planning_router, ["planning_wait", "web_research"]
+    "planning_wait", planning_router, ["planning_wait", "select_next_task"]
 )
+
+# New execution loop wiring
+builder.add_edge("select_next_task", "web_research")
 builder.add_edge("web_research", "validate_web_results")
 
 # Pipeline: Validate -> Compression -> KG Enrich -> Reflection
@@ -111,8 +119,12 @@ builder.add_edge("validate_web_results", "compression_node")
 builder.add_edge("compression_node", "kg_enrich")
 builder.add_edge("kg_enrich", "reflection")
 
+# Reflection now goes to update_plan instead of evaluate_research
+builder.add_edge("reflection", "update_plan")
+
+# Update plan goes to execution_router to decide next step
 builder.add_conditional_edges(
-    "reflection", evaluate_research, ["web_research", "finalize_answer"]
+    "update_plan", execution_router, ["select_next_task", "finalize_answer"]
 )
 builder.add_edge("finalize_answer", END)
 

@@ -372,7 +372,14 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
     If MCP tools are available, uses an LLM to decide whether to search or use a tool.
     """
     with observe_span("web_research", config):
-        query = state["search_query"]
+        # Handle both list (from OverallState) and str (from Send)
+        raw_query = state.get("search_query")
+        if isinstance(raw_query, list):
+            # Use the most recent query if it's a list
+            query = raw_query[-1] if raw_query else ""
+        else:
+            query = raw_query
+
         configurable = Configuration.from_runnable_config(config)
 
         # Helper to format search results (used by both paths)
@@ -640,9 +647,16 @@ def planning_wait(state: OverallState) -> OverallState:
     }
 
 
+@graph_registry.describe(
+    "update_plan",
+    summary="Updates the plan by marking the current task as done and adding follow-up tasks.",
+    tags=["planning", "state-update"],
+    outputs=["plan"],
+)
 def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Refines the research plan based on new findings.
+<<<<<<< HEAD
 
     Reads the current plan and the latest web research results (accumulated),
     then prompts the LLM to update the plan (mark done, add new tasks).
@@ -742,6 +756,34 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                 return {"plan": current_plan}
 
         return {"plan": plan_todos}
+
+
+@graph_registry.describe(
+    "select_next_task",
+    summary="Selects the next pending task from the plan for execution.",
+    tags=["planning", "routing"],
+    outputs=["current_task_idx", "search_query"],
+)
+def select_next_task(state: OverallState, config: RunnableConfig) -> OverallState:
+    """Selects the next pending task from the plan."""
+    plan = state.get("plan", [])
+    for idx, task in enumerate(plan):
+        if task.get("status") == "pending":
+            return {
+                "current_task_idx": idx,
+                "search_query": [task.get("query") or task.get("title")]
+            }
+
+    # Should be handled by execution_router, but safety fallback
+    return {"current_task_idx": None}
+
+
+def execution_router(state: OverallState) -> str:
+    """Routes to next task or final answer based on plan status."""
+    plan = state.get("plan", [])
+    if any(t.get("status") == "pending" for t in plan):
+        return "select_next_task"
+    return "finalize_answer"
 
 def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
     """
@@ -976,16 +1018,19 @@ def planning_router(state: OverallState, config: RunnableConfig):
 
     if last_content.startswith("/end_plan"):
         state["planning_status"] = "auto_approved"
-        return continue_to_web_research(state)
+        # Switch to sequential execution via select_next_task
+        return "select_next_task"
 
     if last_content.startswith("/confirm_plan"):
         state["planning_status"] = "confirmed"
-        return continue_to_web_research(state)
+        # Switch to sequential execution via select_next_task
+        return "select_next_task"
 
     if getattr(configurable, "require_planning_confirmation", False) and planning_status != "confirmed":
         return "planning_wait"
 
-    return continue_to_web_research(state)
+    # Default: Proceed to execution (sequential)
+    return "select_next_task"
 
 
 def _flatten_queries(queries: List) -> List[str]:
