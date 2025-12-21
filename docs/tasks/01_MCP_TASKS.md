@@ -15,16 +15,14 @@ The MCP (Model Context Protocol) integration has been successfully implemented w
   - Planned tool sequence generation
   - LLM-driven tool planning capability
 
-<<<<<<< HEAD
+## Remaining Tasks
+
 ### Phase 1: Infrastructure Setup
 - [x] **Install Python Dependencies**
     - Action: Add `langchain-mcp-adapters` and `mcp` to `requirements.txt` / `pyproject.toml`.
     - Verification: `pip install -r requirements.txt` succeeds. (Dependencies already present in `pyproject.toml`).
-=======
-## Remaining Tasks
->>>>>>> origin/main
 
-### Phase 1: Integration & Testing
+### Phase 2: Integration & Testing
 - [ ] **Integrate MCP Tools into Agent Graph**
     - Action: Update `backend/src/agent/tools_and_schemas.py`
     - Subtask: Create `get_global_tools()` function that aggregates MCP tools + custom tools
@@ -32,8 +30,11 @@ The MCP (Model Context Protocol) integration has been successfully implemented w
     - Subtask: Create `MCPToolUser` instance and register with agent
     - Verification: Ensure the list of tools includes `read_file`, `write_file`, `list_directory`
 
-<<<<<<< HEAD
-### Phase 2: Configuration & Code
+- [ ] **Update Graph Nodes**
+    - Action: Modify `backend/src/agent/nodes.py` or create new MCP-specific node
+    - Subtask: Bind MCP tools to LLM in appropriate nodes (e.g., `web_research`, `finalize_answer`)
+    - Verification: Verify LLM can see the file tools in its schema
+
 - [x] **Create `backend/src/agent/mcp_config.py`**
     - [x] Subtask: Implement `MCPSettings` dataclass and loader.
     - [x] Subtask: Add `validate` function.
@@ -49,18 +50,6 @@ The MCP (Model Context Protocol) integration has been successfully implemented w
     - Subtask: Add `get_global_tools()` function that aggregates MCP tools + custom tools.
     - Note: Perform this incrementally. Start with `load_plan` and `save_plan`.
     - Verification: Ensure the list of tools includes `read_file`, `write_file` (from MCP).
-=======
-- [ ] **Update Graph Nodes**
-    - Action: Modify `backend/src/agent/nodes.py` or create new MCP-specific node
-    - Subtask: Bind MCP tools to LLM in appropriate nodes (e.g., `web_research`, `finalize_answer`)
-    - Verification: Verify LLM can see the file tools in its schema
-
-- [x] **Create `backend/src/agent/mcp_config.py`**
-    - [x] Subtask: Implement `MCPSettings` dataclass and loader.
-    - [x] Subtask: Add `validate` function.
-    - [x] Subtask: Add `McpConnectionManager` stub.
-    - Code: `backend/src/agent/mcp_config.py`
->>>>>>> origin/main
 
 ### Phase 2: Testing & Validation
 - [ ] **Create MCP Integration Tests**

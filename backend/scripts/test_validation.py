@@ -1,10 +1,6 @@
 from typing import Dict, Any, List
 import logging
-<<<<<<< HEAD
-from backend.src.agent.nodes import validate_web_results
-=======
 from agent.nodes import validate_web_results
->>>>>>> origin/main
 
 logger = logging.getLogger(__name__)
 
