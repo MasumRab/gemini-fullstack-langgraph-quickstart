@@ -3,8 +3,12 @@ import os
 import sys
 
 # Setup Path
-sys.path.append(os.getcwd())
-sys.path.append(os.path.join(os.getcwd(), "backend", "src"))
+# Setup Path
+# If running from backend root
+sys.path.append(os.path.join(os.getcwd(), "src"))
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from langchain_core.messages import HumanMessage
 from agent.graph import graph
@@ -21,7 +25,7 @@ async def run_full_flow():
         "initial_search_query_count": 1 # Keep it fast
     }
 
-    config_run = {"configurable": {"thread_id": "test_thread_1"}}
+    config_run = {"configurable": {"thread_id": "test_thread_1"}, "recursion_limit": 50}
 
     # Run the graph
     print("Invoking graph...")

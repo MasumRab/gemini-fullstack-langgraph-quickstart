@@ -9,7 +9,7 @@ from agent.registry import graph_registry
 from agent.nodes import (
     load_context,
     scoping_node, # New Node
-    generate_query,
+    generate_plan,
     planning_mode,
     planning_wait,
     planning_router,
@@ -68,7 +68,7 @@ if mcp_settings.enabled:
 
 builder.add_node("load_context", load_context)
 builder.add_node("scoping_node", scoping_node)
-builder.add_node("generate_query", generate_query)
+builder.add_node("generate_plan", generate_plan)
 builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
 builder.add_node("web_research", web_research)
@@ -85,14 +85,14 @@ def scoping_router(state: OverallState) -> str:
     """Route based on scoping status."""
     if state.get("scoping_status") == "active":
         return "planning_wait" # Reusing planning_wait to pause for user input
-    return "generate_query"
+    return "generate_plan"
 
 builder.add_conditional_edges(
-    "scoping_node", scoping_router, ["planning_wait", "generate_query"]
+    "scoping_node", scoping_router, ["planning_wait", "generate_plan"]
 )
 
-# builder.add_edge("generate_query", "planning_mode") # Removed as it's destination of router
-builder.add_edge("generate_query", "planning_mode")
+# builder.add_edge("generate_plan", "planning_mode") # Removed as it's destination of router
+builder.add_edge("generate_plan", "planning_mode")
 
 # TODO(priority=Medium, complexity=Medium): [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
 # See docs/tasks/02_OPEN_SWE_TASKS.md
@@ -124,13 +124,13 @@ graph_registry.document_edge(
 )
 graph_registry.document_edge(
     "scoping_node",
-    "generate_query",
-    description="If query is clear, proceed to query generation.",
+    "generate_plan",
+    description="If query is clear, proceed to plan generation.",
 )
 graph_registry.document_edge(
-    "generate_query",
+    "generate_plan",
     "planning_mode",
-    description="Initial queries are summarized into a plan for user review.",
+    description="Initial plan is prepared for user review.",
 )
 graph_registry.document_edge(
     "planning_mode",

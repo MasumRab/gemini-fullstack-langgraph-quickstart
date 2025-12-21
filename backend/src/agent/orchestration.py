@@ -22,7 +22,7 @@ Usage:
     graph = build_orchestrated_graph(
         tools=registry,
         agents=agents,
-        coordinator_model="gemini-2.5-pro",
+        coordinator_model=GEMINI_PRO,
     )
 """
 
@@ -32,13 +32,14 @@ from dataclasses import dataclass, field
 import logging
 
 from langchain_core.runnables import RunnableConfig
-from langchain_core.tools import BaseTool, tool as create_tool
+from langchain_core.tools import BaseTool, StructuredTool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
 
 from agent.state import OverallState
 from agent.configuration import Configuration
+from agent.models import GEMINI_PRO
 
 logger = logging.getLogger(__name__)
 
@@ -154,9 +155,11 @@ class ToolRegistry:
             if category and spec.category != category:
                 continue
             # Convert to LangChain tool
-            lc_tool = create_tool(spec.func)
-            lc_tool.name = spec.name
-            lc_tool.description = spec.description
+            lc_tool = StructuredTool.from_function(
+                func=spec.func,
+                name=spec.name,
+                description=spec.description,
+            )
             tools.append(lc_tool)
         return tools
 
@@ -291,7 +294,7 @@ class AgentPool:
 def create_coordinator_node(
     tools: ToolRegistry,
     agents: AgentPool,
-    model: str = "gemini-2.5-pro",
+    model: str = GEMINI_PRO,
 ):
     """Create a coordinator node that routes to tools or agents.
 
@@ -390,7 +393,7 @@ def create_task_router(agents: AgentPool):
 def build_orchestrated_graph(
     tools: Optional[ToolRegistry] = None,
     agents: Optional[AgentPool] = None,
-    coordinator_model: str = "gemini-2.5-pro",
+    coordinator_model: str = GEMINI_PRO,
     name: str = "orchestrated-agent",
 ) -> StateGraph:
     """Build a graph with coordinator-based orchestration.
@@ -482,3 +485,4 @@ def get_default_registry() -> ToolRegistry:
 def get_default_pool() -> AgentPool:
     """Get an AgentPool with default agents loaded."""
     return AgentPool()
+

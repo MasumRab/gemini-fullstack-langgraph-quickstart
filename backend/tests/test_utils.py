@@ -6,10 +6,16 @@ All tests are designed to be path-insensitive and robust to minor changes.
 import pytest
 from typing import List
 
-from conftest import (
-    MockSegment, MockChunk, MockSupport, MockCandidate, MockResponse, MockSite,
-    make_human_message, make_ai_message,
+from tests.helpers import (
+    MockSegment, MockChunk, MockSupport, MockCandidate, MockResponse, MockSite
 )
+from langchain_core.messages import HumanMessage, AIMessage
+
+def make_human_message(content):
+    return HumanMessage(content=content)
+
+def make_ai_message(content):
+    return AIMessage(content=content)
 from agent.utils import (
     get_research_topic,
     resolve_urls,

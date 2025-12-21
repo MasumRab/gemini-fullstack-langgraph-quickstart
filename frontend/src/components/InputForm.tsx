@@ -30,7 +30,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
 }) => {
   const [internalInputValue, setInternalInputValue] = useState("");
   const [effort, setEffort] = useState("medium");
-  // Default to gemma-3-27b-it as it is the standard accessible model
+  // Default to gemma-3-27b-it
   const [model, setModel] = useState("gemma-3-27b-it");
 
   const handleInternalSubmit = (e?: React.FormEvent) => {

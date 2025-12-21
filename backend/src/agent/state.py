@@ -21,6 +21,7 @@ class Todo(TypedDict, total=False):
     """
     id: str
     title: str
+    query: str | None # Search query derived from title or explicit
     description: str | None
     done: bool
     status: str | None  # pending/done/in_progress
@@ -86,7 +87,6 @@ class OverallState(ScopingState, TypedDict, total=False):
 
     # TODO(priority=High, complexity=Low): [SOTA Deep Research] Add 'evidence_bank' (List[Evidence]) for ManuSearch.
     # Subtask: Add `evidence_bank: Annotated[list, operator.add]` to OverallState.
-
     initial_search_query_count: int
     max_research_loops: int
     research_loop_count: int
