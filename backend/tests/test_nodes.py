@@ -53,6 +53,7 @@ def config():
     return RunnableConfig(
         configurable={
             "model": TEST_MODEL,
+            "query_generator_model": TEST_MODEL,
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": False,
@@ -66,6 +67,7 @@ def config_with_confirmation():
     return RunnableConfig(
         configurable={
             "model": TEST_MODEL,
+            "query_generator_model": TEST_MODEL,
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": True,
