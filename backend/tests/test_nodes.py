@@ -98,8 +98,12 @@ class TestGenerateQuery:
             # It expects a JSON string matching the Pydantic model
             import json
             json_response = json.dumps({
-                "query": ["query1", "query2", "query3"],
-                "rationale": "Testing generation"
+                "tool_calls": [{
+                    "name": "SearchQueryList",
+                    "args": {
+                        "query": ["query1", "query2", "query3"]
+                    }
+                }]
             })
             mock_message = AIMessage(content=json_response)
             mock_chain.invoke.return_value = mock_message

@@ -29,7 +29,7 @@ class Configuration(BaseModel):
     )
 
     answer_model: str = Field(
-        default="gemini-2.5-pro",
+        default=DEFAULT_ANSWER_MODEL,
         json_schema_extra={
             "description": "The name of the language model to use for the agent's answer. Uses Gemini 2.5 Pro for highest quality synthesis with advanced reasoning."
         },
