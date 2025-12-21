@@ -42,8 +42,8 @@ if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
 
 # Create our Agent Graph using the standard builder wiring
-# Note: LangGraph v1.0 deprecates config_schema in favor of context_schema
-builder = StateGraph(OverallState, context_schema=Configuration)
+# Note: LangGraph v1.0 deprecates config_schema in favor of context_schema (Comment may be outdated for v0.2)
+builder = StateGraph(OverallState, config_schema=Configuration)
 
 
 # If MCP is enabled, we would register MCP tools here or modify the schema
