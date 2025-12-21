@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, TypedDict
+from typing import Dict, List, TypedDict
 
 from langgraph.graph import add_messages
 from typing_extensions import Annotated
@@ -25,6 +25,14 @@ class Todo(TypedDict, total=False):
     done: bool
     status: str | None  # pending/done/in_progress
     result: str | None
+
+
+class Artifact(TypedDict):
+    id: str
+    content: str
+    type: str  # "markdown", "code", "html", "json"
+    title: str
+    version: int
 
 
 class ScopingState(TypedDict, total=False):
@@ -78,17 +86,12 @@ class OverallState(ScopingState, TypedDict, total=False):
 
     # TODO(priority=High, complexity=Low): [SOTA Deep Research] Add 'evidence_bank' (List[Evidence]) for ManuSearch.
     # Subtask: Add `evidence_bank: Annotated[list, operator.add]` to OverallState.
-
     initial_search_query_count: int
     max_research_loops: int
     research_loop_count: int
     reasoning_model: str
     todo_list: List[dict] | None  # Deprecated: Migration to 'plan' in progress. See docs/tasks/02_OPEN_SWE_TASKS.md
-    artifacts: dict | None
-    # TODO(priority=Low, complexity=Medium): [Open Canvas] Add specific ArtifactState or update 'artifacts' to Dict[str, Artifact]
-    # where Artifact is a TypedDict with content, type, version, etc.
-    # See docs/tasks/03_OPEN_CANVAS_TASKS.md
-    # Subtask: Define Artifact TypedDict (id, content, type, version).
+    artifacts: Dict[str, Artifact] | None
 
 
 class ReflectionState(TypedDict):

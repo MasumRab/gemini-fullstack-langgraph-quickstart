@@ -1,6 +1,6 @@
 import React from 'react';
 
-// TODO(priority=Low, complexity=Medium): [Open Canvas] Implement ArtifactView component.
+// TODO: [Open Canvas] Implement ArtifactView component.
 // See docs/tasks/03_OPEN_CANVAS_TASKS.md
 
 interface ArtifactViewProps {
@@ -16,9 +16,9 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, isOpen, onC
   return (
     <div className="artifact-view">
       {/*
-        TODO(priority=Low, complexity=Low): Implement split-pane layout support.
-        TODO(priority=Low, complexity=Medium): Render content based on type (Markdown vs Code).
-        TODO(priority=Low, complexity=Medium): Add edit controls if needed.
+        TODO: Implement split-pane layout support.
+        TODO: Render content based on type (Markdown vs Code).
+        TODO: Add edit controls if needed.
       */}
       <div className="artifact-header">
         <h3>Artifact Preview</h3>
