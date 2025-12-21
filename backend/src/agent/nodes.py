@@ -28,6 +28,7 @@ from agent.prompts import (
     answer_instructions,
     get_current_date,
     plan_writer_instructions,
+    plan_updater_instructions,
     reflection_instructions,
 )
 from agent.rate_limiter import get_context_manager, get_rate_limiter
@@ -644,14 +645,104 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Refines the research plan based on new findings.
 
-    TODO(priority=Medium, complexity=Medium): [Open SWE] Implement 'update_plan' Node
-    Logic: Read state.plan & state.web_research_result -> Prompt LLM -> Update Plan.
-    See docs/tasks/02_OPEN_SWE_TASKS.md
-    Subtask: Read `state.plan` and `state.web_research_result`.
-    Subtask: Prompt LLM: "Given the result, update the plan (mark done, add new tasks)."
-    Subtask: Parse output -> Update state.
+    Reads the current plan and the latest web research results (accumulated),
+    then prompts the LLM to update the plan (mark done, add new tasks).
     """
-    raise NotImplementedError("update_plan not implemented")
+    with observe_span("update_plan", config):
+        configurable = Configuration.from_runnable_config(config)
+
+        # Inputs
+        current_plan = state.get("plan", [])
+        # We use all accumulated research results to ensure the LLM has full context
+        # of what has been found so far.
+        results = state.get("web_research_result", [])
+
+        current_date = get_current_date()
+        research_topic = get_research_topic(state["messages"])
+
+        formatted_prompt = plan_updater_instructions.format(
+            current_date=current_date,
+            research_topic=research_topic,
+            current_plan=json.dumps(current_plan, indent=2),
+            research_results="\n\n".join(results)
+        )
+
+        # Truncate if needed
+        # We use the query_generator_model (or a specific planning model)
+        model_name = configurable.query_generator_model
+        context_mgr = get_context_manager(model_name)
+        formatted_prompt = context_mgr.truncate_to_fit(formatted_prompt)
+
+        # Get rate-limited LLM
+        llm = _get_rate_limited_llm(
+            model=model_name,
+            temperature=0, # Low temperature for plan updates to be deterministic/stable
+            prompt=formatted_prompt
+        )
+
+        plan_todos = []
+
+        # Check if we are using a Gemma model (requires prompt-based tool calling)
+        if is_gemma_model(model_name):
+            logger.info("Using Gemma adapter for plan update.")
+
+            # Reuse the "Plan" tool schema from tools_and_schemas.py
+            plan_tool_schema = {
+                "name": "Plan",
+                "description": "Output structured research plan.",
+                "parameters": Plan.model_json_schema()
+            }
+
+            schemas_list = [plan_tool_schema]
+            schemas_str = json.dumps(schemas_list, indent=2)
+
+            instruction = GEMMA_TOOL_INSTRUCTION.format(tool_schemas=schemas_str)
+            instruction += "\n\nCRITICAL: You MUST call the 'Plan' tool to provide your answer."
+
+            full_prompt = f"{instruction}\n\n{formatted_prompt}"
+
+            try:
+                response = llm.invoke(full_prompt)
+                content = response.content if hasattr(response, "content") else str(response)
+                tool_calls = parse_tool_calls(content)
+
+                for tc in tool_calls:
+                    if tc["name"] == "Plan":
+                        args = tc["args"]
+                        if "plan" in args:
+                            raw_plan = args["plan"]
+                            for item in raw_plan:
+                                todo = {
+                                    "title": item.get("title", ""),
+                                    "description": item.get("description", ""),
+                                    "status": item.get("status", "pending"),
+                                    "query": item.get("title", ""),
+                                }
+                                plan_todos.append(todo)
+                        break
+            except Exception as e:
+                logger.error(f"Gemma plan update failed: {e}")
+                # Fallback: keep existing plan to avoid data loss
+                return {"plan": current_plan}
+
+        else:
+            # Standard Gemini Path
+            structured_llm = llm.with_structured_output(Plan)
+            try:
+                result = structured_llm.invoke(formatted_prompt, config=config)
+                for item in result.plan:
+                    todo = {
+                        "title": item.title,
+                        "description": item.description,
+                        "status": item.status,
+                        "query": item.title
+                    }
+                    plan_todos.append(todo)
+            except Exception as e:
+                logger.error(f"Failed to update plan (Gemini): {e}")
+                return {"plan": current_plan}
+
+        return {"plan": plan_todos}
 
 def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
     """

@@ -155,3 +155,27 @@ Refine and improve this research report by:
 6. Ensuring the report directly addresses the research brief
 
 Provide the refined report:"""
+
+
+plan_updater_instructions = """You are an expert research planner. Your task is to update the research plan based on the latest findings.
+
+Current Date: {current_date}
+Research Topic: {research_topic}
+
+Current Plan:
+{current_plan}
+
+Latest Research Findings:
+{research_results}
+
+Instructions:
+1. Review the "Current Plan" and "Latest Research Findings".
+2. Mark any "pending" tasks as "done" if the findings sufficiently address them.
+3. If the findings reveal new avenues or if the original plan is insufficient, add new "pending" tasks.
+4. You may remove tasks that are no longer relevant, but prefer keeping a history of "done" tasks.
+5. Ensure the plan remains focused on the Research Topic.
+6. Do not create duplicate tasks.
+
+Format:
+- Output the *entire* updated plan as a JSON object with a "plan" key containing the list of tasks.
+"""
