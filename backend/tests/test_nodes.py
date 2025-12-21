@@ -78,9 +78,13 @@ class TestGeneratePlan:
     """Test suite for generate_plan node"""
 
     @patch("agent.nodes.plan_writer_instructions")
-    def test_generate_plan_creates_plan(self, mock_instructions, base_state, config):
+    @patch("agent.nodes.get_context_manager")
+    def test_generate_plan_creates_plan(self, mock_get_cm, mock_instructions, base_state, config):
         """Test that generate_plan creates the correct number of tasks"""
         # Setup
+        # Configure mocked context manager to avoid type errors with Mock prompt
+        mock_get_cm.return_value.truncate_to_fit.return_value = "Mock Prompt"
+        mock_instructions.format.return_value = "Mock Prompt"
         base_state["messages"] = [HumanMessage(content="What is quantum computing?")]
 
         # Use MagicMock to simulate the chain
