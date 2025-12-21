@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from agent.mcp_config import load_mcp_settings
-from agent.security import SecurityHeadersMiddleware
+from agent.security import SecurityHeadersMiddleware, RateLimitMiddleware
 from agent.tools_and_schemas import MCP_TOOLS, get_tools_from_mcp
 from config.app_config import config as app_config
 from config.validation import check_env_strict
@@ -60,7 +60,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add Security Headers (OUTERMOST - added last)
+# This ensures even 429 responses from RateLimiter (inner) get headers?
+# Wait: FastAPI executes middleware added *last* as the *outermost* layer.
+# Request -> SecurityHeaders -> RateLimit -> App
+# Response <- SecurityHeaders <- RateLimit <- App
+# If RateLimit returns 429, SecurityHeaders sees the response and adds headers.
+# Correct order: SecurityHeaders added LAST.
 app.add_middleware(SecurityHeadersMiddleware)
+
+# Add Rate Limiting (INNER - added before SecurityHeaders)
+# Limit to 100 requests per minute per IP for sensitive API endpoints
+app.add_middleware(
+    RateLimitMiddleware,
+    limit=100,
+    window=60,
+    protected_paths=["/agent", "/threads"]
+)
 
 
 @app.get("/health")

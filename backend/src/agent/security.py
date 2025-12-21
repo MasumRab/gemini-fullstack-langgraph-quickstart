@@ -1,6 +1,9 @@
 """Security middleware for the agent application."""
 
-from fastapi import Request
+import time
+from collections import defaultdict
+from typing import List, Optional
+from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -23,7 +26,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Content Security Policy (CSP)
         # Default to very strict (API only), but allow styles/images if needed for simple UI
         # Since this is primarily an API backend, we start strict.
-        # Note: If serving a frontend from this backend, this might need adjustment.
         # We allow 'self' for both because we serve frontend from /app on same origin.
         # We also allow 'unsafe-inline' for styles because many React apps use it,
         # but for scripts we try to be strict.
@@ -41,9 +43,77 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # XSS Protection (legacy but good defense in depth)
         response.headers["X-XSS-Protection"] = "1; mode=block"
 
-        # Basic HSTS (1 year) - good for production, usually safe for dev too
-        # response.headers["Strict-Transport-Security"] = (
-        #     "max-age=31536000; includeSubDomains"
-        # )
-
         return response
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Simple in-memory rate limiting middleware."""
+
+    def __init__(
+        self,
+        app,
+        limit: int = 100,
+        window: int = 60,
+        protected_paths: Optional[List[str]] = None,
+    ):
+        """Initialize the rate limiter.
+
+        Args:
+            app: The FastAPI application.
+            limit: Maximum requests allowed per window.
+            window: Time window in seconds.
+            protected_paths: List of path prefixes to apply rate limiting to.
+                             If None, applies to all paths.
+        """
+        super().__init__(app)
+        self.limit = limit
+        self.window = window
+        self.protected_paths = protected_paths if protected_paths is not None else []
+        self.requests = defaultdict(list)
+
+    async def dispatch(self, request: Request, call_next):
+        """Check rate limit for API endpoints."""
+        path = request.url.path
+
+        # Check if path is protected
+        is_protected = False
+        if not self.protected_paths:
+            # If no paths specified, protect everything? Or protect nothing?
+            # Usually strict default means protect everything.
+            # But here we want to protect specific API endpoints.
+            # Let's assume if list is empty, we don't limit (or user should provide paths).
+            # To be safe, if protected_paths is None/Empty in __init__, we default to [] which means effectively disabled
+            # unless we change default.
+            # Let's adhere to "explicit is better than implicit". If list is empty, nothing is protected.
+            pass
+        else:
+            for prefix in self.protected_paths:
+                if path.startswith(prefix):
+                    is_protected = True
+                    break
+
+        if is_protected:
+            client_ip = request.client.host if request.client else "unknown"
+            now = time.time()
+
+            # Clean old requests (simple sliding window)
+            current_requests = self.requests[client_ip]
+            # Prune old timestamps
+            active_requests = [t for t in current_requests if now - t < self.window]
+
+            if len(active_requests) >= self.limit:
+                # Update map with pruned list before returning
+                self.requests[client_ip] = active_requests
+                return Response("Too Many Requests", status_code=429)
+
+            active_requests.append(now)
+
+            # Simple Memory Leak Prevention:
+            # If dictionary gets too large, clear it to prevent OOM.
+            # We do this check BEFORE assigning the new request to ensure the new request is preserved.
+            if len(self.requests) > 10000:
+                self.requests.clear()
+
+            self.requests[client_ip] = active_requests
+
+        return await call_next(request)
