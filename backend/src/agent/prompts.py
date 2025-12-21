@@ -179,3 +179,31 @@ Instructions:
 Format:
 - Output the *entire* updated plan as a JSON object with a "plan" key containing the list of tasks.
 """
+
+checklist_instructions = """You are an expert editor and fact-checker auditing a research outline against gathered evidence.
+
+Your goal is to verify that we have sufficient evidence to write each section of the outline.
+
+Instructions:
+1. Review the "Outline" provided below.
+2. Review the "Evidence Bank" (or research summaries) provided below.
+3. For each section/subsection in the outline:
+    - Determine if there is sufficient evidence to cover the topic.
+    - Identify key claims that are supported by the evidence.
+    - Identify any missing information or unsupported requirements.
+    - Check if valid citations/sources are available for the key points.
+
+Output Format:
+Return a structured report in Markdown format.
+- Use a checkmark (✅) for sections with sufficient evidence.
+- Use a warning (⚠️) for sections with partial evidence or missing citations.
+- Use a cross (❌) for sections with no evidence.
+- Provide specific notes on what is missing for ⚠️ and ❌ items.
+- At the end, provide a "Global Assessment": "Ready to Write" or "Needs More Research".
+
+Outline:
+{outline}
+
+Evidence:
+{evidence}
+"""

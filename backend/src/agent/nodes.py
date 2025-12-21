@@ -30,6 +30,7 @@ from agent.prompts import (
     plan_writer_instructions,
     plan_updater_instructions,
     reflection_instructions,
+    checklist_instructions,
 )
 from agent.rate_limiter import get_context_manager, get_rate_limiter
 from agent.registry import graph_registry
@@ -878,15 +879,62 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
     """
     raise NotImplementedError("research_subgraph not implemented")
 
+@graph_registry.describe(
+    "checklist_verifier",
+    summary="Audits gathered evidence against outline requirements.",
+    tags=["validation", "quality"],
+    outputs=["validation_notes"],
+)
 def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Audits gathered evidence against the outline requirements.
 
-    TODO(priority=High, complexity=Medium): [SOTA Deep Research] Implement 'checklist_verifier'
-    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-    Subtask: Audit the `evidence_bank` against the `outline` requirements.
+    Generates a markdown report flagging missing citations or insufficient evidence
+    for each section of the outline.
     """
-    raise NotImplementedError("checklist_verifier not implemented")
+    with observe_span("checklist_verifier", config):
+        configurable = Configuration.from_runnable_config(config)
+        outline = state.get("outline")
+        evidence_bank = state.get("evidence_bank", [])
+
+        # Fallback to research summaries if evidence bank is empty
+        if not evidence_bank:
+            evidence_source = state.get("validated_web_research_result") or state.get("web_research_result", [])
+            evidence_text = "\n\n".join(evidence_source)
+        else:
+            # Format evidence bank items
+            evidence_items = []
+            for item in evidence_bank:
+                evidence_items.append(f"Claim: {item.get('claim')}\nSource: {item.get('source_url')}\nContext: {item.get('context_snippet')}")
+            evidence_text = "\n---\n".join(evidence_items)
+
+        if not outline:
+            return {"validation_notes": ["Skipped Checklist Verification: No outline available."]}
+
+        if not evidence_text:
+             return {"validation_notes": ["Skipped Checklist Verification: No evidence gathered."]}
+
+        prompt = checklist_instructions.format(
+            outline=json.dumps(outline, indent=2) if isinstance(outline, dict) else str(outline),
+            evidence=evidence_text
+        )
+
+        # Use rate-limited LLM (using answer model or validation model)
+        model = configurable.answer_model
+
+        llm = _get_rate_limited_llm(
+            model=model,
+            temperature=0,
+            prompt=prompt
+        )
+
+        try:
+            response = llm.invoke(prompt)
+            report = response.content if hasattr(response, "content") else str(response)
+            return {"validation_notes": [report]}
+        except Exception as e:
+            logger.error(f"Checklist verification failed: {e}")
+            return {"validation_notes": [f"Checklist verification failed: {e}"]}
 
 def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
     """

@@ -19,6 +19,7 @@ class Evidence(TypedDict):
     claim: str
     source_url: str
     context_snippet: str
+    page_title: str | None
 
 
 class Todo(TypedDict, total=False):
@@ -88,7 +89,6 @@ class OverallState(ScopingState, TypedDict, total=False):
     planning_feedback: Annotated[list, operator.add]
 
     outline: Outline | None
-
     evidence_bank: Annotated[list[Evidence], operator.add]
     initial_search_query_count: int
     max_research_loops: int
