@@ -91,8 +91,8 @@ class OverallState(ScopingState, TypedDict, total=False):
 
     outline: Outline | None
 
-    # TODO(priority=High, complexity=Low): [SOTA Deep Research] Add 'evidence_bank' (List[Evidence]) for ManuSearch.
-    # Subtask: Add `evidence_bank: Annotated[list, operator.add]` to OverallState.
+    evidence_bank: Annotated[list[Evidence], operator.add]
+
     initial_search_query_count: int
     max_research_loops: int
     research_loop_count: int
