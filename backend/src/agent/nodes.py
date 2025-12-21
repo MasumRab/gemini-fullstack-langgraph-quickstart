@@ -42,7 +42,9 @@ from agent.tool_adapter import (
     GEMMA_TOOL_INSTRUCTION,
     parse_tool_calls
 )
+from pydantic import BaseModel, Field
 from agent.state import (
+    Evidence,
     OverallState,
     QueryGenerationState,
     ReflectionState,
@@ -764,17 +766,105 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     raise NotImplementedError("flow_update not implemented")
 
+@graph_registry.describe(
+    "content_reader",
+    summary="Extracts structured evidence (claims, sources) from raw search results.",
+    tags=["extraction", "nlp"],
+    outputs=["evidence_bank"],
+)
 def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Extracts structured evidence from raw web content.
-
-    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'content_reader' Node (ManuSearch)
-    Logic: Extract structured Evidence (Claim, Source, Context).
-    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-    Subtask: Input: Raw HTML/Text from search.
-    Subtask: Output: List of `Evidence` objects appended to `OverallState.evidence_bank`.
+    Implements ManuSearch logic to convert raw search results into `Evidence` objects.
     """
-    raise NotImplementedError("content_reader not implemented")
+    with observe_span("content_reader", config):
+        # Prefer validated results, fallback to raw
+        results = state.get("validated_web_research_result") or state.get("web_research_result", [])
+        if not results:
+            return {"evidence_bank": []}
+
+        configurable = Configuration.from_runnable_config(config)
+        # Re-use query model or define a new one in config?
+        # For now, using query_generator_model as it is usually a strong model (Gemini/Gemma).
+        model_name = configurable.query_generator_model
+
+        # Define Schema for LLM
+        class EvidenceItem(BaseModel):
+            claim: str = Field(description="A distinct factual claim found in the text.")
+            source_url: str = Field(description="The source URL associated with the claim.")
+            context_snippet: str = Field(description="A brief snippet of text surrounding the claim.")
+
+        class EvidenceList(BaseModel):
+            items: List[EvidenceItem]
+
+        # Prepare content
+        # Limit content size to avoid context window issues
+        combined_text = "\n\n".join(results)[:50000] # Cap at 50k chars roughly
+
+        prompt = f"""
+        Analyze the following search results and extract structured evidence.
+        For each distinct factual claim, provide:
+        1. The Claim (concise statement).
+        2. The Source URL (found in the text as [Title](url)).
+        3. The Context Snippet (quote supports the claim).
+
+        Search Results:
+        {combined_text}
+        """
+
+        # Get rate-limited LLM
+        llm = _get_rate_limited_llm(
+            model=model_name,
+            temperature=0,
+            prompt=prompt
+        )
+
+        extracted_evidence: List[Evidence] = []
+
+        if is_gemma_model(model_name):
+            # Gemma Adapter Path
+            schema = {
+                "name": "EvidenceList",
+                "description": "Extract structured evidence.",
+                "parameters": EvidenceList.model_json_schema()
+            }
+            schemas_str = json.dumps([schema], indent=2)
+            instruction = GEMMA_TOOL_INSTRUCTION.format(tool_schemas=schemas_str)
+            full_prompt = f"{instruction}\n\n{prompt}"
+
+            try:
+                response = llm.invoke(full_prompt)
+                content = response.content if hasattr(response, "content") else str(response)
+                tool_calls = parse_tool_calls(content)
+
+                for tc in tool_calls:
+                    if tc["name"] == "EvidenceList":
+                        items = tc["args"].get("items", [])
+                        for item in items:
+                            extracted_evidence.append({
+                                "claim": item.get("claim", ""),
+                                "source_url": item.get("source_url", ""),
+                                "context_snippet": item.get("context_snippet", "")
+                            })
+            except Exception as e:
+                logger.error(f"Content Reader (Gemma) failed: {e}")
+
+        else:
+            # Gemini Structured Output
+            structured_llm = llm.with_structured_output(EvidenceList)
+            try:
+                result = structured_llm.invoke(prompt)
+                if result and result.items:
+                    for item in result.items:
+                        extracted_evidence.append({
+                            "claim": item.claim,
+                            "source_url": item.source_url,
+                            "context_snippet": item.context_snippet
+                        })
+            except Exception as e:
+                logger.error(f"Content Reader (Gemini) failed: {e}")
+
+        return {"evidence_bank": extracted_evidence}
 
 def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
     """

@@ -12,7 +12,8 @@ import operator
 
 class Evidence(TypedDict):
     """
-    Represents a piece of evidence gathered during research.
+    Structured evidence extracted from web content.
+    Used by ManuSearch/content_reader.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
     claim: str
@@ -89,7 +90,6 @@ class OverallState(ScopingState, TypedDict, total=False):
     outline: Outline | None
 
     evidence_bank: Annotated[list[Evidence], operator.add]
-
     initial_search_query_count: int
     max_research_loops: int
     research_loop_count: int
