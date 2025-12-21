@@ -144,7 +144,7 @@ class TestGeneratePlan:
         assert len(result["plan"]) == 2
         assert "search_query" in result
         assert len(result["search_query"]) == 2
-        assert result["plan"][0]["title"] == "Task 1"
+        assert result["plan"][0]["task"] == "Task 1"
 
 
 # Tests for planning_mode

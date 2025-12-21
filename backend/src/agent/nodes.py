@@ -284,13 +284,12 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                         for item in raw_plan:
                             # Normalize
                             todo = {
-                                "title": item.get("title", ""),
-                                "description": item.get("description", ""),
+                                "task": item.get("title", ""),
                                 "status": item.get("status", "pending"),
-                                "query": item.get("title", ""),  # Fallback query
+                                "result": None,
                             }
                             plan_todos.append(todo)
-                            search_queries.append(todo["title"])
+                            search_queries.append(todo["task"])
                     break
 
             # Fallback if parsing failed or model didn't use tool
@@ -300,10 +299,9 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                 lines = [line.strip("- *") for line in content.split("\n") if line.strip().startswith(("-", "*"))]
                 for line in lines:
                     todo = {
-                        "title": line,
-                        "description": "",
+                        "task": line,
                         "status": "pending",
-                        "query": line
+                        "result": None,
                     }
                     plan_todos.append(todo)
                     search_queries.append(line)
@@ -322,10 +320,9 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                 result = structured_llm.invoke(formatted_prompt, config=config)
                 for item in result.plan:
                     todo = {
-                        "title": item.title,
-                        "description": item.description,
+                        "task": item.title,
                         "status": item.status,
-                        "query": item.title
+                        "result": None,
                     }
                     plan_todos.append(todo)
                     search_queries.append(item.title)
@@ -334,10 +331,9 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                 # Fallback to single query based on research topic
                 topic = get_research_topic(state["messages"])
                 todo = {
-                    "title": f"Research {topic}",
-                    "description": "Fallback research task",
+                    "task": f"Research {topic}",
                     "status": "pending",
-                    "query": topic
+                    "result": None,
                 }
                 plan_todos.append(todo)
                 search_queries.append(topic)
@@ -556,11 +552,11 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
             for idx, todo in enumerate(plan):
                  plan_steps.append({
                     "id": f"plan-{idx}",
-                    "title": todo["title"],
-                    "query": todo.get("query", todo["title"]), # Ensure query field
-                    "description": todo.get("description", ""),
+                    "title": todo["task"],
+                    "query": todo["task"],  # Map task to query
+                    "description": "",
                     "suggested_tool": "web_research",
-                    "status": "pending",
+                    "status": todo.get("status", "pending"),
                 })
         else:
              # Backward compatibility: generate from search_query
