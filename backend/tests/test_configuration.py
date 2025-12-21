@@ -135,8 +135,8 @@ class TestConfigurationValidation:
 
     def test_model_field_accepts_string(self):
         """Test that model field accepts valid string."""
-        config = Configuration(query_generator_model="gemini-1.5-pro")
-        assert config.query_generator_model == "gemini-1.5-pro"
+        config = Configuration(query_generator_model=GEMINI_PRO)
+        assert config.query_generator_model == GEMINI_PRO
 
     def test_max_loops_accepts_positive_int(self):
         """Test that max_research_loops accepts positive integers."""
