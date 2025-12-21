@@ -4,19 +4,25 @@ from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
 
+from agent.models import (
+    DEFAULT_QUERY_MODEL,
+    DEFAULT_REFLECTION_MODEL,
+    DEFAULT_ANSWER_MODEL,
+)
+
 
 class Configuration(BaseModel):
     """The configuration for the agent."""
 
     query_generator_model: str = Field(
-        default="gemini-2.5-flash-lite",
+        default=DEFAULT_QUERY_MODEL,
         json_schema_extra={
             "description": "The name of the language model to use for the agent's query generation. Uses Gemini 2.5 Flash-Lite for optimal cost efficiency."
         },
     )
 
     reflection_model: str = Field(
-        default="gemini-2.5-flash",
+        default=DEFAULT_REFLECTION_MODEL,
         json_schema_extra={
             "description": "The name of the language model to use for the agent's reflection. Uses Gemini 2.5 Flash for fast reasoning and analysis."
         },

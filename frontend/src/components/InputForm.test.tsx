@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock UI components to simplify testing
 vi.mock('@/components/ui/button', () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Button: ({ children, onClick, disabled, type, 'aria-label': ariaLabel }: any) => (
         <button onClick={onClick} disabled={disabled} type={type} aria-label={ariaLabel}>
             {children}
@@ -12,6 +13,7 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 vi.mock('@/components/ui/textarea', () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Textarea: ({ value, onChange, onKeyDown, placeholder, 'aria-label': ariaLabel }: any) => (
         <textarea
             value={value}
@@ -25,14 +27,18 @@ vi.mock('@/components/ui/textarea', () => ({
 }));
 
 vi.mock('@/components/ui/select', () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Select: ({ children, onValueChange, value }: any) => (
         <div data-testid="select" data-value={value} onClick={() => onValueChange && onValueChange('new-value')}>
             {children}
         </div>
     ),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     SelectTrigger: ({ children }: any) => <div>{children}</div>,
     SelectValue: () => <span>Value</span>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     SelectContent: ({ children }: any) => <div>{children}</div>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     SelectItem: ({ children, value, onClick }: any) => (
         <div data-testid={`select-item-${value}`} onClick={onClick}>
             {children}
@@ -67,7 +73,7 @@ describe('InputForm', () => {
         const submitButton = screen.getByText(/Search/i);
         fireEvent.click(submitButton);
 
-        expect(defaultProps.onSubmit).toHaveBeenCalledWith('test query', 'medium', 'gemini-2.5-flash-preview-04-17');
+        expect(defaultProps.onSubmit).toHaveBeenCalledWith('test query', 'medium', 'gemma-3-27b-it');
     });
 
     it('does not call onSubmit when input is empty', () => {
@@ -91,7 +97,7 @@ describe('InputForm', () => {
 
     it('input has correct accessible label', () => {
         render(<InputForm {...defaultProps} />);
-        expect(screen.getByLabelText('Search query')).toBeInTheDocument();
+        expect(screen.getByLabelText('Chat input')).toBeInTheDocument();
     });
 
     it('submits on Ctrl+Enter', () => {
@@ -101,7 +107,7 @@ describe('InputForm', () => {
         fireEvent.change(input, { target: { value: 'test query' } });
         fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
 
-        expect(defaultProps.onSubmit).toHaveBeenCalledWith('test query', 'medium', 'gemini-2.5-flash-preview-04-17');
+        expect(defaultProps.onSubmit).toHaveBeenCalledWith('test query', 'medium', 'gemma-3-27b-it');
     });
 
     it('shows New Search button when history exists', () => {

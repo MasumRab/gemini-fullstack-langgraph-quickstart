@@ -2,6 +2,9 @@ import pytest
 from unittest.mock import Mock, patch
 from agent.nodes import generate_query, web_research, reflection, finalize_answer, load_context
 from langchain_core.messages import HumanMessage
+from agent.models import TEST_MODEL
+
+TEST_MODEL = "gemma-3-27b-it"
 
 TEST_MODEL = "gemma-3-27b-it"
 

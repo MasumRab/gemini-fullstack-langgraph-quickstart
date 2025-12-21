@@ -46,8 +46,14 @@ The MCP (Model Context Protocol) integration has been successfully implemented w
     - Subtask: Wrap existing `persistence.py` functions in an MCP-compatible server/adapter.
     - Note: This avoids rewriting the core logic.
 
+- [ ] **Wrap Persistence Tools (New Task)**
+    - Action: Create `backend/src/agent/mcp_persistence.py`.
+    - Subtask: Wrap existing `persistence.py` functions in an MCP-compatible server/adapter.
+    - Note: This avoids rewriting the core logic.
+
 - [ ] **Refactor `tools_and_schemas.py`**
     - Subtask: Add `get_global_tools()` function that aggregates MCP tools + custom tools.
+    - Note: Perform this incrementally. Start with `load_plan` and `save_plan`.
     - Note: Perform this incrementally. Start with `load_plan` and `save_plan`.
     - Verification: Ensure the list of tools includes `read_file`, `write_file` (from MCP).
 

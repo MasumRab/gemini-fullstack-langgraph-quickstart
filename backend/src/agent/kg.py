@@ -6,6 +6,11 @@ from config.app_config import config
 logger = logging.getLogger(__name__)
 
 # Try to import cognee, fail gracefully
+# TODO(priority=Medium, complexity=Medium): Integrate with Cognee for Knowledge Graph enrichment.
+# See docs/tasks/03_OPEN_CANVAS_TASKS.md
+# Subtask: Ensure `cognee` is installed/mocked in tests.
+# Subtask: Implement `cognee.add` and `cognee.cognify` in `kg_enrich`.
+
 try:
     import cognee
     COGNEE_AVAILABLE = True
@@ -65,6 +70,9 @@ async def kg_enrich(state: OverallState, config: RunnableConfig) -> OverallState
             logger.error(f"Cognee enrichment failed for {url}: {e}")
 
     if processed_count > 0:
-        return {"artifacts": {"kg_enriched_count": processed_count}}
+        logger.info(f"Enriched {processed_count} items in KG.")
+        # Do not return 'artifacts' here as it violates the Artifact TypedDict schema.
+        # The enrichment is a side-effect.
+        return {}
 
     return {}

@@ -19,7 +19,7 @@ def load_thread_plan(thread_id: str) -> Optional[Dict[str, Any]]:
     return load_plan(thread_id)
 
 @mcp.tool()
-def save_thread_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, str]) -> str:
+def save_thread_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, Any]) -> str:
     """
     Saves the plan and artifacts for a specific thread to the local file system.
 

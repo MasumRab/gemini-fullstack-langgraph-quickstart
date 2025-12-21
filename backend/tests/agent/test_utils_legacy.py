@@ -2,11 +2,8 @@ import pytest
 import sys
 from unittest.mock import MagicMock
 
-# Mock agent.graph to prevent import error
-sys.modules["agent.graph"] = MagicMock()
-
 from langchain_core.messages import HumanMessage, AIMessage
-from backend.src.agent.utils import (
+from agent.utils import (
     get_research_topic,
     resolve_urls,
     insert_citation_markers,

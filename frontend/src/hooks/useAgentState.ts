@@ -11,6 +11,7 @@ export function useAgentState() {
     Record<string, ProcessedEvent[]>
   >({});
   const [planningContext, setPlanningContext] = useState<{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     steps: any[];
     status?: string | null;
     feedback?: string[];
@@ -38,6 +39,7 @@ export function useAgentState() {
       : "http://localhost:8123"),
     assistantId: "agent",
     messagesKey: "messages",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onUpdateEvent: (event: any) => {
       let processedEvent: ProcessedEvent | null = null;
       if (event.generate_query) {
@@ -61,6 +63,7 @@ export function useAgentState() {
         const sources = event.web_research.sources_gathered || [];
         const numSources = sources.length;
         const uniqueLabels = [
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ...new Set(sources.map((s: any) => s.label).filter(Boolean)),
         ];
         const exampleLabels = uniqueLabels.slice(0, 3).join(", ");
@@ -96,10 +99,18 @@ export function useAgentState() {
         ]);
       }
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       setError(error.message);
     },
   });
+
+  // Bolt Optimization: Keep a ref to the latest thread to avoid re-creating handlers
+  // when thread state changes (e.g. streaming updates).
+  const threadRef = useRef(thread);
+  useEffect(() => {
+    threadRef.current = thread;
+  }, [thread]);
 
   // Auto-scroll logic
   useEffect(() => {
@@ -154,8 +165,11 @@ export function useAgentState() {
           break;
       }
 
+      // Use the ref to access the latest thread state without creating a dependency
+      const currentThread = threadRef.current;
+
       const newMessages: Message[] = [
-        ...(thread.messages || []),
+        ...(currentThread.messages || []),
         {
           type: "human",
           content: submittedInputValue,
@@ -169,37 +183,38 @@ export function useAgentState() {
       };
       lastConfigRef.current = config;
       setPlanningContext(null);
-      thread.submit({
+      currentThread.submit({
         messages: newMessages,
         ...config,
       });
     },
-    [thread]
+    [] // Stable reference
   );
 
   const handlePlanningCommand = useCallback(
     (command: string) => {
       const config = lastConfigRef.current;
+      const currentThread = threadRef.current;
       const newMessages: Message[] = [
-        ...(thread.messages || []),
+        ...(currentThread.messages || []),
         {
           type: "human",
           content: command,
           id: Date.now().toString(),
         },
       ];
-      thread.submit({
+      currentThread.submit({
         messages: newMessages,
         ...config,
       });
     },
-    [thread]
+    [] // Stable reference
   );
 
   const handleCancel = useCallback(() => {
-    thread.stop();
+    threadRef.current.stop();
     window.location.reload();
-  }, [thread]);
+  }, []); // Stable reference
 
   return {
     thread,

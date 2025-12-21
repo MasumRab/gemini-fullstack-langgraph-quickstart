@@ -1,15 +1,23 @@
-# TODO: See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+# TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+# TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: Review 'deepagents' repo for relevant nodes (e.g. hierarchical planning).
+# Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
+
 import concurrent.futures
 import difflib
+import json
 import logging
 import os
 import re
+from datetime import datetime
 from typing import List
 
-from backend.src.config.app_config import config as app_config
-from backend.src.search.router import search_router
+from config.app_config import config as app_config
+from search.router import search_router
 from google.genai import Client
 from langchain_core.messages import AIMessage
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.types import Send
@@ -27,6 +35,12 @@ from agent.registry import graph_registry
 from agent.scoping_prompts import scoping_instructions
 from agent.scoping_schema import ScopingAssessment
 from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS
+from agent.models import is_gemma_model, is_gemini_model
+from agent.tool_adapter import (
+    format_tools_to_json_schema,
+    GEMMA_TOOL_INSTRUCTION,
+    parse_tool_calls
+)
 from agent.state import (
     OverallState,
     QueryGenerationState,
@@ -93,7 +107,7 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
     If yes -> Generates questions and sets status to 'active' (interrupt).
     If no -> Sets status to 'complete' (proceed).
 
-    TODO: [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     Subtask: Implement `scoping_node` logic: Analyze input query. If ambiguous, generate clarifying questions and interrupt graph.
     """
@@ -125,13 +139,25 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
             temperature=0,
             prompt=prompt
         )
-        structured_llm = llm.with_structured_output(ScopingAssessment)
 
-        try:
-            assessment = structured_llm.invoke(prompt)
-        except Exception as e:
-            logger.error(f"Scoping LLM failed: {e}")
-            return {"scoping_status": "complete"} # Fail open
+        is_gemma = "gemma" in DEFAULT_SCOPING_MODEL.lower()
+        if is_gemma:
+            parser = PydanticOutputParser(pydantic_object=ScopingAssessment)
+            prompt_with_format = f"{prompt}\n\n{parser.get_format_instructions()}"
+            try:
+                response = llm.invoke(prompt_with_format)
+                content = response.content if hasattr(response, "content") else str(response)
+                assessment = parser.parse(content)
+            except Exception as e:
+                logger.error(f"Scoping LLM failed (Gemma): {e}")
+                return {"scoping_status": "complete"}
+        else:
+            structured_llm = llm.with_structured_output(ScopingAssessment)
+            try:
+                assessment = structured_llm.invoke(prompt)
+            except Exception as e:
+                logger.error(f"Scoping LLM failed: {e}")
+                return {"scoping_status": "complete"} # Fail open
 
         if assessment.is_ambiguous:
             # Create a message to ask the user
@@ -181,7 +207,7 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
     Uses Gemini 2.5 Flash to create optimized search queries for web research based on
     the User's question. Includes rate limiting and context window management.
 
-    TODO: [Open SWE] Rename to 'generate_plan' or create a new node.
+    TODO(priority=Medium, complexity=Medium): [Open SWE] Rename to 'generate_plan' or create a new node.
     It should generate a structured 'Plan' (List[Todo]) instead of just queries.
     See docs/tasks/02_OPEN_SWE_TASKS.md
     Subtask: Update prompt `query_writer_instructions` to generate a `Plan` (List of Todos).
@@ -214,16 +240,78 @@ def generate_query(state: OverallState, config: RunnableConfig) -> QueryGenerati
             max_retries=2,
             prompt=formatted_prompt
         )
-        # Bind MCP tools if available
-        if MCP_TOOLS:
-             logger.info(f"Binding {len(MCP_TOOLS)} MCP tools to generate_query model.")
-             llm = llm.bind_tools(MCP_TOOLS)
 
-        structured_llm = llm.with_structured_output(SearchQueryList)
+        # Check if we are using a Gemma model (requires prompt-based tool calling)
+        if is_gemma_model(configurable.query_generator_model):
+            logger.info(f"Using Gemma adapter for structured output (and {len(MCP_TOOLS)} MCP tools if present).")
 
-        # Generate the search queries
-        result = structured_llm.invoke(formatted_prompt, config=config)
-        return {"search_query": result.query}
+            # Strategy for Gemma in this node:
+            # We primarily want `SearchQueryList` as the structured output.
+            # We construct a prompt that asks for `SearchQueryList` JSON by defining it as a tool.
+            # We also include available MCP tools in the prompt to enable potential usage,
+            # though this specific node logic focuses on extracting queries.
+
+            # 1. Define the expected output structure as a tool schema for the adapter
+            search_tool_schema = {
+                "name": "SearchQueryList",
+                "description": "Output structured search queries.",
+                "parameters": SearchQueryList.model_json_schema()
+            }
+
+            # 2. Add this "output tool" to the schemas
+            schemas_list = [search_tool_schema]
+
+            # 3. Add MCP tools schemas
+            if MCP_TOOLS:
+                other_schemas_str = format_tools_to_json_schema(MCP_TOOLS)
+                schemas_list.extend(json.loads(other_schemas_str))
+
+            schemas_str = json.dumps(schemas_list, indent=2)
+
+            # 4. Construct instruction
+            instruction = GEMMA_TOOL_INSTRUCTION.format(tool_schemas=schemas_str)
+            instruction += "\n\nCRITICAL: You MUST call the 'SearchQueryList' tool to provide your answer."
+
+            full_prompt = f"{instruction}\n\n{formatted_prompt}"
+
+            # 5. Invoke LLM (raw)
+            response = llm.invoke(full_prompt)
+            content = response.content if hasattr(response, "content") else str(response)
+
+            tool_calls = parse_tool_calls(content)
+
+            # 6. Extract queries from SearchQueryList tool call
+            queries = []
+            for tc in tool_calls:
+                if tc["name"] == "SearchQueryList":
+                    args = tc["args"]
+                    if "query" in args:
+                        queries = args["query"]
+                    break
+
+            # Fallback if parsing failed or model didn't use tool
+            if not queries:
+                logger.warning("Gemma did not use SearchQueryList tool. Attempting fallback parsing.")
+                lines = [line.strip("- *") for line in content.split("\n") if "?" in line]
+                if lines:
+                    queries = lines
+                else:
+                    queries = [content] # Treat whole response as one query
+
+            return {"search_query": queries}
+
+        else:
+            # Standard Gemini Path
+            # Bind MCP tools if available
+            if MCP_TOOLS:
+                 logger.info(f"Binding {len(MCP_TOOLS)} MCP tools to generate_query model.")
+                 llm = llm.bind_tools(MCP_TOOLS)
+
+            structured_llm = llm.with_structured_output(SearchQueryList)
+
+            # Generate the search queries
+            result = structured_llm.invoke(formatted_prompt, config=config)
+            return {"search_query": result.query}
 
 
 @graph_registry.describe(
@@ -244,51 +332,177 @@ def continue_to_web_research(state: QueryGenerationState):
 
 @graph_registry.describe(
     "web_research",
-    summary="Executes web search using configured providers via SearchRouter.",
+    summary="Executes web search using configured providers via SearchRouter, with MCP tool support.",
     tags=["search", "tool"],
     outputs=["web_research_result", "sources_gathered"],
 )
 def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
-    """LangGraph node that performs web research.
+    """LangGraph node that performs web research or executes MCP tools.
     Updated to use the unified SearchRouter and AppConfig.
+    If MCP tools are available, uses an LLM to decide whether to search or use a tool.
     """
     with observe_span("web_research", config):
         query = state["search_query"]
+        configurable = Configuration.from_runnable_config(config)
 
-        # Use the SearchRouter for standardized search with fallback
-        try:
-            results = search_router.search(query, max_results=3)
-        except Exception as e:
-            logger.error(f"Web research failed: {e}")
-            return {
-                "sources_gathered": [],
-                "search_query": [query],
-                "web_research_result": [],
-                "validation_notes": [f"Search failed for query '{query}': {e}"],
-            }
+        # Helper to format search results (used by both paths)
+        def format_results(results_list):
+            sources = []
+            texts = []
+            for r in results_list:
+                source = {
+                    "label": r.title,
+                    "short_url": r.url,
+                    "value": r.url
+                }
+                sources.append(source)
+                snippet = r.content or r.raw_content or ""
+                texts.append(f"{snippet} [{r.title}]({r.url})")
+            return sources, texts
 
+        # If no MCP tools, use direct deterministic search path
+        if not MCP_TOOLS:
+            try:
+                results = search_router.search(query, max_results=3)
+                sources_gathered, web_research_results = format_results(results)
+                combined_result = "\n\n".join(web_research_results)
+                return {
+                    "sources_gathered": sources_gathered,
+                    "search_query": [query],
+                    "web_research_result": [combined_result],
+                }
+            except Exception as e:
+                logger.error(f"Web research failed: {e}")
+                return {
+                    "sources_gathered": [],
+                    "search_query": [query],
+                    "web_research_result": [],
+                    "validation_notes": [f"Search failed for query '{query}': {e}"],
+                }
+
+        # --- MCP Enabled Path ---
+        # We define a "search" tool so the LLM can choose between search and other tools
+        from langchain_core.tools import StructuredTool
+        from langchain_core.pydantic_v1 import BaseModel, Field
+
+        class SearchInput(BaseModel):
+            query: str = Field(description="The query to search for.")
+
+        # Accumulate sources in outer scope
         sources_gathered = []
-        web_research_results = []
 
-        for r in results:
-            # Create source
-            source = {
-                "label": r.title,
-                "short_url": r.url,
-                "value": r.url
-            }
-            sources_gathered.append(source)
+        def run_search(query: str) -> str:
+            """Perform a web search."""
+            res = search_router.search(query, max_results=3)
+            new_sources, texts = format_results(res)
+            sources_gathered.extend(new_sources)
+            return "\n\n".join(texts)
 
-            # Append to result text with citation
-            snippet = r.content or r.raw_content or ""
-            web_research_results.append(f"{snippet} [{r.title}]({r.url})")
+        search_tool = StructuredTool.from_function(
+            func=run_search,
+            name="web_search",
+            description="Search the web for information.",
+            args_schema=SearchInput
+        )
 
-        combined_result = "\n\n".join(web_research_results)
+        all_tools = [search_tool] + MCP_TOOLS
+
+        # Determine model
+        model_name = configurable.query_generator_model # Reusing query model for research agent
+
+        # Construct prompt
+        system_prompt = f"""You are a resourceful researcher. You have a query: "{query}".
+Use the available tools to answer it.
+If the query requires up-to-date web info, use 'web_search'.
+If it matches another tool's capability, use that tool.
+Provide the raw result from the tool."""
+
+        # Get LLM
+        llm = _get_rate_limited_llm(
+            model=model_name,
+            temperature=0,
+            prompt=system_prompt
+        )
+
+        tool_output = ""
+        # sources_gathered is already initialized above for closure capture
+
+        if is_gemini_model(model_name):
+            # Gemini Native Binding
+            llm_with_tools = llm.bind_tools(all_tools)
+            response = llm_with_tools.invoke(system_prompt)
+
+            # Execute tool calls
+            if response.tool_calls:
+                for tool_call in response.tool_calls:
+                    tool_name = tool_call["name"]
+                    tool_args = tool_call["args"]
+
+                    # Find tool
+                    selected_tool = next((t for t in all_tools if t.name == tool_name), None)
+                    if selected_tool:
+                        try:
+                            res = selected_tool.invoke(tool_args)
+                            tool_output += f"\nResult from {tool_name}:\n{res}\n"
+                            # If it was search, we might want to capture sources, but the tool just returns string.
+                            # For simplicity in this polymorphic node, we rely on the string output.
+                            # If the tool was web_search, we can re-parse sources if needed,
+                            # but for now we just treat it as text content.
+                        except Exception as e:
+                            tool_output += f"\nError executing {tool_name}: {e}\n"
+            else:
+                # If no tool called, just use response text
+                tool_output = response.content
+
+        elif is_gemma_model(model_name):
+            # Gemma Adapter Path
+            schema_str = format_tools_to_json_schema(all_tools)
+            instruction = GEMMA_TOOL_INSTRUCTION.format(tool_schemas=schema_str)
+            full_prompt = f"{instruction}\n\n{system_prompt}"
+
+            response = llm.invoke(full_prompt)
+            content = response.content if hasattr(response, "content") else str(response)
+
+            tool_calls = parse_tool_calls(content, allowed_tools=[t.name for t in all_tools])
+
+            if tool_calls:
+                for tc in tool_calls:
+                    tool_name = tc["name"]
+                    tool_args = tc["args"]
+                    selected_tool = next((t for t in all_tools if t.name == tool_name), None)
+                    if selected_tool:
+                        try:
+                            # LangChain tools expect input as dict or str depending on schema
+                            # StructuredTool handles dict input
+                            res = selected_tool.invoke(tool_args)
+                            tool_output += f"\nResult from {tool_name}:\n{res}\n"
+                        except Exception as e:
+                            tool_output += f"\nError executing {tool_name}: {e}\n"
+            else:
+                 # Fallback: if no tool called, assume the model tried to answer directly or failed
+                 # If it failed to pick a tool, we might fallback to default search?
+                 # For now, treat content as answer
+                 tool_output = content
+
+        if not tool_output.strip():
+            # Fallback to direct search if LLM did nothing
+            logger.warning(f"LLM produced no output for research. Falling back to direct search for {query}")
+            try:
+                results = search_router.search(query, max_results=3)
+                sources_gathered, web_research_results = format_results(results)
+                tool_output = "\n\n".join(web_research_results)
+            except Exception as e:
+                return {
+                    "sources_gathered": [],
+                    "search_query": [query],
+                    "web_research_result": [],
+                    "validation_notes": [f"Fallback search failed: {e}"]
+                }
 
         return {
-            "sources_gathered": sources_gathered,
+            "sources_gathered": sources_gathered, # Note: Empty if not direct search path or parsed
             "search_query": [query],
-            "web_research_result": [combined_result],
+            "web_research_result": [tool_output],
         }
 
 
@@ -382,7 +596,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Refines the research plan based on new findings.
 
-    TODO: [Open SWE] Implement 'update_plan' Node
+    TODO(priority=Medium, complexity=Medium): [Open SWE] Implement 'update_plan' Node
     Logic: Read state.plan & state.web_research_result -> Prompt LLM -> Update Plan.
     See docs/tasks/02_OPEN_SWE_TASKS.md
     Subtask: Read `state.plan` and `state.web_research_result`.
@@ -395,7 +609,7 @@ def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Generates a hierarchical outline (Sections -> Subsections) for the research.
 
-    TODO: [SOTA Deep Research] Implement 'outline_gen' Node (STORM)
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'outline_gen' Node (STORM)
     Logic: Generate hierarchical outline (Sections -> Subsections).
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     Subtask: Input: Refined user query + initial context.
@@ -407,7 +621,7 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Dynamically expands the research DAG based on findings.
 
-    TODO: [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
     Logic: Dynamic DAG expansion based on findings.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     Subtask: Analyze findings. Decide to (a) Mark task done, (b) Add new tasks (DAG expansion), (c) Refine existing tasks.
@@ -419,7 +633,7 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Extracts structured evidence from raw web content.
 
-    TODO: [SOTA Deep Research] Implement 'content_reader' Node (ManuSearch)
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'content_reader' Node (ManuSearch)
     Logic: Extract structured Evidence (Claim, Source, Context).
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     Subtask: Input: Raw HTML/Text from search.
@@ -431,7 +645,7 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
     """
     Executes a recursive research subgraph for a specific sub-topic.
 
-    TODO: [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
     Logic: Recursive research call for sub-topics.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     Subtask: Input: A sub-topic query.
@@ -443,7 +657,7 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
     """
     Audits gathered evidence against the outline requirements.
 
-    TODO: [SOTA Deep Research] Implement 'checklist_verifier'
+    TODO(priority=High, complexity=Medium): [SOTA Deep Research] Implement 'checklist_verifier'
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     Subtask: Audit the `evidence_bank` against the `outline` requirements.
     """
@@ -453,7 +667,7 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
     """
     Refines the final answer by synthesizing multiple drafts.
 
-    TODO: [SOTA Deep Research] Implement 'denoising_refiner'
+    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'denoising_refiner'
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     Subtask: Generate N draft answers, critique them, and synthesize the best components.
     """
@@ -462,12 +676,15 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
 def update_artifact(id: str, content: str, type: str) -> str:
     """
     Updates a collaborative artifact.
-
-    TODO: [Open Canvas] Implement 'update_artifact' tool
-    See docs/tasks/03_OPEN_CANVAS_TASKS.md
-    Subtask: Create a helper function/tool `update_artifact(id, content, type)`.
+    Returns a JSON string representation of the updated artifact.
     """
-    raise NotImplementedError("update_artifact not implemented")
+    artifact = {
+        "id": id,
+        "content": content,
+        "type": type,
+        "created_at": datetime.now().isoformat(),
+    }
+    return json.dumps(artifact)
 
 def planning_router(state: OverallState, config: RunnableConfig):
     """Route based on planning status and user commands."""
@@ -595,8 +812,9 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                 if any(keyword in normalized_summary for keyword in keywords):
                     match_found = True
                 else:
+                    # ⚡ Bolt Optimization: Move split() outside loop to avoid redundant computation
+                    summary_words = normalized_summary.split()
                     for keyword in keywords:
-                        summary_words = normalized_summary.split()
                         matches = difflib.get_close_matches(keyword, summary_words, n=1, cutoff=0.8)
                         if matches:
                             match_found = True
@@ -735,7 +953,27 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
             max_retries=2,
             prompt=formatted_prompt
         )
-        result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
+
+        is_gemma = "gemma" in reasoning_model.lower()
+        if is_gemma:
+            parser = PydanticOutputParser(pydantic_object=Reflection)
+            prompt_with_format = f"{formatted_prompt}\n\n{parser.get_format_instructions()}"
+            try:
+                response = llm.invoke(prompt_with_format, config=config)
+                content = response.content if hasattr(response, "content") else str(response)
+                result = parser.parse(content)
+            except Exception as e:
+                logger.error(f"Reflection LLM failed (Gemma): {e}")
+                # Fallback to sufficient to avoid infinite loops on error
+                return {
+                    "is_sufficient": True,
+                    "knowledge_gap": "Error parsing reflection.",
+                    "follow_up_queries": [],
+                    "research_loop_count": state["research_loop_count"],
+                    "number_of_ran_queries": len(state["search_query"]),
+                }
+        else:
+            result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
 
         return {
             "is_sufficient": result.is_sufficient,
