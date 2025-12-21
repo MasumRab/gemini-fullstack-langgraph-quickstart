@@ -10,9 +10,15 @@ from typing_extensions import Annotated
 import operator
 
 
-# TODO(priority=High, complexity=Low): [SOTA Deep Research] Define 'Evidence' object/TypedDict for ManuSearch (Claim, Source, Context).
-# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-# Subtask: Define fields: claim (str), source_url (str), context_snippet (str).
+class Evidence(TypedDict):
+    """
+    Represents a piece of evidence gathered during research.
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    """
+    claim: str
+    source_url: str
+    context_snippet: str
+
 
 class Todo(TypedDict, total=False):
     """
