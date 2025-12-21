@@ -72,6 +72,8 @@ export const ActivityTimeline = memo(function ActivityTimeline({
             className="flex items-center justify-start text-sm w-full cursor-pointer gap-2 text-neutral-100 bg-transparent border-none p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 rounded"
             onClick={() => setIsTimelineCollapsed(!isTimelineCollapsed)}
             title={isTimelineCollapsed ? "Show research activity" : "Hide research activity"}
+            aria-expanded={!isTimelineCollapsed}
+            aria-controls="activity-timeline-content"
           >
             Research Activity
             {isTimelineCollapsed ? (
@@ -83,7 +85,10 @@ export const ActivityTimeline = memo(function ActivityTimeline({
         </CardDescription>
       </CardHeader>
       {!isTimelineCollapsed && (
-        <ScrollArea className="max-h-96 overflow-y-auto">
+        <ScrollArea
+          id="activity-timeline-content"
+          className="max-h-96 overflow-y-auto"
+        >
           <CardContent>
             {isLoading && processedEvents.length === 0 && (
               <div className="relative pl-8 pb-4">
