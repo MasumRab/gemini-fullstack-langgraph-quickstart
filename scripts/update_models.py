@@ -50,11 +50,15 @@ STRATEGIES = {
 }
 
 # File Paths
-BACKEND_DIR = Path("backend/src/agent")
-FRONTEND_FILE = Path("frontend/src/hooks/useAgentState.ts")
-ENV_FILE = Path(".env")
-ENV_EXAMPLE = Path(".env.example")
-NOTEBOOKS_DIR = Path("notebooks")
+# Assuming script is run from project root via scripts/update_models.sh or python scripts/update_models.py
+# If run directly from scripts/, we need parent.
+# But standard usage is from root. However, let's make it robust.
+PROJECT_ROOT = Path(__file__).parent.parent
+BACKEND_DIR = PROJECT_ROOT / "backend/src/agent"
+FRONTEND_FILE = PROJECT_ROOT / "frontend/src/hooks/useAgentState.ts"
+ENV_FILE = PROJECT_ROOT / ".env"
+ENV_EXAMPLE = PROJECT_ROOT / ".env.example"
+NOTEBOOKS_DIR = PROJECT_ROOT / "notebooks"
 
 def update_file(file_path: Path, pattern: str, replacement: str):
     """Update a file using regex pattern."""

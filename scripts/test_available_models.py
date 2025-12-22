@@ -14,7 +14,7 @@ if sys.stdout.encoding != 'utf-8':
 from google import genai
 
 # Add backend/src to path to import models
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 if str(BACKEND_SRC) not in sys.path:
     sys.path.append(str(BACKEND_SRC))
