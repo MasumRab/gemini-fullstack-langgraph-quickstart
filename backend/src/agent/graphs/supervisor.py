@@ -124,6 +124,6 @@ builder.add_conditional_edges(
 )
 builder.add_edge("finalize_answer", END)
 
-graph = builder.compile()
+graph = builder.compile(name="pro-search-agent-supervisor")
 
 

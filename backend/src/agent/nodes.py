@@ -550,7 +550,7 @@ Provide the raw result from the tool."""
     outputs=["planning_steps", "planning_status", "planning_feedback"],
 )
 def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
-    """Create structured plan steps from generated queries for user review."""
+    """Processes plan steps or routes based on user commands."""
     with observe_span("planning_mode", config):
         configurable = Configuration.from_runnable_config(config)
 
@@ -655,19 +655,27 @@ def planning_wait(state: OverallState) -> OverallState:
 )
 def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
     """
-    Refines the research plan based on new findings.
-<<<<<<< HEAD
-
-    Reads the current plan and the latest web research results (accumulated),
-    then prompts the LLM to update the plan (mark done, add new tasks).
+    Optional: Generates N draft answers, critique them, and synthesize the best components.
     """
     with observe_span("update_plan", config):
         configurable = Configuration.from_runnable_config(config)
 
         # Inputs
         current_plan = state.get("plan", [])
+        
+        # Prevent Recursion: Proactively mark current task as done in the context fed to LLM.
+        # This ensures the LLM sees the task as completed and moves to the next one,
+        # preventing infinite loops where the LLM keeps a task "pending".
+        current_idx = state.get("current_task_idx")
+        # specific_task_done = False # Unused variable
+        
+        # Create a working copy for the prompt to avoid modifying state directly yet
+        prompt_plan = [dict(t) for t in current_plan]
+        
+        if current_idx is not None and 0 <= current_idx < len(prompt_plan):
+            prompt_plan[current_idx]["status"] = "done"
+
         # We use all accumulated research results to ensure the LLM has full context
-        # of what has been found so far.
         results = state.get("web_research_result", [])
 
         current_date = get_current_date()
@@ -676,7 +684,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
         formatted_prompt = plan_updater_instructions.format(
             current_date=current_date,
             research_topic=research_topic,
-            current_plan=json.dumps(current_plan, indent=2),
+            current_plan=json.dumps(prompt_plan, indent=2),
             research_results="\n\n".join(results)
         )
 
@@ -755,6 +763,21 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                 logger.error(f"Failed to update plan (Gemini): {e}")
                 return {"plan": current_plan}
 
+
+
+        # Safety Fallback: Ensure the executed task is actually marked as done in the new plan
+        # This overrides the LLM if it fails to update the status, preventing infinite loops.
+        if current_idx is not None and 0 <= current_idx < len(current_plan):
+             executed_title = current_plan[current_idx].get("title")
+             # Try to find matching task in new plan
+             for task in plan_todos:
+                 # Check title match (robust against reordering)
+                 if task.get("title") == executed_title:
+                     if task.get("status") != "done":
+                         logger.warning(f"Force-marking task '{executed_title}' as done (LLM left it pending).")
+                         task["status"] = "done"
+                     break
+        
         return {"plan": plan_todos}
 
 

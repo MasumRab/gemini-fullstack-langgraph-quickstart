@@ -25,7 +25,13 @@ async def run_full_flow():
         "initial_search_query_count": 1 # Keep it fast
     }
 
-    config_run = {"configurable": {"thread_id": "test_thread_1"}, "recursion_limit": 50}
+    config_run = {
+        "configurable": {
+            "thread_id": "test_thread_1",
+            "require_planning_confirmation": False
+        },
+        "recursion_limit": 100
+    }
 
     # Run the graph
     print("Invoking graph...")
