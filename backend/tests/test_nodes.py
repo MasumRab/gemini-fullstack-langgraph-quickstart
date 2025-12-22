@@ -30,6 +30,8 @@ from agent.nodes import (
     reflection,
     finalize_answer,
     content_reader,
+    select_next_task,
+    execution_router,
 )
 from agent.models import TEST_MODEL
 
@@ -492,3 +494,51 @@ class TestContentReader:
         # Assert
         assert "evidence_bank" in result
         assert result["evidence_bank"] == []
+
+# Tests for select_next_task and execution_router
+class TestExecutionFlow:
+    """Test suite for execution flow nodes"""
+
+    def test_select_next_task_picks_pending(self, base_state, config):
+        """Test select_next_task picks the first pending task"""
+        # Setup
+        base_state["plan"] = [
+            {"task": "Task 1", "status": "done"},
+            {"task": "Task 2", "status": "pending", "query": "Query 2"},
+            {"task": "Task 3", "status": "pending"}
+        ]
+
+        # Execute
+        result = select_next_task(base_state, config)
+
+        # Assert
+        assert result["current_task_idx"] == 1
+        assert result["search_query"] == ["Query 2"]
+
+    def test_select_next_task_none_if_all_done(self, base_state, config):
+        """Test select_next_task returns None index if all tasks are done"""
+        # Setup
+        base_state["plan"] = [
+            {"task": "Task 1", "status": "done"},
+            {"task": "Task 2", "status": "done"}
+        ]
+
+        # Execute
+        result = select_next_task(base_state, config)
+
+        # Assert
+        assert result["current_task_idx"] is None
+
+    def test_execution_router_routes_correctly(self, base_state):
+        """Test execution_router logic"""
+        # Case 1: Pending tasks
+        base_state["plan"] = [{"status": "done"}, {"status": "pending"}]
+        assert execution_router(base_state) == "select_next_task"
+
+        # Case 2: All done
+        base_state["plan"] = [{"status": "done"}, {"status": "done"}]
+        assert execution_router(base_state) == "finalize_answer"
+
+        # Case 3: Empty plan (should probably finalize or handle gracefully)
+        base_state["plan"] = []
+        assert execution_router(base_state) == "finalize_answer"
