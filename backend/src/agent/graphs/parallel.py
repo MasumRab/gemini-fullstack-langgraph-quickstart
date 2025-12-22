@@ -16,7 +16,7 @@ from agent.nodes import (
 from agent.registry import graph_registry
 
 # Create our Agent Graph using the standard builder wiring
-builder = StateGraph(OverallState, config_schema=Configuration)
+builder = StateGraph(OverallState, context_schema=Configuration)
 builder.add_node("load_context", load_context)
 builder.add_node("generate_plan", generate_plan)
 builder.add_node("planning_mode", planning_mode)

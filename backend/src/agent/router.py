@@ -31,7 +31,7 @@ def select_agent(state: OverallState, config: RunnableConfig) -> str:
     else:
         return "parallel_agent"
 
-builder = StateGraph(OverallState, config_schema=Configuration)
+builder = StateGraph(OverallState, context_schema=Configuration)
 builder.add_node("router", router_node)
 builder.add_node("parallel_agent", parallel_graph)
 builder.add_node("linear_agent", linear_graph)

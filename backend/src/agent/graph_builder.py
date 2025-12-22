@@ -95,7 +95,7 @@ def build_graph(
             enable_kg=True,
         )
     """
-    builder = StateGraph(OverallState, config_schema=Configuration)
+    builder = StateGraph(OverallState, context_schema=Configuration)
 
     # === Core Nodes (Always present) ===
     builder.add_node("load_context", load_context)
