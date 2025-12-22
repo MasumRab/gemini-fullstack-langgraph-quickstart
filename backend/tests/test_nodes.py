@@ -29,6 +29,7 @@ from agent.nodes import (
     validate_web_results,
     reflection,
     finalize_answer,
+    content_reader,
 )
 from agent.models import TEST_MODEL
 
@@ -437,3 +438,57 @@ class TestFinalizeAnswer:
             assert "messages" in result
             assert len(result["messages"]) > 0
             assert isinstance(result["messages"][0], AIMessage)
+
+# Tests for content_reader
+class TestContentReader:
+    """Test suite for content_reader node"""
+
+    @patch("agent.nodes._get_rate_limited_llm")
+    def test_content_reader_extracts_evidence(self, mock_get_llm, base_state, config):
+        """Test content_reader extracts evidence from results"""
+        # Setup
+        base_state["validated_web_research_result"] = [
+            "Quantum computing uses qubits. [Source 1](http://example.com/1)"
+        ]
+
+        mock_chain = MagicMock()
+        mock_evidence_item = Mock(
+            claim="Quantum computing uses qubits.",
+            source_url="http://example.com/1",
+            context_snippet="Quantum computing uses qubits."
+        )
+        mock_result = Mock()
+        mock_result.items = [mock_evidence_item]
+        
+        # Configure the mock chain's behavior
+        # Note: We need to handle both structured output (Gemini) and tool calling (Gemma) if we want full coverage
+        # For this test, we assume the mock setup for Gemini path which uses with_structured_output
+        
+        # Mocking the nested calls: llm.with_structured_output(EvidenceList).invoke(...)
+        mock_structured_llm = MagicMock()
+        mock_structured_llm.invoke.return_value = mock_result
+        mock_chain.with_structured_output.return_value = mock_structured_llm
+
+        mock_get_llm.return_value = mock_chain
+
+        # Execute
+        result = content_reader(base_state, config)
+
+        # Assert
+        assert "evidence_bank" in result
+        assert len(result["evidence_bank"]) == 1
+        assert result["evidence_bank"][0]["claim"] == "Quantum computing uses qubits."
+        assert result["evidence_bank"][0]["source_url"] == "http://example.com/1"
+
+    def test_content_reader_with_no_results(self, base_state, config):
+        """Test content_reader returns empty list when no results"""
+        # Setup
+        base_state["validated_web_research_result"] = []
+        base_state["web_research_result"] = []
+
+        # Execute
+        result = content_reader(base_state, config)
+
+        # Assert
+        assert "evidence_bank" in result
+        assert result["evidence_bank"] == []
