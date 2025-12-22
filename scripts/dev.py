@@ -9,7 +9,8 @@ def main():
     Cross-platform dev server launcher.
     Starts both frontend (Vite) and backend (LangGraph) servers.
     """
-    root_dir = os.path.dirname(os.path.abspath(__file__))
+    # Updated to assume this script is in scripts/
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     frontend_dir = os.path.join(root_dir, "frontend")
     backend_dir = os.path.join(root_dir, "backend")
 

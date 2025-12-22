@@ -14,4 +14,5 @@ else
 fi
 
 # Run the update script
-$PYTHON_CMD update_models.py "$@"
+SCRIPT_DIR="$(dirname "$0")"
+$PYTHON_CMD "$SCRIPT_DIR/update_models.py" "$@"
