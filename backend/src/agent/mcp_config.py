@@ -45,9 +45,29 @@ def validate(settings: MCPSettings) -> None:
 # Subtask: Implement `McpConnectionManager` class.
 # Subtask: Support SSE transport via HTTP/S endpoint.
 class McpConnectionManager:
-    def __init__(self, settings: MCPSettings):
-        self.settings = settings
+    def __init__(self, settings: Optional[MCPSettings] = None):
+        self.settings = settings or load_mcp_settings()
         self.clients = []
+
+    def get_persistence_tools(self) -> List:
+        """
+        Returns persistence tools wrapped for LangChain.
+        """
+        from langchain_core.tools import StructuredTool
+        from agent.mcp_persistence import load_thread_plan, save_thread_plan
+        
+        return [
+            StructuredTool.from_function(
+                func=load_thread_plan,
+                name="load_thread_plan",
+                description="Loads the plan and artifacts for a specific thread from the local file system."
+            ),
+            StructuredTool.from_function(
+                func=save_thread_plan,
+                name="save_thread_plan",
+                description="Saves the plan and artifacts for a specific thread to the local file system."
+            )
+        ]
 
     async def get_tools(self):
         if not self.settings.enabled:
