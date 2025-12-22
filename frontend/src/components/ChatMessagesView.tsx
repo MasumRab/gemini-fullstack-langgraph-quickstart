@@ -212,7 +212,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
       </ReactMarkdown>
       <Button
         variant="default"
-        className={`cursor-pointer bg-neutral-700 border-neutral-600 text-neutral-300 self-end ${message.content.length > 0 ? "visible" : "hidden"
+        className={`cursor-pointer bg-neutral-700 border-neutral-600 text-neutral-300 self-end focus-visible:ring-2 focus-visible:ring-neutral-500 ${message.content.length > 0 ? "visible" : "hidden"
           }`}
         onClick={() =>
           handleCopy(

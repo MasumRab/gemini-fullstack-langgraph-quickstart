@@ -76,7 +76,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
               variant="ghost"
               size="icon"
               aria-label="Stop generating"
-              className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 cursor-pointer rounded-full transition-all duration-200"
+              className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 cursor-pointer rounded-full transition-all duration-200 focus-visible:ring-2 focus-visible:ring-red-500"
               onClick={onCancel}
             >
               <StopCircle className="h-5 w-5" />
@@ -104,7 +104,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
               htmlFor="effort-select"
               className="flex flex-row items-center text-sm cursor-pointer"
             >
-              <Brain className="h-4 w-4 mr-2" />
+              <Brain className="h-4 w-4 mr-2" aria-hidden="true" />
               Effort
             </label>
             <Select value={effort} onValueChange={setEffort}>
@@ -142,7 +142,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
               htmlFor="model-select"
               className="flex flex-row items-center text-sm ml-2 cursor-pointer"
             >
-              <Cpu className="h-4 w-4 mr-2" />
+              <Cpu className="h-4 w-4 mr-2" aria-hidden="true" />
               Model
             </label>
             <Select value={model} onValueChange={setModel}>
@@ -184,7 +184,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
         </div>
         {hasHistory && (
           <Button
-            className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer rounded-xl rounded-t-sm pl-2 "
+            className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer rounded-xl rounded-t-sm pl-2 focus-visible:ring-2 focus-visible:ring-neutral-500"
             variant="default"
             onClick={() => window.location.reload()}
           >
