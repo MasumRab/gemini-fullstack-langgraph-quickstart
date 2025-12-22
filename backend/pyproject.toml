@@ -81,5 +81,4 @@ dev = [
     "playwright>=1.49.0",
 ]
 
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
+
