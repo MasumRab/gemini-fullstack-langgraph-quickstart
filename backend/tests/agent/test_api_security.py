@@ -12,7 +12,7 @@ class TestAPISecurity:
     @pytest.fixture
     def app(self):
         """Create a simple FastAPI app with the middleware."""
-        from agent.security import RateLimitMiddleware
+        from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 
         app = FastAPI()
         # Protect only /agent paths
@@ -22,6 +22,7 @@ class TestAPISecurity:
             window=1,
             protected_paths=["/agent"]
         )
+        app.add_middleware(SecurityHeadersMiddleware)
 
         @app.get("/agent/test")
         def agent_endpoint():
@@ -32,6 +33,17 @@ class TestAPISecurity:
             return {"status": "ok"}
 
         return app
+
+    def test_security_headers_presence(self, app):
+        client = TestClient(app)
+        response = client.get("/public")
+
+        headers = response.headers
+        assert headers["X-Content-Type-Options"] == "nosniff"
+        assert headers["X-Frame-Options"] == "DENY"
+        assert headers["Strict-Transport-Security"] == "max-age=31536000; includeSubDomains"
+        assert "geolocation=()" in headers["Permissions-Policy"]
+        assert "script-src 'self'" in headers["Content-Security-Policy"]
 
     def test_rate_limit_enforced_on_protected_path(self, app):
         client = TestClient(app)
@@ -70,60 +82,6 @@ class TestAPISecurity:
         # Should be allowed again
         response = client.get("/agent/test")
         assert response.status_code == 200
-
-    def test_memory_cleanup_logic(self):
-        """Test that dictionary is cleared if it gets too large."""
-        from agent.security import RateLimitMiddleware
-        app = FastAPI()
-        middleware = RateLimitMiddleware(app, limit=100, window=60, protected_paths=["/"])
-
-        # Simulate many IPs
-        for i in range(10002):
-            middleware.requests[f"ip_{i}"] = [time.time()]
-
-        # Trigger dispatch to check cleanup (we need to mock request)
-        async def call_next(request):
-            return Response("ok")
-
-        scope = {"type": "http", "path": "/", "headers": [], "client": ("127.0.0.1", 1234)}
-        request = Request(scope)
-
-        # We can't easily call dispatch directly because it's async and part of Starlette flow.
-        # But we can verify the logic by calling a helper or just invoking the middleware logic if exposed.
-        # Since logic is in dispatch, we'll rely on the implementation detail that it clears if > 10000.
-
-        # Actually, let's construct a test that hits the endpoint
-        middleware.requests.clear()
-        # Fill it up
-        for i in range(10001):
-             middleware.requests[f"1.2.3.{i}"] = [time.time()]
-
-        assert len(middleware.requests) > 10000
-
-        # Now make a request
-        # We need a proper app setup to run dispatch
-        app = FastAPI()
-        app.add_middleware(RateLimitMiddleware, limit=100, window=60, protected_paths=["/"])
-
-        # We need to access the middleware instance to inject data
-        # FastAPI wraps middleware in a way that's hard to access instance directly.
-        # So we'll instantiate the class directly for unit testing logic.
-
-        mw = RateLimitMiddleware(app, limit=100, window=60, protected_paths=["/"])
-        for i in range(10001):
-             mw.requests[f"1.2.3.{i}"] = [time.time()]
-
-        assert len(mw.requests) > 10000
-
-        # Mock request
-        mock_request = MagicMock(spec=Request)
-        mock_request.url.path = "/"
-        mock_request.client.host = "127.0.0.1"
-
-        # Run dispatch logic? dispatch is async.
-        # Let's just trust the code or run it in an async test loop?
-        # Creating an async test is easier.
-        pass
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_trigger(self):
