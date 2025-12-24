@@ -41,20 +41,20 @@ export const ActivityTimeline = memo(function ActivityTimeline({
     useState<boolean>(false);
   const getEventIcon = (title: string, index: number) => {
     if (index === 0 && isLoading && processedEvents.length === 0) {
-      return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" />;
+      return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" aria-hidden="true" />;
     }
     if (title.toLowerCase().includes("generating")) {
-      return <TextSearch className="h-4 w-4 text-neutral-400" />;
+      return <TextSearch className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
     } else if (title.toLowerCase().includes("thinking")) {
-      return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" />;
+      return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" aria-hidden="true" />;
     } else if (title.toLowerCase().includes("reflection")) {
-      return <Brain className="h-4 w-4 text-neutral-400" />;
+      return <Brain className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
     } else if (title.toLowerCase().includes("research")) {
-      return <Search className="h-4 w-4 text-neutral-400" />;
+      return <Search className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
     } else if (title.toLowerCase().includes("finalizing")) {
-      return <Pen className="h-4 w-4 text-neutral-400" />;
+      return <Pen className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
     }
-    return <Activity className="h-4 w-4 text-neutral-400" />;
+    return <Activity className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
   };
 
   useEffect(() => {
@@ -94,7 +94,7 @@ export const ActivityTimeline = memo(function ActivityTimeline({
               <div className="relative pl-8 pb-4">
                 <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-800" />
                 <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-800 flex items-center justify-center ring-4 ring-neutral-900">
-                  <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" />
+                  <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" aria-hidden="true" />
                 </div>
                 <div>
                   <p className="text-sm text-neutral-300 font-medium">
@@ -131,7 +131,7 @@ export const ActivityTimeline = memo(function ActivityTimeline({
                 {isLoading && processedEvents.length > 0 && (
                   <div className="relative pl-8 pb-4">
                     <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-600 flex items-center justify-center ring-4 ring-neutral-700">
-                      <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" />
+                      <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" aria-hidden="true" />
                     </div>
                     <div>
                       <p className="text-sm text-neutral-300 font-medium">

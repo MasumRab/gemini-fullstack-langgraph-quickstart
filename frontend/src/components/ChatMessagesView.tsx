@@ -221,7 +221,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
         }
       >
         {isCopied ? "Copied" : "Copy"}
-        {isCopied ? <CopyCheck /> : <Copy />}
+        {isCopied ? <CopyCheck aria-hidden="true" /> : <Copy aria-hidden="true" />}
       </Button>
     </div>
   );
