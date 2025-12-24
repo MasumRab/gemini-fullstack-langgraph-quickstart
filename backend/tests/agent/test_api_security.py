@@ -84,23 +84,30 @@ class TestAPISecurity:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_memory_cleanup_trigger(self):
+    async def test_memory_cleanup_preserves_active_clients(self):
+        """Test that memory cleanup removes stale clients but keeps active ones."""
         from agent.security import RateLimitMiddleware
         app = FastAPI()
         mw = RateLimitMiddleware(app, limit=100, window=60, protected_paths=["/"])
 
-        # Fill with 10001 entries
-        for i in range(10001):
-             mw.requests[f"fake_ip_{i}"] = [time.time()]
+        now = time.time()
+        # Add 5000 stale entries (older than window=60s)
+        for i in range(5000):
+             mw.requests[f"stale_ip_{i}"] = [now - 100]
 
-        assert len(mw.requests) > 10000
+        # Add 5002 active entries (newer than window)
+        # Note: We need total > 10000 to trigger cleanup logic
+        for i in range(5002):
+             mw.requests[f"active_ip_{i}"] = [now - 10]
 
-        # Create a mock request
+        assert len(mw.requests) == 10002
+
+        # Create a mock request from a NEW client
         scope = {
             'type': 'http',
             'path': '/',
             'headers': [],
-            'client': ('127.0.0.1', 8000),
+            'client': ('new_client_ip', 8000),
             'method': 'GET',
             'scheme': 'http'
         }
@@ -111,7 +118,17 @@ class TestAPISecurity:
 
         await mw.dispatch(request, call_next)
 
-        # Should be cleared (or at least significantly smaller, containing just the new one)
-        # Our logic is "if > 10000: clear()". Then it adds the current one.
-        # So size should be 1.
-        assert len(mw.requests) == 1
+        # Expected behavior:
+        # 1. Cleanup runs because len > 10000.
+        # 2. Stale IPs (5000) are removed.
+        # 3. Active IPs (5002) are kept.
+        # 4. New client IP is added.
+        # Total should be 5003.
+
+        # Assert that we kept active clients (Smart Cleanup) rather than wiping everything (Nuclear Option)
+        assert len(mw.requests) > 5000, "Should NOT wipe active clients"
+        assert len(mw.requests) == 5003, "Should have exactly active + new client"
+
+        assert "stale_ip_0" not in mw.requests
+        assert "active_ip_0" in mw.requests
+        assert "new_client_ip" in mw.requests
