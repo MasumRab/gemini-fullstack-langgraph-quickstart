@@ -23,6 +23,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Referrer Policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
+        # Strict Transport Security (HSTS)
+        # Max-age: 1 year. Include subdomains.
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+        # Permissions Policy
+        # Restrict access to sensitive features the agent doesn't need
+        response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
+
         # Content Security Policy (CSP)
         # Default to very strict (API only), but allow styles/images if needed for simple UI
         # Since this is primarily an API backend, we start strict.
