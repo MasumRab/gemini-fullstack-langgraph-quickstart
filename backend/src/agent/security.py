@@ -117,10 +117,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             active_requests.append(now)
 
             # Simple Memory Leak Prevention:
-            # If dictionary gets too large, clear it to prevent OOM.
-            # We do this check BEFORE assigning the new request to ensure the new request is preserved.
+            # If dictionary gets too large, perform cleanup to prevent OOM.
             if len(self.requests) > 10000:
-                self.requests.clear()
+                # Cleanup: Remove clients that haven't made a request within the window.
+                # Since active_requests for each client might not be updated until they make a request,
+                # we need to check the last timestamp in their list.
+                # Note: This is an O(N) operation where N is number of clients.
+                # It only runs when we hit the threshold.
+                stale_ips = []
+                for ip, timestamps in self.requests.items():
+                    # If list is empty (shouldn't happen with logic above but possible)
+                    # or if the most recent request is older than window
+                    if not timestamps or (now - timestamps[-1] > self.window):
+                        stale_ips.append(ip)
+
+                for ip in stale_ips:
+                    del self.requests[ip]
+
+                # Fallback: If still too large (active attack with >10k distinct IPs),
+                # we must clear to protect memory.
+                if len(self.requests) > 10000:
+                    self.requests.clear()
 
             self.requests[client_ip] = active_requests
 
