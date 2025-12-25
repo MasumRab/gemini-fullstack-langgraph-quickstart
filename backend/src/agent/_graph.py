@@ -325,7 +325,7 @@ def finalize_answer(state: OverallState, config: RunnableConfig) -> Dict[str, An
 
 def build_graph() -> StateGraph:
     """Build the experimental multi-provider LangGraph workflow."""
-    workflow = StateGraph(OverallState, config_schema=Configuration)
+    workflow = StateGraph(OverallState, context_schema=Configuration)
     
     # Add nodes
     workflow.add_node("generate_query", generate_query)

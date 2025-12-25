@@ -79,7 +79,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
               className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 cursor-pointer rounded-full transition-all duration-200 focus-visible:ring-2 focus-visible:ring-red-500"
               onClick={onCancel}
             >
-              <StopCircle className="h-5 w-5" />
+              <StopCircle className="h-5 w-5" aria-hidden="true" />
             </Button>
           ) : (
             <Button
@@ -92,7 +92,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
               disabled={isSubmitDisabled}
             >
               Search
-              <Send className="h-5 w-5" />
+              <Send className="h-5 w-5" aria-hidden="true" />
             </Button>
           )}
         </div>
@@ -159,7 +159,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
                   className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
                 >
                   <div className="flex items-center">
-                    <Zap className="h-4 w-4 mr-2 text-orange-400" /> 2.5 Flash
+                    <Zap className="h-4 w-4 mr-2 text-orange-400" aria-hidden="true" /> 2.5 Flash
                   </div>
                 </SelectItem>
                 <SelectItem
@@ -167,7 +167,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
                   className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
                 >
                   <div className="flex items-center">
-                    <Cpu className="h-4 w-4 mr-2 text-purple-400" /> 2.5 Pro
+                    <Cpu className="h-4 w-4 mr-2 text-purple-400" aria-hidden="true" /> 2.5 Pro
                   </div>
                 </SelectItem>
                 <SelectItem
@@ -175,7 +175,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
                   className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
                 >
                   <div className="flex items-center">
-                    <Brain className="h-4 w-4 mr-2 text-blue-400" /> Gemma 3
+                    <Brain className="h-4 w-4 mr-2 text-blue-400" aria-hidden="true" /> Gemma 3
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -188,7 +188,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
             variant="default"
             onClick={() => window.location.reload()}
           >
-            <SquarePen size={16} />
+            <SquarePen size={16} aria-hidden="true" />
             New Search
           </Button>
         )}

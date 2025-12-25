@@ -96,7 +96,7 @@ def compress_context(state: OverallState, config: RunnableConfig) -> Dict[str, A
     # Default fallback
     return {"web_research_result": unique_results}
 
-builder = StateGraph(OverallState, config_schema=Configuration)
+builder = StateGraph(OverallState, context_schema=Configuration)
 builder.add_node("load_context", load_context)
 builder.add_node("generate_plan", generate_plan)
 builder.add_node("planning_mode", planning_mode)

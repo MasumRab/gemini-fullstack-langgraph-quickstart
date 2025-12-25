@@ -18,7 +18,7 @@ load_dotenv()
 # Upstream / Minimal Graph: No Planning, No Reflection, No Validation.
 # Just Query -> Search -> Answer.
 
-builder = StateGraph(OverallState, config_schema=Configuration)
+builder = StateGraph(OverallState, context_schema=Configuration)
 
 builder.add_node("load_context", load_context)
 builder.add_node("generate_plan", generate_plan)
