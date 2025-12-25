@@ -110,13 +110,14 @@ class FilesystemMCPServer:
             # If path doesn't exist yet (for write), check parent
             if not resolved.exists() and not resolved.parent.exists():
                  # Create parents logic is in write_file, but for check we need a base
-                 # We check if resolved path starts with any allowed path
                  pass
 
-            return any(
-                str(resolved).startswith(str(allowed))
-                for allowed in self.allowed_paths
-            )
+            for allowed in self.allowed_paths:
+                # Security: Check path containment using pathlib
+                # Prevents "workspace_secret" access when allowed is "workspace"
+                if resolved == allowed or allowed in resolved.parents:
+                    return True
+            return False
         except Exception:
             return False
 
