@@ -44,6 +44,9 @@ class AppConfig:
     cors_origins: Tuple[str, ...] = tuple(
         filter(None, os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","))
     )
+    allowed_hosts: Tuple[str, ...] = tuple(
+        filter(None, os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(","))
+    )
 
     # Model Selection
     model_planning: str = os.getenv("MODEL_PLANNING", "gemma-3-27b-it")
