@@ -29,6 +29,24 @@ interface ActivityTimelineProps {
   isLoading: boolean;
 }
 
+// ⚡ Bolt Optimization: Extracted helper function outside component to prevent recreation on re-renders.
+// Removed dead code checking for empty array inside the map loop.
+const getEventIcon = (title: string) => {
+  const lowerTitle = title.toLowerCase();
+  if (lowerTitle.includes("generating")) {
+    return <TextSearch className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
+  } else if (lowerTitle.includes("thinking")) {
+    return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" aria-hidden="true" />;
+  } else if (lowerTitle.includes("reflection")) {
+    return <Brain className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
+  } else if (lowerTitle.includes("research")) {
+    return <Search className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
+  } else if (lowerTitle.includes("finalizing")) {
+    return <Pen className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
+  }
+  return <Activity className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
+};
+
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent (AiMessageBubble)
 // updates due to UI interactions (like Copy button state) but the timeline data hasn't changed.
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent re-renders
@@ -39,23 +57,6 @@ export const ActivityTimeline = memo(function ActivityTimeline({
 }: ActivityTimelineProps) {
   const [isTimelineCollapsed, setIsTimelineCollapsed] =
     useState<boolean>(false);
-  const getEventIcon = (title: string, index: number) => {
-    if (index === 0 && isLoading && processedEvents.length === 0) {
-      return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" aria-hidden="true" />;
-    }
-    if (title.toLowerCase().includes("generating")) {
-      return <TextSearch className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
-    } else if (title.toLowerCase().includes("thinking")) {
-      return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" aria-hidden="true" />;
-    } else if (title.toLowerCase().includes("reflection")) {
-      return <Brain className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
-    } else if (title.toLowerCase().includes("research")) {
-      return <Search className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
-    } else if (title.toLowerCase().includes("finalizing")) {
-      return <Pen className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
-    }
-    return <Activity className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
-  };
 
   useEffect(() => {
     if (!isLoading && processedEvents.length !== 0) {
@@ -112,7 +113,7 @@ export const ActivityTimeline = memo(function ActivityTimeline({
                       <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-600" />
                     ) : null}
                     <div className="absolute left-0.5 top-2 h-6 w-6 rounded-full bg-neutral-600 flex items-center justify-center ring-4 ring-neutral-700">
-                      {getEventIcon(eventItem.title, index)}
+                      {getEventIcon(eventItem.title)}
                     </div>
                     <div>
                       <p className="text-sm text-neutral-200 font-medium mb-0.5">
