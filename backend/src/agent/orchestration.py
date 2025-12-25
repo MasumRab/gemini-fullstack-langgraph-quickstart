@@ -419,7 +419,7 @@ def build_orchestrated_graph(
 
     from agent.nodes import load_context, finalize_answer
 
-    builder = StateGraph(OverallState, context_schema=Configuration)
+    builder = StateGraph(OverallState, config_schema=Configuration)
 
     # Core nodes
     builder.add_node("load_context", load_context)
