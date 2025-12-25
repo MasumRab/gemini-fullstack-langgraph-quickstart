@@ -76,7 +76,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
               variant="ghost"
               size="icon"
               aria-label="Stop generating"
-              className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 cursor-pointer rounded-full transition-all duration-200"
+              className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 cursor-pointer rounded-full transition-all duration-200 focus-visible:ring-2 focus-visible:ring-red-500"
               onClick={onCancel}
             >
               <StopCircle className="h-5 w-5" aria-hidden="true" />
@@ -184,7 +184,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
         </div>
         {hasHistory && (
           <Button
-            className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer rounded-xl rounded-t-sm pl-2 "
+            className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer rounded-xl rounded-t-sm pl-2 focus-visible:ring-2 focus-visible:ring-neutral-500"
             variant="default"
             onClick={() => window.location.reload()}
           >
