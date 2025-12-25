@@ -444,6 +444,9 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
 
         all_tools = [search_tool] + MCP_TOOLS
 
+        # Create a map for fast lookup during execution
+        tools_map = {t.name: t for t in all_tools}
+
         # Determine model
         model_name = configurable.query_generator_model # Reusing query model for research agent
 
@@ -464,6 +467,20 @@ Provide the raw result from the tool."""
         tool_output = ""
         # sources_gathered is already initialized above for closure capture
 
+        # ⚡ Bolt Optimization: Helper to execute a single tool call
+        def _exec_single_tool(tool_call, tools_map_ref):
+            t_name = tool_call.get("name")
+            t_args = tool_call.get("args") or tool_call.get("arguments") or {}
+
+            selected = tools_map_ref.get(t_name)
+            if selected:
+                try:
+                    res = selected.invoke(t_args)
+                    return f"\nResult from {t_name}:\n{res}\n"
+                except Exception as e:
+                    return f"\nError executing {t_name}: {e}\n"
+            return ""
+
         if is_gemini_model(model_name):
             # Gemini Native Binding
             llm_with_tools = llm.bind_tools(all_tools)
@@ -471,22 +488,15 @@ Provide the raw result from the tool."""
 
             # Execute tool calls
             if response.tool_calls:
-                for tool_call in response.tool_calls:
-                    tool_name = tool_call["name"]
-                    tool_args = tool_call["args"]
+                # ⚡ Bolt Optimization: Execute tool calls in parallel
+                # This significantly speeds up cases where the LLM decides to call multiple tools
+                # (e.g. searching for multiple sub-topics at once)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=min(5, len(response.tool_calls))) as executor:
+                    # Submit all tool calls (order doesn't strictly matter for set, but we usually want to preserve it)
+                    # To be deterministic, we process based on list order:
+                    results = list(executor.map(lambda tc: _exec_single_tool(tc, tools_map), response.tool_calls))
+                    tool_output += "".join(results)
 
-                    # Find tool
-                    selected_tool = next((t for t in all_tools if t.name == tool_name), None)
-                    if selected_tool:
-                        try:
-                            res = selected_tool.invoke(tool_args)
-                            tool_output += f"\nResult from {tool_name}:\n{res}\n"
-                            # If it was search, we might want to capture sources, but the tool just returns string.
-                            # For simplicity in this polymorphic node, we rely on the string output.
-                            # If the tool was web_search, we can re-parse sources if needed,
-                            # but for now we just treat it as text content.
-                        except Exception as e:
-                            tool_output += f"\nError executing {tool_name}: {e}\n"
             else:
                 # If no tool called, just use response text
                 tool_output = response.content
@@ -503,18 +513,10 @@ Provide the raw result from the tool."""
             tool_calls = parse_tool_calls(content, allowed_tools=[t.name for t in all_tools])
 
             if tool_calls:
-                for tc in tool_calls:
-                    tool_name = tc["name"]
-                    tool_args = tc["args"]
-                    selected_tool = next((t for t in all_tools if t.name == tool_name), None)
-                    if selected_tool:
-                        try:
-                            # LangChain tools expect input as dict or str depending on schema
-                            # StructuredTool handles dict input
-                            res = selected_tool.invoke(tool_args)
-                            tool_output += f"\nResult from {tool_name}:\n{res}\n"
-                        except Exception as e:
-                            tool_output += f"\nError executing {tool_name}: {e}\n"
+                 # ⚡ Bolt Optimization: Execute tool calls in parallel for Gemma as well
+                with concurrent.futures.ThreadPoolExecutor(max_workers=min(5, len(tool_calls))) as executor:
+                    results = list(executor.map(lambda tc: _exec_single_tool(tc, tools_map), tool_calls))
+                    tool_output += "".join(results)
             else:
                  # Fallback: if no tool called, assume the model tried to answer directly or failed
                  # If it failed to pick a tool, we might fallback to default search?
@@ -602,7 +604,7 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
 
         if planning_status == "auto_approved" and not state.get("planning_steps") and not plan_steps:
              # Only return empty if truly empty
-            return {"planning_steps": [], "planning_feedback": ["Planning skipped."]}
+            return {"planning_steps": [], "planning_feedback": ["Generated 0 plan steps. No plan available."]}
 
         if last_content.startswith("/plan"):
             state["planning_status"] = "awaiting_confirmation"
