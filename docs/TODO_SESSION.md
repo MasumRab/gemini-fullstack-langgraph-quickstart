@@ -23,7 +23,7 @@
 
 ### 4. ⏳ Verify Agent Flow Script
 - **Status:** NOT STARTED
-- **Action Required:** Run `python backend/scripts/verify_agent_flow.py`
+- **Action Required:** Run `python verification/verify_agent_flow.py`
 
 ## Priority 2: Git History Cleanup
 
@@ -56,7 +56,7 @@
 git diff --check
 
 # Run agent flow verification
-python backend/scripts/verify_agent_flow.py
+python verification/verify_agent_flow.py
 
 # View commit count since remote
 git log --oneline origin/jules-mcp-persistence-wrapper-2114800518725581450..HEAD | Measure-Object -Line
