@@ -26,6 +26,7 @@ from agent.configuration import Configuration
 from agent.persistence import load_plan, save_plan
 from agent.prompts import (
     answer_instructions,
+    gemma_answer_instructions,
     get_current_date,
     plan_writer_instructions,
     plan_updater_instructions,
@@ -1374,11 +1375,19 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
         # Use validated (and optionally compressed) results
         summaries = state.get("validated_web_research_result") or state.get("web_research_result", [])
 
-        formatted_prompt = answer_instructions.format(
-            current_date=current_date,
-            research_topic=get_research_topic(state["messages"]),
-            summaries="\n---\n\n".join(summaries),
-        )
+        # Select prompt based on model
+        if is_gemma_model(reasoning_model):
+            formatted_prompt = gemma_answer_instructions.format(
+                current_date=current_date,
+                research_topic=get_research_topic(state["messages"]),
+                summaries="\n\n".join(summaries), # Cleaner join for XML
+            )
+        else:
+            formatted_prompt = answer_instructions.format(
+                current_date=current_date,
+                research_topic=get_research_topic(state["messages"]),
+                summaries="\n---\n\n".join(summaries),
+            )
 
         # Use rate-limited LLM
         llm = _get_rate_limited_llm(
