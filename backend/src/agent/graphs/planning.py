@@ -23,7 +23,7 @@ load_dotenv()
 # Planning Graph: Includes Planning, Validation, Reflection.
 # No KG Enrichment. No Compression.
 
-builder = StateGraph(OverallState, context_schema=Configuration)
+builder = StateGraph(OverallState, config_schema=Configuration)
 
 builder.add_node("load_context", load_context)
 builder.add_node("generate_plan", generate_plan)
