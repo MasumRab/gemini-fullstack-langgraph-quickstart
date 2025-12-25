@@ -47,10 +47,10 @@ if os.getenv("GEMINI_API_KEY") is None:
 
 # Create our Agent Graph using the standard builder wiring
 # Note: context_schema was renamed/used in main? My branch used config_schema.
-# Checking main's usage: builder = StateGraph(OverallState, context_schema=Configuration) in conflict block?
+# Checking main's usage: builder = StateGraph(OverallState, config_schema=Configuration) in conflict block?
 # No, `StateGraph(OverallState, config_schema=Configuration)` is standard.
 # Let's check if 'context_schema' was introduced in main.
-# The previous read showed `builder = StateGraph(OverallState, context_schema=Configuration)` in the lower block.
+# The previous read showed `builder = StateGraph(OverallState, config_schema=Configuration)` in the lower block.
 # LangGraph v0.2+ uses config_schema. Check if main updated langgraph version.
 # Assuming config_schema is safer for now unless I see errors.
 # Note: LangGraph v1.0 deprecates config_schema in favor of context_schema (if using older langgraph),
@@ -60,7 +60,7 @@ if os.getenv("GEMINI_API_KEY") is None:
 # Since we are on langgraph 1.x, we should check which param is preferred.
 # For now, suppressing warning by continuing to use the existing pattern, or we can silence it.
 # Actually, let's just stick to what works and ignore the warning for now to avoid breaking changes if user downgrades.
-builder = StateGraph(OverallState, context_schema=Configuration)
+builder = StateGraph(OverallState, config_schema=Configuration)
 
 # If MCP is enabled, we log it. Tools are loaded via lifespan in app.py to ensure event loop safety.
 if mcp_settings.enabled:
