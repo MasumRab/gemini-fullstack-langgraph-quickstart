@@ -24,7 +24,7 @@ ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Prepare env
 ENV_VARS = os.environ.copy()
-REPO_ROOT = Path.cwd()
+REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = REPO_ROOT / "backend" / "src"
 ENV_VARS["PYTHONPATH"] = f"{REPO_ROOT}:{BACKEND_SRC}:{ENV_VARS.get('PYTHONPATH','')}"
 ENV_VARS.update({
