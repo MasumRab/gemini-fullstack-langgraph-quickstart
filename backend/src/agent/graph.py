@@ -60,7 +60,7 @@ if os.getenv("GEMINI_API_KEY") is None:
 # Since we are on langgraph 1.x, we should check which param is preferred.
 # For now, suppressing warning by continuing to use the existing pattern, or we can silence it.
 # Actually, let's just stick to what works and ignore the warning for now to avoid breaking changes if user downgrades.
-builder = StateGraph(OverallState, config_schema=Configuration)
+builder = StateGraph(OverallState, context_schema=Configuration)
 
 # If MCP is enabled, we log it. Tools are loaded via lifespan in app.py to ensure event loop safety.
 if mcp_settings.enabled:
