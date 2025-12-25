@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ActivityTimeline,
   ProcessedEvent,
-} from "@/components/ActivityTimeline"; // Assuming ActivityTimeline is in the same dir or adjust path
+} from "@/components/ActivityTimeline";
 
 // Markdown component props type from former ReportView
 type MdComponentProps = {
@@ -137,8 +137,6 @@ const mdComponents = {
 };
 
 // ⚡ Bolt Optimization: Define remark plugins as a constant to ensure referential stability.
-// Passing a new array [remarkGfm] on every render breaks ReactMarkdown's internal memoization
-// and can cause unnecessary re-processing/re-rendering of the entire markdown tree.
 const markdownPlugins = [remarkGfm];
 
 // Props for HumanMessageBubble
@@ -179,7 +177,6 @@ interface AiMessageBubbleProps {
 }
 
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
-// The `isCopied` prop ensures only the specific bubble being interacted with re-renders
 const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
   message,
   historicalActivity,
@@ -238,6 +235,97 @@ interface PlanningContext {
   feedback?: string[];
 }
 
+interface PlanningStatusProps {
+  planningContext: PlanningContext;
+  onSendCommand?: (command: string) => void;
+}
+
+// ⚡ Bolt Optimization: Memoize PlanningStatus to isolate it from frequent
+// message streaming updates in the parent view.
+const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusProps) => {
+  return (
+    <div className="px-4 pt-4">
+      <div className="border border-neutral-700 rounded-2xl bg-neutral-900/50 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-neutral-400 uppercase tracking-wide">
+              Planning Mode
+            </p>
+            <h3 className="text-lg font-semibold">
+              {planningContext.steps?.length
+                ? `${planningContext.steps.length} proposed step${planningContext.steps.length > 1 ? "s" : ""}`
+                : "Awaiting plan details"}
+            </h3>
+          </div>
+          {planningContext.status && (
+            <Badge className="bg-neutral-700 text-xs">
+              {planningContext.status}
+            </Badge>
+          )}
+        </div>
+        {planningContext.feedback?.length ? (
+          <ul className="text-xs text-neutral-400 list-disc pl-4 space-y-1">
+            {planningContext.feedback.map((note, idx) => (
+              <li key={`feedback-${idx}`}>{note}</li>
+            ))}
+          </ul>
+        ) : null}
+        {planningContext.steps?.length ? (
+          <ol className="space-y-2">
+            {planningContext.steps.map((step, idx) => (
+              <li
+                key={step.id || `plan-${idx}`}
+                className="border border-neutral-700 rounded-xl p-3 text-sm"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-neutral-200 font-medium">
+                    {step.title || step.query || `Step ${idx + 1}`}
+                  </span>
+                  {step.status && (
+                    <Badge variant="outline" className="text-xs">
+                      {step.status}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-400 mt-1">
+                  Tool: {step.suggested_tool || "web_research"}
+                </p>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        {onSendCommand && (
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onSendCommand("/plan")}
+            >
+              Enter Planning
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onSendCommand("/end_plan")}
+            >
+              Skip Planning
+            </Button>
+            {planningContext.status === "awaiting_confirmation" && (
+              <Button
+                size="sm"
+                onClick={() => onSendCommand("/confirm_plan")}
+              >
+                Confirm Plan
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+PlanningStatus.displayName = "PlanningStatus";
+
 interface ChatMessagesViewProps {
   messages: Message[];
   isLoading: boolean;
@@ -263,9 +351,7 @@ export function ChatMessagesView({
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
-  // Bolt Optimization: Wrapped in useCallback to ensure referential stability for memoized children
   // ⚡ Bolt Optimization: useCallback ensures handleCopy reference remains stable
-  // allowing memoized child components to avoid re-renders
   const handleCopy = useCallback(async (text: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -279,85 +365,10 @@ export function ChatMessagesView({
   return (
     <div className="flex flex-col h-full">
       {planningContext && (
-        <div className="px-4 pt-4">
-          <div className="border border-neutral-700 rounded-2xl bg-neutral-900/50 p-4 space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm text-neutral-400 uppercase tracking-wide">
-                  Planning Mode
-                </p>
-                <h3 className="text-lg font-semibold">
-                  {planningContext.steps?.length
-                    ? `${planningContext.steps.length} proposed step${planningContext.steps.length > 1 ? "s" : ""
-                    }`
-                    : "Awaiting plan details"}
-                </h3>
-              </div>
-              {planningContext.status && (
-                <Badge className="bg-neutral-700 text-xs">
-                  {planningContext.status}
-                </Badge>
-              )}
-            </div>
-            {planningContext.feedback?.length ? (
-              <ul className="text-xs text-neutral-400 list-disc pl-4 space-y-1">
-                {planningContext.feedback.map((note, idx) => (
-                  <li key={`feedback-${idx}`}>{note}</li>
-                ))}
-              </ul>
-            ) : null}
-            {planningContext.steps?.length ? (
-              <ol className="space-y-2">
-                {planningContext.steps.map((step, idx) => (
-                  <li
-                    key={step.id || `plan-${idx}`}
-                    className="border border-neutral-700 rounded-xl p-3 text-sm"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-neutral-200 font-medium">
-                        {step.title || step.query || `Step ${idx + 1}`}
-                      </span>
-                      {step.status && (
-                        <Badge variant="outline" className="text-xs">
-                          {step.status}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-neutral-400 mt-1">
-                      Tool: {step.suggested_tool || "web_research"}
-                    </p>
-                  </li>
-                ))}
-              </ol>
-            ) : null}
-            {onSendCommand && (
-              <div className="flex flex-wrap gap-2 justify-end">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onSendCommand("/plan")}
-                >
-                  Enter Planning
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onSendCommand("/end_plan")}
-                >
-                  Skip Planning
-                </Button>
-                {planningContext.status === "awaiting_confirmation" && (
-                  <Button
-                    size="sm"
-                    onClick={() => onSendCommand("/confirm_plan")}
-                  >
-                    Confirm Plan
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        <PlanningStatus
+          planningContext={planningContext}
+          onSendCommand={onSendCommand}
+        />
       )}
       <ScrollArea className="flex-1 overflow-y-auto" ref={scrollAreaRef}>
         <div className="p-4 md:p-6 space-y-2 max-w-4xl mx-auto pt-16">
@@ -378,12 +389,10 @@ export function ChatMessagesView({
                     <AiMessageBubble
                       message={message}
                       historicalActivity={historicalActivities[message.id!]}
-                      // Bolt Optimization: Only pass liveActivity to the last message to prevent
-                      // historical messages from re-rendering when new events arrive.
+                      // Bolt Optimization: Only pass liveActivity to the last message
                       liveActivity={isLast ? liveActivityEvents : undefined}
                       isLastMessage={isLast}
-                      // Bolt Optimization: Only pass loading state to the last message to prevent
-                      // historical messages from re-rendering when global loading toggles.
+                      // Bolt Optimization: Only pass loading state to the last message
                       isOverallLoading={isLast ? isLoading : false}
                       mdComponents={mdComponents}
                       handleCopy={handleCopy}
@@ -398,8 +407,6 @@ export function ChatMessagesView({
             (messages.length === 0 ||
               messages[messages.length - 1].type === "human") && (
               <div className="flex items-start gap-3 mt-3">
-                {" "}
-                {/* AI message row structure */}
                 <div className="relative group max-w-[85%] md:max-w-[80%] rounded-xl p-3 shadow-sm break-words bg-neutral-800 text-neutral-100 rounded-bl-none w-full min-h-[56px]">
                   {liveActivityEvents.length > 0 ? (
                     <div className="text-xs">
