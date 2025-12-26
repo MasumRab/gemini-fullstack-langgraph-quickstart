@@ -88,7 +88,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
               className={`${isSubmitDisabled
                 ? "text-neutral-500"
                 : "text-blue-500 hover:text-blue-400 hover:bg-blue-500/10"
-                } p-2 cursor-pointer rounded-full transition-all duration-200 text-base`}
+                } p-2 cursor-pointer rounded-full transition-all duration-200 text-base focus-visible:ring-2 focus-visible:ring-blue-500`}
               disabled={isSubmitDisabled}
             >
               Search
