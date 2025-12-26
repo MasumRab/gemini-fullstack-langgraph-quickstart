@@ -244,6 +244,10 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
         if is_gemma_model(configurable.query_generator_model):
             logger.info(f"Using Gemma adapter for structured output (and {len(MCP_TOOLS)} MCP tools if present).")
 
+            # Optimization for Gemma: Explicitly request keyword-optimized queries for better search performance
+            gemma_optimization_note = "\n\nIMPORTANT: When generating search queries for the plan, use specific KEYWORDS rather than full questions. This improves search engine effectiveness (e.g. 'solid state battery energy density 2024' instead of 'what is the energy density...')."
+            formatted_prompt += gemma_optimization_note
+
             # Strategy for Gemma in this node:
             # We want `Plan` as the structured output.
 
