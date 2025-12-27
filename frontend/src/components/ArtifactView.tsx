@@ -91,6 +91,7 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
                   ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
                   ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
                   li: ({ node, ...props }) => <li className="text-sm md:text-base" {...props} />,
+                  // @ts-ignore
                   code: ({ node, inline, ...props }) =>
                     inline
                       ? <code className="bg-neutral-800 text-blue-400 px-1.5 py-0.5 rounded text-sm" {...props} />
