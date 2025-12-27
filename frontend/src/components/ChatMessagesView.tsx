@@ -145,6 +145,20 @@ interface HumanMessageBubbleProps {
   mdComponents: typeof mdComponents;
 }
 
+// ⚡ Bolt Optimization: Custom comparator to ignore object reference changes
+// when content and ID are identical (crucial for streaming lists).
+function areHumanMessageBubblePropsEqual(
+  prev: HumanMessageBubbleProps,
+  next: HumanMessageBubbleProps
+) {
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.content === next.message.content &&
+    prev.message.type === next.message.type &&
+    prev.mdComponents === next.mdComponents
+  );
+}
+
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
 const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
   message,
@@ -161,7 +175,7 @@ const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
       </ReactMarkdown>
     </div>
   );
-});
+}, areHumanMessageBubblePropsEqual);
 HumanMessageBubble.displayName = "HumanMessageBubble";
 
 // Props for AiMessageBubble
@@ -174,6 +188,26 @@ interface AiMessageBubbleProps {
   mdComponents: typeof mdComponents;
   handleCopy: (text: string, messageId: string) => void;
   isCopied: boolean;
+}
+
+// ⚡ Bolt Optimization: Custom comparator for AI bubbles.
+// Explicitly checks primitive values and specific props to avoid re-rendering
+// when the parent passes new message objects with identical content.
+function areAiMessageBubblePropsEqual(
+  prev: AiMessageBubbleProps,
+  next: AiMessageBubbleProps
+) {
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.content === next.message.content &&
+    prev.isLastMessage === next.isLastMessage &&
+    prev.isOverallLoading === next.isOverallLoading &&
+    prev.isCopied === next.isCopied &&
+    prev.historicalActivity === next.historicalActivity &&
+    prev.liveActivity === next.liveActivity &&
+    prev.handleCopy === next.handleCopy &&
+    prev.mdComponents === next.mdComponents
+  );
 }
 
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
@@ -225,7 +259,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
       </Button>
     </div>
   );
-});
+}, areAiMessageBubblePropsEqual);
 AiMessageBubble.displayName = "AiMessageBubble";
 
 interface PlanningContext {

@@ -1,13 +1,9 @@
-# Bolt's Journal
+# Bolt's Journal - Critical Learnings
 
-## 2024-05-22 - [Performance Persona Initialization]
-**Learning:** Performance optimizations must be strictly measurable and non-breaking.
-**Action:** Always verify with tests and linting before submitting.
+## 2024-05-22 - [Middleware Performance]
+**Learning:** `RateLimitMiddleware` using `time.time()` inside high-frequency loops/requests can be a micro-bottleneck if not careful, though usually negligible in Python compared to I/O. However, the cleanup strategy (lazy vs periodic) is critical.
+**Action:** Ensure cleanup is amortized or backgrounded.
 
-## 2024-05-23 - [InputForm Re-renders]
-**Learning:** Passing unstable function references (like inline arrow functions) to `onSubmit` or `onCancel` in `InputForm` breaks `React.memo`, causing the entire form to re-render on every parent update (like streaming tokens).
-**Action:** Use `useCallback` for event handlers passed to memoized components.
-
-## 2024-05-23 - [ChatMessagesView Prop Stability]
-**Learning:** Even with `React.memo`, if specific props (like `isOverallLoading`) change for *all* items in a list, the entire list re-renders.
-**Action:** Only pass dynamic props to the specific item that needs them (e.g., the last message), or split components so static history doesn't listen to active state.
+## 2024-05-22 - [React Memoization Stability]
+**Learning:** `React.memo` is useless if props are unstable. Passing inline functions `() => ...` or new objects `{}` as props defeats memoization.
+**Action:** Always verify prop stability (useCallback/useMemo) in parent components before wrapping children in React.memo.
