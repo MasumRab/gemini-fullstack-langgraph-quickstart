@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from "@/components/ui/button";
 
 // TODO: [Open Canvas] Implement ArtifactView component.
 // See docs/tasks/03_OPEN_CANVAS_TASKS.md
@@ -22,7 +23,9 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, isOpen, onC
       */}
       <div className="artifact-header">
         <h3>Artifact Preview</h3>
-        <button onClick={onClose}>Close</button>
+        <Button variant="outline" size="sm" onClick={onClose}>
+          Close
+        </Button>
       </div>
       <div className="artifact-content">
         {content}
