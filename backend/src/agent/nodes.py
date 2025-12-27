@@ -661,8 +661,10 @@ def planning_wait(state: OverallState) -> OverallState:
     outputs=["plan"],
 )
 def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
     Updates the research plan based on latest findings.
     Implements FlowSearch/Open SWE logic to dynamically adjust tasks.
+    """
     with observe_span("update_plan", config):
         configurable = Configuration.from_runnable_config(config)
 
