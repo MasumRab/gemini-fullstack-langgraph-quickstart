@@ -29,14 +29,14 @@ This document outlines the strategic roadmap for evolving the current "Research 
 *Goal: Integrate verified patterns from Open Deep Research, STORM, FlowSearch, ManuSearch, and GPT Researcher.*
 
 ### High Priority
-- [ ] **Scoping & Clarification (Open Deep Research):**
-    - [ ] Implement a pre-planning "Scoping Node" that asks the user clarifying questions.
-- [ ] **Hierarchical Outlines (STORM):**
-    - [ ] Upgrade `planning_mode` to generate structured outlines (Section -> Subsection).
-- [ ] **Dynamic Knowledge Flow (FlowSearch):**
-    - [ ] Enable the planner to dynamically expand the graph (DAG) based on intermediate findings.
-- [ ] **Structured Content Reading (ManuSearch):**
-    - [ ] Implement a specialized `ContentReader` node that extracts evidence from retrieved pages.
+- [x] **Scoping & Clarification (Open Deep Research):**
+    - [x] Implement a pre-planning "Scoping Node" that asks the user clarifying questions.
+- [x] **Hierarchical Outlines (STORM):**
+    - [x] Upgrade `planning_mode` to generate structured outlines (Section -> Subsection).
+- [x] **Dynamic Knowledge Flow (FlowSearch):**
+    - [x] Enable the planner to dynamically expand the graph (DAG) based on intermediate findings.
+- [x] **Structured Content Reading (ManuSearch):**
+    - [x] Implement a specialized `ContentReader` node that extracts evidence from retrieved pages.
 - [ ] **Recursive Research (GPT Researcher):**
     - [ ] Enable the `web_research` node to "recurse" (call the graph again) for complex sub-topics.
 
@@ -44,20 +44,20 @@ This document outlines the strategic roadmap for evolving the current "Research 
 *Goal: Transform the agent from a "Search Query Approver" to a "Task Manager".*
 
 ### High Priority
-- [ ] **Enhance `planning_mode`:**
-    - [ ] Transition from simple `search_query` lists to structured `Todo` objects.
-    - [ ] Implement logic to update the plan based on `reflection` output.
-- [ ] **Dynamic Re-planning:**
-    - [ ] Update `reflection` node to output *Plan Updates*.
+- [x] **Enhance `planning_mode`:**
+    - [x] Transition from simple `search_query` lists to structured `Todo` objects.
+    - [x] Implement logic to update the plan based on `reflection` output.
+- [x] **Dynamic Re-planning:**
+    - [x] Update `reflection` node to output *Plan Updates*.
 
 ## Phase 4: Artifacts & Collaboration (Open Canvas Integration)
 *Goal: Move beyond chat bubbles. The agent should produce and maintain live "artifacts" that the user can co-edit.*
 
 ### High Priority
-- [ ] **Artifact UI State:**
-    - [ ] Frontend: Split the view into "Chat" (left) and "Artifact/Canvas" (right).
-- [ ] **Real-time Artifact Streaming:**
-    - [ ] Stream updates to the Artifact panel separately from the chat stream.
+- [x] **Artifact UI State:**
+    - [x] Frontend: Split the view into "Chat" (left) and "Artifact/Canvas" (right).
+- [x] **Real-time Artifact Streaming:**
+    - [x] Stream updates to the Artifact panel separately from the chat stream.
 
 ## Architecture Log
 *Record of significant architectural decisions.*

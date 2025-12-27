@@ -87,15 +87,6 @@ app.add_middleware(
 # Add Content Size Limit Middleware (Guard against DoS)
 app.add_middleware(ContentSizeLimitMiddleware, max_upload_size=10 * 1024 * 1024)
 
-# Add Security Headers (OUTERMOST - added last)
-# This ensures even 429 responses from RateLimiter (inner) get headers?
-# Wait: FastAPI executes middleware added *last* as the *outermost* layer.
-# Request -> SecurityHeaders -> RateLimit -> App
-# Response <- SecurityHeaders <- RateLimit <- App
-# If RateLimit returns 429, SecurityHeaders sees the response and adds headers.
-# Correct order: SecurityHeaders added LAST.
-app.add_middleware(SecurityHeadersMiddleware)
-
 # Add Rate Limiting (INNER - added before SecurityHeaders)
 # Limit to 100 requests per minute per IP for sensitive API endpoints
 app.add_middleware(
@@ -104,6 +95,11 @@ app.add_middleware(
     window=60,
     protected_paths=["/agent", "/threads"]
 )
+
+# Add Security Headers (OUTERMOST - added last)
+# This ensures even 429 responses from RateLimiter (inner) get headers.
+# Re-verified: Starlette .add_middleware() uses .insert(0), so LAST added is OUTERMOST.
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 @app.get("/health")

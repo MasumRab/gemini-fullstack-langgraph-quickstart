@@ -231,3 +231,70 @@ gemma_answer_instructions = """You are an expert researcher writing a final repo
 Write the detailed report now, incorporating the sources above.
 </final_instruction>
 """
+
+outline_instructions = """You are an expert research planner. Your goal is to generate a comprehensive, hierarchical outline for a research report on the topic: "{research_topic}".
+
+Instructions:
+1. Analyze the research topic and identify the key sections and subsections needed for a thorough report.
+2. The outline should follow a clear logical flow.
+3. For each subsection, provide a brief description of what information should be gathered.
+4. Ensure the outline covers all aspects of the user's request.
+5. The current date is {current_date}.
+
+Format:
+- Format your response as a JSON object with a "title" and a "sections" list.
+- Each section should have a "title" and a "subsections" list.
+- Each subsection should have a "title" and a "description".
+
+Example:
+{{
+    "title": "Comprehensive Analysis of AI in Healthcare",
+    "sections": [
+        {{
+            "title": "Introduction",
+            "subsections": [
+                {{
+                    "title": "Current State of AI in Healthcare",
+                    "description": "Overview of major AI technologies being used in clinical settings today."
+                }},
+                {{
+                    "title": "Historical Context",
+                    "description": "Brief history of AI development in medicine."
+                }}
+            ]
+        }},
+        {{
+            "title": "Clinical Applications",
+            "subsections": [
+                {{
+                    "title": "Medical Imaging",
+                    "description": "How AI is used to interpret X-rays, MRIs, and CT scans."
+                }},
+                {{
+                    "title": "Drug Discovery",
+                    "description": "The role of AI in accelerating the discovery of new pharmacuticals."
+                }}
+            ]
+        }}
+    ]
+}}
+"""
+
+denoising_instructions = """You are an expert report refiner. You have been provided with multiple draft versions of a research report.
+
+Your goal is to synthesize the best components of these drafts into a single, high-quality, 
+comprehensive, and well-structured final report.
+
+Instructions:
+1. Identify the strongest arguments, clearest explanations, and most relevant evidence from each draft.
+2. Resolve any contradictions between the drafts by favoring the most well-supported information.
+3. Ensure the final report follows a logical flow and has a professional tone.
+4. Maintain all relevant citations from the original search results.
+5. The current date is {current_date}.
+
+Drafts:
+{drafts}
+
+Final Instruction:
+Synthesize the above drafts into the definitive final report.
+"""
