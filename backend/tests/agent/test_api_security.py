@@ -83,6 +83,26 @@ class TestAPISecurity:
         response = client.get("/agent/test")
         assert response.status_code == 200
 
+    def test_rate_limit_respects_x_forwarded_for(self, app):
+        """Test that rate limiting uses the X-Forwarded-For header when present."""
+        client = TestClient(app)
+
+        # Simulate 5 requests from IP A (via proxy)
+        headers_a = {"X-Forwarded-For": "10.0.0.1, 10.0.0.2"}
+        for _ in range(5):
+            response = client.get("/agent/test", headers=headers_a)
+            assert response.status_code == 200
+
+        # 6th request from IP A should be blocked
+        response = client.get("/agent/test", headers=headers_a)
+        assert response.status_code == 429
+
+        # Requests from IP B should still be allowed (distinct from IP A)
+        # Even if they come from the same "client host" (mock client doesn't change)
+        headers_b = {"X-Forwarded-For": "10.0.0.3"}
+        response = client.get("/agent/test", headers=headers_b)
+        assert response.status_code == 200
+
     @pytest.mark.asyncio
     async def test_memory_cleanup_preserves_active_clients(self):
         """Test that memory cleanup removes stale clients but keeps active ones."""
