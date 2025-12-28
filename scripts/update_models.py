@@ -118,13 +118,8 @@ def main():
     )
 
     # 2. Update research_tools.py (writer model)
-    tools_file = BACKEND_DIR / "research_tools.py"
-    # Matches `init_chat_model(model=...)` where the value can be a string OR a variable constant
-    update_file(
-        tools_file,
-        r'(writer_model\s*=\s*init_chat_model\(model=)([^,]+)',
-        f'\\1"{config["tools"]}"'
-    )
+    # Skipped: research_tools.py now uses DEFAULT_ANSWER_MODEL from models.py
+    # so we don't need to manually update it here.
 
     # 3. Update Frontend Default
     update_file(
