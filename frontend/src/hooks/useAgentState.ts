@@ -16,6 +16,7 @@ export function useAgentState() {
     status?: string | null;
     feedback?: string[];
   } | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [artifacts, setArtifacts] = useState<Record<string, any>>({});
   const [isArtifactOpen, setIsArtifactOpen] = useState(false);
 
