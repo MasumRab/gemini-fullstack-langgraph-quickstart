@@ -14,6 +14,14 @@ import re
 from pathlib import Path
 
 # Configuration Strategies - Only Gemini 2.5 models (1.5 and 2.0 are deprecated/inaccessible)
+CONSTANTS_MAP = {
+    "gemini-2.5-flash": "GEMINI_FLASH",
+    "gemini-2.5-flash-lite": "GEMINI_FLASH_LITE",
+    "gemini-2.5-pro": "GEMINI_PRO",
+    "gemma-2-27b-it": "GEMMA_2_27B_IT",
+    "gemma-3-27b-it": "GEMMA_3_27B_IT",
+}
+
 STRATEGIES = {
     "flash": {
         "description": "Gemini 2.5 Flash: Best price-performance for all components",
@@ -100,21 +108,25 @@ def main():
 
     # Update DEFAULT_* constants
     # Matches: DEFAULT_QUERY_MODEL = ...
-    # Replaces with: DEFAULT_QUERY_MODEL = "model_name"
+    # Replaces with: DEFAULT_QUERY_MODEL = GEMINI_FLASH (or "model_name")
+    
+    def get_val(m): 
+        return CONSTANTS_MAP.get(m, f'"{m}"')
+
     update_file(
         models_file,
         r'(DEFAULT_QUERY_MODEL\s*=\s*)(.+)',
-        f'\\1"{config["query"]}"'
+        f'\\1{get_val(config["query"])}'
     )
     update_file(
         models_file,
         r'(DEFAULT_REFLECTION_MODEL\s*=\s*)(.+)',
-        f'\\1"{config["reflection"]}"'
+        f'\\1{get_val(config["reflection"])}'
     )
     update_file(
         models_file,
         r'(DEFAULT_ANSWER_MODEL\s*=\s*)(.+)',
-        f'\\1"{config["answer"]}"'
+        f'\\1{get_val(config["answer"])}'
     )
 
     # 2. Update research_tools.py (writer model)
