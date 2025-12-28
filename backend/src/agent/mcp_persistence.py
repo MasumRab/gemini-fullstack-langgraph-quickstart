@@ -1,6 +1,10 @@
 from typing import Any, Dict, List, Optional
+import logging
 from mcp.server.fastmcp import FastMCP
 from agent.persistence import load_plan, save_plan
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server
 mcp = FastMCP("persistence")
@@ -16,7 +20,11 @@ def load_thread_plan(thread_id: str) -> Optional[Dict[str, Any]]:
     Returns:
         The plan data (todo_list, artifacts) or None if not found.
     """
-    return load_plan(thread_id)
+    try:
+        return load_plan(thread_id)
+    except Exception as e:
+        logger.exception(f"Error loading plan for thread {thread_id}: {e}")
+        return None
 
 @mcp.tool()
 def save_thread_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, Any]) -> str:
@@ -35,4 +43,5 @@ def save_thread_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts:
         save_plan(thread_id, todo_list, artifacts)
         return f"Plan saved successfully for thread {thread_id}"
     except Exception as e:
+        logger.exception(f"Error saving plan for thread {thread_id}: {e}")
         return f"Error saving plan: {str(e)}"

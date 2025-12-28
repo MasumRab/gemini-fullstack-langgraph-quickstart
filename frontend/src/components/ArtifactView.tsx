@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { X, Copy, Check, Maximize2, Minimize2, FileText, Code as CodeIcon } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useState } from 'react';
+import rehypeSanitize from 'rehype-sanitize';
+import rehypeRaw from 'rehype-raw';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark as highlighterStyle } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface ArtifactViewProps {
   content: string;
@@ -23,6 +26,69 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
     navigator.clipboard.writeText(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const renderContent = () => {
+    switch (type) {
+      case 'markdown':
+        return (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw, rehypeSanitize]}
+            components={{
+              h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mt-8 mb-4 text-neutral-100 border-b border-neutral-800 pb-2" {...props} />,
+              h2: ({ node, ...props }) => <h2 className="text-xl font-semibold mt-6 mb-3 text-neutral-200" {...props} />,
+              h3: ({ node, ...props }) => <h3 className="text-lg font-medium mt-4 mb-2 text-neutral-300" {...props} />,
+              p: ({ node, ...props }) => <p className="text-neutral-400 leading-relaxed mb-4 text-sm md:text-base" {...props} />,
+              ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
+              ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
+              li: ({ node, ...props }) => <li className="text-sm md:text-base" {...props} />,
+              code: ({ node, inline, className, children, ...props }: any) => {
+                const match = /language-(\w+)/.exec(className || '');
+                return !inline && match ? (
+                  <SyntaxHighlighter
+                    style={highlighterStyle}
+                    language={match[1]}
+                    PreTag="div"
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code className="bg-neutral-800 text-blue-400 px-1.5 py-0.5 rounded text-sm" {...props}>
+                    {children}
+                  </code>
+                );
+              },
+              blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-blue-500/50 pl-4 italic text-neutral-500 my-4" {...props} />,
+              table: ({ node, ...props }) => <div className="overflow-x-auto my-6"><table className="w-full border-collapse border border-neutral-800 text-sm" {...props} /></div>,
+              th: ({ node, ...props }) => <th className="border border-neutral-800 bg-neutral-800/50 px-4 py-2 text-left font-semibold" {...props} />,
+              td: ({ node, ...props }) => <td className="border border-neutral-800 px-4 py-2" {...props} />,
+              a: ({ node, ...props }) => <a className="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 underline-offset-4 transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
+            }}
+          >
+            {content}
+          </ReactMarkdown>
+        );
+      case 'code':
+        return (
+          <SyntaxHighlighter
+            style={highlighterStyle}
+            language="javascript" // Default to javascript, could be dynamic
+            showLineNumbers={true}
+            className="rounded-xl"
+          >
+            {content}
+          </SyntaxHighlighter>
+        );
+      case 'text':
+      default:
+        return (
+          <div className="whitespace-pre-wrap text-neutral-400 font-sans text-sm md:text-base leading-relaxed">
+            {content}
+          </div>
+        );
+    }
   };
 
   return (
@@ -80,36 +146,7 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
       <div className="flex-1 overflow-y-auto custom-scrollbar bg-neutral-900 scroll-smooth">
         <div className="max-w-4xl mx-auto p-6 md:p-8">
           <div className="prose prose-invert prose-blue max-w-none">
-            {type === 'markdown' || type === 'text' ? (
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h1: ({ ...props }) => <h1 className="text-2xl font-bold mt-8 mb-4 text-neutral-100 border-b border-neutral-800 pb-2" {...props} />,
-                  h2: ({ ...props }) => <h2 className="text-xl font-semibold mt-6 mb-3 text-neutral-200" {...props} />,
-                  h3: ({ ...props }) => <h3 className="text-lg font-medium mt-4 mb-2 text-neutral-300" {...props} />,
-                  p: ({ ...props }) => <p className="text-neutral-400 leading-relaxed mb-4 text-sm md:text-base" {...props} />,
-                  ul: ({ ...props }) => <ul className="list-disc pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
-                  ol: ({ ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
-                  li: ({ ...props }) => <li className="text-sm md:text-base" {...props} />,
-                  // @ts-expect-error - inline prop is not recognized by ReactMarkdown code component
-                  code: ({ inline, ...props }) =>
-                    inline
-                      ? <code className="bg-neutral-800 text-blue-400 px-1.5 py-0.5 rounded text-sm" {...props} />
-                      : <pre className="bg-neutral-800/50 rounded-xl p-4 overflow-x-auto border border-neutral-700/50 my-6 shadow-inner"><code className="text-sm font-mono text-neutral-300" {...props} /></pre>,
-                  blockquote: ({ ...props }) => <blockquote className="border-l-4 border-blue-500/50 pl-4 italic text-neutral-500 my-4" {...props} />,
-                  table: ({ ...props }) => <div className="overflow-x-auto my-6"><table className="w-full border-collapse border border-neutral-800 text-sm" {...props} /></div>,
-                  th: ({ ...props }) => <th className="border border-neutral-800 bg-neutral-800/50 px-4 py-2 text-left font-semibold" {...props} />,
-                  td: ({ ...props }) => <td className="border border-neutral-800 px-4 py-2" {...props} />,
-                  a: ({ ...props }) => <a className="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 underline-offset-4 transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
-                }}
-              >
-                {content}
-              </ReactMarkdown>
-            ) : (
-              <pre className="font-mono text-sm text-neutral-300 bg-neutral-900 border border-neutral-800 rounded-xl p-6 overflow-x-auto shadow-inner">
-                <code>{content}</code>
-              </pre>
-            )}
+            {renderContent()}
           </div>
         </div>
       </div>

@@ -1,14 +1,12 @@
 from typing import List, Optional, Any
 import os
 import asyncio
+MCP_TOOLS: List[Any] = []
 from pydantic import BaseModel, Field
 from langchain_core.tools import StructuredTool
 
 from agent.mcp_config import McpConnectionManager
 from agent.mcp_server import FilesystemMCPServer
-
-# Global list of loaded MCP tools/Persistent tools
-MCP_TOOLS: List[Any] = []
 
 class SearchQueryList(BaseModel):
     query: List[str] = Field(

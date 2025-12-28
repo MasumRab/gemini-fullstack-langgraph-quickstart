@@ -9,10 +9,10 @@ def verify_accessibility(page):
 
     # Check for the Textarea with the new aria-label
     textarea = page.get_by_label("Search query")
-    if textarea.is_visible():
-        print("✅ Textarea with aria-label='Search query' found.")
-    else:
-        print("❌ Textarea with aria-label='Search query' NOT found.")
+    if not textarea.is_visible():
+        raise AssertionError("❌ Textarea with aria-label='Search query' NOT found.")
+    
+    print("✅ Textarea with aria-label='Search query' found.")
 
     # To check the stop button, we might need to be in a loading state,
     # but the button is rendered conditionally based on `isLoading`.
@@ -30,12 +30,18 @@ def verify_accessibility(page):
     print(f"Textarea aria-label: {aria_label}")
 
 if __name__ == "__main__":
+    import sys
+    success = True
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
         try:
             verify_accessibility(page)
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Verification failed: {e}")
+            success = False
         finally:
             browser.close()
+    
+    if not success:
+        sys.exit(1)

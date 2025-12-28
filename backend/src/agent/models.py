@@ -34,13 +34,13 @@ GEMMA_3_27B_IT = "gemma-3-27b-it"
 # ============================================================================
 
 # These are the recommended defaults for differnt tasks
-DEFAULT_QUERY_MODEL = GEMMA_3_27B_IT
+DEFAULT_QUERY_MODEL = "gemini-2.5-flash"
 """Default model for query generation - fast and efficient."""
 
-DEFAULT_REFLECTION_MODEL = GEMMA_3_27B_IT
+DEFAULT_REFLECTION_MODEL = "gemini-2.5-flash"
 """Default model for reflection/reasoning - balanced performance."""
 
-DEFAULT_ANSWER_MODEL = GEMMA_3_27B_IT
+DEFAULT_ANSWER_MODEL = "gemini-2.5-flash"
 """Default model for final answer synthesis - high quality output."""
 
 DEFAULT_VALIDATION_MODEL = GEMMA_3_27B_IT
