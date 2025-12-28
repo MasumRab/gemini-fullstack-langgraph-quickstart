@@ -42,6 +42,6 @@ def save_thread_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts:
     try:
         save_plan(thread_id, todo_list, artifacts)
         return f"Plan saved successfully for thread {thread_id}"
-    except Exception as e:
-        logger.exception(f"Error saving plan for thread {thread_id}: {e}")
-        return f"Error saving plan: {str(e)}"
+    except Exception:
+        logger.exception(f"Error saving plan for thread {thread_id}")
+        return "Error saving plan"
