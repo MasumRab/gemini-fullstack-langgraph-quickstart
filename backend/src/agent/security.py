@@ -101,7 +101,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     break
 
         if is_protected:
-            client_ip = request.client.host if request.client else "unknown"
+            # 🛡️ Sentinel: Support X-Forwarded-For for proxies (Render/Load Balancers)
+            # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                # Take the first IP in the list (the real client)
+                # Truncate to 100 chars to prevent memory exhaustion attacks
+                client_ip = forwarded.split(",")[0].strip()[:100]
+            else:
+                client_ip = request.client.host if request.client else "unknown"
+
             now = time.time()
 
             # Clean old requests (simple sliding window)
