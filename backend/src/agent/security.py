@@ -101,7 +101,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     break
 
         if is_protected:
-            client_ip = request.client.host if request.client else "unknown"
+            # Enhanced IP detection for proxy support (Render, etc.)
+            # We prioritize X-Forwarded-For to get the real client IP.
+            # Security Note: We truncate to 100 chars to prevent memory exhaustion attacks via huge headers.
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                # The first IP in the list is the original client
+                client_ip = forwarded.split(",")[0].strip()[:100]
+            else:
+                client_ip = request.client.host if request.client else "unknown"
+
             now = time.time()
 
             # Clean old requests (simple sliding window)
