@@ -1,3 +1,10 @@
+# Sentinel's Journal
+
+## 2025-02-23 - [Proxy-Unaware Rate Limiting]
+**Vulnerability:** `RateLimitMiddleware` relied solely on `request.client.host`, which resolves to the Load Balancer/Proxy IP in deployed environments (e.g., Render), effectively sharing a single rate limit quota across all users.
+**Learning:** Middleware operating in cloud environments must account for reverse proxies. Trusting the direct connection IP causes "deny all" outages when traffic scales.
+**Prevention:** Updated middleware to prioritize the `X-Forwarded-For` header, extracting the first IP (real client) and truncating it to prevent memory exhaustion.
+
 ## 2025-02-18 - [Sentinel Initialization]
 **Vulnerability:** N/A
 **Learning:** Initialized security journal.
