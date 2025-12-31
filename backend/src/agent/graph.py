@@ -133,9 +133,8 @@ builder.add_edge("reflection", "update_plan")
 
 # Update plan goes to execution_router to decide next step
 builder.add_conditional_edges(
-    "update_plan", execution_router, ["select_next_task", "denoising_refiner"]
+    "update_plan", execution_router, ["select_next_task", "finalize_answer"]
 )
-builder.add_edge("denoising_refiner", END)
 
 # Document edges for registry/tooling
 graph_registry.document_edge(
