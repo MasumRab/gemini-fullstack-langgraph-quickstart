@@ -67,21 +67,28 @@ class TestAPISecurity:
             assert response.status_code == 200
 
     def test_limit_resets_after_window(self, app):
-        client = TestClient(app)
+        # We need to patch time.time logic so it is consistent.
+        # Patching agent.security.time.time ensures that RateLimitMiddleware uses our mock time.
+        with patch("agent.security.time.time") as mock_time:
+            # Start at a fixed time
+            mock_time.return_value = 1000.0
 
-        # Exhaust limit
-        for _ in range(5):
-            client.get("/agent/test")
+            client = TestClient(app)
 
-        response = client.get("/agent/test")
-        assert response.status_code == 429
+            # Exhaust limit
+            for _ in range(5):
+                client.get("/agent/test")
 
-        # Wait for window
-        time.sleep(1.1)
+            # The 6th request (blocked)
+            response = client.get("/agent/test")
+            assert response.status_code == 429
 
-        # Should be allowed again
-        response = client.get("/agent/test")
-        assert response.status_code == 200
+            # Advance time beyond the window (window=1)
+            mock_time.return_value = 1000.0 + 1.1
+
+            # Should be allowed again
+            response = client.get("/agent/test")
+            assert response.status_code == 200
 
     def test_rate_limit_respects_x_forwarded_for(self, app):
         """Test that rate limiting uses the X-Forwarded-For header when present."""
