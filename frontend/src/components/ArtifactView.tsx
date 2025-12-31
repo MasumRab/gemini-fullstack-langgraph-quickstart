@@ -130,8 +130,9 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
             onClick={handleCopy}
             className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800"
             title="Copy content"
+            aria-label="Copy content"
           >
-            {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+            {copied ? <Check size={16} className="text-green-500" aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
           </Button>
           <Button
             variant="ghost"
@@ -139,8 +140,9 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
             onClick={() => setIsMaximized(!isMaximized)}
             className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 hidden md:flex"
             title={isMaximized ? "Restore size" : "Maximize"}
+            aria-label={isMaximized ? "Restore size" : "Maximize"}
           >
-            {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            {isMaximized ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
           </Button>
           <div className="w-px h-4 bg-neutral-800 mx-1" />
           <Button
@@ -149,8 +151,9 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
             onClick={onClose}
             className="h-8 w-8 text-neutral-400 hover:text-red-400 hover:bg-red-500/10"
             title="Close"
+            aria-label="Close"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </Button>
         </div>
       </div>
