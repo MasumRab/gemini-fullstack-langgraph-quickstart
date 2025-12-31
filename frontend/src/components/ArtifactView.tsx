@@ -136,7 +136,7 @@ export const ArtifactView = React.memo<ArtifactViewProps>(({ content, type, titl
             variant="ghost"
             size="icon"
             onClick={handleCopy}
-            className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800"
+            className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-blue-500"
             title="Copy content"
             aria-label="Copy content"
           >
@@ -146,7 +146,7 @@ export const ArtifactView = React.memo<ArtifactViewProps>(({ content, type, titl
             variant="ghost"
             size="icon"
             onClick={() => setIsMaximized(!isMaximized)}
-            className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 hidden md:flex"
+            className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 hidden md:flex focus-visible:ring-2 focus-visible:ring-blue-500"
             title={isMaximized ? "Restore size" : "Maximize"}
             aria-label={isMaximized ? "Restore size" : "Maximize"}
           >
@@ -157,7 +157,7 @@ export const ArtifactView = React.memo<ArtifactViewProps>(({ content, type, titl
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-8 w-8 text-neutral-400 hover:text-red-400 hover:bg-red-500/10"
+            className="h-8 w-8 text-neutral-400 hover:text-red-400 hover:bg-red-500/10 focus-visible:ring-2 focus-visible:ring-red-500"
             title="Close"
             aria-label="Close"
           >
