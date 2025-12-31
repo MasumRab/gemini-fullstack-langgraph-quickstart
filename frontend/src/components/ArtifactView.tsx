@@ -36,13 +36,21 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw, rehypeSanitize]}
             components={{
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mt-8 mb-4 text-neutral-100 border-b border-neutral-800 pb-2" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               h2: ({ node, ...props }) => <h2 className="text-xl font-semibold mt-6 mb-3 text-neutral-200" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               h3: ({ node, ...props }) => <h3 className="text-lg font-medium mt-4 mb-2 text-neutral-300" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               p: ({ node, ...props }) => <p className="text-neutral-400 leading-relaxed mb-4 text-sm md:text-base" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               li: ({ node, ...props }) => <li className="text-sm md:text-base" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
               code: ({ node, inline, className, children, ...props }: any) => {
                 const match = /language-(\w+)/.exec(className || '');
                 return !inline && match ? (
@@ -60,10 +68,15 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
                   </code>
                 );
               },
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-blue-500/50 pl-4 italic text-neutral-500 my-4" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               table: ({ node, ...props }) => <div className="overflow-x-auto my-6"><table className="w-full border-collapse border border-neutral-800 text-sm" {...props} /></div>,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               th: ({ node, ...props }) => <th className="border border-neutral-800 bg-neutral-800/50 px-4 py-2 text-left font-semibold" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               td: ({ node, ...props }) => <td className="border border-neutral-800 px-4 py-2" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               a: ({ node, ...props }) => <a className="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 underline-offset-4 transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
             }}
           >
@@ -98,7 +111,7 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
       <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-            {type === 'code' ? <CodeIcon size={18} /> : <FileText size={18} />}
+            {type === 'code' ? <CodeIcon size={18} aria-hidden="true" /> : <FileText size={18} aria-hidden="true" />}
           </div>
           <div className="flex flex-col overflow-hidden">
             <h3 className="text-sm font-semibold text-neutral-100 truncate">
@@ -115,29 +128,32 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
             variant="ghost"
             size="icon"
             onClick={handleCopy}
-            className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800"
+            className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-blue-500"
             title="Copy content"
+            aria-label="Copy content"
           >
-            {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+            {copied ? <Check size={16} className="text-green-500" aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsMaximized(!isMaximized)}
-            className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 hidden md:flex"
+            className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 hidden md:flex focus-visible:ring-2 focus-visible:ring-blue-500"
             title={isMaximized ? "Restore size" : "Maximize"}
+            aria-label={isMaximized ? "Restore size" : "Maximize"}
           >
-            {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            {isMaximized ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
           </Button>
           <div className="w-px h-4 bg-neutral-800 mx-1" />
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-8 w-8 text-neutral-400 hover:text-red-400 hover:bg-red-500/10"
+            className="h-8 w-8 text-neutral-400 hover:text-red-400 hover:bg-red-500/10 focus-visible:ring-2 focus-visible:ring-red-500"
             title="Close"
+            aria-label="Close"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </Button>
         </div>
       </div>
