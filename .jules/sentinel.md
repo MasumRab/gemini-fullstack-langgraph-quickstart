@@ -1,5 +1,3 @@
-# Sentinel's Journal
-
 ## 2025-02-18 - [Sentinel Initialization]
 **Vulnerability:** N/A
 **Learning:** Initialized security journal.
@@ -14,3 +12,8 @@
 **Vulnerability:** API endpoints (`/agent/*`, `/threads/*`) were unprotected against high-volume requests, exposing the backend to DoS attacks and potential LLM cost overruns.
 **Learning:** While `RateLimiter` logic existed for outbound LLM calls, inbound API traffic was unrestricted. Security controls must be applied at both the edge (API) and the resource (LLM) layers.
 **Prevention:** Implemented `RateLimitMiddleware` using a simple in-memory sliding window (requests per IP) and applied it to sensitive API routes, ensuring basic protection without adding complex dependencies.
+
+## 2025-02-24 - [Proxy-Aware Rate Limiting]
+**Vulnerability:** `RateLimitMiddleware` relied solely on `request.client.host`, which correctly identifies the client IP in direct connections but targets the Load Balancer (LB) IP when deployed behind a proxy (like Render). This could cause the LB to be rate-limited, blocking all legitimate traffic (DoS), or allow attackers to bypass limits by spoofing IPs if not carefully handled.
+**Learning:** Deployment topology dictates how "client identity" is determined. Middleware must be "proxy-aware" but also "spoof-resistant" (e.g., verifying trusted proxies, though hard in simple setups).
+**Prevention:** Enhanced `RateLimitMiddleware` to check `X-Forwarded-For` headers (common in LBs). Added input validation (truncation) on the header value to prevent memory exhaustion from maliciously large headers.

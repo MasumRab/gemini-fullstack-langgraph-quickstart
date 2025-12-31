@@ -101,7 +101,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     break
 
         if is_protected:
-            client_ip = request.client.host if request.client else "unknown"
+            # Support for proxies (e.g. Render/Nginx)
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                # The first IP is the original client
+                client_ip = forwarded.split(",")[0].strip()
+                # Basic safety: limit length to prevent memory exhaustion attacks with huge headers
+                if len(client_ip) > 100:
+                    client_ip = client_ip[:100]
+            else:
+                client_ip = request.client.host if request.client else "unknown"
+
             now = time.time()
 
             # Clean old requests (simple sliding window)
