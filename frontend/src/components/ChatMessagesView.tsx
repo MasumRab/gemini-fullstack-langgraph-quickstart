@@ -457,7 +457,7 @@ export function ChatMessagesView({
                     </div>
                   ) : (
                     <div className="flex items-center justify-start h-full">
-                      <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" />
+                      <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" aria-hidden="true" />
                       <span>Processing...</span>
                     </div>
                   )}

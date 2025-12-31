@@ -36,14 +36,22 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw, rehypeSanitize]}
             components={{
-              h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mt-8 mb-4 text-neutral-100 border-b border-neutral-800 pb-2" {...props} />,
-              h2: ({ node, ...props }) => <h2 className="text-xl font-semibold mt-6 mb-3 text-neutral-200" {...props} />,
-              h3: ({ node, ...props }) => <h3 className="text-lg font-medium mt-4 mb-2 text-neutral-300" {...props} />,
-              p: ({ node, ...props }) => <p className="text-neutral-400 leading-relaxed mb-4 text-sm md:text-base" {...props} />,
-              ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
-              ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
-              li: ({ node, ...props }) => <li className="text-sm md:text-base" {...props} />,
-              code: ({ node, inline, className, children, ...props }: any) => {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              h1: ({ node: _node, ...props }) => <h1 className="text-2xl font-bold mt-8 mb-4 text-neutral-100 border-b border-neutral-800 pb-2" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              h2: ({ node: _node, ...props }) => <h2 className="text-xl font-semibold mt-6 mb-3 text-neutral-200" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              h3: ({ node: _node, ...props }) => <h3 className="text-lg font-medium mt-4 mb-2 text-neutral-300" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              p: ({ node: _node, ...props }) => <p className="text-neutral-400 leading-relaxed mb-4 text-sm md:text-base" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              ul: ({ node: _node, ...props }) => <ul className="list-disc pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              ol: ({ node: _node, ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              li: ({ node: _node, ...props }) => <li className="text-sm md:text-base" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+              code: ({ node: _node, inline, className, children, ...props }: any) => {
                 const match = /language-(\w+)/.exec(className || '');
                 return !inline && match ? (
                   <SyntaxHighlighter
@@ -60,11 +68,16 @@ export const ArtifactView: React.FC<ArtifactViewProps> = ({ content, type, title
                   </code>
                 );
               },
-              blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-blue-500/50 pl-4 italic text-neutral-500 my-4" {...props} />,
-              table: ({ node, ...props }) => <div className="overflow-x-auto my-6"><table className="w-full border-collapse border border-neutral-800 text-sm" {...props} /></div>,
-              th: ({ node, ...props }) => <th className="border border-neutral-800 bg-neutral-800/50 px-4 py-2 text-left font-semibold" {...props} />,
-              td: ({ node, ...props }) => <td className="border border-neutral-800 px-4 py-2" {...props} />,
-              a: ({ node, ...props }) => <a className="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 underline-offset-4 transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              blockquote: ({ node: _node, ...props }) => <blockquote className="border-l-4 border-blue-500/50 pl-4 italic text-neutral-500 my-4" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              table: ({ node: _node, ...props }) => <div className="overflow-x-auto my-6"><table className="w-full border-collapse border border-neutral-800 text-sm" {...props} /></div>,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              th: ({ node: _node, ...props }) => <th className="border border-neutral-800 bg-neutral-800/50 px-4 py-2 text-left font-semibold" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              td: ({ node: _node, ...props }) => <td className="border border-neutral-800 px-4 py-2" {...props} />,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              a: ({ node: _node, ...props }) => <a className="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 underline-offset-4 transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
             }}
           >
             {content}
