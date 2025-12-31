@@ -333,6 +333,7 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
             <Button
               size="sm"
               variant="outline"
+              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               onClick={() => onSendCommand("/plan")}
               className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             >
@@ -341,6 +342,7 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
             <Button
               size="sm"
               variant="ghost"
+              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               onClick={() => onSendCommand("/end_plan")}
               className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             >
@@ -349,6 +351,7 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
             {planningContext.status === "awaiting_confirmation" && (
               <Button
                 size="sm"
+                className="focus-visible:ring-2 focus-visible:ring-neutral-500"
                 onClick={() => onSendCommand("/confirm_plan")}
                 className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               >
@@ -477,6 +480,7 @@ export function ChatMessagesView({
           <Button
             size="sm"
             variant="outline"
+            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             onClick={() => onSendCommand("/plan")}
             className="focus-visible:ring-2 focus-visible:ring-neutral-500"
           >
@@ -485,6 +489,7 @@ export function ChatMessagesView({
           <Button
             size="sm"
             variant="ghost"
+            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             onClick={() => onSendCommand("/end_plan")}
             className="focus-visible:ring-2 focus-visible:ring-neutral-500"
           >
