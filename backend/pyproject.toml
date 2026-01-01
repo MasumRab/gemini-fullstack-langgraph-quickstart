@@ -73,6 +73,19 @@ convention = "google"
 [tool.pytest.ini_options]
 norecursedirs = ["scripts"]
 asyncio_mode = "auto"
+filterwarnings = [
+    "ignore:.*setName.*deprecated:DeprecationWarning",
+    "ignore:.*leaveWhitespace.*deprecated:DeprecationWarning",
+    "ignore:.*setParseAction.*deprecated:DeprecationWarning",
+    "ignore:.*addParseAction.*deprecated:DeprecationWarning",
+    "ignore:.*delimitedList.*deprecated:DeprecationWarning",
+    "ignore:.*google.generativeai.*:FutureWarning",
+    "ignore:.*All support for the `google.generativeai` package has ended.*:FutureWarning",
+    "ignore:.*All support for the `google.generativeai` package has ended.*",
+    "ignore::FutureWarning:langchain_google_genai.chat_models",
+    "ignore:.*SwigPy.*:DeprecationWarning",
+    "ignore:.*swigvarlink.*:DeprecationWarning",
+]
 
 [dependency-groups]
 dev = [

@@ -17,3 +17,6 @@ This journal tracks critical UX and accessibility learnings. It is NOT a log of 
 ## 2024-05-25 - Decorative Icons Creating Noise
 **Learning:** Decorative icons placed inside semantic elements (like labels or buttons with text) were not hidden from assistive technology, potentially causing screen readers to announce them as "image" or similar, adding unnecessary noise.
 **Action:** Systematically apply `aria-hidden="true"` to any icon that is purely decorative and accompanied by descriptive text.
+## 2024-12-29 - Accessibility in Artifact Actions
+**Learning:** Action buttons in the `ArtifactView` (Copy, Maximize, Close) relied solely on `title` tooltips, which may not be announced by all screen readers or accessible to touch users.
+**Action:** Explicitly added `aria-label` to these buttons and `aria-hidden="true"` to their icons to ensure robust accessibility.
