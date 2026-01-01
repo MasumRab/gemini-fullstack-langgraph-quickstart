@@ -18,16 +18,20 @@ from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import AIMessage, HumanMessage
 
+from config.app_config import AppConfig, config as real_config
 from agent.state import OverallState
 from agent import nodes
 from agent.nodes import (
-    generate_query,
+    generate_plan,
     planning_mode,
     planning_wait,
     web_research,
     validate_web_results,
     reflection,
     finalize_answer,
+    content_reader,
+    select_next_task,
+    execution_router,
 )
 from agent.models import TEST_MODEL
 
@@ -53,6 +57,7 @@ def config():
     return RunnableConfig(
         configurable={
             "model": TEST_MODEL,
+            "query_generator_model": TEST_MODEL,
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": False,
@@ -66,6 +71,7 @@ def config_with_confirmation():
     return RunnableConfig(
         configurable={
             "model": TEST_MODEL,
+            "query_generator_model": TEST_MODEL,
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": True,
@@ -73,33 +79,75 @@ def config_with_confirmation():
     )
 
 
-# Tests for generate_query
-class TestGenerateQuery:
-    """Test suite for generate_query node"""
+# Tests for generate_plan
+class TestGeneratePlan:
+    """Test suite for generate_plan node"""
 
-    @patch("agent.nodes.query_writer_instructions")
-    def test_generate_query_creates_queries(self, mock_instructions, base_state, config):
-        """Test that generate_query creates the correct number of queries"""
+    @patch("agent.nodes.plan_writer_instructions")
+    @patch("agent.nodes.get_context_manager")
+    def test_generate_plan_creates_plan(self, mock_get_cm, mock_instructions, base_state, config):
+        """Test that generate_plan creates the correct number of tasks"""
         # Setup
+        # Configure mocked context manager to avoid type errors with Mock prompt
+        mock_get_cm.return_value.truncate_to_fit.return_value = "Mock Prompt"
+        mock_instructions.format.return_value = "Mock Prompt"
         base_state["messages"] = [HumanMessage(content="What is quantum computing?")]
 
         # Use MagicMock to simulate the chain
         mock_chain = MagicMock()
         mock_result = MagicMock()
-        mock_result.query = ["query1", "query2", "query3"]
-        mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
+        # Mock structured output for Plan
+        mock_task1 = Mock(title="Task 1", description="Desc 1", status="pending")
+        mock_task2 = Mock(title="Task 2", description="Desc 2", status="pending")
+        mock_result.plan = [mock_task1, mock_task2]
+        mock_result.rationale = "Rationale"
 
-        # We need to mock _get_rate_limited_llm
-        with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
-            mock_get_llm.return_value = mock_chain
+        # Determine behavior based on model (Gemma vs others)
+        is_gemma = "gemma" in TEST_MODEL.lower()
 
-            # Execute
-            result = generate_query(base_state, config)
+        if is_gemma:
+            # Mock raw invoke response content for tool adapter
+            # It expects a JSON block with tool_calls in markdown or raw
+            # PR #93 style but with PR #92 Plan data
+            import json
+            tool_call_args = {
+                "plan": [
+                    {"title": "Task 1", "description": "Desc 1", "status": "pending"},
+                    {"title": "Task 2", "description": "Desc 2", "status": "pending"}
+                ],
+                "rationale": "Rationale"
+            }
+            
+            tool_call_response = {
+                "tool_calls": [
+                    {
+                        "name": "Plan",
+                        "args": tool_call_args
+                    }
+                ]
+            }
+            # Ensure proper JSON formatting for tool adapter compatibility
+            json_response = f"```json\n{json.dumps(tool_call_response)}\n```"
+            mock_message = AIMessage(content=json_response)
+            mock_chain.invoke.return_value = mock_message
 
-            # Assert
-            assert "search_query" in result
-            assert len(result["search_query"]) == 3
-            mock_chain.with_structured_output.return_value.invoke.assert_called_once()
+            with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
+                mock_get_llm.return_value = mock_chain
+                result = generate_plan(base_state, config)
+        else:
+            # Standard Gemini
+            mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
+
+            with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
+                mock_get_llm.return_value = mock_chain
+                result = generate_plan(base_state, config)
+
+        # Assert
+        assert "plan" in result
+        assert len(result["plan"]) == 2
+        assert "search_query" in result
+        assert len(result["search_query"]) == 2
+        assert result["plan"][0]["task"] == "Task 1"
 
 
 # Tests for planning_mode
@@ -282,15 +330,22 @@ class TestValidateWebResults:
         """Test that validate_web_results filters research results based on keywords"""
         # Setup
         base_state["web_research_result"] = [
-            "Good content relevant to quantum",
-            "Bad content relevant to cooking"
+            "Good content relevant to quantum [Source](http://example.com)",
+            "Bad content relevant to cooking [Source](http://example.com)"
         ]
         base_state["search_query"] = ["quantum physics"]
 
-        # Disable citation requirement for this test
-        original_config = nodes.app_config
-        new_config = dataclasses.replace(original_config, require_citations=False)
+        # Modify config to disable strict citations for this test if needed,
+        # although we added citations above.
+        # But we also want to ensure that 'agent.nodes.app_config' is using our desired settings.
+        # Specifically, ensure require_citations is False so we don't hard fail on format issues
+        # (though we formatted correctly above).
+        # More importantly, let's just show how to patch the config object properly.
 
+        # Create a modified config
+        new_config = dataclasses.replace(real_config, require_citations=False)
+
+        # Patch 'agent.nodes.app_config' which is where the node code imported it
         with patch("agent.nodes.app_config", new_config):
             # Execute
             result = validate_web_results(base_state, config)
@@ -332,7 +387,19 @@ class TestReflection:
         mock_result.is_sufficient = False
         mock_result.knowledge_gap = "Gap"
         mock_result.follow_up_queries = ["query1"]
-        mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
+
+        is_gemma = "gemma" in TEST_MODEL.lower()
+        if is_gemma:
+            import json
+            json_response = json.dumps({
+                "is_sufficient": False,
+                "knowledge_gap": "Gap",
+                "follow_up_queries": ["query1"]
+            })
+            mock_message = AIMessage(content=json_response)
+            mock_chain.invoke.return_value = mock_message
+        else:
+            mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
 
         with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
             mock_get_llm.return_value = mock_chain
@@ -374,3 +441,104 @@ class TestFinalizeAnswer:
             assert len(result["messages"]) > 0
             assert isinstance(result["messages"][0], AIMessage)
 
+# Tests for content_reader
+class TestContentReader:
+    """Test suite for content_reader node"""
+
+    @patch("agent.nodes._get_rate_limited_llm")
+    def test_content_reader_extracts_evidence(self, mock_get_llm, base_state, config):
+        """Test content_reader extracts evidence from results"""
+        # Setup
+        base_state["validated_web_research_result"] = [
+            "Quantum computing uses qubits. [Source 1](http://example.com/1)"
+        ]
+
+        mock_chain = MagicMock()
+        mock_evidence_item = Mock(
+            claim="Quantum computing uses qubits.",
+            source_url="http://example.com/1",
+            context_snippet="Quantum computing uses qubits."
+        )
+        mock_result = Mock()
+        mock_result.items = [mock_evidence_item]
+        
+        # Configure the mock chain's behavior
+        # Note: We need to handle both structured output (Gemini) and tool calling (Gemma) if we want full coverage
+        # For this test, we assume the mock setup for Gemini path which uses with_structured_output
+        
+        # Mocking the nested calls: llm.with_structured_output(EvidenceList).invoke(...)
+        mock_structured_llm = MagicMock()
+        mock_structured_llm.invoke.return_value = mock_result
+        mock_chain.with_structured_output.return_value = mock_structured_llm
+
+        mock_get_llm.return_value = mock_chain
+
+        # Execute
+        result = content_reader(base_state, config)
+
+        # Assert
+        assert "evidence_bank" in result
+        assert len(result["evidence_bank"]) == 1
+        assert result["evidence_bank"][0]["claim"] == "Quantum computing uses qubits."
+        assert result["evidence_bank"][0]["source_url"] == "http://example.com/1"
+
+    def test_content_reader_with_no_results(self, base_state, config):
+        """Test content_reader returns empty list when no results"""
+        # Setup
+        base_state["validated_web_research_result"] = []
+        base_state["web_research_result"] = []
+
+        # Execute
+        result = content_reader(base_state, config)
+
+        # Assert
+        assert "evidence_bank" in result
+        assert result["evidence_bank"] == []
+
+# Tests for select_next_task and execution_router
+class TestExecutionFlow:
+    """Test suite for execution flow nodes"""
+
+    def test_select_next_task_picks_pending(self, base_state, config):
+        """Test select_next_task picks the first pending task"""
+        # Setup
+        base_state["plan"] = [
+            {"task": "Task 1", "status": "done"},
+            {"task": "Task 2", "status": "pending", "query": "Query 2"},
+            {"task": "Task 3", "status": "pending"}
+        ]
+
+        # Execute
+        result = select_next_task(base_state, config)
+
+        # Assert
+        assert result["current_task_idx"] == 1
+        assert result["search_query"] == ["Query 2"]
+
+    def test_select_next_task_none_if_all_done(self, base_state, config):
+        """Test select_next_task returns None index if all tasks are done"""
+        # Setup
+        base_state["plan"] = [
+            {"task": "Task 1", "status": "done"},
+            {"task": "Task 2", "status": "done"}
+        ]
+
+        # Execute
+        result = select_next_task(base_state, config)
+
+        # Assert
+        assert result["current_task_idx"] is None
+
+    def test_execution_router_routes_correctly(self, base_state):
+        """Test execution_router logic"""
+        # Case 1: Pending tasks
+        base_state["plan"] = [{"status": "done"}, {"status": "pending"}]
+        assert execution_router(base_state) == "select_next_task"
+
+        # Case 2: All done
+        base_state["plan"] = [{"status": "done"}, {"status": "done"}]
+        assert execution_router(base_state) == "finalize_answer"
+
+        # Case 3: Empty plan (should probably finalize or handle gracefully)
+        base_state["plan"] = []
+        assert execution_router(base_state) == "finalize_answer"

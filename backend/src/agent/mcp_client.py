@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional
 import json
 import logging
-from backend.src.agent.llm_client import call_llm_robust
+from agent.llm_client import call_llm_robust
 
 logger = logging.getLogger(__name__)
 

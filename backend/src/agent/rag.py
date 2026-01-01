@@ -8,6 +8,7 @@ import uuid
 import os
 
 from config.app_config import config
+from agent.llm_client import call_llm_robust
 
 # Optional imports for RAG dependencies
 try:
@@ -129,11 +130,16 @@ class DeepSearchRAG:
         self.max_context_chunks = max_context_chunks
         self.subgoal_evidence_map: Dict[str, List[int]] = {} # Primarily tracks FAISS IDs if active
 
-    def retrieve_from_chroma(self, query: str, top_k: int) -> List[Tuple[EvidenceChunk, float]]:
+    def retrieve_from_chroma(self, query: str, top_k: int, query_embedding: Optional[List[float]] = None) -> List[Tuple[EvidenceChunk, float]]:
         """Retrieve directly from Chroma store if enabled."""
         if not self.use_chroma:
             raise ValueError("Chroma not enabled")
-        embedding = self.embedder.encode(query).tolist()
+
+        # ⚡ Bolt Optimization: Use pre-computed embedding if provided
+        if query_embedding is not None:
+            embedding = query_embedding
+        else:
+            embedding = self.embedder.encode(query).tolist()
 
         # Map ChromaEvidenceChunk back to EvidenceChunk
         results = self.chroma.retrieve(query, top_k=top_k, query_embedding=embedding)
@@ -190,15 +196,21 @@ class DeepSearchRAG:
         # Process embeddings and store
         current_time = time.time()
 
+        faiss_embeddings = []
+        faiss_ids = []
+        start_id = self.next_id
+
         for i, item in enumerate(chunks_to_process):
             chunk = item["chunk"]
             doc = item["doc"]
-            # Use UUID to prevent collisions in batch
-            chunk_id_str = f"{subgoal_id}_{uuid.uuid4()}"
             embedding = embeddings[i]
+            # Use same UUID for both stores to maintain consistency
+            chunk_id_str = f"{subgoal_id}_{uuid.uuid4()}"
 
             # FAISS Logic
             if self.use_faiss:
+                current_id = start_id + i # Incremental ID for FAISS
+
                 evidence = EvidenceChunk(
                     content=chunk,
                     source_url=doc.get("url", "unknown"),
@@ -209,20 +221,16 @@ class DeepSearchRAG:
                     metadata=metadata or {}
                 )
 
-                self.index_with_ids.add_with_ids(
-                    np.array([embedding], dtype=np.float32),
-                    np.array([self.next_id])
-                )
-                self.doc_store[self.next_id] = evidence
-                ingested_ids.append(self.next_id)
+                self.doc_store[current_id] = evidence
+                ingested_ids.append(current_id)
+                faiss_embeddings.append(embedding)
+                faiss_ids.append(current_id)
 
                 if subgoal_id not in self.subgoal_evidence_map:
                     self.subgoal_evidence_map[subgoal_id] = []
-                self.subgoal_evidence_map[subgoal_id].append(self.next_id)
+                self.subgoal_evidence_map[subgoal_id].append(current_id)
 
-                self.next_id += 1
-
-            # Chroma Logic (Buffer for batch insert)
+            # Chroma Logic
             if self.use_chroma and CHROMA_AVAILABLE:
                 chroma_chunks.append(ChromaEvidenceChunk(
                     content=chunk,
@@ -235,6 +243,14 @@ class DeepSearchRAG:
                 ))
                 embeddings_list.append(embedding.tolist())
 
+        # ⚡ Bolt Optimization: Batch FAISS Add
+        if self.use_faiss and faiss_embeddings:
+            self.index_with_ids.add_with_ids(
+                np.array(faiss_embeddings, dtype=np.float32),
+                np.array(faiss_ids, dtype=np.int64)
+            )
+            self.next_id += len(faiss_ids)
+
         # Batch insert to Chroma
         if self.use_chroma and chroma_chunks and CHROMA_AVAILABLE:
             self.chroma.add_evidence(chroma_chunks, embeddings=embeddings_list)
@@ -246,7 +262,8 @@ class DeepSearchRAG:
         query: str,
         top_k: int = 10,
         subgoal_filter: Optional[str] = None,
-        min_score: float = 0.0
+        min_score: float = 0.0,
+        query_embedding: Optional[List[float]] = None
     ) -> List[Tuple[EvidenceChunk, float]]:
         """
         Retrieve relevant evidence.
@@ -256,17 +273,23 @@ class DeepSearchRAG:
         read_source = self.config.rag_store
 
         if read_source == "chroma" and self.use_chroma and CHROMA_AVAILABLE:
-            return self.retrieve_from_chroma(query, top_k)
+            return self.retrieve_from_chroma(query, top_k, query_embedding=query_embedding)
 
         elif self.use_faiss:
             # Existing FAISS logic
             if self.index_with_ids.ntotal == 0:
                 return []
 
-            query_embedding = self.embedder.encode(query)
+            # ⚡ Bolt Optimization: Use pre-computed embedding if provided
+            if query_embedding is not None:
+                q_emb = np.array([query_embedding], dtype=np.float32)
+            else:
+                raw_emb = self.embedder.encode(query)
+                q_emb = np.array([raw_emb], dtype=np.float32)
+
             k_search = min(top_k * 2, self.index_with_ids.ntotal)
             distances, indices = self.index_with_ids.search(
-                np.array([query_embedding], dtype=np.float32),
+                q_emb,
                 k=k_search
             )
 
@@ -385,12 +408,36 @@ Respond in JSON format:
 
     def get_context_for_synthesis(self, query: str, max_tokens: int = 4000, subgoal_ids: Optional[List[str]] = None) -> str:
         all_chunks = []
+
+        # ⚡ Bolt Optimization: Pre-compute query embedding once for all subgoals
+        # This avoids re-encoding the same query N times (where N = len(subgoal_ids))
+        query_embedding = None
+        if self.embedder:
+            try:
+                raw_emb = self.embedder.encode(query)
+                # Handle numpy array vs list
+                if hasattr(raw_emb, "tolist"):
+                    query_embedding = raw_emb.tolist()
+                else:
+                    query_embedding = raw_emb
+            except Exception as e:
+                logger.warning(f"Failed to pre-compute embedding: {e}")
+
         if subgoal_ids:
             for sg_id in subgoal_ids:
-                chunks = self.retrieve(query=query, subgoal_filter=sg_id, top_k=self.max_context_chunks)
+                chunks = self.retrieve(
+                    query=query,
+                    subgoal_filter=sg_id,
+                    top_k=self.max_context_chunks,
+                    query_embedding=query_embedding
+                )
                 all_chunks.extend(chunks)
         else:
-            all_chunks = self.retrieve(query=query, top_k=self.max_context_chunks)
+            all_chunks = self.retrieve(
+                query=query,
+                top_k=self.max_context_chunks,
+                query_embedding=query_embedding
+            )
 
         seen_content = set()
         unique_chunks = []

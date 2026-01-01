@@ -8,7 +8,7 @@ from agent.state import OverallState
 from agent.configuration import Configuration
 from agent.nodes import (
     load_context,
-    generate_query,
+    generate_plan,
     planning_mode,
     planning_wait,
     planning_router,
@@ -98,7 +98,7 @@ def compress_context(state: OverallState, config: RunnableConfig) -> Dict[str, A
 
 builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("load_context", load_context)
-builder.add_node("generate_query", generate_query)
+builder.add_node("generate_plan", generate_plan)
 builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
 builder.add_node("web_research", web_research)
@@ -108,8 +108,8 @@ builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 
 builder.add_edge(START, "load_context")
-builder.add_edge("load_context", "generate_query")
-builder.add_edge("generate_query", "planning_mode")
+builder.add_edge("load_context", "generate_plan")
+builder.add_edge("generate_plan", "planning_mode")
 builder.add_conditional_edges(
     "planning_mode", planning_router, ["planning_wait", "web_research"]
 )

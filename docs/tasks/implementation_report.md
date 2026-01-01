@@ -37,7 +37,7 @@ A centralized `AppConfig` class now manages all feature flags and settings via e
 
 *   **ChromaStore:** New implementation in `backend/src/rag/chroma_store.py`.
 *   **Dual-Write:** `backend/src/agent/rag.py` updated to support simultaneous writes to FAISS and Chroma.
-*   **Parity Check:** Script `backend/scripts/check_rag_parity.py` provided to verify store consistency.
+*   **Parity Check:** Script `verification/verify_rag_parity.py` provided to verify store consistency.
 
 ## 4. Agent Pipeline Enhancements (`backend/src/agent/`)
 
@@ -68,7 +68,7 @@ export KG_ALLOWLIST=example.com,wikipedia.org
 
 ## 6. Verification
 Scripts created for verification:
-*   `backend/scripts/test_search.py`: Verifies search routing.
-*   `backend/scripts/test_validation.py`: Verifies heuristic/citation logic.
-*   `backend/scripts/check_rag_parity.py`: Verifies RAG dual-write.
-*   `backend/scripts/verify_agent_flow.py`: Verifies graph connectivity.
+*   `verification/verify_search_simple.py`: Verifies search routing.
+*   `verification/verify_validation_logic.py`: Verifies heuristic/citation logic.
+*   `verification/verify_rag_parity.py`: Verifies RAG dual-write.
+*   `verification/verify_agent_flow.py`: Verifies graph connectivity.
