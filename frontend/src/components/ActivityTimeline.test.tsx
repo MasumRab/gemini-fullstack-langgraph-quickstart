@@ -33,8 +33,10 @@ describe('ActivityTimeline', () => {
     render(<ActivityTimeline {...defaultProps} />);
     const button = screen.getByRole('button');
     expect(button).toBeInTheDocument();
-    expect(button).toHaveTextContent('Research');
+    expect(button).toHaveTextContent('Research Activity');
     expect(button.className).toContain('focus-visible:ring-2');
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    expect(button).toHaveAttribute('aria-controls', 'activity-timeline-content');
   });
 
   it('toggles collapse state on click', () => {
@@ -50,14 +52,22 @@ describe('ActivityTimeline', () => {
     // It should be expanded.
     if (screen.queryByTestId('chevron-up')) {
        expect(screen.getByText('No activity to display.')).toBeInTheDocument();
+       expect(button).toHaveAttribute('aria-expanded', 'true');
+
        fireEvent.click(button);
+
        expect(screen.getByTestId('chevron-down')).toBeInTheDocument();
        expect(screen.queryByText('No activity to display.')).not.toBeInTheDocument();
+       expect(button).toHaveAttribute('aria-expanded', 'false');
     } else {
        // If it starts collapsed (which it shouldn't per logic above, but handling robustness)
        expect(screen.getByTestId('chevron-down')).toBeInTheDocument();
+       expect(button).toHaveAttribute('aria-expanded', 'false');
+
        fireEvent.click(button);
+
        expect(screen.getByTestId('chevron-up')).toBeInTheDocument();
+       expect(button).toHaveAttribute('aria-expanded', 'true');
     }
   });
 
@@ -79,6 +89,6 @@ describe('ActivityTimeline', () => {
 
     fireEvent.click(btn);
     expect(screen.getByTestId('count')).toHaveTextContent('1');
-    expect(screen.getByRole('button', { name: /Research/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Research Activity/i })).toBeInTheDocument();
   });
 });

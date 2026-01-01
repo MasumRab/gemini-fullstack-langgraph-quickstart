@@ -200,3 +200,10 @@ cython_debug/
 #.idea/
 
 backend/.langgraph_apiverification/artifacts/
+
+# Artifacts
+coverage_report.txt
+model_test_results.txt
+validation_coverage.txt
+temp_cell.txt
+markdownlint-cli2-results.json

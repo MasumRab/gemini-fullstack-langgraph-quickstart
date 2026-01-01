@@ -21,6 +21,12 @@ The project is divided into two main directories:
 -   `frontend/`: Contains the React application built with Vite.
 -   `backend/`: Contains the LangGraph/FastAPI application, including the research agent logic.
 
+## Guides available
+- **[Authentication Guide](docs/guides/AUTHENTICATION.md)**: Setup API Keys and OAuth (Colab & Local).
+- **[Visualization Examples](docs/guides/VISUALIZATION_EXAMPLES.md)**: Visualize the agent graph with Mermaid/ASCII.
+- **[Research Inspirations](RESEARCH_INSPIRATIONS.md)**: Deep dive into the research agent architecture.
+
+
 ## Getting Started: Development and Local Testing
 
 Follow these steps to get the application running locally for development and testing.
@@ -57,7 +63,7 @@ npm install
 ```bash
 make dev
 # Or on Windows (or if make is not installed):
-python dev.py
+python scripts/dev.py
 ```
 This will run the backend and frontend development servers. Open your browser and navigate to the frontend development server URL (e.g., `http://localhost:5173/app`).
 

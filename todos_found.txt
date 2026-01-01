@@ -1,0 +1,16 @@
+backend/src/agent/graph.py:102:# TODO(priority=Medium, complexity=Medium): [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
+backend/src/agent/graph.py:195:# TODO(priority=High, complexity=Low): Add visualization support for notebooks.
+backend/src/agent/mcp_config.py:43:# TODO: [MCP Integration] Implement full McpConnectionManager with SSE support.
+backend/src/agent/nodes.py:1:# TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+backend/src/agent/nodes.py:2:# TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
+backend/src/agent/nodes.py:115:    TODO(priority=High, complexity=High): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
+backend/src/agent/nodes.py:822:    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'outline_gen' Node (STORM)
+backend/src/agent/nodes.py:834:    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
+backend/src/agent/nodes.py:946:    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
+backend/src/agent/nodes.py:1015:    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'denoising_refiner'
+backend/src/agent/tools_and_schemas.py:64:        # TODO: Support Stdio connection if schema allows? For now assuming SSE via endpoint URL
+Binary file backend/src/agent/__pycache__/nodes.cpython-313.pyc matches
+frontend/src/components/ArtifactView.tsx:4:// TODO: [Open Canvas] Implement ArtifactView component.
+frontend/src/components/ArtifactView.tsx:20:        TODO: Implement split-pane layout support.
+frontend/src/components/ArtifactView.tsx:21:        TODO: Render content based on type (Markdown vs Code).
+frontend/src/components/ArtifactView.tsx:22:        TODO: Add edit controls if needed.

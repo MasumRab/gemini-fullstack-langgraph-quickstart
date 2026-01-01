@@ -9,10 +9,10 @@ Tests cover:
 """
 
 import pytest
+from unittest.mock import patch, MagicMock
 from typing import Dict, Any
 from langchain_core.runnables import RunnableConfig
 
-from unittest.mock import patch
 from agent.state import OverallState
 from agent.graphs.supervisor import compress_context, graph
 
@@ -186,6 +186,7 @@ class TestCompressContext:
         assert len(result["web_research_result"]) == 200
         assert "existing_0" in result["web_research_result"]
         assert "new_99" in result["web_research_result"]
+
 
 
 class TestSupervisorGraph:

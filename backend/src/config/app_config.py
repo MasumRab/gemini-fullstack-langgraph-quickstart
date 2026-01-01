@@ -40,10 +40,18 @@ class AppConfig:
     audit_mode: str = os.getenv("AUDIT_MODE", "off")
     log_level: str = os.getenv("LOG_LEVEL", "info")
 
+    # Security
+    cors_origins: Tuple[str, ...] = tuple(
+        filter(None, os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","))
+    )
+    allowed_hosts: Tuple[str, ...] = tuple(
+        filter(None, os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(","))
+    )
+
     # Model Selection
-    model_planning: str = os.getenv("MODEL_PLANNING", "gemini-2.5-flash")
-    model_validation: str = os.getenv("MODEL_VALIDATION", "gemini-2.5-flash-lite")
-    model_compression: str = os.getenv("MODEL_COMPRESSION", "gemini-2.5-flash-lite")
+    model_planning: str = os.getenv("MODEL_PLANNING", "gemma-3-27b-it")
+    model_validation: str = os.getenv("MODEL_VALIDATION", "gemma-3-27b-it")
+    model_compression: str = os.getenv("MODEL_COMPRESSION", "gemma-3-27b-it")
 
     @classmethod
     def load(cls) -> "AppConfig":
