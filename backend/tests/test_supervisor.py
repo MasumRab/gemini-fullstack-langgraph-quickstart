@@ -13,7 +13,6 @@ from unittest.mock import patch, MagicMock
 from typing import Dict, Any
 from langchain_core.runnables import RunnableConfig
 
-from unittest.mock import patch
 from agent.state import OverallState
 from agent.graphs.supervisor import compress_context, graph
 
@@ -79,13 +78,8 @@ def config() -> RunnableConfig:
 class TestCompressContext:
     """Test suite for compress_context node."""
 
-    @patch("agent.graphs.supervisor.app_config")
-    def test_compress_context_merges_new_and_existing_results(self, mock_config, base_supervisor_state, config):
+    def test_compress_context_merges_new_and_existing_results(self, base_supervisor_state, config):
         """Test that compress_context merges new and existing results."""
-        # Mock config to ensure compression is disabled for this test case
-        # because if enabled, it compresses to 1 result.
-        mock_config.compression_enabled = False
-
         # Setup
         base_supervisor_state["web_research_result"] = [
             "existing result 1",
@@ -107,10 +101,8 @@ class TestCompressContext:
         assert "new result 1" in result["web_research_result"]
         assert "new result 2" in result["web_research_result"]
 
-    @patch("agent.graphs.supervisor.app_config")
-    def test_compress_context_with_empty_validated_results(self, mock_config, base_supervisor_state, config):
+    def test_compress_context_with_empty_validated_results(self, base_supervisor_state, config):
         """Test compress_context when no new validated results exist."""
-        mock_config.compression_enabled = False
         # Setup
         base_supervisor_state["web_research_result"] = ["existing result"]
         base_supervisor_state["validated_web_research_result"] = []
@@ -123,10 +115,8 @@ class TestCompressContext:
         assert len(result["web_research_result"]) == 1
         assert result["web_research_result"][0] == "existing result"
 
-    @patch("agent.graphs.supervisor.app_config")
-    def test_compress_context_with_empty_existing_results(self, mock_config, base_supervisor_state, config):
+    def test_compress_context_with_empty_existing_results(self, base_supervisor_state, config):
         """Test compress_context when no existing results."""
-        mock_config.compression_enabled = False
         # Setup
         base_supervisor_state["web_research_result"] = []
         base_supervisor_state["validated_web_research_result"] = [
@@ -143,10 +133,8 @@ class TestCompressContext:
         assert "new result 1" in result["web_research_result"]
         assert "new result 2" in result["web_research_result"]
 
-    @patch("agent.graphs.supervisor.app_config")
-    def test_compress_context_with_both_empty(self, mock_config, base_supervisor_state, config):
+    def test_compress_context_with_both_empty(self, base_supervisor_state, config):
         """Test compress_context when both result lists are empty."""
-        mock_config.compression_enabled = False
         # Setup
         base_supervisor_state["web_research_result"] = []
         base_supervisor_state["validated_web_research_result"] = []
@@ -158,10 +146,8 @@ class TestCompressContext:
         assert "web_research_result" in result
         assert result["web_research_result"] == []
 
-    @patch("agent.graphs.supervisor.app_config")
-    def test_compress_context_with_missing_keys(self, mock_config, config):
+    def test_compress_context_with_missing_keys(self, config):
         """Test compress_context handles missing state keys gracefully."""
-        mock_config.compression_enabled = False
         # Setup - minimal state without the expected keys
         minimal_state = {
             "messages": [],
@@ -175,10 +161,8 @@ class TestCompressContext:
         assert "web_research_result" in result
         assert result["web_research_result"] == []
 
-    @patch("agent.graphs.supervisor.app_config")
-    def test_compress_context_preserves_order(self, mock_config, base_supervisor_state, config):
+    def test_compress_context_preserves_order(self, base_supervisor_state, config):
         """Test that compress_context preserves order (existing then new)."""
-        mock_config.compression_enabled = False
         # Setup
         base_supervisor_state["web_research_result"] = ["first", "second"]
         base_supervisor_state["validated_web_research_result"] = ["third", "fourth"]
@@ -189,10 +173,8 @@ class TestCompressContext:
         # Assert
         assert result["web_research_result"] == ["first", "second", "third", "fourth"]
 
-    @patch("agent.graphs.supervisor.app_config")
-    def test_compress_context_with_large_result_set(self, mock_config, base_supervisor_state, config):
+    def test_compress_context_with_large_result_set(self, base_supervisor_state, config):
         """Test compress_context handles large numbers of results."""
-        mock_config.compression_enabled = False
         # Setup
         base_supervisor_state["web_research_result"] = [f"existing_{i}" for i in range(100)]
         base_supervisor_state["validated_web_research_result"] = [f"new_{i}" for i in range(100)]
@@ -204,6 +186,7 @@ class TestCompressContext:
         assert len(result["web_research_result"]) == 200
         assert "existing_0" in result["web_research_result"]
         assert "new_99" in result["web_research_result"]
+
 
 
 class TestSupervisorGraph:

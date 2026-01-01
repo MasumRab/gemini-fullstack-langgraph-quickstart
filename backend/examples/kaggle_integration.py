@@ -186,7 +186,30 @@ if __name__ == "__main__":
             name = "calculator"
             description = "Calculates math expressions"
             def invoke(self, input_str):
-                return eval(input_str)
+                # Use a safe math expression evaluator instead of eval()
+                import ast
+                import operator as op
+                operators = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
+                             ast.Div: op.truediv, ast.Pow: op.pow,
+                             ast.UnaryOp: op.neg}
+                
+                def _eval(node):
+                    if isinstance(node, ast.Constant):
+                        return node.value
+                    elif isinstance(node, ast.BinOp):
+                        return operators[type(node.op)](_eval(node.left), _eval(node.right))
+                    elif isinstance(node, ast.UnaryOp):
+                        return operators[type(node.op)](_eval(node.operand))
+                    else:
+                        raise TypeError(f"Unsupported node type: {type(node)}")
+
+                try:
+                    # Strip any potential quotes if model passed it as string
+                    input_str = input_str.strip("'\"")
+                    result = _eval(ast.parse(input_str, mode='eval').body)
+                    return str(result)
+                except Exception as e:
+                    return f"Error evaluating expression: {str(e)}"
 
         print("This module provides scaffolding. To run a real test, install kagglehub and transformers.")
         # client = KaggleHuggingFaceClient("google/gemma/pyTorch/2b-it")

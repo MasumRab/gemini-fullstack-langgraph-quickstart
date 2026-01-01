@@ -155,3 +155,146 @@ Refine and improve this research report by:
 6. Ensuring the report directly addresses the research brief
 
 Provide the refined report:"""
+
+
+plan_updater_instructions = """You are an expert research planner. Your task is to update the research plan based on the latest findings.
+
+Current Date: {current_date}
+Research Topic: {research_topic}
+
+Current Plan:
+{current_plan}
+
+Latest Research Findings:
+{research_results}
+
+Instructions:
+1. Review the "Current Plan" and "Latest Research Findings".
+2. Mark any "pending" tasks as "done" if the findings sufficiently address them.
+3. If the findings reveal new avenues or if the original plan is insufficient, add new "pending" tasks.
+4. You may remove tasks that are no longer relevant, but prefer keeping a history of "done" tasks.
+5. Ensure the plan remains focused on the Research Topic.
+6. Do not create duplicate tasks.
+
+Format:
+- Output the *entire* updated plan as a JSON object with a "plan" key containing the list of tasks.
+"""
+
+checklist_instructions = """You are an expert editor and fact-checker auditing a research outline against gathered evidence.
+
+Your goal is to verify that we have sufficient evidence to write each section of the outline.
+
+Instructions:
+1. Review the "Outline" provided below.
+2. Review the "Evidence Bank" (or research summaries) provided below.
+3. For each section/subsection in the outline:
+    - Determine if there is sufficient evidence to cover the topic.
+    - Identify key claims that are supported by the evidence.
+    - Identify any missing information or unsupported requirements.
+    - Check if valid citations/sources are available for the key points.
+
+Output Format:
+Return a structured report in Markdown format.
+- Use a checkmark (✅) for sections with sufficient evidence.
+- Use a warning (⚠️) for sections with partial evidence or missing citations.
+- Use a cross (❌) for sections with no evidence.
+- Provide specific notes on what is missing for ⚠️ and ❌ items.
+- At the end, provide a "Global Assessment": "Ready to Write" or "Needs More Research".
+
+Outline:
+{outline}
+
+Evidence:
+{evidence}
+"""
+
+gemma_answer_instructions = """You are an expert researcher writing a final report.
+
+<date>{current_date}</date>
+
+<instructions>
+1. Write a comprehensive answer to the User's Question based ONLY on the provided Research Notes.
+2. Do not treat the Research Notes as a conversation; they are data for your report.
+3. You must cite your sources using Markdown links [Title](url) exactly as they appear in the notes.
+4. Do not include meta-commentary like "Here is the report" or "I have analyzed the notes". Just write the report.
+</instructions>
+
+<user_question>
+{research_topic}
+</user_question>
+
+<research_notes>
+{summaries}
+</research_notes>
+
+<final_instruction>
+Write the detailed report now, incorporating the sources above.
+</final_instruction>
+"""
+
+outline_instructions = """You are an expert research planner. Your goal is to generate a comprehensive, hierarchical outline for a research report on the topic: "{research_topic}".
+
+Instructions:
+1. Analyze the research topic and identify the key sections and subsections needed for a thorough report.
+2. The outline should follow a clear logical flow.
+3. For each subsection, provide a brief description of what information should be gathered.
+4. Ensure the outline covers all aspects of the user's request.
+5. The current date is {current_date}.
+
+Format:
+- Format your response as a JSON object with a "title" and a "sections" list.
+- Each section should have a "title" and a "subsections" list.
+- Each subsection should have a "title" and a "description".
+
+Example:
+{{
+    "title": "Comprehensive Analysis of AI in Healthcare",
+    "sections": [
+        {{
+            "title": "Introduction",
+            "subsections": [
+                {{
+                    "title": "Current State of AI in Healthcare",
+                    "description": "Overview of major AI technologies being used in clinical settings today."
+                }},
+                {{
+                    "title": "Historical Context",
+                    "description": "Brief history of AI development in medicine."
+                }}
+            ]
+        }},
+        {{
+            "title": "Clinical Applications",
+            "subsections": [
+                {{
+                    "title": "Medical Imaging",
+                    "description": "How AI is used to interpret X-rays, MRIs, and CT scans."
+                }},
+                {{
+                    "title": "Drug Discovery",
+                    "description": "The role of AI in accelerating the discovery of new pharmacuticals."
+                }}
+            ]
+        }}
+    ]
+}}
+"""
+
+denoising_instructions = """You are an expert report refiner. You have been provided with multiple draft versions of a research report.
+
+Your goal is to synthesize the best components of these drafts into a single, high-quality, 
+comprehensive, and well-structured final report.
+
+Instructions:
+1. Identify the strongest arguments, clearest explanations, and most relevant evidence from each draft.
+2. Resolve any contradictions between the drafts by favoring the most well-supported information.
+3. Ensure the final report follows a logical flow and has a professional tone.
+4. Maintain all relevant citations from the original search results.
+5. The current date is {current_date}.
+
+Drafts:
+{drafts}
+
+Final Instruction:
+Synthesize the above drafts into the definitive final report.
+"""

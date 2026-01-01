@@ -2,21 +2,26 @@
 
 import json
 import re
-from typing import Any, Dict, List, Optional, Union
+import logging
+from typing import Any, Dict, List, Optional
 
-from langchain_core.messages import AIMessage
 from langchain_core.tools import BaseTool
 
-# Prompt template for instructing the model
-GEMMA_TOOL_INSTRUCTION = """
-You have access to the following tools.
-If the user's request requires using a tool, you MUST output a JSON object strictly following this schema inside a markdown code block.
+logger = logging.getLogger(__name__)
 
-Available Tools:
+# Updated Prompt template with Thought-Action pattern for better reliability
+GEMMA_TOOL_INSTRUCTION = """
+You are an expert agent with access to the following tools:
+
 {tool_schemas}
 
-**Output Format:**
-To call a tool, output a JSON object like this:
+**Goal:** Fulfill the user's request by selecting the appropriate tool.
+
+**Instructions:**
+1.  **Thought**: First, reason about the user's request and which tool (if any) is best suited. Write this down.
+2.  **Action**: If a tool is needed, output a JSON object strictly following this schema inside a markdown block.
+
+**Tool Call Schema:**
 ```json
 {{
   "tool_calls": [
@@ -31,7 +36,7 @@ To call a tool, output a JSON object like this:
 }}
 ```
 
-If no tool is needed, respond normally with text.
+If no tool is needed, just respond with the text answer.
 """
 
 def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
@@ -41,8 +46,6 @@ def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
     tool_schemas = []
     for tool in tools:
         # Pydantic v1 uses .args, v2 uses .args_schema or model_json_schema()
-        # BaseTool.args usually returns just the properties, not the full JSON schema with "type": "object" wrapper
-        # We want the full schema usually
         if hasattr(tool, "get_input_schema"):
              input_schema = tool.get_input_schema()
              if hasattr(input_schema, "model_json_schema"):
@@ -67,39 +70,34 @@ def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
 def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """
     Parses the LLM output for JSON tool calls.
-    Expects format:
-    ```json
-    {
-        "tool_calls": [
-            { "name": "...", "arguments": { ... } }
-        ]
-    }
-    ```
-    or just the raw JSON object.
-
-    Args:
-        content: The text output from the LLM.
-        allowed_tools: Optional list of allowed tool names to validate against.
-
-    Returns:
-        List of tool call dicts compatible with LangChain's tool_calls structure:
-        [{'name': str, 'args': dict, 'id': str, 'type': 'tool_call'}]
+    Robustly handles markdown blocks and fallback JSON extraction.
     """
+    # Debug logging to see what the model actually output
+    logger.debug(f"Raw LLM Output for Tool Parsing:\n{content}\n" + "-"*20)
+
     tool_calls = []
 
-    # 1. Try to find JSON block
+    # 1. Try to find the standard ```json ... ``` block
     json_match = re.search(r"```json\s*(.*?)\s*```", content, re.DOTALL)
+
+    json_str = ""
     if json_match:
         json_str = json_match.group(1)
     else:
-        # Fallback: Try to find the first '{' and last '}'
-        # This is risky but helps if the model forgets the markdown block
-        start = content.find('{')
-        end = content.rfind('}')
-        if start != -1 and end != -1:
-            json_str = content[start:end+1]
-        else:
-            return []
+        # 2. Fallback: Try to find a raw JSON object (first { to last })
+        try:
+            start = content.find('{')
+            end = content.rfind('}')
+            if start != -1 and end != -1:
+                candidate = content[start:end+1]
+                json.loads(candidate)
+                json_str = candidate
+        except:
+            pass
+
+    if not json_str:
+        logger.warning("No JSON block found in LLM output.")
+        return []
 
     try:
         data = json.loads(json_str)
@@ -114,9 +112,23 @@ def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) ->
             elif "name" in data and ("arguments" in data or "args" in data):
                 # Single tool call object
                 calls = [data]
+            elif "function" in data:
+                 calls = [data["function"]]
             else:
-                # Not a recognizable tool call structure
-                return []
+                # Fallback: Implicit Arguments Object
+                # If the dict keys look like arguments for a known tool
+                # Specific check for 'Plan' tool which uses 'plan' key
+                if "plan" in data and (allowed_tools is None or "Plan" in allowed_tools):
+                     calls = [{"name": "Plan", "args": data}]
+                elif "name" in data: # Malformed tool call object without args wrapper?
+                    calls = [data]
+                else:
+                    # Risky fallback: if only one tool is allowed, assume it's that one
+                    if allowed_tools and len(allowed_tools) == 1:
+                        calls = [{"name": allowed_tools[0], "args": data}]
+                    else:
+                        # Cannot determine which tool
+                        return []
         else:
             return []
 
@@ -127,12 +139,25 @@ def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) ->
 
             # Validate allowed tools
             if allowed_tools and name not in allowed_tools:
-                continue
+                # Case-insensitive match attempt?
+                found = False
+                for allowed in allowed_tools:
+                    if allowed.lower() == name.lower():
+                        name = allowed
+                        found = True
+                        break
+                if not found:
+                    continue
 
             arguments = call.get("arguments") or call.get("args") or {}
 
-            # Generate a dummy ID since Gemma doesn't provide one
-            # Using a deterministic hash or random string
+            # Ensure arguments is a dict
+            if isinstance(arguments, str):
+                try:
+                    arguments = json.loads(arguments)
+                except:
+                    pass
+
             import uuid
             call_id = f"call_{uuid.uuid4().hex[:8]}"
 
@@ -140,12 +165,11 @@ def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) ->
                 "name": name,
                 "args": arguments,
                 "id": call_id,
-                "type": "tool_call" # Standard LangChain field
+                "type": "tool_call"
             })
 
-    except json.JSONDecodeError:
-        # Log warning or handle silently?
-        # For now, return empty if parsing fails
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode failed: {e}")
         pass
 
     return tool_calls

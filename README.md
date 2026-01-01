@@ -63,7 +63,7 @@ npm install
 ```bash
 make dev
 # Or on Windows (or if make is not installed):
-python dev.py
+python scripts/dev.py
 ```
 This will run the backend and frontend development servers. Open your browser and navigate to the frontend development server URL (e.g., `http://localhost:5173/app`).
 
