@@ -485,3 +485,4 @@ def get_default_registry() -> ToolRegistry:
 def get_default_pool() -> AgentPool:
     """Get an AgentPool with default agents loaded."""
     return AgentPool()
+

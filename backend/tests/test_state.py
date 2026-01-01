@@ -102,8 +102,11 @@ class TestCreateRagResources:
         assert params[0] == "resource_uris"
         
         # Check parameter annotation
+        # NOTE: annotation can be string 'list[str]' or type list[str] depending on imports
+        # Since 'from __future__ import annotations' is present, it might be a string at runtime
+        # or resolved type. The previous failure showed it was 'list[str]'.
         param = sig.parameters["resource_uris"]
-        assert param.annotation == list[str]
+        assert str(param.annotation) == "list[str]"
 
 
 # =============================================================================
@@ -156,7 +159,14 @@ class TestReflectionState:
     def test_reflection_state_is_sufficient_is_bool(self):
         """Test that is_sufficient field is boolean."""
         annotations = ReflectionState.__annotations__
-        assert annotations["is_sufficient"] == bool
+        # With string annotations, might be 'bool' or forward ref
+        anno = annotations["is_sufficient"]
+        if hasattr(anno, "__forward_arg__"):
+             assert anno.__forward_arg__ == "bool"
+        elif isinstance(anno, str):
+             assert anno == "bool"
+        else:
+             assert anno == bool
 
 
 class TestSearchStateOutput:

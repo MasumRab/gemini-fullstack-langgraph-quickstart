@@ -13,10 +13,14 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 from collections import deque
 from threading import Lock
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
 from agent.models import GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO
+
+# Timezone for daily reset
+PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
 
 
 # Gemini 2.5 Model Rate Limits (Free Tier)
@@ -65,14 +69,27 @@ class RateLimiter:
         self._requests_per_day: deque = deque()
         self._tokens_per_minute: deque = deque()
         
-        # Daily reset tracking
-        self._last_reset = datetime.now()
+        # Daily reset tracking (Pacific Time)
+        self._last_reset_date = datetime.now(PACIFIC_TZ).date()
         
+        # ⚡ Bolt Optimization: Lazy cleanup timestamp
+        # Only cleanup if we are close to the limit or periodically (e.g. every 1 second).
+        # This prevents cleaning up on every single token estimation/check if calls are bursty.
+        self._last_cleanup = 0.0
+
         logger.info(f"Initialized RateLimiter for {model}: RPM={self.limits['rpm']}, TPM={self.limits['tpm']}, RPD={self.limits['rpd']}")
     
     def _cleanup_old_requests(self):
         """Remove requests older than tracking windows."""
         now = time.time()
+
+        # ⚡ Bolt Optimization: Throttle cleanup
+        # If less than 1 second passed since last cleanup, skip.
+        # This drastically reduces lock contention and overhead in high-throughput scenarios.
+        if now - self._last_cleanup < 1.0:
+            return
+
+        self._last_cleanup = now
         minute_ago = now - 60
         day_ago = now - 86400
         
@@ -89,13 +106,11 @@ class RateLimiter:
     
     def _check_daily_reset(self):
         """Check if we need to reset daily counters (midnight Pacific time)."""
-        # For simplicity, reset after 24 hours
-        # TODO: Implement proper Pacific time midnight reset
-        now = datetime.now()
-        if (now - self._last_reset).total_seconds() >= 86400:
+        now_pt = datetime.now(PACIFIC_TZ)
+        if now_pt.date() > self._last_reset_date:
             self._requests_per_day.clear()
-            self._last_reset = now
-            logger.info(f"Daily quota reset for {self.model}")
+            self._last_reset_date = now_pt.date()
+            logger.info(f"Daily quota reset for {self.model} (Pacific Time)")
     
     def wait_if_needed(self, estimated_tokens: int = 1000) -> float:
         """Wait if necessary to stay within rate limits.

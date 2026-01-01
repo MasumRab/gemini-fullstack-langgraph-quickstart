@@ -199,4 +199,11 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-backend/.langgraph_api
+backend/.langgraph_apiverification/artifacts/
+
+# Artifacts
+coverage_report.txt
+model_test_results.txt
+validation_coverage.txt
+temp_cell.txt
+markdownlint-cli2-results.json
