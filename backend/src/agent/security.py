@@ -101,12 +101,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     break
 
         if is_protected:
-            # Enhanced IP detection for proxy support (Render, etc.)
-            # We prioritize X-Forwarded-For to get the real client IP.
-            # Security Note: We truncate to 100 chars to prevent memory exhaustion attacks via huge headers.
+            # 🛡️ Sentinel: Support X-Forwarded-For for proxies (Render/Load Balancers)
+            # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
             forwarded = request.headers.get("X-Forwarded-For")
             if forwarded:
-                # The first IP in the list is the original client
+                # Take the first IP in the list (the real client)
+                # Truncate to 100 chars to prevent memory exhaustion attacks
                 client_ip = forwarded.split(",")[0].strip()[:100]
             else:
                 client_ip = request.client.host if request.client else "unknown"

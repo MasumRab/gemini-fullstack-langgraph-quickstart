@@ -1,0 +1,24 @@
+{
+  "todo_list": [
+    {
+      "id": "plan-0",
+      "title": "Research topic",
+      "query": "test query",
+      "suggested_tool": "web_research",
+      "status": "pending",
+      "nested": {
+        "key": "value",
+        "list": [
+          1,
+          2,
+          3
+        ]
+      }
+    }
+  ],
+  "artifacts": {
+    "summary": "This is a long summary...",
+    "sources": "http://example.com"
+  },
+  "updated_at": null
+}
