@@ -40,13 +40,18 @@ builder.add_node("execute_tools", execute_tools_node)
 # Conditional Routing
 def route_planning(state):
     last_msg = state["messages"][-1]
-    if "SubmitPlan" in last_msg.tool_calls:
-        return "web_research" (or "planning_mode")
-    elif last_msg.tool_calls:
-        return "execute_tools"
-    else:
-        # Fallback or error
+    
+    # Check if we have tool calls
+    if not last_msg.tool_calls:
+        # Fallback if no actions were identified
         return "finalize_answer"
+        
+    # Check if the agent wants to submit the final plan
+    if any(call.get("name") == "SubmitPlan" for call in last_msg.tool_calls):
+        return "web_research"
+    
+    # Otherwise, continue the ReAct loop by executing tools
+    return "execute_tools"
 
 builder.add_conditional_edges("planning_agent", route_planning)
 builder.add_edge("execute_tools", "planning_agent") # Feedback loop

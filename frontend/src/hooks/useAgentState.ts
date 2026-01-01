@@ -16,6 +16,9 @@ export function useAgentState() {
     status?: string | null;
     feedback?: string[];
   } | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [artifacts, setArtifacts] = useState<Record<string, any>>({});
+  const [isArtifactOpen, setIsArtifactOpen] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const hasFinalizeEventOccurredRef = useRef(false);
@@ -46,6 +49,11 @@ export function useAgentState() {
         processedEvent = {
           title: "Generating Search Queries",
           data: event.generate_query?.search_query?.join(", ") || "",
+        };
+      } else if (event.outline_gen) {
+        processedEvent = {
+          title: "Research Outline generated",
+          data: event.outline_gen?.outline?.title || "Drafting hierarchical sections",
         };
       } else if (event.planning_mode) {
         setPlanningContext({
@@ -85,12 +93,19 @@ export function useAgentState() {
           title: "Reflection",
           data: "Analysing Web Research Results",
         };
-      } else if (event.finalize_answer) {
+      } else if (event.finalize_answer || event.denoising_refiner) {
         processedEvent = {
           title: "Finalizing Answer",
-          data: "Composing and presenting the final answer.",
+          data: event.denoising_refiner
+            ? "Synthesizing multiple drafts for high-quality report."
+            : "Composing and presenting the final answer.",
         };
         hasFinalizeEventOccurredRef.current = true;
+      }
+
+      if (event.artifacts) {
+        setArtifacts((prev) => ({ ...prev, ...event.artifacts }));
+        setIsArtifactOpen(true);
       }
       if (processedEvent) {
         setProcessedEventsTimeline((prevEvents) => [
@@ -221,10 +236,13 @@ export function useAgentState() {
     processedEventsTimeline,
     historicalActivities,
     planningContext,
+    artifacts,
+    isArtifactOpen,
     error,
     scrollAreaRef,
     handleSubmit,
     handlePlanningCommand,
     handleCancel,
+    setIsArtifactOpen,
   };
 }

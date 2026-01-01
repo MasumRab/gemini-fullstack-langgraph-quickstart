@@ -115,7 +115,7 @@ class TestPlanningMode:
         result = planning_mode(base_planning_state, config=no_confirmation_config)
 
         assert result["planning_steps"] == []
-        assert "empty plan" in " ".join(result["planning_feedback"]).lower()
+        assert "generated 0 plan steps. no plan available." in " ".join(result["planning_feedback"]).lower()
 
     def test_generates_feedback_message(self, base_planning_state, no_confirmation_config):
         """Should generate feedback about the number of steps."""
@@ -177,25 +177,22 @@ class TestPlanningRouter:
         assert result == "planning_wait"
 
     def test_routes_to_web_research_on_end_plan(self, base_planning_state, confirmation_required_config):
-        """Should route to web_research when /end_plan is used."""
+        """Should route to select_next_task when /end_plan is used."""
         base_planning_state["messages"] = [{"content": "/end_plan"}]
         base_planning_state["search_query"] = ["query1"]
 
         result = planning_router(base_planning_state, config=confirmation_required_config)
 
-        assert isinstance(result, list)
-        assert len(result) > 0
-        assert result[0].node == "web_research"
+        assert result == "select_next_task"
 
     def test_routes_to_web_research_on_confirm_plan(self, base_planning_state, confirmation_required_config):
-        """Should route to web_research when /confirm_plan is used."""
+        """Should route to select_next_task when /confirm_plan is used."""
         base_planning_state["messages"] = [{"content": "/confirm_plan"}]
         base_planning_state["search_query"] = ["query1"]
 
         result = planning_router(base_planning_state, config=confirmation_required_config)
 
-        assert isinstance(result, list)
-        assert result[0].node == "web_research"
+        assert result == "select_next_task"
 
     def test_requires_confirmation_when_flag_true_and_not_confirmed(self, base_planning_state, confirmation_required_config):
         """Should wait when confirmation is required and not yet confirmed."""
@@ -206,14 +203,13 @@ class TestPlanningRouter:
         assert result == "planning_wait"
 
     def test_bypasses_wait_when_confirmed(self, base_planning_state, confirmation_required_config):
-        """Should proceed to web_research when planning_status is 'confirmed'."""
+        """Should proceed to select_next_task when planning_status is 'confirmed'."""
         base_planning_state["planning_status"] = "confirmed"
         base_planning_state["search_query"] = ["query1"]
 
         result = planning_router(base_planning_state, config=confirmation_required_config)
 
-        assert isinstance(result, list)
-        assert result[0].node == "web_research"
+        assert result == "select_next_task"
 
     def test_bypasses_wait_when_flag_false(self, base_planning_state, no_confirmation_config):
         """Should proceed directly when require_planning_confirmation is False."""
@@ -221,8 +217,7 @@ class TestPlanningRouter:
 
         result = planning_router(base_planning_state, config=no_confirmation_config)
 
-        assert isinstance(result, list)
-        assert result[0].node == "web_research"
+        assert result == "select_next_task"
 
     def test_handles_empty_search_query(self, base_planning_state, no_confirmation_config):
         """Should handle empty search_query gracefully."""
@@ -230,9 +225,7 @@ class TestPlanningRouter:
 
         result = planning_router(base_planning_state, config=no_confirmation_config)
 
-        # Should return empty list, not crash
-        assert isinstance(result, list)
-        assert len(result) == 0
+        assert result == "select_next_task"
 
     def test_handles_missing_search_query(self, confirmation_required_config):
         """Should handle missing search_query gracefully."""
@@ -243,18 +236,15 @@ class TestPlanningRouter:
 
         result = planning_router(state, config=confirmation_required_config)
 
-        assert isinstance(result, list)
-        assert len(result) == 0
+        assert result == "select_next_task"
 
-    def test_multiple_queries_create_multiple_sends(self, base_planning_state, no_confirmation_config):
-        """Should create a Send for each query."""
+    def test_proceeds_to_sequential_execution(self, base_planning_state, no_confirmation_config):
+        """Should proceed to select_next_task instead of fan-out."""
         base_planning_state["search_query"] = ["q1", "q2", "q3"]
 
         result = planning_router(base_planning_state, config=no_confirmation_config)
 
-        assert len(result) == 3
-        for send in result:
-            assert send.node == "web_research"
+        assert result == "select_next_task"
 
 
 # =============================================================================
@@ -291,7 +281,7 @@ def test_planning_mode_handles_empty_search_query():
     )
 
     assert result["planning_steps"] == []
-    assert "No queries available" in " ".join(result["planning_feedback"])
+    assert "Generated 0 plan steps. No plan available." in " ".join(result["planning_feedback"])
 
 
 def test_planning_mode_with_require_confirmation_flag():
@@ -337,8 +327,8 @@ def test_planning_wait_returns_feedback():
     assert len(result["planning_feedback"]) > 0
 
 
-def test_planning_router_multiple_queries_fan_out():
-    """Test that planning_router creates multiple Send objects for multiple queries."""
+def test_planning_router_proceeds_to_sequential():
+    """Test that planning_router routes to select_next_task for sequential execution."""
     state = make_state(
         planning_status="confirmed",
         search_query=["q1", "q2", "q3"]
@@ -348,7 +338,4 @@ def test_planning_router_multiple_queries_fan_out():
         config={"configurable": {"require_planning_confirmation": False}},
     )
 
-    assert isinstance(result, list)
-    assert len(result) == 3
-    for item in result:
-        assert item.node == "web_research"
+    assert result == "select_next_task"

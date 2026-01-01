@@ -76,7 +76,8 @@ def test_ingest_research_results(rag_classes, mock_config, mock_dependencies):
     assert len(ids) == 2
     assert len(rag.doc_store) == 2
     # rag.index_with_ids is the mock returned by IndexIDMap
-    assert rag.index_with_ids.add_with_ids.call_count == 2
+    # Bolt Optimization: Should be called once with batch
+    assert rag.index_with_ids.add_with_ids.call_count == 1
 
     evidence = rag.doc_store[ids[0]]
     assert evidence.content == "chunk1"

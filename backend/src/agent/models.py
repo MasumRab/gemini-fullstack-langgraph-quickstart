@@ -33,14 +33,14 @@ GEMMA_3_27B_IT = "gemma-3-27b-it"
 # Default Model Assignments
 # ============================================================================
 
-# These are the recommended defaults for differnt tasks
-DEFAULT_QUERY_MODEL = GEMMA_3_27B_IT
+# These are the recommended defaults for different tasks
+DEFAULT_QUERY_MODEL = GEMINI_FLASH
 """Default model for query generation - fast and efficient."""
 
-DEFAULT_REFLECTION_MODEL = GEMMA_3_27B_IT
+DEFAULT_REFLECTION_MODEL = GEMINI_FLASH
 """Default model for reflection/reasoning - balanced performance."""
 
-DEFAULT_ANSWER_MODEL = GEMMA_3_27B_IT
+DEFAULT_ANSWER_MODEL = GEMINI_FLASH
 """Default model for final answer synthesis - high quality output."""
 
 DEFAULT_VALIDATION_MODEL = GEMMA_3_27B_IT
@@ -69,8 +69,8 @@ MODEL_ALIASES = {
 # Testing Constants
 # ============================================================================
 
-TEST_MODEL = GEMMA_3_27B_IT
-"""Model to use in tests - matches default configuration model."""
+TEST_MODEL = GEMINI_FLASH
+"""Model to use in tests - points to a valid, accessible model."""
 
 # ============================================================================
 # Deprecated Models (DO NOT USE - kept for reference only)

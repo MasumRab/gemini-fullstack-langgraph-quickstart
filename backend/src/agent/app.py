@@ -6,17 +6,35 @@ import pathlib
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from agent.mcp_config import load_mcp_settings
-from agent.security import SecurityHeadersMiddleware
+from agent.security import SecurityHeadersMiddleware, RateLimitMiddleware
 from agent.tools_and_schemas import MCP_TOOLS, get_tools_from_mcp
-from config.app_config import app_config
+from config.app_config import config as app_config
 from config.validation import check_env_strict
+
+# Define Middleware for Content Size Limit (Defense against DoS)
+class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
+    """Middleware to limit the size of the request body."""
+
+    def __init__(self, app, max_upload_size: int = 10 * 1024 * 1024): # 10MB
+        super().__init__(app)
+        self.max_upload_size = max_upload_size
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "POST":
+            content_length = request.headers.get("content-length")
+            if content_length:
+                if int(content_length) > self.max_upload_size:
+                    return Response("Request entity too large", status_code=413)
+        return await call_next(request)
 
 
 @asynccontextmanager
@@ -54,13 +72,33 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    # Sentinel: Restrict CORS to allowed origins from config
-    allow_origins=app_config.CORS_ORIGINS,
+    allow_origins=app_config.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Add Trusted Host Middleware (Guard against Host Header attacks)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=app_config.allowed_hosts
+)
+
+# Add Content Size Limit Middleware (Guard against DoS)
+app.add_middleware(ContentSizeLimitMiddleware, max_upload_size=10 * 1024 * 1024)
+
+# Add Rate Limiting (INNER - added before SecurityHeaders)
+# Limit to 100 requests per minute per IP for sensitive API endpoints
+app.add_middleware(
+    RateLimitMiddleware,
+    limit=100,
+    window=60,
+    protected_paths=["/agent", "/threads"]
+)
+
+# Add Security Headers (OUTERMOST - added last)
+# This ensures even 429 responses from RateLimiter (inner) get headers.
+# Re-verified: Starlette .add_middleware() uses .insert(0), so LAST added is OUTERMOST.
 app.add_middleware(SecurityHeadersMiddleware)
 
 
