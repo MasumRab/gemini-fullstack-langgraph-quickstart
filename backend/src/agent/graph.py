@@ -18,10 +18,13 @@ from agent.nodes import (
     compression_node,  # New Node
     reflection,
     finalize_answer,
+    denoising_refiner, # New Node
     evaluate_research,
     update_plan,
     select_next_task,
     execution_router,
+    outline_gen, # New Node
+    checklist_verifier, # New Node
 )
 from agent.kg import kg_enrich # New Node
 from agent.mcp_config import load_mcp_settings, validate
@@ -80,8 +83,11 @@ builder.add_node("compression_node", compression_node) # Add Compression
 builder.add_node("kg_enrich", kg_enrich) # Add KG Pilot
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
+builder.add_node("denoising_refiner", denoising_refiner) # Add TTD-DR Refiner
 builder.add_node("update_plan", update_plan)
 builder.add_node("select_next_task", select_next_task)
+builder.add_node("outline_gen", outline_gen) # Add STORM Outline Gen
+builder.add_node("checklist_verifier", checklist_verifier) # Add RhinoInsight Verifier
 
 builder.add_edge(START, "load_context")
 builder.add_edge("load_context", "scoping_node")
@@ -93,8 +99,10 @@ def scoping_router(state: OverallState) -> str:
     return "generate_plan"
 
 builder.add_conditional_edges(
-    "scoping_node", scoping_router, ["planning_wait", "generate_plan"]
+    "scoping_node", scoping_router, ["planning_wait", "outline_gen"]
 )
+
+builder.add_edge("outline_gen", "generate_plan")
 
 # builder.add_edge("generate_plan", "planning_mode") # Removed as it's destination of router
 builder.add_edge("generate_plan", "planning_mode")
@@ -114,10 +122,11 @@ builder.add_conditional_edges(
 builder.add_edge("select_next_task", "web_research")
 builder.add_edge("web_research", "validate_web_results")
 
-# Pipeline: Validate -> Compression -> KG Enrich -> Reflection
+# Pipeline: Validate -> Compression -> KG Enrich -> Checklist Verifier -> Reflection
 builder.add_edge("validate_web_results", "compression_node")
 builder.add_edge("compression_node", "kg_enrich")
-builder.add_edge("kg_enrich", "reflection")
+builder.add_edge("kg_enrich", "checklist_verifier")
+builder.add_edge("checklist_verifier", "reflection")
 
 # Reflection now goes to update_plan instead of evaluate_research
 builder.add_edge("reflection", "update_plan")
@@ -126,7 +135,6 @@ builder.add_edge("reflection", "update_plan")
 builder.add_conditional_edges(
     "update_plan", execution_router, ["select_next_task", "finalize_answer"]
 )
-builder.add_edge("finalize_answer", END)
 
 # Document edges for registry/tooling
 graph_registry.document_edge(
@@ -192,7 +200,8 @@ graph_registry.document_edge(
 
 graph = builder.compile(name="pro-search-agent")
 
-# TODO(priority=High, complexity=Low): Add visualization support for notebooks.
-# See docs/tasks/03_OPEN_CANVAS_TASKS.md
-# Subtask: Implement `get_graph().draw_mermaid_png()` compatible method.
-# Subtask: Ensure `visualize_graphs.py` uses this method.
+def draw_graph_png():
+    """Helper to draw the graph as a PNG (for notebooks)."""
+    return graph.get_graph().draw_mermaid_png()
+
+# Removed stale TODOs for visualization as draw_graph_png is now implemented.

@@ -26,6 +26,7 @@ from agent.configuration import Configuration
 from agent.persistence import load_plan, save_plan
 from agent.prompts import (
     answer_instructions,
+    gemma_answer_instructions,
     get_current_date,
     plan_writer_instructions,
     plan_updater_instructions,
@@ -243,6 +244,10 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
         # Check if we are using a Gemma model (requires prompt-based tool calling)
         if is_gemma_model(configurable.query_generator_model):
             logger.info(f"Using Gemma adapter for structured output (and {len(MCP_TOOLS)} MCP tools if present).")
+
+            # Optimization for Gemma: Explicitly request keyword-optimized queries for better search performance
+            gemma_optimization_note = "\n\nIMPORTANT: When generating search queries for the plan, use specific KEYWORDS rather than full questions. This improves search engine effectiveness (e.g. 'solid state battery energy density 2024' instead of 'what is the energy density...')."
+            formatted_prompt += gemma_optimization_note
 
             # Strategy for Gemma in this node:
             # We want `Plan` as the structured output.
@@ -657,7 +662,8 @@ def planning_wait(state: OverallState) -> OverallState:
 )
 def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
     """
-    Optional: Generates N draft answers, critique them, and synthesize the best components.
+    Updates the research plan based on latest findings.
+    Implements FlowSearch/Open SWE logic to dynamically adjust tasks.
     """
     with observe_span("update_plan", config):
         configurable = Configuration.from_runnable_config(config)
@@ -810,17 +816,71 @@ def execution_router(state: OverallState) -> str:
         return "select_next_task"
     return "finalize_answer"
 
+@graph_registry.describe(
+    "outline_gen",
+    summary="Generates a hierarchical outline (Sections -> Subsections) for the research.",
+    tags=["planning", "outline"],
+    outputs=["outline"],
+)
 def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Generates a hierarchical outline (Sections -> Subsections) for the research.
-
-    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'outline_gen' Node (STORM)
-    Logic: Generate hierarchical outline (Sections -> Subsections).
+    Implements STORM pattern for structured long-form content generation.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-    Subtask: Input: Refined user query + initial context.
-    Subtask: Output: Populate `OverallState.outline`.
     """
-    raise NotImplementedError("outline_gen not implemented")
+    with observe_span("outline_gen", config):
+        messages = state.get("messages", [])
+        topic = get_research_topic(messages)
+        
+        configurable = Configuration.from_runnable_config(config)
+        model_name = configurable.query_generator_model # Use a strong model
+
+        prompt = outline_instructions.format(
+            current_date=get_current_date(),
+            research_topic=topic
+        )
+
+        llm = _get_rate_limited_llm(
+            model=model_name,
+            temperature=0.2, # Slight variety for creative outlines
+            prompt=prompt
+        )
+
+        try:
+            # For structured output, we use with_structured_output if supported,
+            # or manual parsing for Gemma.
+            is_gemma = "gemma" in model_name.lower()
+            if is_gemma:
+                # Simple parsing logic for Gemma (expects JSON in markdown)
+                # In a real scenario, we'd use the tool_adapter or PydanticOutputParser
+                response = llm.invoke(prompt)
+                content = response.content if hasattr(response, "content") else str(response)
+                # Heuristic: Find first { and last }
+                import json
+                start = content.find('{')
+                end = content.rfind('}')
+                if start != -1 and end != -1:
+                    outline_data = json.loads(content[start:end+1])
+                else:
+                    raise ValueError("Could not find JSON in Gemma output")
+            else:
+                structured_llm = llm.with_structured_output(Outline)
+                outline_data = structured_llm.invoke(prompt)
+
+            return {"outline": outline_data}
+        except Exception as e:
+            logger.error(f"Outline generation failed: {e}")
+            # Return a simple default outline to keep the graph moving
+            return {
+                "outline": {
+                    "title": topic,
+                    "sections": [
+                        {"title": "Introduction", "subsections": [{"title": "Overview", "description": "General summary of the topic"}]},
+                        {"title": "Analysis", "subsections": [{"title": "Key Findings", "description": "Main results of the research"}]},
+                        {"title": "Conclusion", "subsections": [{"title": "Summary", "description": "Final thoughts"}]}
+                    ]
+                }
+            }
 
 def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     """
@@ -1003,15 +1063,67 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
             logger.error(f"Checklist verification failed: {e}")
             return {"validation_notes": [f"Checklist verification failed: {e}"]}
 
+@graph_registry.describe(
+    "denoising_refiner",
+    summary="Refines the final answer by synthesizing multiple drafts (TTD-DR).",
+    tags=["synthesis", "quality"],
+    outputs=["messages"],
+)
 def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Refines the final answer by synthesizing multiple drafts.
-
-    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'denoising_refiner'
+    Implements TTD-DR pattern for high-fidelity report synthesis.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-    Subtask: Generate N draft answers, critique them, and synthesize the best components.
     """
-    raise NotImplementedError("denoising_refiner not implemented")
+    with observe_span("denoising_refiner", config):
+        configurable = Configuration.from_runnable_config(config)
+        model_name = configurable.answer_model
+        
+        # 1. Gather research context
+        messages = state.get("messages", [])
+        topic = get_research_topic(messages)
+        
+        web_results = state.get("validated_web_research_result") or state.get("web_research_result", [])
+        summaries = "\n\n".join(web_results)
+        
+        # 2. Generate Draft 1 (Standard Answer)
+        prompt_1 = gemma_answer_instructions.format(
+            current_date=get_current_date(),
+            research_topic=topic,
+            summaries=summaries
+        )
+        
+        llm_1 = _get_rate_limited_llm(model=model_name, temperature=0.7, prompt=prompt_1)
+        draft_1 = llm_1.invoke(prompt_1).content
+        
+        # 3. Generate Draft 2 (Alternative Perspective/Focus)
+        prompt_2 = prompt_1 + "\n\nNote: Focus more on technical implementation details and edge cases."
+        llm_2 = _get_rate_limited_llm(model=model_name, temperature=0.7, prompt=prompt_2)
+        draft_2 = llm_2.invoke(prompt_2).content
+        
+        # 4. Denoise/Synthesize
+        refine_prompt = denoising_instructions.format(
+            current_date=get_current_date(),
+            drafts=f"--- DRAFT 1 ---\n{draft_1}\n\n--- DRAFT 2 ---\n{draft_2}"
+        )
+        
+        llm_refiner = _get_rate_limited_llm(model=model_name, temperature=0, prompt=refine_prompt)
+        final_answer = llm_refiner.invoke(refine_prompt).content
+        
+        # 5. Create Artifact for Open Canvas
+        artifact_id = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        artifact = {
+            "id": artifact_id,
+            "title": f"Research Report: {topic}",
+            "content": final_answer,
+            "type": "markdown",
+            "version": 1
+        }
+        
+        return {
+            "messages": [AIMessage(content=f"I have finalized the research report. You can view it in the artifact panel.\n\nSummary: {final_answer[:200]}...")],
+            "artifacts": {artifact_id: artifact}
+        }
 
 def update_artifact(id: str, content: str, type: str) -> str:
     """
@@ -1374,11 +1486,19 @@ def finalize_answer(state: OverallState, config: RunnableConfig):
         # Use validated (and optionally compressed) results
         summaries = state.get("validated_web_research_result") or state.get("web_research_result", [])
 
-        formatted_prompt = answer_instructions.format(
-            current_date=current_date,
-            research_topic=get_research_topic(state["messages"]),
-            summaries="\n---\n\n".join(summaries),
-        )
+        # Select prompt based on model
+        if is_gemma_model(reasoning_model):
+            formatted_prompt = gemma_answer_instructions.format(
+                current_date=current_date,
+                research_topic=get_research_topic(state["messages"]),
+                summaries="\n\n".join(summaries), # Cleaner join for XML
+            )
+        else:
+            formatted_prompt = answer_instructions.format(
+                current_date=current_date,
+                research_topic=get_research_topic(state["messages"]),
+                summaries="\n---\n\n".join(summaries),
+            )
 
         # Use rate-limited LLM
         llm = _get_rate_limited_llm(

@@ -145,6 +145,20 @@ interface HumanMessageBubbleProps {
   mdComponents: typeof mdComponents;
 }
 
+// ⚡ Bolt Optimization: Custom comparator to ignore object reference changes
+// when content and ID are identical (crucial for streaming lists).
+function areHumanMessageBubblePropsEqual(
+  prev: HumanMessageBubbleProps,
+  next: HumanMessageBubbleProps
+) {
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.content === next.message.content &&
+    prev.message.type === next.message.type &&
+    prev.mdComponents === next.mdComponents
+  );
+}
+
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
 const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
   message,
@@ -161,7 +175,7 @@ const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
       </ReactMarkdown>
     </div>
   );
-});
+}, areHumanMessageBubblePropsEqual);
 HumanMessageBubble.displayName = "HumanMessageBubble";
 
 // Props for AiMessageBubble
@@ -174,6 +188,26 @@ interface AiMessageBubbleProps {
   mdComponents: typeof mdComponents;
   handleCopy: (text: string, messageId: string) => void;
   isCopied: boolean;
+}
+
+// ⚡ Bolt Optimization: Custom comparator for AI bubbles.
+// Explicitly checks primitive values and specific props to avoid re-rendering
+// when the parent passes new message objects with identical content.
+function areAiMessageBubblePropsEqual(
+  prev: AiMessageBubbleProps,
+  next: AiMessageBubbleProps
+) {
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.content === next.message.content &&
+    prev.isLastMessage === next.isLastMessage &&
+    prev.isOverallLoading === next.isOverallLoading &&
+    prev.isCopied === next.isCopied &&
+    prev.historicalActivity === next.historicalActivity &&
+    prev.liveActivity === next.liveActivity &&
+    prev.handleCopy === next.handleCopy &&
+    prev.mdComponents === next.mdComponents
+  );
 }
 
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
@@ -225,7 +259,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
       </Button>
     </div>
   );
-});
+}, areAiMessageBubblePropsEqual);
 AiMessageBubble.displayName = "AiMessageBubble";
 
 interface PlanningContext {
@@ -299,21 +333,27 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
             <Button
               size="sm"
               variant="outline"
+              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               onClick={() => onSendCommand("/plan")}
+              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             >
               Enter Planning
             </Button>
             <Button
               size="sm"
               variant="ghost"
+              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               onClick={() => onSendCommand("/end_plan")}
+              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             >
               Skip Planning
             </Button>
             {planningContext.status === "awaiting_confirmation" && (
               <Button
                 size="sm"
+                className="focus-visible:ring-2 focus-visible:ring-neutral-500"
                 onClick={() => onSendCommand("/confirm_plan")}
+                className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               >
                 Confirm Plan
               </Button>
@@ -417,7 +457,7 @@ export function ChatMessagesView({
                     </div>
                   ) : (
                     <div className="flex items-center justify-start h-full">
-                      <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" />
+                      <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" aria-hidden="true" />
                       <span>Processing...</span>
                     </div>
                   )}
@@ -440,14 +480,18 @@ export function ChatMessagesView({
           <Button
             size="sm"
             variant="outline"
+            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             onClick={() => onSendCommand("/plan")}
+            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
           >
             Start Planning
           </Button>
           <Button
             size="sm"
             variant="ghost"
+            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             onClick={() => onSendCommand("/end_plan")}
+            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
           >
             End Planning
           </Button>

@@ -14,6 +14,14 @@ import re
 from pathlib import Path
 
 # Configuration Strategies - Only Gemini 2.5 models (1.5 and 2.0 are deprecated/inaccessible)
+CONSTANTS_MAP = {
+    "gemini-2.5-flash": "GEMINI_FLASH",
+    "gemini-2.5-flash-lite": "GEMINI_FLASH_LITE",
+    "gemini-2.5-pro": "GEMINI_PRO",
+    "gemma-2-27b-it": "GEMMA_2_27B_IT",
+    "gemma-3-27b-it": "GEMMA_3_27B_IT",
+}
+
 STRATEGIES = {
     "flash": {
         "description": "Gemini 2.5 Flash: Best price-performance for all components",
@@ -46,6 +54,14 @@ STRATEGIES = {
         "answer": "gemini-2.5-pro",
         "tools": "gemini-2.5-flash",
         "frontend": "gemini-2.5-flash"
+    },
+    "gemma": {
+        "description": "Gemma 3: High-quality open weights models",
+        "query": "gemma-3-27b-it",
+        "reflection": "gemma-3-27b-it",
+        "answer": "gemma-3-27b-it",
+        "tools": "gemma-3-27b-it",
+        "frontend": "gemma-3-27b-it"
     }
 }
 
@@ -86,39 +102,36 @@ def main():
     config = STRATEGIES[strategy_name]
     print(f"Applying strategy: {strategy_name} ({config['description']})")
 
-    # 1. Update backend configuration.py
-    config_file = BACKEND_DIR / "configuration.py"
+    # 1. Update backend/src/agent/models.py (Centralized Constants)
+    # We update the DEFAULT definitions to point to the selected strategy models.
+    models_file = BACKEND_DIR / "models.py"
 
-    # Update fields in configuration.py
-    # We use a more robust regex that handles multi-line fields
+    # Update DEFAULT_* constants
+    # Matches: DEFAULT_QUERY_MODEL = ...
+    # Replaces with: DEFAULT_QUERY_MODEL = GEMINI_FLASH (or "model_name")
+    
+    def get_val(m): 
+        return CONSTANTS_MAP.get(m, f'"{m}"')
+
     update_file(
-        config_file,
-        r'(query_generator_model: str = Field\s*\(\s*default=")([^"]+)(")',
-        f'\\1{config["query"]}\\3'
+        models_file,
+        r'(DEFAULT_QUERY_MODEL\s*=\s*)(.+)',
+        f'\\1{get_val(config["query"])}'
     )
     update_file(
-        config_file,
-        r'(reflection_model: str = Field\s*\(\s*default=")([^"]+)(")',
-        f'\\1{config["reflection"]}\\3'
+        models_file,
+        r'(DEFAULT_REFLECTION_MODEL\s*=\s*)(.+)',
+        f'\\1{get_val(config["reflection"])}'
     )
     update_file(
-        config_file,
-        r'(answer_model: str = Field\s*\(\s*default=")([^"]+)(")',
-        f'\\1{config["answer"]}\\3'
+        models_file,
+        r'(DEFAULT_ANSWER_MODEL\s*=\s*)(.+)',
+        f'\\1{get_val(config["answer"])}'
     )
 
-    # Also catch the cleaner generic pattern just in case
-    update_file(config_file, r'(query_generator_model: str = Field\n\s*default=")([^"]+)', f'\\1{config["query"]}')
-    update_file(config_file, r'(reflection_model: str = Field\n\s*default=")([^"]+)', f'\\1{config["reflection"]}')
-    update_file(config_file, r'(answer_model: str = Field\n\s*default=")([^"]+)', f'\\1{config["answer"]}')
-
-    # 2. Update research_tools.py (hardcoded model)
-    tools_file = BACKEND_DIR / "research_tools.py"
-    update_file(
-        tools_file,
-        r'(writer_model = init_chat_model\(model=")([^"]+)(")',
-        f'\\1{config["tools"]}\\3'
-    )
+    # 2. Update research_tools.py (writer model)
+    # Skipped: research_tools.py now uses DEFAULT_ANSWER_MODEL from models.py
+    # so we don't need to manually update it here.
 
     # 3. Update Frontend Default
     update_file(
@@ -141,6 +154,7 @@ def main():
             update_file(nb, r'(model=\\")gemini-[^"]+(\\")', f'\\1{config["answer"]}\\2')
 
     print(f"Model update complete! Using {config['answer']} (and variants) for {strategy_name} strategy.")
+    print("Run `python backend/scripts/verify_agent_flow.py` (if available) to verify.")
 
 if __name__ == "__main__":
     main()
