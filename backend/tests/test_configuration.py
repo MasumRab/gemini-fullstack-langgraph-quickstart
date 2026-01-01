@@ -7,7 +7,13 @@ import pytest
 from pydantic import ValidationError
 
 from agent.configuration import Configuration
-from agent.models import TEST_MODEL, GEMINI_PRO
+from agent.models import (
+    TEST_MODEL,
+    GEMINI_PRO,
+    DEFAULT_QUERY_MODEL,
+    DEFAULT_REFLECTION_MODEL,
+    DEFAULT_ANSWER_MODEL,
+)
 
 
 class TestConfiguration:
@@ -17,11 +23,9 @@ class TestConfiguration:
         """Configuration should have sensible defaults."""
         config = Configuration()
 
-        # Updated defaults to match code (gemma-3-27b-it)
-        assert config.query_generator_model == "gemma-3-27b-it"
-        assert config.reflection_model == "gemma-3-27b-it"
-        # answer_model defaults to DEFAULT_ANSWER_MODEL which is gemma-3-27b-it
-        assert config.answer_model == "gemma-3-27b-it"
+        assert config.query_generator_model == DEFAULT_QUERY_MODEL
+        assert config.reflection_model == DEFAULT_REFLECTION_MODEL
+        assert config.answer_model == DEFAULT_ANSWER_MODEL
         assert config.number_of_initial_queries == 3
         assert config.max_research_loops == 2
         assert config.require_planning_confirmation is True
@@ -30,7 +34,7 @@ class TestConfiguration:
         """from_runnable_config with None should use defaults."""
         config = Configuration.from_runnable_config(None)
 
-        assert config.query_generator_model == "gemma-3-27b-it"
+        assert config.query_generator_model == DEFAULT_QUERY_MODEL
         assert config.number_of_initial_queries == 3
 
     def test_from_runnable_config_with_empty_dict(self):
@@ -125,7 +129,7 @@ class TestConfiguration:
 
         assert config.query_generator_model == "new-model"
         # Other fields should have defaults
-        assert config.reflection_model == "gemma-3-27b-it"
+        assert config.reflection_model == DEFAULT_REFLECTION_MODEL
         assert config.number_of_initial_queries == 3
 
 

@@ -31,7 +31,7 @@ class GoogleSearchAdapter(SearchProvider):
         Note: region, time_range, safe_search, tuned are not currently supported by the GenAI SDK tool wrapper.
         """
         from agent.models import GEMINI_FLASH
-        
+
         prompt = f"Search for: {query}"
 
         try:

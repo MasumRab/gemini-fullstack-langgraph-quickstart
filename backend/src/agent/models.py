@@ -33,14 +33,14 @@ GEMMA_3_27B_IT = "gemma-3-27b-it"
 # Default Model Assignments
 # ============================================================================
 
-# These are the recommended defaults for differnt tasks
-DEFAULT_QUERY_MODEL = GEMMA_3_27B_IT
+# These are the recommended defaults for different tasks
+DEFAULT_QUERY_MODEL = GEMINI_FLASH
 """Default model for query generation - fast and efficient."""
 
-DEFAULT_REFLECTION_MODEL = GEMMA_3_27B_IT
+DEFAULT_REFLECTION_MODEL = GEMINI_FLASH
 """Default model for reflection/reasoning - balanced performance."""
 
-DEFAULT_ANSWER_MODEL = GEMMA_3_27B_IT
+DEFAULT_ANSWER_MODEL = GEMINI_FLASH
 """Default model for final answer synthesis - high quality output."""
 
 DEFAULT_VALIDATION_MODEL = GEMMA_3_27B_IT
@@ -167,3 +167,16 @@ def get_model_or_default(model_name: str, default: str = GEMINI_FLASH) -> str:
 
 ALL_VALID_MODELS = [GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT, GEMMA_3_27B_IT]
 """List of all valid, accessible Gemini models."""
+
+def is_gemma_model(model_name: str) -> bool:
+    """Check if the model is a Gemma model (requires custom tool handling)."""
+    if not model_name:
+        return False
+    return "gemma" in model_name.lower()
+
+def is_gemini_model(model_name: str) -> bool:
+    """Check if the model is a Gemini model (supports native tool binding)."""
+    if not model_name:
+        return False
+    name = model_name.lower()
+    return "gemini" in name or "google" in name

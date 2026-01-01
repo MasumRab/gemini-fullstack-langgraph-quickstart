@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 import logging
 
 from langchain_core.runnables import RunnableConfig
-from langchain_core.tools import BaseTool, tool as create_tool
+from langchain_core.tools import BaseTool, StructuredTool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
@@ -155,9 +155,11 @@ class ToolRegistry:
             if category and spec.category != category:
                 continue
             # Convert to LangChain tool
-            lc_tool = create_tool(spec.func)
-            lc_tool.name = spec.name
-            lc_tool.description = spec.description
+            lc_tool = StructuredTool.from_function(
+                func=spec.func,
+                name=spec.name,
+                description=spec.description,
+            )
             tools.append(lc_tool)
         return tools
 
@@ -483,3 +485,4 @@ def get_default_registry() -> ToolRegistry:
 def get_default_pool() -> AgentPool:
     """Get an AgentPool with default agents loaded."""
     return AgentPool()
+

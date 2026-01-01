@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Copy, CopyCheck } from "lucide-react";
 import { InputForm } from "@/components/InputForm";
 import { Button } from "@/components/ui/button";
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, memo, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -12,12 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   ActivityTimeline,
   ProcessedEvent,
-} from "@/components/ActivityTimeline"; // Assuming ActivityTimeline is in the same dir or adjust path
+} from "@/components/ActivityTimeline";
 
 // Markdown component props type from former ReportView
 type MdComponentProps = {
   className?: string;
   children?: ReactNode;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 };
 
@@ -44,7 +45,7 @@ const mdComponents = {
     </p>
   ),
   a: ({ className, children, href, ...props }: MdComponentProps) => (
-    <Badge className="text-xs mx-0.5">
+    <Badge className="text-xs mx-0.5" asChild>
       <a
         className={cn("text-blue-400 hover:text-blue-300 text-xs", className)}
         href={href}
@@ -135,29 +136,47 @@ const mdComponents = {
   ),
 };
 
+// ⚡ Bolt Optimization: Define remark plugins as a constant to ensure referential stability.
+const markdownPlugins = [remarkGfm];
+
 // Props for HumanMessageBubble
 interface HumanMessageBubbleProps {
   message: Message;
   mdComponents: typeof mdComponents;
 }
 
-// HumanMessageBubble Component
-const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = ({
+// ⚡ Bolt Optimization: Custom comparator to ignore object reference changes
+// when content and ID are identical (crucial for streaming lists).
+function areHumanMessageBubblePropsEqual(
+  prev: HumanMessageBubbleProps,
+  next: HumanMessageBubbleProps
+) {
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.content === next.message.content &&
+    prev.message.type === next.message.type &&
+    prev.mdComponents === next.mdComponents
+  );
+}
+
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
+const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
   message,
   mdComponents,
-}) => {
+}: HumanMessageBubbleProps) => {
   return (
     <div
       className={`text-white rounded-3xl break-words min-h-7 bg-neutral-700 max-w-[100%] sm:max-w-[90%] px-4 pt-3 rounded-br-lg`}
     >
-      <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown components={mdComponents} remarkPlugins={markdownPlugins}>
         {typeof message.content === "string"
           ? message.content
           : JSON.stringify(message.content)}
       </ReactMarkdown>
     </div>
   );
-};
+}, areHumanMessageBubblePropsEqual);
+HumanMessageBubble.displayName = "HumanMessageBubble";
 
 // Props for AiMessageBubble
 interface AiMessageBubbleProps {
@@ -168,11 +187,31 @@ interface AiMessageBubbleProps {
   isOverallLoading: boolean;
   mdComponents: typeof mdComponents;
   handleCopy: (text: string, messageId: string) => void;
-  copiedMessageId: string | null;
+  isCopied: boolean;
 }
 
-// AiMessageBubble Component
-const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
+// ⚡ Bolt Optimization: Custom comparator for AI bubbles.
+// Explicitly checks primitive values and specific props to avoid re-rendering
+// when the parent passes new message objects with identical content.
+function areAiMessageBubblePropsEqual(
+  prev: AiMessageBubbleProps,
+  next: AiMessageBubbleProps
+) {
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.content === next.message.content &&
+    prev.isLastMessage === next.isLastMessage &&
+    prev.isOverallLoading === next.isOverallLoading &&
+    prev.isCopied === next.isCopied &&
+    prev.historicalActivity === next.historicalActivity &&
+    prev.liveActivity === next.liveActivity &&
+    prev.handleCopy === next.handleCopy &&
+    prev.mdComponents === next.mdComponents
+  );
+}
+
+// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
+const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
   message,
   historicalActivity,
   liveActivity,
@@ -180,8 +219,8 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   isOverallLoading,
   mdComponents,
   handleCopy,
-  copiedMessageId,
-}) => {
+  isCopied,
+}: AiMessageBubbleProps) => {
   // Determine which activity events to show and if it's for a live loading message
   const activityForThisBubble =
     isLastMessage && isOverallLoading ? liveActivity : historicalActivity;
@@ -197,14 +236,14 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           />
         </div>
       )}
-      <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown components={mdComponents} remarkPlugins={markdownPlugins}>
         {typeof message.content === "string"
           ? message.content
           : JSON.stringify(message.content)}
       </ReactMarkdown>
       <Button
         variant="default"
-        className={`cursor-pointer bg-neutral-700 border-neutral-600 text-neutral-300 self-end ${message.content.length > 0 ? "visible" : "hidden"
+        className={`cursor-pointer bg-neutral-700 border-neutral-600 text-neutral-300 self-end focus-visible:ring-2 focus-visible:ring-neutral-500 ${message.content.length > 0 ? "visible" : "hidden"
           }`}
         onClick={() =>
           handleCopy(
@@ -215,18 +254,117 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
           )
         }
       >
-        {copiedMessageId === message.id ? "Copied" : "Copy"}
-        {copiedMessageId === message.id ? <CopyCheck /> : <Copy />}
+        {isCopied ? "Copied" : "Copy"}
+        {isCopied ? <CopyCheck aria-hidden="true" /> : <Copy aria-hidden="true" />}
       </Button>
     </div>
   );
-};
+}, areAiMessageBubblePropsEqual);
+AiMessageBubble.displayName = "AiMessageBubble";
 
 interface PlanningContext {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   steps: any[];
   status?: string | null;
   feedback?: string[];
 }
+
+interface PlanningStatusProps {
+  planningContext: PlanningContext;
+  onSendCommand?: (command: string) => void;
+}
+
+// ⚡ Bolt Optimization: Memoize PlanningStatus to isolate it from frequent
+// message streaming updates in the parent view.
+const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusProps) => {
+  return (
+    <div className="px-4 pt-4">
+      <div className="border border-neutral-700 rounded-2xl bg-neutral-900/50 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-neutral-400 uppercase tracking-wide">
+              Planning Mode
+            </p>
+            <h3 className="text-lg font-semibold">
+              {planningContext.steps?.length
+                ? `${planningContext.steps.length} proposed step${planningContext.steps.length > 1 ? "s" : ""}`
+                : "Awaiting plan details"}
+            </h3>
+          </div>
+          {planningContext.status && (
+            <Badge className="bg-neutral-700 text-xs">
+              {planningContext.status}
+            </Badge>
+          )}
+        </div>
+        {planningContext.feedback?.length ? (
+          <ul className="text-xs text-neutral-400 list-disc pl-4 space-y-1">
+            {planningContext.feedback.map((note, idx) => (
+              <li key={`feedback-${idx}`}>{note}</li>
+            ))}
+          </ul>
+        ) : null}
+        {planningContext.steps?.length ? (
+          <ol className="space-y-2">
+            {planningContext.steps.map((step, idx) => (
+              <li
+                key={step.id || `plan-${idx}`}
+                className="border border-neutral-700 rounded-xl p-3 text-sm"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-neutral-200 font-medium">
+                    {step.title || step.query || `Step ${idx + 1}`}
+                  </span>
+                  {step.status && (
+                    <Badge variant="outline" className="text-xs">
+                      {step.status}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-400 mt-1">
+                  Tool: {step.suggested_tool || "web_research"}
+                </p>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        {onSendCommand && (
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
+              onClick={() => onSendCommand("/plan")}
+              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
+            >
+              Enter Planning
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
+              onClick={() => onSendCommand("/end_plan")}
+              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
+            >
+              Skip Planning
+            </Button>
+            {planningContext.status === "awaiting_confirmation" && (
+              <Button
+                size="sm"
+                className="focus-visible:ring-2 focus-visible:ring-neutral-500"
+                onClick={() => onSendCommand("/confirm_plan")}
+                className="focus-visible:ring-2 focus-visible:ring-neutral-500"
+              >
+                Confirm Plan
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+PlanningStatus.displayName = "PlanningStatus";
 
 interface ChatMessagesViewProps {
   messages: Message[];
@@ -253,7 +391,8 @@ export function ChatMessagesView({
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
-  const handleCopy = async (text: string, messageId: string) => {
+  // ⚡ Bolt Optimization: useCallback ensures handleCopy reference remains stable
+  const handleCopy = useCallback(async (text: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedMessageId(messageId);
@@ -261,89 +400,15 @@ export function ChatMessagesView({
     } catch (err) {
       console.error("Failed to copy text: ", err);
     }
-  };
+  }, []); // Empty deps as setCopiedMessageId is stable
+
   return (
     <div className="flex flex-col h-full">
       {planningContext && (
-        <div className="px-4 pt-4">
-          <div className="border border-neutral-700 rounded-2xl bg-neutral-900/50 p-4 space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm text-neutral-400 uppercase tracking-wide">
-                  Planning Mode
-                </p>
-                <h3 className="text-lg font-semibold">
-                  {planningContext.steps?.length
-                    ? `${planningContext.steps.length} proposed step${planningContext.steps.length > 1 ? "s" : ""
-                    }`
-                    : "Awaiting plan details"}
-                </h3>
-              </div>
-              {planningContext.status && (
-                <Badge className="bg-neutral-700 text-xs">
-                  {planningContext.status}
-                </Badge>
-              )}
-            </div>
-            {planningContext.feedback?.length ? (
-              <ul className="text-xs text-neutral-400 list-disc pl-4 space-y-1">
-                {planningContext.feedback.map((note, idx) => (
-                  <li key={`feedback-${idx}`}>{note}</li>
-                ))}
-              </ul>
-            ) : null}
-            {planningContext.steps?.length ? (
-              <ol className="space-y-2">
-                {planningContext.steps.map((step, idx) => (
-                  <li
-                    key={step.id || `plan-${idx}`}
-                    className="border border-neutral-700 rounded-xl p-3 text-sm"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-neutral-200 font-medium">
-                        {step.title || step.query || `Step ${idx + 1}`}
-                      </span>
-                      {step.status && (
-                        <Badge variant="outline" className="text-xs">
-                          {step.status}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-neutral-400 mt-1">
-                      Tool: {step.suggested_tool || "web_research"}
-                    </p>
-                  </li>
-                ))}
-              </ol>
-            ) : null}
-            {onSendCommand && (
-              <div className="flex flex-wrap gap-2 justify-end">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onSendCommand("/plan")}
-                >
-                  Enter Planning
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onSendCommand("/end_plan")}
-                >
-                  Skip Planning
-                </Button>
-                {planningContext.status === "awaiting_confirmation" && (
-                  <Button
-                    size="sm"
-                    onClick={() => onSendCommand("/confirm_plan")}
-                  >
-                    Confirm Plan
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        <PlanningStatus
+          planningContext={planningContext}
+          onSendCommand={onSendCommand}
+        />
       )}
       <ScrollArea className="flex-1 overflow-y-auto" ref={scrollAreaRef}>
         <div className="p-4 md:p-6 space-y-2 max-w-4xl mx-auto pt-16">
@@ -364,12 +429,14 @@ export function ChatMessagesView({
                     <AiMessageBubble
                       message={message}
                       historicalActivity={historicalActivities[message.id!]}
-                      liveActivity={liveActivityEvents} // Pass global live events
+                      // Bolt Optimization: Only pass liveActivity to the last message
+                      liveActivity={isLast ? liveActivityEvents : undefined}
                       isLastMessage={isLast}
-                      isOverallLoading={isLoading} // Pass global loading state
+                      // Bolt Optimization: Only pass loading state to the last message
+                      isOverallLoading={isLast ? isLoading : false}
                       mdComponents={mdComponents}
                       handleCopy={handleCopy}
-                      copiedMessageId={copiedMessageId}
+                      isCopied={copiedMessageId === message.id}
                     />
                   )}
                 </div>
@@ -380,8 +447,6 @@ export function ChatMessagesView({
             (messages.length === 0 ||
               messages[messages.length - 1].type === "human") && (
               <div className="flex items-start gap-3 mt-3">
-                {" "}
-                {/* AI message row structure */}
                 <div className="relative group max-w-[85%] md:max-w-[80%] rounded-xl p-3 shadow-sm break-words bg-neutral-800 text-neutral-100 rounded-bl-none w-full min-h-[56px]">
                   {liveActivityEvents.length > 0 ? (
                     <div className="text-xs">
@@ -392,7 +457,7 @@ export function ChatMessagesView({
                     </div>
                   ) : (
                     <div className="flex items-center justify-start h-full">
-                      <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" />
+                      <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" aria-hidden="true" />
                       <span>Processing...</span>
                     </div>
                   )}
@@ -415,14 +480,18 @@ export function ChatMessagesView({
           <Button
             size="sm"
             variant="outline"
+            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             onClick={() => onSendCommand("/plan")}
+            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
           >
             Start Planning
           </Button>
           <Button
             size="sm"
             variant="ghost"
+            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             onClick={() => onSendCommand("/end_plan")}
+            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
           >
             End Planning
           </Button>

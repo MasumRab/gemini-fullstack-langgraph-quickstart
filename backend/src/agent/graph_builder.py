@@ -24,7 +24,7 @@ from agent.state import OverallState
 from agent.configuration import Configuration
 from agent.nodes import (
     load_context,
-    generate_query,
+    generate_plan,
     continue_to_web_research,
     planning_mode,
     planning_wait,
@@ -99,7 +99,7 @@ def build_graph(
 
     # === Core Nodes (Always present) ===
     builder.add_node("load_context", load_context)
-    builder.add_node("generate_query", generate_query)
+    builder.add_node("generate_plan", generate_plan)
     builder.add_node("web_research", web_research)
     builder.add_node("finalize_answer", finalize_answer)
 
@@ -125,11 +125,11 @@ def build_graph(
 
     # === Edges ===
     builder.add_edge(START, "load_context")
-    builder.add_edge("load_context", "generate_query")
+    builder.add_edge("load_context", "generate_plan")
 
     # After query generation: Planning or direct to search
     if enable_planning:
-        builder.add_edge("generate_query", "planning_mode")
+        builder.add_edge("generate_plan", "planning_mode")
         builder.add_conditional_edges(
             "planning_mode", planning_router, ["planning_wait", "web_research"]
         )
@@ -140,13 +140,13 @@ def build_graph(
         # No planning: fan out directly to web research
         if parallel_search:
             builder.add_conditional_edges(
-                "generate_query",
+                "generate_plan",
                 continue_to_web_research,
                 ["web_research"]
             )
         else:
             # Sequential: just connect
-            builder.add_edge("generate_query", "web_research")
+            builder.add_edge("generate_plan", "web_research")
 
     # === Post-Search Pipeline ===
     # Determine the chain: web_research -> [validation] -> [compression] -> [rag] -> [kg] -> [reflection] -> finalize

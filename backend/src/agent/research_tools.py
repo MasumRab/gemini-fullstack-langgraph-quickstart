@@ -15,7 +15,12 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import InjectedToolArg, tool
-from agent.models import GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO
+from agent.models import (
+    GEMINI_FLASH,
+    GEMINI_FLASH_LITE,
+    GEMINI_PRO,
+    DEFAULT_ANSWER_MODEL,
+)
 
 # Try to import Tavily client, fall back to None if not available
 try:
@@ -443,7 +448,7 @@ def refine_draft_report(
         Refined draft report
     """
     # Use default model for refinement
-    writer_model = init_chat_model(model=GEMINI_FLASH, max_tokens=16000)
+    writer_model = init_chat_model(model=DEFAULT_ANSWER_MODEL, max_tokens=16000)
 
     prompt = f"""You are refining a research report based on the following:
 

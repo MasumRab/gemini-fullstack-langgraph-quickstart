@@ -18,8 +18,9 @@ dependencies:
   - python-dotenv
   - pip:
     # LangChain / LangGraph ecosystem (often newer in PyPI)
-    - langgraph
+    - langgraph~=0.2.6
     - langchain
+    - langchain-core~=0.3.0
     - langchain-google-genai
     - langgraph-sdk
     - langgraph-cli
@@ -29,3 +30,8 @@ dependencies:
     - fastapi
     - google-genai
     - mcp
+    - google-ai-generativelanguage>=0.9.0
+    - tenacity>=8.0.0
+    - matplotlib
+    - duckduckgo-search
+    - playwright

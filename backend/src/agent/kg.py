@@ -1,7 +1,7 @@
 from typing import Dict, Any, List
 import logging
 import re
-from backend.src.config.app_config import config
+from config.app_config import config
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,8 @@ from agent.registry import graph_registry
     tags=["kg", "enrichment"],
     outputs=["artifacts"],
 )
-async def kg_enrich(state: OverallState, runnable_config: RunnableConfig) -> OverallState:
-    from backend.src.config.app_config import config as app_config
+async def kg_enrich(state: OverallState, config: RunnableConfig) -> OverallState:
+    from config.app_config import config as app_config
 
     if not app_config.kg_enabled:
         return {}
@@ -65,6 +65,9 @@ async def kg_enrich(state: OverallState, runnable_config: RunnableConfig) -> Ove
             logger.error(f"Cognee enrichment failed for {url}: {e}")
 
     if processed_count > 0:
-        return {"artifacts": {"kg_enriched_count": processed_count}}
+        logger.info(f"Enriched {processed_count} items in KG.")
+        # Do not return 'artifacts' here as it violates the Artifact TypedDict schema.
+        # The enrichment is a side-effect.
+        return {}
 
     return {}
