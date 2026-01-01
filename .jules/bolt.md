@@ -7,3 +7,7 @@
 ## 2024-05-22 - [React Memoization Stability]
 **Learning:** `React.memo` is useless if props are unstable. Passing inline functions `() => ...` or new objects `{}` as props defeats memoization.
 **Action:** Always verify prop stability (useCallback/useMemo) in parent components before wrapping children in React.memo.
+
+## 2026-01-01 - [Component Extraction for Streaming]
+**Learning:** When optimizing list rendering for streaming data (like chat messages), extracting list items into memoized components is only effective if the props passed to them are stable. Passing the raw index or the entire list often defeats the purpose because the parent re-renders on every update.
+**Action:** Pre-calculate stable boolean flags (e.g., `isLast`, `isLoading`) in the parent map loop and pass those primitive values to the child component instead of raw state objects.

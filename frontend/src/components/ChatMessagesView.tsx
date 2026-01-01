@@ -262,6 +262,79 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
 }, areAiMessageBubblePropsEqual);
 AiMessageBubble.displayName = "AiMessageBubble";
 
+// ⚡ Bolt Optimization: Extracted MessageItem with purely derived props.
+// By accepting 'isLast', 'liveActivity', and 'isOverallLoading' (calculated by parent),
+// this component now has stable props for all historical messages, guaranteeing that
+// React.memo will skip re-renders during streaming updates.
+interface MessageItemProps {
+  message: Message;
+  isLast: boolean;
+  liveActivity: ProcessedEvent[] | undefined;
+  historicalActivities: Record<string, ProcessedEvent[]>;
+  isOverallLoading: boolean;
+  copiedMessageId: string | null;
+  handleCopy: (text: string, messageId: string) => void;
+  mdComponents: typeof mdComponents;
+}
+
+function areMessageItemPropsEqual(
+  prev: MessageItemProps,
+  next: MessageItemProps
+) {
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.content === next.message.content &&
+    prev.message.type === next.message.type &&
+    prev.isLast === next.isLast &&
+    prev.isOverallLoading === next.isOverallLoading &&
+    prev.copiedMessageId === next.copiedMessageId &&
+    prev.liveActivity === next.liveActivity &&
+    prev.historicalActivities === next.historicalActivities &&
+    prev.handleCopy === next.handleCopy &&
+    prev.mdComponents === next.mdComponents
+  );
+}
+
+const MessageItem = memo(({
+  message,
+  isLast,
+  liveActivity,
+  historicalActivities,
+  isOverallLoading,
+  copiedMessageId,
+  handleCopy,
+  mdComponents,
+}: MessageItemProps) => {
+  return (
+    <div className="space-y-3">
+      <div
+        className={`flex items-start gap-3 ${message.type === "human" ? "justify-end" : ""
+          }`}
+      >
+        {message.type === "human" ? (
+          <HumanMessageBubble
+            message={message}
+            mdComponents={mdComponents}
+          />
+        ) : (
+          <AiMessageBubble
+            message={message}
+            historicalActivity={historicalActivities[message.id!]}
+            liveActivity={liveActivity}
+            isLastMessage={isLast}
+            isOverallLoading={isOverallLoading}
+            mdComponents={mdComponents}
+            handleCopy={handleCopy}
+            isCopied={copiedMessageId === message.id}
+          />
+        )}
+      </div>
+    </div>
+  );
+}, areMessageItemPropsEqual);
+MessageItem.displayName = "MessageItem";
+
+
 interface PlanningContext {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   steps: any[];
@@ -335,7 +408,6 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
               variant="outline"
               className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               onClick={() => onSendCommand("/plan")}
-              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             >
               Enter Planning
             </Button>
@@ -344,7 +416,6 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
               variant="ghost"
               className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               onClick={() => onSendCommand("/end_plan")}
-              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             >
               Skip Planning
             </Button>
@@ -353,7 +424,6 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
                 size="sm"
                 className="focus-visible:ring-2 focus-visible:ring-neutral-500"
                 onClick={() => onSendCommand("/confirm_plan")}
-                className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               >
                 Confirm Plan
               </Button>
@@ -365,6 +435,40 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
   );
 });
 PlanningStatus.displayName = "PlanningStatus";
+
+// ⚡ Bolt Optimization: Extracted PlanningFooter to prevent re-rendering buttons on every token.
+interface PlanningFooterProps {
+  onSendCommand?: (command: string) => void;
+}
+
+const PlanningFooter = memo(({ onSendCommand }: PlanningFooterProps) => {
+  if (!onSendCommand) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 justify-end px-4 pb-4 text-xs text-neutral-400">
+      <span className="mr-auto">
+        Use planning toggles to guide the agent before web research.
+      </span>
+      <Button
+        size="sm"
+        variant="outline"
+        className="focus-visible:ring-2 focus-visible:ring-neutral-500"
+        onClick={() => onSendCommand("/plan")}
+      >
+        Start Planning
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="focus-visible:ring-2 focus-visible:ring-neutral-500"
+        onClick={() => onSendCommand("/end_plan")}
+      >
+        End Planning
+      </Button>
+    </div>
+  );
+});
+PlanningFooter.displayName = "PlanningFooter";
 
 interface ChatMessagesViewProps {
   messages: Message[];
@@ -414,33 +518,22 @@ export function ChatMessagesView({
         <div className="p-4 md:p-6 space-y-2 max-w-4xl mx-auto pt-16">
           {messages.map((message, index) => {
             const isLast = index === messages.length - 1;
+            // ⚡ Bolt Optimization: Pre-calculate derived props here.
+            // Historical messages will receive strict 'false' and 'undefined' values,
+            // preventing MessageItem from receiving changed objects (like liveActivityEvents)
+            // and bypassing re-renders entirely.
             return (
-              <div key={message.id || `msg-${index}`} className="space-y-3">
-                <div
-                  className={`flex items-start gap-3 ${message.type === "human" ? "justify-end" : ""
-                    }`}
-                >
-                  {message.type === "human" ? (
-                    <HumanMessageBubble
-                      message={message}
-                      mdComponents={mdComponents}
-                    />
-                  ) : (
-                    <AiMessageBubble
-                      message={message}
-                      historicalActivity={historicalActivities[message.id!]}
-                      // Bolt Optimization: Only pass liveActivity to the last message
-                      liveActivity={isLast ? liveActivityEvents : undefined}
-                      isLastMessage={isLast}
-                      // Bolt Optimization: Only pass loading state to the last message
-                      isOverallLoading={isLast ? isLoading : false}
-                      mdComponents={mdComponents}
-                      handleCopy={handleCopy}
-                      isCopied={copiedMessageId === message.id}
-                    />
-                  )}
-                </div>
-              </div>
+              <MessageItem
+                key={message.id || `msg-${index}`}
+                message={message}
+                isLast={isLast}
+                isOverallLoading={isLast ? isLoading : false}
+                liveActivity={isLast ? liveActivityEvents : undefined}
+                historicalActivities={historicalActivities}
+                copiedMessageId={copiedMessageId}
+                handleCopy={handleCopy}
+                mdComponents={mdComponents}
+              />
             );
           })}
           {isLoading &&
@@ -472,31 +565,7 @@ export function ChatMessagesView({
         onCancel={onCancel}
         hasHistory={messages.length > 0}
       />
-      {onSendCommand && (
-        <div className="flex flex-wrap gap-2 justify-end px-4 pb-4 text-xs text-neutral-400">
-          <span className="mr-auto">
-            Use planning toggles to guide the agent before web research.
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
-            onClick={() => onSendCommand("/plan")}
-            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
-          >
-            Start Planning
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
-            onClick={() => onSendCommand("/end_plan")}
-            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
-          >
-            End Planning
-          </Button>
-        </div>
-      )}
+      <PlanningFooter onSendCommand={onSendCommand} />
     </div>
   );
 }
