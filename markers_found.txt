@@ -1,0 +1,50 @@
+backend/src/agent/graph.py:70:    # Binding is handled inside the nodes to support both Gemini (native) and Gemma (adapter).
+backend/src/agent/models.py:27:"""Open weights model (Gemma 2 27B IT). High daily limits, 8k context."""
+backend/src/agent/models.py:30:"""Gemma 3 27B IT. High daily limits, suitable for most tasks."""
+backend/src/agent/models.py:172:    """Check if the model is a Gemma model (requires custom tool handling)."""
+backend/src/agent/nodes.py:157:                logger.error(f"Scoping LLM failed (Gemma): {e}")
+backend/src/agent/nodes.py:244:        # Check if we are using a Gemma model (requires prompt-based tool calling)
+backend/src/agent/nodes.py:246:            logger.info(f"Using Gemma adapter for structured output (and {len(MCP_TOOLS)} MCP tools if present).")
+backend/src/agent/nodes.py:248:            # Optimization for Gemma: Explicitly request keyword-optimized queries for better search performance
+backend/src/agent/nodes.py:252:            # Strategy for Gemma in this node:
+backend/src/agent/nodes.py:305:                logger.warning("Gemma did not use Plan tool. Attempting fallback parsing.")
+backend/src/agent/nodes.py:475:        # ⚡ Bolt Optimization: Helper to execute a single tool call
+backend/src/agent/nodes.py:496:                # ⚡ Bolt Optimization: Execute tool calls in parallel
+backend/src/agent/nodes.py:510:            # Gemma Adapter Path
+backend/src/agent/nodes.py:521:                 # ⚡ Bolt Optimization: Execute tool calls in parallel for Gemma as well
+backend/src/agent/nodes.py:713:        # Check if we are using a Gemma model (requires prompt-based tool calling)
+backend/src/agent/nodes.py:715:            logger.info("Using Gemma adapter for plan update.")
+backend/src/agent/nodes.py:752:                logger.error(f"Gemma plan update failed: {e}")
+backend/src/agent/nodes.py:861:        # For now, using query_generator_model as it is usually a strong model (Gemini/Gemma).
+backend/src/agent/nodes.py:898:            # Gemma Adapter Path
+backend/src/agent/nodes.py:923:                logger.error(f"Content Reader (Gemma) failed: {e}")
+backend/src/agent/nodes.py:1163:                    # ⚡ Bolt Optimization: Move split() outside loop to avoid redundant computation
+backend/src/agent/nodes.py:1180:            # ⚡ Bolt Optimization: Parallelize validation calls
+backend/src/agent/nodes.py:1313:                logger.error(f"Reflection LLM failed (Gemma): {e}")
+backend/src/agent/rag.py:138:        # ⚡ Bolt Optimization: Use pre-computed embedding if provided
+backend/src/agent/rag.py:182:                # ⚡ Bolt Optimization: Prepare for batch processing
+backend/src/agent/rag.py:188:        # ⚡ Bolt Optimization: Batch Embedding
+backend/src/agent/rag.py:246:        # ⚡ Bolt Optimization: Batch FAISS Add
+backend/src/agent/rag.py:283:            # ⚡ Bolt Optimization: Use pre-computed embedding if provided
+backend/src/agent/rag.py:412:        # ⚡ Bolt Optimization: Pre-compute query embedding once for all subgoals
+backend/src/agent/rate_limiter.py:75:        # ⚡ Bolt Optimization: Lazy cleanup timestamp
+backend/src/agent/rate_limiter.py:86:        # ⚡ Bolt Optimization: Throttle cleanup
+backend/src/agent/tool_adapter.py:1:"""Adapter for handling tool calling with models that do not support native API tool binding (e.g. Gemma)."""
+Binary file backend/src/agent/__pycache__/models.cpython-313.pyc matches
+Binary file backend/src/agent/__pycache__/nodes.cpython-313.pyc matches
+Binary file backend/src/agent/__pycache__/tool_adapter.cpython-313.pyc matches
+frontend/src/components/ActivityTimeline.tsx:32:// ⚡ Bolt Optimization: Extracted helper function outside component to prevent recreation on re-renders.
+frontend/src/components/ActivityTimeline.tsx:50:// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent (AiMessageBubble)
+frontend/src/components/ActivityTimeline.tsx:52:// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent re-renders
+frontend/src/components/ChatMessagesView.tsx:139:// ⚡ Bolt Optimization: Define remark plugins as a constant to ensure referential stability.
+frontend/src/components/ChatMessagesView.tsx:148:// ⚡ Bolt Optimization: Custom comparator to ignore object reference changes
+frontend/src/components/ChatMessagesView.tsx:162:// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
+frontend/src/components/ChatMessagesView.tsx:193:// ⚡ Bolt Optimization: Custom comparator for AI bubbles.
+frontend/src/components/ChatMessagesView.tsx:213:// ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders of historical messages
+frontend/src/components/ChatMessagesView.tsx:277:// ⚡ Bolt Optimization: Memoize PlanningStatus to isolate it from frequent
+frontend/src/components/ChatMessagesView.tsx:388:  // ⚡ Bolt Optimization: useCallback ensures handleCopy reference remains stable
+frontend/src/components/ChatMessagesView.tsx:426:                      // Bolt Optimization: Only pass liveActivity to the last message
+frontend/src/components/ChatMessagesView.tsx:429:                      // Bolt Optimization: Only pass loading state to the last message
+frontend/src/components/InputForm.tsx:21:// ⚡ Bolt Optimization: Memoize InputForm to prevent re-renders on every token update
+frontend/src/components/InputForm.tsx:178:                    <Brain className="h-4 w-4 mr-2 text-blue-400" aria-hidden="true" /> Gemma 3
+frontend/src/hooks/useAgentState.ts:108:  // Bolt Optimization: Keep a ref to the latest thread to avoid re-creating handlers

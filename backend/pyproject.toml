@@ -29,6 +29,9 @@ dependencies = [
     "matplotlib",
     "duckduckgo-search",
     "tenacity>=8.0.0",
+    "torch==2.6.0",
+    "torchvision==0.21.0",
+    "requests>=2.32.5",
 ]
 
 
@@ -70,6 +73,19 @@ convention = "google"
 [tool.pytest.ini_options]
 norecursedirs = ["scripts"]
 asyncio_mode = "auto"
+filterwarnings = [
+    "ignore:.*setName.*deprecated:DeprecationWarning",
+    "ignore:.*leaveWhitespace.*deprecated:DeprecationWarning",
+    "ignore:.*setParseAction.*deprecated:DeprecationWarning",
+    "ignore:.*addParseAction.*deprecated:DeprecationWarning",
+    "ignore:.*delimitedList.*deprecated:DeprecationWarning",
+    "ignore:.*google.generativeai.*:FutureWarning",
+    "ignore:.*All support for the `google.generativeai` package has ended.*:FutureWarning",
+    "ignore:.*All support for the `google.generativeai` package has ended.*",
+    "ignore::FutureWarning:langchain_google_genai.chat_models",
+    "ignore:.*SwigPy.*:DeprecationWarning",
+    "ignore:.*swigvarlink.*:DeprecationWarning",
+]
 
 [dependency-groups]
 dev = [
@@ -79,4 +95,19 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "hypothesis>=6.100.0",
     "playwright>=1.49.0",
+    "scipy",
 ]
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu" },
+]
+torchvision = [
+  { index = "pytorch-cpu" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+

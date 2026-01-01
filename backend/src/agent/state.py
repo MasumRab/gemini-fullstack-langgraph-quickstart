@@ -10,9 +10,17 @@ from typing_extensions import Annotated
 import operator
 
 
-# TODO(priority=High, complexity=Low): [SOTA Deep Research] Define 'Evidence' object/TypedDict for ManuSearch (Claim, Source, Context).
-# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-# Subtask: Define fields: claim (str), source_url (str), context_snippet (str).
+class Evidence(TypedDict):
+    """
+    Structured evidence extracted from web content.
+    Used by ManuSearch/content_reader.
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    """
+    claim: str
+    source_url: str
+    context_snippet: str
+    page_title: str | None
+
 
 class Todo(TypedDict, total=False):
     """
@@ -20,11 +28,8 @@ class Todo(TypedDict, total=False):
     Use total=False to allow for partial updates and backward compatibility.
     """
     id: str
-    title: str
-    query: str | None # Search query derived from title or explicit
-    description: str | None
-    done: bool
-    status: str | None  # pending/done/in_progress
+    task: str
+    status: str  # pending/done/in_progress
     result: str | None
 
 
@@ -84,9 +89,8 @@ class OverallState(ScopingState, TypedDict, total=False):
     planning_feedback: Annotated[list, operator.add]
 
     outline: Outline | None
-
-    # TODO(priority=High, complexity=Low): [SOTA Deep Research] Add 'evidence_bank' (List[Evidence]) for ManuSearch.
-    # Subtask: Add `evidence_bank: Annotated[list, operator.add]` to OverallState.
+    evidence_bank: Annotated[list[Evidence], operator.add]
+    current_task_idx: int | None
     initial_search_query_count: int
     max_research_loops: int
     research_loop_count: int

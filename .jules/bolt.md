@@ -1,3 +1,9 @@
-## 2024-05-23 - Parallelizing Blocking LLM Calls
-**Learning:** In synchronous LangGraph nodes, sequential LLM calls (e.g. for validation loop) can severely impact latency. Using `ThreadPoolExecutor` to parallelize these calls is highly effective, even if the underlying `RateLimiter` uses a lock, because the actual network IO (which is the slow part) happens *outside* the rate limiter lock.
-**Action:** Always look for loops containing LLM calls in synchronous nodes and check if they can be parallelized using threads. Ensure the shared resources (like rate limiters) are thread-safe but do not serialize the actual IO.
+# Bolt's Journal - Critical Learnings
+
+## 2024-05-22 - [Middleware Performance]
+**Learning:** `RateLimitMiddleware` using `time.time()` inside high-frequency loops/requests can be a micro-bottleneck if not careful, though usually negligible in Python compared to I/O. However, the cleanup strategy (lazy vs periodic) is critical.
+**Action:** Ensure cleanup is amortized or backgrounded.
+
+## 2024-05-22 - [React Memoization Stability]
+**Learning:** `React.memo` is useless if props are unstable. Passing inline functions `() => ...` or new objects `{}` as props defeats memoization.
+**Action:** Always verify prop stability (useCallback/useMemo) in parent components before wrapping children in React.memo.
