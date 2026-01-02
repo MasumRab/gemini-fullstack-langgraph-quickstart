@@ -54,6 +54,7 @@ const mdComponents = {
         {...props}
       >
         {children}
+        <span className="sr-only">(opens in a new tab)</span>
       </a>
     </Badge>
   ),
@@ -335,7 +336,6 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
               variant="outline"
               className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               onClick={() => onSendCommand("/plan")}
-              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             >
               Enter Planning
             </Button>
@@ -344,7 +344,6 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
               variant="ghost"
               className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               onClick={() => onSendCommand("/end_plan")}
-              className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             >
               Skip Planning
             </Button>
@@ -353,7 +352,6 @@ const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusP
                 size="sm"
                 className="focus-visible:ring-2 focus-visible:ring-neutral-500"
                 onClick={() => onSendCommand("/confirm_plan")}
-                className="focus-visible:ring-2 focus-visible:ring-neutral-500"
               >
                 Confirm Plan
               </Button>
@@ -482,7 +480,6 @@ export function ChatMessagesView({
             variant="outline"
             className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             onClick={() => onSendCommand("/plan")}
-            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
           >
             Start Planning
           </Button>
@@ -491,7 +488,6 @@ export function ChatMessagesView({
             variant="ghost"
             className="focus-visible:ring-2 focus-visible:ring-neutral-500"
             onClick={() => onSendCommand("/end_plan")}
-            className="focus-visible:ring-2 focus-visible:ring-neutral-500"
           >
             End Planning
           </Button>
