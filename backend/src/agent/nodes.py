@@ -1224,7 +1224,7 @@ def _validate_single_candidate(candidate: str, flattened_queries: List[str]) -> 
     "validate_web_results",
     summary="Hybrid validation (Heuristics + LLM) with citation hard-fail.",
     tags=["validation", "quality"],
-    outputs=["validated_web_research_result", "validation_notes"],
+    outputs=["validated_web_research_result", "validation_notes", "processed_web_result_count"],
 )
 def validate_web_results(state: OverallState, config: RunnableConfig) -> OverallState:
     """Hybrid validation logic:
@@ -1233,11 +1233,23 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
     3. Citation Hard-Fail (if REQUIRE_CITATIONS is true).
     """
     with observe_span("validate_web_results", config):
-        summaries = state.get("web_research_result", [])
+        all_summaries = state.get("web_research_result", [])
+
+        # ⚡ Bolt Optimization: Incremental Processing
+        # Only validate new results to avoid O(N^2) token usage and state explosion.
+        start_idx = state.get("processed_web_result_count", 0)
+
+        # Safety check for index out of bounds
+        if start_idx > len(all_summaries):
+            start_idx = 0
+
+        summaries = all_summaries[start_idx:]
+
         if not summaries:
             return {
                 "validated_web_research_result": [],
-                "validation_notes": ["No web research summaries available for validation."],
+                "validation_notes": [],
+                "processed_web_result_count": len(all_summaries)
             }
 
         raw_queries = state.get("search_query", [])
@@ -1254,13 +1266,16 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         citation_pattern = r'\[[^\]]+\]\(https?://[^\)]+\)'
 
         for idx, summary in enumerate(summaries):
+            # Calculate absolute index for reporting
+            abs_idx = start_idx + idx
+
             normalized_summary = summary.lower()
             match_found = False
 
             has_citation = bool(re.search(citation_pattern, summary))
 
             if app_config.require_citations and not has_citation:
-                notes.append(f"Result {idx+1} rejected: Missing citations (Hard Fail).")
+                notes.append(f"Result {abs_idx+1} rejected: Missing citations (Hard Fail).")
                 continue
 
             if keywords:
@@ -1278,7 +1293,7 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
             if match_found or not keywords:
                 heuristic_passed.append(summary)
             else:
-                notes.append(f"Result {idx + 1} filtered (Heuristics): Low overlap with query intent.")
+                notes.append(f"Result {abs_idx + 1} filtered (Heuristics): Low overlap with query intent.")
 
         # 2. LLM Validation (Hybrid Mode)
         if app_config.validation_mode == "hybrid" and heuristic_passed:
@@ -1305,11 +1320,12 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
             validated = heuristic_passed
 
         if not validated:
-            notes.append("All summaries failed validation.")
+            notes.append(f"Batch {start_idx}-{start_idx+len(summaries)}: All summaries failed validation.")
 
         return {
             "validated_web_research_result": validated,
             "validation_notes": notes,
+            "processed_web_result_count": len(all_summaries)
         }
 
 @graph_registry.describe(

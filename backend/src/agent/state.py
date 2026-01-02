@@ -77,6 +77,7 @@ class OverallState(ScopingState, TypedDict, total=False):
     validated_web_research_result: Annotated[list, operator.add]
     validation_notes: Annotated[list, operator.add]
     sources_gathered: Annotated[list, operator.add]
+    processed_web_result_count: int
 
     # Planning & Scoping
     scoping_status: str | None  # "pending", "active", "complete"
