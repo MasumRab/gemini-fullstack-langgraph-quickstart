@@ -30,10 +30,10 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         if request.method == "POST":
-            # 🛡️ Sentinel: Reject chunked transfer encoding to prevent Content-Length bypass
+            # 🛡️ Sentinel: Reject 'Transfer-Encoding: chunked' to prevent Content-Length bypass (Request Smuggling/DoS)
             transfer_encoding = request.headers.get("transfer-encoding", "").lower()
             if "chunked" in transfer_encoding:
-                return Response("Chunked transfer encoding not supported", status_code=411)
+                return Response("Chunked encoding not allowed", status_code=411)
 
             content_length = request.headers.get("content-length")
             if content_length:
