@@ -44,7 +44,7 @@ from agent.tool_adapter import (
     GEMMA_TOOL_INSTRUCTION,
     parse_tool_calls
 )
-from pydantic import BaseModel, Field
+from langchain_core.pydantic_v1 import BaseModel, Field
 from agent.state import (
     Evidence,
     OverallState,
@@ -98,6 +98,20 @@ def _get_rate_limited_llm(model: str, temperature: float = 0, max_retries: int =
         temperature=temperature,
         api_key=os.getenv("GEMINI_API_KEY"),
     )
+
+# ⚡ Bolt Optimization: Define Pydantic models at module level to avoid
+# reconstruction overhead on every function call.
+
+class SearchInput(BaseModel):
+    query: str = Field(description="The query to search for.")
+
+class EvidenceItem(BaseModel):
+    claim: str = Field(description="A distinct factual claim found in the text.")
+    source_url: str = Field(description="The source URL associated with the claim.")
+    context_snippet: str = Field(description="A brief snippet of text surrounding the claim.")
+
+class EvidenceList(BaseModel):
+    items: List[EvidenceItem]
 
 
 @graph_registry.describe(
@@ -425,10 +439,6 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
         # --- MCP Enabled Path ---
         # We define a "search" tool so the LLM can choose between search and other tools
         from langchain_core.tools import StructuredTool
-        from langchain_core.pydantic_v1 import BaseModel, Field
-
-        class SearchInput(BaseModel):
-            query: str = Field(description="The query to search for.")
 
         # Accumulate sources in outer scope
         sources_gathered = []
@@ -915,15 +925,6 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
         # Re-use query model or define a new one in config?
         # For now, using query_generator_model as it is usually a strong model (Gemini/Gemma).
         model_name = configurable.query_generator_model
-
-        # Define Schema for LLM
-        class EvidenceItem(BaseModel):
-            claim: str = Field(description="A distinct factual claim found in the text.")
-            source_url: str = Field(description="The source URL associated with the claim.")
-            context_snippet: str = Field(description="A brief snippet of text surrounding the claim.")
-
-        class EvidenceList(BaseModel):
-            items: List[EvidenceItem]
 
         # Prepare content
         # Limit content size to avoid context window issues
