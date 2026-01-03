@@ -71,7 +71,7 @@ lint.ignore = [
 convention = "google"
 
 [tool.pytest.ini_options]
-norecursedirs = ["scripts"]
+norecursedirs = ["scripts", ".hypothesis", ".venv", ".git"]
 asyncio_mode = "auto"
 filterwarnings = [
     "ignore:.*setName.*deprecated:DeprecationWarning",
@@ -110,4 +110,3 @@ torchvision = [
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
-
