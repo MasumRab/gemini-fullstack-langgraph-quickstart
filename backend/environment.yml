@@ -16,6 +16,7 @@ dependencies:
   - sentence-transformers
   - faiss-cpu
   - python-dotenv
+  - numpy<2 # Fix for "module compiled against NumPy 1.x" error
   - pip:
     # LangChain / LangGraph ecosystem (often newer in PyPI)
     - langgraph~=0.2.6
@@ -30,8 +31,8 @@ dependencies:
     - fastapi
     - google-genai
     - mcp
-    - google-ai-generativelanguage>=0.9.0
     - tenacity>=8.0.0
     - matplotlib
     - duckduckgo-search
     - playwright
+    - langfuse
