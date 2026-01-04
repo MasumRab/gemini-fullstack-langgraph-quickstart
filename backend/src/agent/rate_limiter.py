@@ -121,49 +121,58 @@ class RateLimiter:
         Returns:
             Time waited in seconds
         """
-        with self._lock:
-            self._cleanup_old_requests()
-            self._check_daily_reset()
+        total_wait_time = 0.0
+
+        while True:
+            # Check limits inside lock
+            should_wait = False
+            time_to_wait = 0.0
             
-            wait_time = 0.0
-            now = time.time()
+            with self._lock:
+                self._cleanup_old_requests()
+                self._check_daily_reset()
+
+                now = time.time()
+
+                # Check RPM limit
+                if len(self._requests_per_minute) >= self.limits["rpm"]:
+                    oldest_request = self._requests_per_minute[0]
+                    rpm_wait = 60 - (now - oldest_request)
+                    if rpm_wait > 0:
+                        time_to_wait = max(time_to_wait, rpm_wait)
+                        should_wait = True
+
+                # Check TPM limit
+                current_tpm = sum(tokens for _, tokens in self._tokens_per_minute)
+                if current_tpm + estimated_tokens > self.limits["tpm"]:
+                    if self._tokens_per_minute:
+                        oldest_time = self._tokens_per_minute[0][0]
+                        tpm_wait = 60 - (now - oldest_time)
+                        if tpm_wait > 0:
+                            time_to_wait = max(time_to_wait, tpm_wait)
+                            should_wait = True
+
+                # Check RPD limit (Hard Fail)
+                if len(self._requests_per_day) >= self.limits["rpd"]:
+                    logger.error(f"Daily request limit ({self.limits['rpd']}) reached for {self.model}!")
+                    raise Exception(f"Daily quota exceeded for {self.model}. Resets at midnight Pacific time.")
+
+                if not should_wait:
+                    # Proceed: Record this request
+                    current_time = time.time()
+                    self._requests_per_minute.append(current_time)
+                    self._requests_per_day.append(current_time)
+                    self._tokens_per_minute.append((current_time, estimated_tokens))
+                    return total_wait_time
             
-            # Check RPM limit
-            if len(self._requests_per_minute) >= self.limits["rpm"]:
-                oldest_request = self._requests_per_minute[0]
-                time_to_wait = 60 - (now - oldest_request)
-                if time_to_wait > 0:
-                    logger.warning(f"RPM limit reached for {self.model}. Waiting {time_to_wait:.2f}s")
-                    time.sleep(time_to_wait)
-                    wait_time += time_to_wait
-                    self._cleanup_old_requests()
-            
-            # Check TPM limit
-            current_tpm = sum(tokens for _, tokens in self._tokens_per_minute)
-            if current_tpm + estimated_tokens > self.limits["tpm"]:
-                # Wait for oldest tokens to expire
-                if self._tokens_per_minute:
-                    oldest_time = self._tokens_per_minute[0][0]
-                    time_to_wait = 60 - (now - oldest_time)
-                    if time_to_wait > 0:
-                        logger.warning(f"TPM limit reached for {self.model}. Waiting {time_to_wait:.2f}s")
-                        time.sleep(time_to_wait)
-                        wait_time += time_to_wait
-                        self._cleanup_old_requests()
-            
-            # Check RPD limit
-            if len(self._requests_per_day) >= self.limits["rpd"]:
-                logger.error(f"Daily request limit ({self.limits['rpd']}) reached for {self.model}!")
-                raise Exception(f"Daily quota exceeded for {self.model}. Resets at midnight Pacific time.")
-            
-            # Record this request
-            current_time = time.time()
-            self._requests_per_minute.append(current_time)
-            self._requests_per_day.append(current_time)
-            self._tokens_per_minute.append((current_time, estimated_tokens))
-            
-            return wait_time
-    
+            # 🛡️ Sentinel: Wait OUTSIDE the lock to prevent blocking other threads
+            # This allows other threads to check limits/stats even while this one waits for a slot.
+            if should_wait:
+                logger.warning(f"Rate limit reached for {self.model}. Waiting {time_to_wait:.2f}s")
+                time.sleep(time_to_wait)
+                total_wait_time += time_to_wait
+                # Loop back to check if we can proceed now
+
     def get_current_usage(self) -> Dict[str, int]:
         """Get current usage statistics.
         

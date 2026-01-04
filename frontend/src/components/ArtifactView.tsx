@@ -63,7 +63,7 @@ const MarkdownComponents = {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   td: ({ node, ...props }: any) => <td className="border border-neutral-800 px-4 py-2" {...props} />,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-  a: ({ node, ...props }: any) => <a className="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 underline-offset-4 transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
+  a: ({ node, ...props }: any) => <a className="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 underline-offset-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-sm" target="_blank" rel="noopener noreferrer" {...props} />,
 };
 
 // ⚡ Bolt: Wrap in React.memo to prevent re-renders when parent state updates but artifact content hasn't changed.
@@ -119,7 +119,7 @@ export const ArtifactView = React.memo<ArtifactViewProps>(({ content, type, titl
       <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-            {type === 'code' ? <CodeIcon size={18} /> : <FileText size={18} />}
+            {type === 'code' ? <CodeIcon size={18} aria-hidden="true" /> : <FileText size={18} aria-hidden="true" />}
           </div>
           <div className="flex flex-col overflow-hidden">
             <h3 className="text-sm font-semibold text-neutral-100 truncate">

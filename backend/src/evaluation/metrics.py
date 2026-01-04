@@ -173,7 +173,7 @@ Format: {{"claims": ["claim1", "claim2", ...]}}
 
             content = content.replace("```json", "").replace("```", "").strip()
             claims = json.loads(content)["claims"]
-        except:
+        except Exception:
             # Fallback: simple sentence splitting
             claims = [s.strip() for s in generated_answer.split('.') if len(s.strip()) > 10]
 
@@ -209,7 +209,7 @@ Answer:
                     hallucinations.append(claim)
                 else:
                     supported_claims.append(claim)
-            except:
+            except Exception:
                 # Conservative: assume unsupported if verification fails
                 hallucinations.append(claim)
 

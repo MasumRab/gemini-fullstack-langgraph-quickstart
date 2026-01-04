@@ -25,13 +25,15 @@ dependencies = [
     "sentence-transformers",
     "faiss-cpu",
     "pandas",
-    "google-ai-generativelanguage==0.6.15",
     "matplotlib",
     "duckduckgo-search",
     "tenacity>=8.0.0",
     "torch==2.6.0",
     "torchvision==0.21.0",
     "requests>=2.32.5",
+    "langfuse",
+    "numpy<2.0.0",
+    "pycares<5.0.0",
 ]
 
 
@@ -71,7 +73,7 @@ lint.ignore = [
 convention = "google"
 
 [tool.pytest.ini_options]
-norecursedirs = ["scripts"]
+norecursedirs = ["scripts", ".hypothesis", ".venv", ".git"]
 asyncio_mode = "auto"
 filterwarnings = [
     "ignore:.*setName.*deprecated:DeprecationWarning",
@@ -110,4 +112,3 @@ torchvision = [
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
-

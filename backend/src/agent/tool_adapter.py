@@ -92,7 +92,7 @@ def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) ->
                 candidate = content[start:end+1]
                 json.loads(candidate)
                 json_str = candidate
-        except:
+        except Exception:
             pass
 
     if not json_str:
@@ -155,7 +155,7 @@ def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) ->
             if isinstance(arguments, str):
                 try:
                     arguments = json.loads(arguments)
-                except:
+                except Exception:
                     pass
 
             import uuid
