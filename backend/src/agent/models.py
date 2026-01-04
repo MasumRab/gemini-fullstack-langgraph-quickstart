@@ -69,7 +69,7 @@ MODEL_ALIASES = {
 # Testing Constants
 # ============================================================================
 
-TEST_MODEL = GEMINI_FLASH
+TEST_MODEL = GEMMA_3_27B_IT
 """Model to use in tests - points to a valid, accessible model."""
 
 # ============================================================================
