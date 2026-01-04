@@ -9,6 +9,13 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 # Import SUT
+import sys
+from unittest.mock import MagicMock
+
+# MOCK google.genai BEFORE importing search.router to avoid broken environment dependencies
+# (e.g. pycares/aiohttp issues in current env)
+sys.modules["google.genai"] = MagicMock()
+
 from search.router import SearchRouter, SearchProviderType
 from search.provider import SearchResult
 
@@ -47,7 +54,6 @@ class TestSearchRouter:
                 "brave": mock_brave,
                 "tavily": mock_tavily,
                 "bing": mock_bing
-            }
             }
 
     def test_init_providers(self, mock_config, mock_adapters):
