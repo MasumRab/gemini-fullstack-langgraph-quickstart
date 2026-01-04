@@ -105,9 +105,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
             forwarded = request.headers.get("X-Forwarded-For")
             if forwarded:
-                # Take the first IP in the list (the real client)
+                # 🛡️ Sentinel: Prevent spoofing by using the LAST IP in the list
+                # Proxies (like Render) append the verified client IP to the end.
+                # The first IP can be easily spoofed by the attacker.
                 # Truncate to 100 chars to prevent memory exhaustion attacks
-                client_ip = forwarded.split(",")[0].strip()[:100]
+                client_ip = forwarded.split(",")[-1].strip()[:100]
             else:
                 client_ip = request.client.host if request.client else "unknown"
 

@@ -1,5 +1,10 @@
 # Sentinel's Journal
 
+## 2025-02-24 - [Rate Limit Bypass via Spoofing]
+**Vulnerability:** `RateLimitMiddleware` used the *first* IP in `X-Forwarded-For` (`split(",")[0]`). Attackers can trivially spoof this by sending `X-Forwarded-For: fake_ip`. The trusted proxy (Render) appends the real IP to the end, but the middleware ignored it, allowing attackers to bypass rate limits by rotating the fake IP.
+**Learning:** In standard proxy setups (like Render), `X-Forwarded-For` is `client, proxy1, proxy2`. The *last* IP is the one added by the immediate upstream (Render) and is the only one we can implicitly trust without a strict IP whitelist.
+**Prevention:** Changed logic to use `split(",")[-1]` (the last IP). This ensures we rate limit based on the IP verified by our infrastructure, not the one claimed by the user.
+
 ## 2025-02-23 - [Proxy-Unaware Rate Limiting]
 **Vulnerability:** `RateLimitMiddleware` relied solely on `request.client.host`, which resolves to the Load Balancer/Proxy IP in deployed environments (e.g., Render), effectively sharing a single rate limit quota across all users.
 **Learning:** Middleware operating in cloud environments must account for reverse proxies. Trusting the direct connection IP causes "deny all" outages when traffic scales.
