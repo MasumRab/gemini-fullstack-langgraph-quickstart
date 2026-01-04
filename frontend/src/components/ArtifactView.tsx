@@ -119,7 +119,7 @@ export const ArtifactView = React.memo<ArtifactViewProps>(({ content, type, titl
       <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-            {type === 'code' ? <CodeIcon size={18} /> : <FileText size={18} />}
+            {type === 'code' ? <CodeIcon size={18} aria-hidden="true" /> : <FileText size={18} aria-hidden="true" />}
           </div>
           <div className="flex flex-col overflow-hidden">
             <h3 className="text-sm font-semibold text-neutral-100 truncate">
