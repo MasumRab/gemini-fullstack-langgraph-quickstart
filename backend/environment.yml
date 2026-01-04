@@ -17,6 +17,7 @@ dependencies:
   - faiss-cpu
   - python-dotenv
   - numpy<2 # Fix for "module compiled against NumPy 1.x" error
+  - pycares<5.0.0
   - pip:
     # LangChain / LangGraph ecosystem (often newer in PyPI)
     - langgraph~=0.2.6
