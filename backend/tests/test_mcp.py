@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from agent.tools_and_schemas import get_tools_from_mcp
 
-# TODO: [MCP Integration] Complete this test file.
+# TODO(priority=Medium, complexity=Medium): [MCP Integration] Complete this test file.
 # See docs/tasks/01_MCP_TASKS.md
 
 class TestMcpIntegration:

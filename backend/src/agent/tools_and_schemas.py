@@ -62,7 +62,7 @@ async def get_tools_from_mcp(mcp_config=None):
     try:
         from langchain_mcp_adapters.tools import load_mcp_tools
         from langchain_mcp_adapters.sessions import SSEConnection
-        # TODO: Support Stdio connection if schema allows? For now assuming SSE via endpoint URL
+        # TODO(priority=Low, complexity=Medium): Support Stdio connection if schema allows? For now assuming SSE via endpoint URL
         # headers = {"Authorization": f"Bearer {mcp_config.api_key}"} if mcp_config.api_key else {}
         # NOTE: Test mocks SSEConnection(url=..., headers=...).
         
