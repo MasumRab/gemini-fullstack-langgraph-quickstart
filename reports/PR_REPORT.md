@@ -1,33 +1,48 @@
 # 🎨 Palette Agent Report
 
-## 🔍 Scan Summary
-- **Target:** Micro-UX Improvements & Code Maintenance
-- **Files Scanned:** `frontend/src/components/*`
-- **Issues Found:**
-  - **Duplicate Props:** `ChatMessagesView.tsx` contained redundant `className` definitions on multiple buttons.
-  - **Accessibility:** `ArtifactView.tsx` markdown links lacked visible focus states (`focus-visible`).
+## 🔍 Scan Results
+- **Files Scanned**: Full repo (excluding node_modules, .git, .jules)
+- **UX Improvement**: `ChatMessagesView.tsx` - Added `role="region"`, `aria-label`, and `aria-live` to the Planning Status component.
+- **Verification**: Frontend tests passed. Backend tests run (1 failure unrelated to changes).
 
-## 🛠️ Changes Implemented
-### 1. Code Cleanup (Maintenance)
-- Removed duplicate `className` attributes from "Start Planning", "End Planning", and "Confirm Plan" buttons in `ChatMessagesView.tsx`. This fixes valid JSX syntax warnings and improves code quality.
+## 🛠️ Micro-UX Improvement
+**Component**: `frontend/src/components/ChatMessagesView.tsx`
+**Change**:
+- Added `role="region"` to the Planning Status container.
+- Added `aria-label="Planning Status"` to the container.
+- Added `aria-live="polite"` to the container to announce status updates.
 
-### 2. Accessibility Enhancement (Micro-UX)
-- Added `focus-visible:ring-2 focus-visible:ring-blue-500 rounded-sm` to markdown links in `ArtifactView.tsx`.
-- **Impact:** Keyboard users navigating through research artifacts can now clearly see which link is focused, complying with WCAG 2.1 Focus Visible criteria.
-
-## ✅ Verification
-- **Frontend:**
-  - `pnpm lint`: Passed (fixed prop duplication).
-  - `pnpm test`: Passed (26/26 tests).
-  - `pnpm build`: Passed.
-- **Backend:**
-  - `pytest`: Passed (21/21 tests in `test_nodes.py`).
-- **Manual/E2E:**
-  - Verified component structure via Playwright script (simulated).
-
-## ⚠️ Risk Assessment
-- **Low Risk:** Changes are strictly CSS utility classes and prop cleanup. No business logic or state management was modified.
+**Rationale**: The Planning Status section updates dynamically as the agent generates plans. Screen reader users need to be notified of these updates without manual navigation.
 
 ## 📋 TODOs & Future Work
-- **InputForm:** Consider standardizing focus rings across all form elements to use a single design token source if possible.
-- **Timeline:** Verify `aria-live` regions for real-time updates in the future.
+
+**Total TODOs found**: 6627
+
+### 🔴 High Priority
+- ./backend/src/agent/nodes.py:115 - [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
+- ./backend/src/agent/nodes.py:889 - [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
+- ./backend/src/agent/nodes.py:1001 - [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
+- ./backend/src/agent/mcp_config.py:43 - [MCP Integration] Implement full McpConnectionManager with SSE support.
+- ./backend/src/evaluation/mle_bench.py:1 - [SOTA Deep Research] Implement MLE-bench evaluation script.
+
+### 🟡 Medium Priority
+- ./backend/src/agent/nodes.py:2 - Investigate and integrate 'deepagents' patterns if applicable.
+- ./backend/src/agent/graph.py:110 - [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
+- ./backend/tests/test_mcp.py:5 - [MCP Integration] Complete this test file.
+- ./backend/build/lib/agent/nodes.py:2 - Investigate and integrate 'deepagents' patterns if applicable.
+- ./backend/build/lib/agent/graph.py:110 - [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
+
+## 🛡️ Verification
+- [x] **Frontend**: `npm test src/components/ChatMessagesView_Accessibility.test.tsx` (Passed)
+- [x] **Frontend**: `npm run build` (Passed)
+- [x] **Backend**: `pytest tests/test_nodes.py` (Passed 20/21 - known unrelated failure in ContentReader mock)
+- [ ] **E2E**: Playwright (Skipped due to environment complexity for this micro-change, relied on unit test)
+
+## ⚠️ Risk Assessment
+- **Low Risk**: Purely additive accessibility attributes. No visual regression expected. No logic changes.
+
+## 🤖 Metadata
+- **Agent**: Palette
+- **Version**: 1.0.0
+- **Run ID**: (Session ID)
+

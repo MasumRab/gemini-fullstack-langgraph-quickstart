@@ -279,7 +279,12 @@ interface PlanningStatusProps {
 const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusProps) => {
   return (
     <div className="px-4 pt-4">
-      <div className="border border-neutral-700 rounded-2xl bg-neutral-900/50 p-4 space-y-3">
+      <div
+        className="border border-neutral-700 rounded-2xl bg-neutral-900/50 p-4 space-y-3"
+        role="region"
+        aria-label="Planning Status"
+        aria-live="polite"
+      >
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm text-neutral-400 uppercase tracking-wide">
