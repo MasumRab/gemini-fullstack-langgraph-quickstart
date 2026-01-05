@@ -14,20 +14,24 @@ class TestValidation:
 
     def test_validate_environment_missing_keys(self, mock_env):
         """Test validation fails when API keys are missing."""
-        checks = validate_environment()
-        assert checks["api_key"] is False
+        # Patch find_spec to avoid ValueError with google.genai in tests
+        with patch("importlib.util.find_spec", return_value=MagicMock()):
+            checks = validate_environment()
+            assert checks["api_key"] is False
 
     def test_validate_environment_with_gemini_key(self, mock_env):
         """Test validation passes with GEMINI_API_KEY."""
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-            checks = validate_environment()
-            assert checks["api_key"] is True
+            with patch("importlib.util.find_spec", return_value=MagicMock()):
+                checks = validate_environment()
+                assert checks["api_key"] is True
 
     def test_validate_environment_with_google_key(self, mock_env):
         """Test validation passes with GOOGLE_API_KEY."""
         with patch.dict(os.environ, {"GOOGLE_API_KEY": "test-key"}):
-            checks = validate_environment()
-            assert checks["api_key"] is True
+            with patch("importlib.util.find_spec", return_value=MagicMock()):
+                checks = validate_environment()
+                assert checks["api_key"] is True
 
     def test_validate_environment_missing_packages(self):
         """Test validation reports missing packages."""
