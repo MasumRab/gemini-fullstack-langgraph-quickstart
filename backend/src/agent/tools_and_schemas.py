@@ -41,6 +41,18 @@ class Reflection(BaseModel):
         description="A list of follow-up queries to address the knowledge gap."
     )
 
+class Subsection(BaseModel):
+    title: str = Field(description="Title of the subsection.")
+    description: str = Field(description="Content to cover in this subsection.")
+
+class Section(BaseModel):
+    title: str = Field(description="Title of the main section.")
+    subsections: List[Subsection] = Field(description="List of subsections.")
+
+class Outline(BaseModel):
+    title: str = Field(description="Title of the research report.")
+    sections: List[Section] = Field(description="List of main sections.")
+
 
 def get_mcp_tools() -> List:
     """
