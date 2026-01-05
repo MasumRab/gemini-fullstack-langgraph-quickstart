@@ -1268,8 +1268,10 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                 if any(keyword in normalized_summary for keyword in keywords):
                     match_found = True
                 else:
-                    # ⚡ Bolt Optimization: Move split() outside loop to avoid redundant computation
-                    summary_words = normalized_summary.split()
+                    # ⚡ Bolt Optimization: Deduplicate words before fuzzy matching.
+                    # Reduces Search Space: For a 5000-word summary with ~150 unique words,
+                    # this speeds up get_close_matches by ~97%.
+                    summary_words = list(set(normalized_summary.split()))
                     for keyword in keywords:
                         matches = difflib.get_close_matches(keyword, summary_words, n=1, cutoff=0.8)
                         if matches:
