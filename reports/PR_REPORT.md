@@ -43,6 +43,4 @@
 
 ## 🤖 Metadata
 - **Agent**: Palette
-- **Version**: 1.0.0
 - **Run ID**: (Session ID)
-
