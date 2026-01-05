@@ -20,6 +20,7 @@ vi.mock('lucide-react', async () => {
     ...actual,
     ChevronDown: () => <div data-testid="chevron-down" />,
     ChevronUp: () => <div data-testid="chevron-up" />,
+    Info: (props: any) => <div data-testid="info-icon" {...props} />,
   };
 });
 
@@ -101,5 +102,12 @@ describe('ActivityTimeline', () => {
     fireEvent.click(btn);
     expect(screen.getByTestId('count')).toHaveTextContent('1');
     expect(screen.getByRole('button', { name: /Research Activity/i })).toBeInTheDocument();
+  });
+
+  it('renders Info icon with aria-hidden="true" in empty state', () => {
+    render(<ActivityTimeline {...defaultProps} />);
+    const infoIcon = screen.getByTestId('info-icon');
+    expect(infoIcon).toBeInTheDocument();
+    expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
 });

@@ -30,22 +30,22 @@ describe('ChatMessagesView Planning Mode', () => {
   };
 
   it('renders planning card with correct accessibility attributes', () => {
-      const planningContext = {
-        steps: [
-          { id: '1', title: 'Step 1', query: 'q1', suggested_tool: 'web_research', status: 'pending' }
-        ],
-        status: 'awaiting_confirmation',
-        feedback: ['Feedback message']
-      };
+    const planningContext = {
+      steps: [
+        { id: '1', title: 'Step 1', query: 'q1', suggested_tool: 'web_research', status: 'pending' }
+      ],
+      status: 'awaiting_confirmation',
+      feedback: ['Feedback message']
+    };
 
-      render(<ChatMessagesView {...defaultProps} planningContext={planningContext} />);
+    render(<ChatMessagesView {...defaultProps} planningContext={planningContext} />);
 
-      // Check for region role and label
-      const region = screen.getByRole('region', { name: /planning status/i });
-      expect(region).toBeInTheDocument();
+    // Check for region role and label
+    const region = screen.getByRole('region', { name: /planning status/i });
+    expect(region).toBeInTheDocument();
 
-      // Check for aria-live on the region (or specific status part, depending on implementation)
-      // We will implement it on the region for simplicity and robustness
-      expect(region).toHaveAttribute('aria-live', 'polite');
-    });
+    // Check for aria-live on the region (or specific status part, depending on implementation)
+    // We will implement it on the region for simplicity and robustness
+    expect(region).toHaveAttribute('aria-live', 'polite');
+  });
 });
