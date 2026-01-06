@@ -19,7 +19,7 @@ class TestAPISecurity:
         app.add_middleware(
             RateLimitMiddleware,
             limit=5,
-            window=1,
+            window=60, # Increased window to be more realistic/robust for mocking
             protected_paths=["/agent"]
         )
         app.add_middleware(SecurityHeadersMiddleware)
@@ -67,21 +67,35 @@ class TestAPISecurity:
             assert response.status_code == 200
 
     def test_limit_resets_after_window(self, app):
+        """Test that rate limit resets after the window using mocked time."""
+        # Use a large window to ensure we don't accidentally expire if tests are slow,
+        # since we are controlling time explicitly.
+        # Note: The app fixture already sets window=60.
+
         client = TestClient(app)
 
-        # Exhaust limit
-        for _ in range(5):
-            client.get("/agent/test")
+        # We need to mock time.time in the module where RateLimitMiddleware is defined.
+        # agent.security is imported inside the fixture, but the class is defined there.
+        # We should patch 'agent.security.time.time'.
 
-        response = client.get("/agent/test")
-        assert response.status_code == 429
+        # Initial time
+        initial_time = 1000.0
 
-        # Wait for window
-        time.sleep(1.1)
+        with patch('agent.security.time.time', return_value=initial_time) as mock_time:
+            # Exhaust limit
+            for _ in range(5):
+                client.get("/agent/test")
 
-        # Should be allowed again
-        response = client.get("/agent/test")
-        assert response.status_code == 200
+            # Verify we are blocked
+            response = client.get("/agent/test")
+            assert response.status_code == 429
+
+            # Advance time past the window (60s)
+            mock_time.return_value = initial_time + 61.0
+
+            # Should be allowed again
+            response = client.get("/agent/test")
+            assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_preserves_active_clients(self):
