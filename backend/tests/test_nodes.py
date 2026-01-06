@@ -12,28 +12,27 @@ Tests cover:
 - Edge cases and error handling
 """
 
-import pytest
 import dataclasses
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from langchain_core.runnables import RunnableConfig
-from langchain_core.messages import AIMessage, HumanMessage
+from unittest.mock import MagicMock, Mock, patch
 
-from config.app_config import AppConfig, config as real_config
-from agent.state import OverallState
-from agent import nodes
+import pytest
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.runnables import RunnableConfig
+
+from agent.models import TEST_MODEL
 from agent.nodes import (
+    content_reader,
+    execution_router,
+    finalize_answer,
     generate_plan,
     planning_mode,
     planning_wait,
-    web_research,
-    validate_web_results,
     reflection,
-    finalize_answer,
-    content_reader,
     select_next_task,
-    execution_router,
+    validate_web_results,
+    web_research,
 )
-from agent.models import TEST_MODEL
+from config.app_config import config as real_config
 
 
 # Fixtures
@@ -461,20 +460,48 @@ class TestContentReader:
         )
         mock_result = Mock()
         mock_result.items = [mock_evidence_item]
-        
-        # Configure the mock chain's behavior
-        # Note: We need to handle both structured output (Gemini) and tool calling (Gemma) if we want full coverage
-        # For this test, we assume the mock setup for Gemini path which uses with_structured_output
-        
-        # Mocking the nested calls: llm.with_structured_output(EvidenceList).invoke(...)
-        mock_structured_llm = MagicMock()
-        mock_structured_llm.invoke.return_value = mock_result
-        mock_chain.with_structured_output.return_value = mock_structured_llm
 
-        mock_get_llm.return_value = mock_chain
+        # Determine behavior based on model (Gemma vs others)
+        is_gemma = "gemma" in TEST_MODEL.lower()
 
-        # Execute
-        result = content_reader(base_state, config)
+        if is_gemma:
+            import json
+            # Ensure proper tool structure
+            tool_call_args = {
+                "items": [
+                    {
+                        "claim": "Quantum computing uses qubits.",
+                        "source_url": "http://example.com/1",
+                        "context_snippet": "Quantum computing uses qubits."
+                    }
+                ]
+            }
+
+            tool_call_response = {
+                "tool_calls": [
+                    {
+                        "name": "EvidenceList",
+                        "args": tool_call_args
+                    }
+                ]
+            }
+            # Ensure proper JSON formatting for tool adapter compatibility
+            json_response = f"```json\n{json.dumps(tool_call_response)}\n```"
+            mock_message = AIMessage(content=json_response)
+            mock_chain.invoke.return_value = mock_message
+
+            mock_get_llm.return_value = mock_chain
+            result = content_reader(base_state, config)
+        else:
+            # Mocking the nested calls: llm.with_structured_output(EvidenceList).invoke(...)
+            mock_structured_llm = MagicMock()
+            mock_structured_llm.invoke.return_value = mock_result
+            mock_chain.with_structured_output.return_value = mock_structured_llm
+
+            mock_get_llm.return_value = mock_chain
+
+            # Execute
+            result = content_reader(base_state, config)
 
         # Assert
         assert "evidence_bank" in result
