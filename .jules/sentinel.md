@@ -34,3 +34,8 @@
 **Vulnerability:** `ContentSizeLimitMiddleware` relied solely on `Content-Length` header, which can be bypassed using `Transfer-Encoding: chunked`. Attackers could send infinite streams (DoS) or smuggle requests past the size limit.
 **Learning:** Middleware relying on `Content-Length` must explicitly handle or reject `Transfer-Encoding: chunked` if it doesn't support stream inspection. WAFs/Proxies often treat these differently, leading to "smuggling" gaps.
 **Prevention:** Updated `ContentSizeLimitMiddleware` to explicitly reject requests with `Transfer-Encoding: chunked` (HTTP 411/400), ensuring strictly defined content lengths for API security. Also fixed bare `except:` blocks in `tool_adapter.py` to prevent masking of system errors.
+
+## 2025-02-24 - [Algorithmic Complexity DoS in Cleanup]
+**Vulnerability:** `RateLimitMiddleware` performed an O(N) cleanup iteration on every request once the tracking dictionary exceeded 10,000 entries. An attacker could maintain the size above this threshold, forcing the server to spend excessive CPU time on cleanup loops (10M ops/sec at 1k RPS), causing Denial of Service.
+**Learning:** Security maintenance tasks (like cleanup) running on the critical request path must be bounded or throttled. "Amortized constant time" assumptions fail under sustained attack conditions where the worst-case path is forced repeatedly.
+**Prevention:** Throttled the cleanup logic to run at most once per second, decoupling maintenance overhead from request volume and preventing CPU exhaustion.
