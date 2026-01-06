@@ -32,19 +32,21 @@ from agent.prompts import (
     plan_updater_instructions,
     reflection_instructions,
     checklist_instructions,
+    outline_instructions,
+    denoising_instructions
 )
 from agent.rate_limiter import get_context_manager, get_rate_limiter
 from agent.registry import graph_registry
 from agent.scoping_prompts import scoping_instructions
 from agent.scoping_schema import ScopingAssessment
-from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS, Plan
+from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS, Plan, Outline
 from agent.models import is_gemma_model, is_gemini_model
 from agent.tool_adapter import (
     format_tools_to_json_schema,
     GEMMA_TOOL_INSTRUCTION,
     parse_tool_calls
 )
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 from agent.state import (
     Evidence,
     OverallState,
