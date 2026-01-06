@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useDeferredValue } from 'react';
 import { Button } from "@/components/ui/button";
 import { X, Copy, Check, Maximize2, Minimize2, FileText, Code as CodeIcon } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
@@ -17,9 +17,32 @@ interface ArtifactViewProps {
 }
 
 // ⚡ Bolt: Extract static components and plugins to module scope to prevent re-creation on every render.
-// This allows ReactMarkdown and the parent component to be effectively memoized.
 const MARKDOWN_PLUGINS = [remarkGfm];
 const REHYPE_PLUGINS = [rehypeRaw, rehypeSanitize];
+
+// ⚡ Bolt Optimization: Extract CodeBlock to a component to use hooks (useDeferredValue).
+// This allows the expensive syntax highlighting to update at lower priority than input/scroll events,
+// keeping the UI responsive during rapid streaming of code artifacts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
+  const match = /language-(\w+)/.exec(className || '');
+  const deferredChildren = useDeferredValue(children);
+
+  return !inline && match ? (
+    <SyntaxHighlighter
+      style={highlighterStyle}
+      language={match[1]}
+      PreTag="div"
+      {...props}
+    >
+      {String(deferredChildren).replace(/\n$/, '')}
+    </SyntaxHighlighter>
+  ) : (
+    <code className="bg-neutral-800 text-blue-400 px-1.5 py-0.5 rounded text-sm" {...props}>
+      {children}
+    </code>
+  );
+};
 
 const MarkdownComponents = {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
@@ -36,24 +59,7 @@ const MarkdownComponents = {
   ol: ({ node, ...props }: any) => <ol className="list-decimal pl-5 mb-4 space-y-2 text-neutral-400" {...props} />,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   li: ({ node, ...props }: any) => <li className="text-sm md:text-base" {...props} />,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-  code: ({ node, inline, className, children, ...props }: any) => {
-    const match = /language-(\w+)/.exec(className || '');
-    return !inline && match ? (
-      <SyntaxHighlighter
-        style={highlighterStyle}
-        language={match[1]}
-        PreTag="div"
-        {...props}
-      >
-        {String(children).replace(/\n$/, '')}
-      </SyntaxHighlighter>
-    ) : (
-      <code className="bg-neutral-800 text-blue-400 px-1.5 py-0.5 rounded text-sm" {...props}>
-        {children}
-      </code>
-    );
-  },
+  code: CodeBlock,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   blockquote: ({ node, ...props }: any) => <blockquote className="border-l-4 border-blue-500/50 pl-4 italic text-neutral-500 my-4" {...props} />,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
