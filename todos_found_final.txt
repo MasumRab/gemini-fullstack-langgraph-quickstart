@@ -1,0 +1,38 @@
+./reports/PR_REPORT.md:## 📋 TODOs & Future Work
+./reports/PR_REPORT.md:**Total TODOs found**: 6627
+./notebooks/03_Benchmarking_Pipeline.ipynb:    "## 5. Pending Benchmark Features (TODO)\n",
+./notebooks/03_Benchmarking_Pipeline.ipynb:    "### TODO: MLE-bench Integration\n",
+./notebooks/04_SOTA_Comparison.ipynb:    "## 3. Pending Comparisons (TODO)\n",
+./notebooks/04_SOTA_Comparison.ipynb:    "### TODO: Update Feature Comparison Table\n",
+./notebooks/04_SOTA_Comparison.ipynb:    "### TODO: Live Data Integration\n",
+./notebooks/01_Agent_Deep_Research.ipynb:    "## 6. Pending SOTA Demonstrations (TODO)\n",
+./notebooks/01_Agent_Deep_Research.ipynb:    "### TODO: Scoping Phase (Open Deep Research)\n",
+./notebooks/01_Agent_Deep_Research.ipynb:    "### TODO: Hierarchical Outlines (STORM)\n",
+./notebooks/01_Agent_Deep_Research.ipynb:    "### TODO: Recursive Research (GPT Researcher)\n",
+./notebooks/02_MCP_Tools_Integration.ipynb:    "## 6. Pending MCP Features (TODO)\n",
+./notebooks/02_MCP_Tools_Integration.ipynb:    "### TODO: State Persistence (Open SWE)\n",
+./notebooks/02_MCP_Tools_Integration.ipynb:    "### TODO: Collaborative Artifacts (Open Canvas)\n",
+./docs/PR19_ANALYSIS.md:**TODOs Added**:
+./docs/PR19_ANALYSIS.md:# TODO: Phase 2 - Rename 'generate_query' to 'generate_plan'
+./docs/PR19_ANALYSIS.md:# TODO: Future - Insert 'save_plan' step here to persist the generated plan automatically
+./docs/PR19_ANALYSIS.md:- ⚠️ Document the planned migration path for TODOs
+./docs/PR19_ANALYSIS.md:   - Verify all TODOs have tracking issues
+./docs/TODO_SESSION.md:# Session TODO - Unfinished/Interrupted Tasks
+./docs/TEST_GENERATION_SUMMARY.md:   - Added `compress_context` node with TODO comments for LLM summarization
+./docs/TEST_GENERATION_SUMMARY.md:When the TODOs are implemented, add tests for:
+./docs/TEST_GENERATION_SUMMARY.md:1. **compress_context LLM integration** (when TODO is completed):
+./backend/src/agent/nodes.py:# TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+./backend/src/agent/nodes.py:# TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
+./backend/src/agent/nodes.py:    TODO(priority=High, complexity=High): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
+./backend/src/agent/nodes.py:    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
+./backend/src/agent/nodes.py:    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
+./backend/src/agent/mcp_config.py:# TODO(priority=High, complexity=Medium): [MCP Integration] Implement full McpConnectionManager with SSE support.
+./backend/src/agent/tools_and_schemas.py:        # TODO(priority=Low, complexity=Medium): Support Stdio connection if schema allows? For now assuming SSE via endpoint URL
+./backend/src/agent/graph.py:# TODO(priority=Medium, complexity=Medium): [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
+./backend/src/agent/graph.py:# Removed stale TODOs for visualization as draw_graph_png is now implemented.
+./backend/src/evaluation/mle_bench.py:# TODO(priority=High, complexity=High): [SOTA Deep Research] Implement MLE-bench evaluation script.
+./backend/src/evaluation/mle_bench.py:    TODO(priority=High, complexity=High): Implement evaluation logic:
+./backend/src/evaluation/deep_research_bench.py:# TODO(priority=High, complexity=High): [SOTA Deep Research] Implement DeepResearch-Bench evaluation script.
+./backend/src/evaluation/deep_research_bench.py:    TODO(priority=High, complexity=High): Implement evaluation logic:
+./backend/tests/test_mcp.py:# TODO(priority=Medium, complexity=Medium): [MCP Integration] Complete this test file.
+./backend/tests/TODO_BENCHMARKS.md:# TODO: Benmarking & Evaluation Framework
