@@ -20,6 +20,7 @@ vi.mock('lucide-react', async () => {
     ...actual,
     ChevronDown: () => <div data-testid="chevron-down" />,
     ChevronUp: () => <div data-testid="chevron-up" />,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Info: (props: any) => <div data-testid="info-icon" {...props} />,
   };
 });
