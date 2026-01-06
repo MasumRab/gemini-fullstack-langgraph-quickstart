@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ChatMessagesView } from './ChatMessagesView';
 import { vi, describe, it, expect } from 'vitest';
 import React from 'react';

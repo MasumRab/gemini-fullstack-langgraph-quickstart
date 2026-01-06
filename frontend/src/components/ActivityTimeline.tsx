@@ -89,6 +89,8 @@ export const ActivityTimeline = memo(function ActivityTimeline({
         <ScrollArea
           id="activity-timeline-content"
           className="max-h-96 overflow-y-auto"
+          role="region"
+          aria-label="Research Activity Log"
         >
           <CardContent>
             {isLoading && processedEvents.length === 0 && (

@@ -459,17 +459,43 @@ class TestContentReader:
             source_url="http://example.com/1",
             context_snippet="Quantum computing uses qubits."
         )
-        mock_result = Mock()
-        mock_result.items = [mock_evidence_item]
-        
-        # Configure the mock chain's behavior
-        # Note: We need to handle both structured output (Gemini) and tool calling (Gemma) if we want full coverage
-        # For this test, we assume the mock setup for Gemini path which uses with_structured_output
-        
-        # Mocking the nested calls: llm.with_structured_output(EvidenceList).invoke(...)
-        mock_structured_llm = MagicMock()
-        mock_structured_llm.invoke.return_value = mock_result
-        mock_chain.with_structured_output.return_value = mock_structured_llm
+
+        is_gemma = "gemma" in TEST_MODEL.lower()
+        if is_gemma:
+            import json
+            # Create a mock tool call response
+            tool_call_args = {
+                "items": [
+                    {
+                        "claim": "Quantum computing uses qubits.",
+                        "source_url": "http://example.com/1",
+                        "context_snippet": "Quantum computing uses qubits."
+                    }
+                ]
+            }
+            tool_call_response = {
+                "tool_calls": [
+                    {
+                        "name": "EvidenceList",
+                        "args": tool_call_args
+                    }
+                ]
+            }
+            json_response = f"```json\n{json.dumps(tool_call_response)}\n```"
+            mock_message = AIMessage(content=json_response)
+            mock_chain.invoke.return_value = mock_message
+        else:
+            mock_result = Mock()
+            mock_result.items = [mock_evidence_item]
+
+            # Configure the mock chain's behavior
+            # Note: We need to handle both structured output (Gemini) and tool calling (Gemma) if we want full coverage
+            # For this test, we assume the mock setup for Gemini path which uses with_structured_output
+
+            # Mocking the nested calls: llm.with_structured_output(EvidenceList).invoke(...)
+            mock_structured_llm = MagicMock()
+            mock_structured_llm.invoke.return_value = mock_result
+            mock_chain.with_structured_output.return_value = mock_structured_llm
 
         mock_get_llm.return_value = mock_chain
 
