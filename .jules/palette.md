@@ -17,3 +17,7 @@ This journal tracks critical UX and accessibility learnings. It is NOT a log of 
 ## 2024-05-25 - Decorative Icons Creating Noise
 **Learning:** Decorative icons placed inside semantic elements (like labels or buttons with text) were not hidden from assistive technology, potentially causing screen readers to announce them as "image" or similar, adding unnecessary noise.
 **Action:** Systematically apply `aria-hidden="true"` to any icon that is purely decorative and accompanied by descriptive text.
+
+## 2025-12-30 - Markdown Component Linting Patterns
+**Learning:** ReactMarkdown component overrides often receive a `node` prop that is not used in the implementation, triggering `no-unused-vars` lint errors.
+**Action:** When overriding markdown components, explicitly disable the unused variable check for the `node` prop line-by-line using `// eslint-disable-next-line @typescript-eslint/no-unused-vars` to maintain clean lint reports while preserving the required function signature.
