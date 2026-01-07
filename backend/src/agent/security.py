@@ -1,6 +1,7 @@
 """Security middleware for the agent application."""
 
 import time
+import ipaddress
 from collections import defaultdict
 from typing import List, Optional
 from fastapi import Request, Response
@@ -105,11 +106,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
             forwarded = request.headers.get("X-Forwarded-For")
             if forwarded:
-                # 🛡️ Sentinel: Prevent spoofing by using the LAST IP in the list
+                # 🛡️ Sentinel: Prevent spoofing by traversing from the end (trusted proxies)
                 # Proxies (like Render) append the verified client IP to the end.
-                # The first IP can be easily spoofed by the attacker.
+                # We traverse backwards to find the first non-private IP to avoid blocking the proxy itself.
+                try:
+                    ips = [ip.strip() for ip in forwarded.split(",")]
+                    client_ip = ips[-1]  # Default to last IP
+                    for ip in reversed(ips):
+                        try:
+                            # Check if IP is public (not private, not loopback)
+                            ip_obj = ipaddress.ip_address(ip)
+                            if not ip_obj.is_private and not ip_obj.is_loopback:
+                                client_ip = ip
+                                break
+                        except ValueError:
+                            continue  # Skip invalid IPs
+                except Exception:
+                    # Fallback to simple extraction if parsing fails
+                    client_ip = forwarded.split(",")[-1].strip()
+
                 # Truncate to 100 chars to prevent memory exhaustion attacks
-                client_ip = forwarded.split(",")[-1].strip()[:100]
+                client_ip = client_ip[:100]
             else:
                 client_ip = request.client.host if request.client else "unknown"
 
