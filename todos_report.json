@@ -1,0 +1,205 @@
+[
+  {
+    "file": "./reports/PR_REPORT.md",
+    "line": 4,
+    "content": "- **Total TODOs found**: 38",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./scripts/extract_todos_structured.py",
+    "line": 21,
+    "content": "if 'TODO' in line:",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./scripts/extract_todos_structured.py",
+    "line": 24,
+    "content": "# Try to parse structured TODOs if they exist",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./scripts/extract_todos_structured.py",
+    "line": 25,
+    "content": "# Format: TODO(priority=<Level>, complexity=<Level>):",
+    "priority": "<Level>",
+    "complexity": "<Level>"
+  },
+  {
+    "file": "./scripts/extract_todos_structured.py",
+    "line": 29,
+    "content": "match = re.search(r'TODO\\(priority=(.*?), complexity=(.*?)\\):', content)",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/PR19_ANALYSIS.md",
+    "line": 137,
+    "content": "**TODOs Added**:",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/PR19_ANALYSIS.md",
+    "line": 139,
+    "content": "# TODO: Phase 2 - Rename 'generate_query' to 'generate_plan'",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/PR19_ANALYSIS.md",
+    "line": 140,
+    "content": "# TODO: Future - Insert 'save_plan' step here to persist the generated plan automatically",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/PR19_ANALYSIS.md",
+    "line": 151,
+    "content": "- \u26a0\ufe0f Document the planned migration path for TODOs",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/PR19_ANALYSIS.md",
+    "line": 351,
+    "content": "- Verify all TODOs have tracking issues",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/TODO_SESSION.md",
+    "line": 1,
+    "content": "# Session TODO - Unfinished/Interrupted Tasks",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/TEST_GENERATION_SUMMARY.md",
+    "line": 13,
+    "content": "- Added `compress_context` node with TODO comments for LLM summarization",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/TEST_GENERATION_SUMMARY.md",
+    "line": 224,
+    "content": "When the TODOs are implemented, add tests for:",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/TEST_GENERATION_SUMMARY.md",
+    "line": 226,
+    "content": "1. **compress_context LLM integration** (when TODO is completed):",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1,
+    "content": "# TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).",
+    "priority": "Low",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 2,
+    "content": "# TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.",
+    "priority": "Medium",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 131,
+    "content": "TODO(priority=High, complexity=High): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).",
+    "priority": "High",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 901,
+    "content": "TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)",
+    "priority": "High",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1004,
+    "content": "TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)",
+    "priority": "High",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/agent/mcp_config.py",
+    "line": 43,
+    "content": "# TODO(priority=High, complexity=Medium): [MCP Integration] Implement full McpConnectionManager with SSE support.",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/tools_and_schemas.py",
+    "line": 77,
+    "content": "# TODO(priority=Low, complexity=Medium, owner=infra): Support Stdio connection if schema allows? For now assuming SSE via endpoint URL",
+    "priority": "Low",
+    "complexity": "Medium, owner=infra"
+  },
+  {
+    "file": "./backend/src/agent/graph.py",
+    "line": 110,
+    "content": "# TODO(priority=Medium, complexity=Medium): [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.",
+    "priority": "Medium",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/graph.py",
+    "line": 207,
+    "content": "# Removed stale TODOs for visualization as draw_graph_png is now implemented.",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 1,
+    "content": "# TODO(priority=High, complexity=High): [SOTA Deep Research] Implement MLE-bench evaluation script.",
+    "priority": "High",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 8,
+    "content": "TODO(priority=High, complexity=High): Implement evaluation logic:",
+    "priority": "High",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 1,
+    "content": "# TODO(priority=High, complexity=High): [SOTA Deep Research] Implement DeepResearch-Bench evaluation script.",
+    "priority": "High",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 8,
+    "content": "TODO(priority=High, complexity=High): Implement evaluation logic:",
+    "priority": "High",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/tests/test_mcp.py",
+    "line": 5,
+    "content": "# TODO(priority=Medium, complexity=Medium): [MCP Integration] Complete this test file.",
+    "priority": "Medium",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/tests/TODO_BENCHMARKS.md",
+    "line": 1,
+    "content": "# TODO: Benmarking & Evaluation Framework",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  }
+]

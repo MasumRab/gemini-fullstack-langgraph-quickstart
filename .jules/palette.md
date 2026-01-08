@@ -24,3 +24,6 @@ This journal tracks critical UX and accessibility learnings. It is NOT a log of 
 ## 2025-05-18 - Accessibility in Dynamic Planning Status
 **Learning:** The "Planning Mode" UI updates dynamically but lacked `aria-live` regions, making status changes invisible to screen readers without manual polling.
 **Action:** Added `role="region"`, `aria-label`, and `aria-live="polite"` to the `PlanningStatus` component wrapper to ensure updates are announced.
+## 2025-05-18 - Accessibility Contrast in Dark Mode
+**Learning:** Default text colors like `text-neutral-500` (approx #737373) on dark backgrounds (`bg-neutral-900`, #171717) often fail WCAG AA contrast ratios for small text.
+**Action:** Audit and replace with lighter shades like `text-neutral-400` (approx #a3a3a3) for secondary text to ensure legibility while maintaining visual hierarchy.
