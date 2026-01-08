@@ -78,6 +78,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.window = window
         self.protected_paths = protected_paths if protected_paths is not None else []
         self.requests = defaultdict(list)
+        # 🛡️ Sentinel: Throttle cleanup to prevent CPU exhaustion during DoS
+        self._last_cleanup = 0.0
 
     async def dispatch(self, request: Request, call_next):
         """Check rate limit for API endpoints."""
@@ -129,7 +131,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
             # Simple Memory Leak Prevention:
             # If dictionary gets too large, perform cleanup to prevent OOM.
-            if len(self.requests) > 10000:
+            # 🛡️ Sentinel: Throttle cleanup to once per second to prevent CPU exhaustion
+            # This protects against Algorithmic Complexity attacks where attackers force O(N) cleanup on every request.
+            if len(self.requests) > 10000 and (now - self._last_cleanup > 1.0):
+                self._last_cleanup = now
+
                 # Cleanup: Remove clients that haven't made a request within the window.
                 # Since active_requests for each client might not be updated until they make a request,
                 # we need to check the last timestamp in their list.
@@ -145,7 +151,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 for ip in stale_ips:
                     del self.requests[ip]
 
-                # Fallback: If still too large (active attack with >10k distinct IPs),
+            # Fallback Check (Runs on every request if still over limit):
+            # If still too large (active attack with >10k distinct IPs),
+            if len(self.requests) > 10000:
                 # 🛡️ Sentinel: Do NOT clear everything, as that allows attackers to reset everyone's limit.
                 # Instead, if we are full, REJECT new clients.
                 if len(self.requests) > 10000:
