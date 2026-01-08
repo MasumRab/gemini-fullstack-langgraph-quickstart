@@ -62,21 +62,33 @@ async def test_rate_limiter_proxy_logic():
     # Client A (Real IP: 1.2.3.4) -> Proxy (IP: 10.0.0.1) -> App
     # Client B (Real IP: 5.6.7.8) -> Proxy (IP: 10.0.0.1) -> App
 
+    # Note on Security Logic:
+    # In a Trusted Proxy environment (like Render), the proxy appends the verified client IP to the END of X-Forwarded-For.
+    # Standard format: X-Forwarded-For: <original_client>, <proxy1>, <proxy2>
+    # However, if an attacker sends "X-Forwarded-For: spoofed_ip", the proxy appends the real IP: "spoofed_ip, real_ip".
+    # Therefore, to be secure against spoofing, we must trust the LAST IP in the list (the one added by our trusted infrastructure).
+
     # 1. Client A sends requests
-    # Header: "1.2.3.4, 10.0.0.1" (standard format: client, proxy1, ...)
-    header_a = "1.2.3.4, 10.0.0.1"
+    # Render receives connection from 1.2.3.4.
+    # Header constructed by Render: "1.2.3.4" (if no previous header) OR "spoofed, 1.2.3.4"
+    # Let's simulate a spoof attempt:
+    # Attacker sends: X-Forwarded-For: 9.9.9.9
+    # Render appends 1.2.3.4 -> "9.9.9.9, 1.2.3.4"
+    header_a = "9.9.9.9, 1.2.3.4"
 
     await call_middleware("/protected", "10.0.0.1", header_a)
     await call_middleware("/protected", "10.0.0.1", header_a)
 
     # 2. Client B sends requests
-    header_b = "5.6.7.8, 10.0.0.1"
+    # Attacker sends: X-Forwarded-For: 9.9.9.9
+    # Render appends 5.6.7.8 -> "9.9.9.9, 5.6.7.8"
+    header_b = "9.9.9.9, 5.6.7.8"
 
     await call_middleware("/protected", "10.0.0.1", header_b)
 
     # 3. Verify Internal State
-    # Before the fix, "10.0.0.1" would have 3 requests (blocking Client B if limit was 2).
-    # After the fix, "1.2.3.4" should have 2, and "5.6.7.8" should have 1.
+    # We expect the middleware to track "1.2.3.4" and "5.6.7.8" (the last IPs).
+    # It should IGNORE "9.9.9.9" (spoofed).
 
     print(f"\nMiddleware State: {middleware.requests}")
 
@@ -86,8 +98,8 @@ async def test_rate_limiter_proxy_logic():
     assert "5.6.7.8" in middleware.requests
     assert len(middleware.requests["5.6.7.8"]) == 1
 
-    # "10.0.0.1" (Proxy IP) should NOT be tracked as a client
-    assert "10.0.0.1" not in middleware.requests
+    # "9.9.9.9" (Spoofed IP) should NOT be tracked
+    assert "9.9.9.9" not in middleware.requests
 
 @pytest.mark.asyncio
 async def test_rate_limiter_truncation():
@@ -99,7 +111,11 @@ async def test_rate_limiter_truncation():
 
     middleware = RateLimitMiddleware(mock_app, limit=10, window=60, protected_paths=["/protected"])
 
+    # If the last IP is very long (e.g. attacker somehow injected a long string that proxy appended, or proxy allows it)
+    # We truncate it.
     long_ip = "1.2.3.4" + "a" * 1000 # Very long string
+
+    # We put it at the end because that's what we parse
     headers = [(b"x-forwarded-for", long_ip.encode())]
 
     scope = {
@@ -118,4 +134,6 @@ async def test_rate_limiter_truncation():
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
     assert len(keys[0]) <= 100
-    assert keys[0] == long_ip[:100]
+    # Logic: split(",")[-1].strip()[:100]
+    expected_key = long_ip.split(",")[-1].strip()[:100]
+    assert keys[0] == expected_key

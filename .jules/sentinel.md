@@ -1,5 +1,10 @@
 # Sentinel's Journal
 
+## 2025-02-24 - [Algorithmic DoS in RateLimiter Cleanup]
+**Vulnerability:** The `RateLimitMiddleware`'s cleanup mechanism, designed to prevent memory leaks by removing stale IPs when the dictionary size exceeds 10,000, iterated over the entire dictionary (`O(N)`) synchronously. Attackers could exploit this by flooding the server with requests from unique IPs (simulated or spoofed), forcing the `O(N)` cleanup loop to execute on *every* request, causing 100% CPU usage and severe latency (Algorithmic Complexity Attack).
+**Learning:** Security maintenance tasks (like garbage collection) must be throttled or amortized. Performing expensive `O(N)` operations on the request path without rate-limiting the operation itself is a DoS vector.
+**Prevention:** Implemented a throttle (1.0s interval) for the cleanup logic. This ensures that even under a massive flood of unique IPs, the expensive cleanup scan runs at most once per second, preserving availability.
+
 ## 2025-02-24 - [Rate Limit Bypass via Spoofing]
 **Vulnerability:** `RateLimitMiddleware` used the *first* IP in `X-Forwarded-For` (`split(",")[0]`). Attackers can trivially spoof this by sending `X-Forwarded-For: fake_ip`. The trusted proxy (Render) appends the real IP to the end, but the middleware ignored it, allowing attackers to bypass rate limits by rotating the fake IP.
 **Learning:** In standard proxy setups (like Render), `X-Forwarded-For` is `client, proxy1, proxy2`. The *last* IP is the one added by the immediate upstream (Render) and is the only one we can implicitly trust without a strict IP whitelist.
