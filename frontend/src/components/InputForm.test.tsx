@@ -147,7 +147,7 @@ describe('InputForm', () => {
         expect(modelSelectRoot).not.toBeNull();
 
         // Find the hidden button specifically inside the Model Select
-        // eslint-disable-next-line testing-library/no-node-access
+
         const changeModelButton = modelSelectRoot!.querySelector('button[data-testid="mock-select-option-gemini-2.5-flash"]');
         expect(changeModelButton).not.toBeNull();
 
@@ -177,7 +177,7 @@ describe('InputForm', () => {
         const effortSelectRoot = effortTrigger.closest('div[data-testid="select-root"]');
         expect(effortSelectRoot).not.toBeNull();
 
-        // eslint-disable-next-line testing-library/no-node-access
+
         const changeEffortButton = effortSelectRoot!.querySelector('button[data-testid="mock-select-option-high"]');
         expect(changeEffortButton).not.toBeNull();
 
