@@ -256,6 +256,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
             message.id!
           )
         }
+        aria-label={isCopied ? "Response copied" : "Copy response to clipboard"}
       >
         {isCopied ? "Copied" : "Copy"}
         {isCopied ? <CopyCheck aria-hidden="true" /> : <Copy aria-hidden="true" />}
