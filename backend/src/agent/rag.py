@@ -446,6 +446,11 @@ Respond in JSON format:
                 seen_content.add(chunk.content)
                 unique_chunks.append((chunk, score))
 
+        # ⚡ Bolt Optimization: Sort unique chunks by relevance score descending.
+        # This ensures that when we truncate to max_tokens, we keep the highest quality evidence
+        # regardless of which subgoal found it, rather than blindly preferring the first subgoal's results.
+        unique_chunks.sort(key=lambda x: x[1], reverse=True)
+
         context_parts = []
         total_chars = 0
         max_chars = max_tokens * 4

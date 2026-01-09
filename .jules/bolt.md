@@ -11,3 +11,7 @@
 ## 2024-05-23 - [List Virtualization Alternative]
 **Learning:** For medium-sized append-only lists (like chat logs), extracting and memoizing the *list item* component is often a simpler, "good enough" alternative to full windowing/virtualization libraries, avoiding new dependencies.
 **Action:** Before reaching for `react-window`, extract the mapped item into a `memo` component.
+
+## 2024-05-24 - [RAG Context Efficiency]
+**Learning:** Naively appending RAG results from multiple sources/subgoals and truncating by length indiscriminately drops high-relevance information found later in the process.
+**Action:** Always sort aggregated evidence chunks by relevance score globally before truncating to fit context windows.
