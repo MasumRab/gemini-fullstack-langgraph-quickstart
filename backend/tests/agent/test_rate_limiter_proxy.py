@@ -58,25 +58,30 @@ async def test_rate_limiter_proxy_logic():
         await middleware(scope, mock_receive, mock_send)
         return sent_messages
 
-    # Scenario:
-    # Client A (Real IP: 1.2.3.4) -> Proxy (IP: 10.0.0.1) -> App
-    # Client B (Real IP: 5.6.7.8) -> Proxy (IP: 10.0.0.1) -> App
+    # Scenario: Render/Trusted Proxy Environment
+    # The middleware is configured to trust the LAST IP in the X-Forwarded-For list.
+    # This assumes a trusted proxy (like Render) always appends the verified connecting IP to the end.
 
-    # 1. Client A sends requests
-    # Header: "1.2.3.4, 10.0.0.1" (standard format: client, proxy1, ...)
-    header_a = "1.2.3.4, 10.0.0.1"
+    # 1. Client A (Real IP: 1.2.3.4) sends requests
+    # Render receives connection from 1.2.3.4 and appends it.
+    # Header: "1.2.3.4" (if clean) or "Previous, 1.2.3.4" (if forwarded)
+    header_a = "1.2.3.4"
 
     await call_middleware("/protected", "10.0.0.1", header_a)
     await call_middleware("/protected", "10.0.0.1", header_a)
 
-    # 2. Client B sends requests
-    header_b = "5.6.7.8, 10.0.0.1"
+    # 2. Client B (Real IP: 5.6.7.8) sends requests but tries to spoof
+    # Client B sends header "X-Forwarded-For: 10.0.0.1" (pretending to be Client A or Proxy)
+    # Render receives connection from 5.6.7.8 and appends it.
+    # Header: "10.0.0.1, 5.6.7.8"
+    header_b = "10.0.0.1, 5.6.7.8"
 
     await call_middleware("/protected", "10.0.0.1", header_b)
 
     # 3. Verify Internal State
-    # Before the fix, "10.0.0.1" would have 3 requests (blocking Client B if limit was 2).
-    # After the fix, "1.2.3.4" should have 2, and "5.6.7.8" should have 1.
+    # logic is [-1], so we expect:
+    # A -> 1.2.3.4
+    # B -> 5.6.7.8
 
     print(f"\nMiddleware State: {middleware.requests}")
 
@@ -86,7 +91,7 @@ async def test_rate_limiter_proxy_logic():
     assert "5.6.7.8" in middleware.requests
     assert len(middleware.requests["5.6.7.8"]) == 1
 
-    # "10.0.0.1" (Proxy IP) should NOT be tracked as a client
+    # "10.0.0.1" (The spoofed IP) should NOT be tracked as the client for B
     assert "10.0.0.1" not in middleware.requests
 
 @pytest.mark.asyncio
