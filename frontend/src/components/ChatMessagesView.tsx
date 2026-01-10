@@ -415,7 +415,12 @@ export function ChatMessagesView({
           onSendCommand={onSendCommand}
         />
       )}
-      <ScrollArea className="flex-1 overflow-y-auto" ref={scrollAreaRef}>
+      <ScrollArea
+        className="flex-1 overflow-y-auto"
+        ref={scrollAreaRef}
+        role="log"
+        aria-label="Chat history"
+      >
         <div className="p-4 md:p-6 space-y-2 max-w-4xl mx-auto pt-16">
           {messages.map((message, index) => {
             const isLast = index === messages.length - 1;
