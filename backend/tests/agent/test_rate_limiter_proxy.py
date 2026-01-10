@@ -62,20 +62,25 @@ async def test_rate_limiter_proxy_logic():
     # Client A (Real IP: 1.2.3.4) -> Proxy (IP: 10.0.0.1) -> App
     # Client B (Real IP: 5.6.7.8) -> Proxy (IP: 10.0.0.1) -> App
 
-    # 1. Client A sends requests
-    # Header: "1.2.3.4, 10.0.0.1" (standard format: client, proxy1, ...)
-    header_a = "1.2.3.4, 10.0.0.1"
+    # The middleware is configured to trust the *last* IP in X-Forwarded-For as the verified client IP
+    # (assuming a trusted proxy that appends the incoming connection's IP to the end).
 
+    # 1. Client A sends requests
+    # To simulate Client A (1.2.3.4) behind a proxy, the header should end with 1.2.3.4
+    # If Client A spoofed an IP "9.9.9.9", the header would be "9.9.9.9, 1.2.3.4"
+    header_a = "9.9.9.9, 1.2.3.4"
+
+    # We simulate the connection coming from the Proxy IP (10.0.0.1)
     await call_middleware("/protected", "10.0.0.1", header_a)
     await call_middleware("/protected", "10.0.0.1", header_a)
 
     # 2. Client B sends requests
-    header_b = "5.6.7.8, 10.0.0.1"
+    # Header: "8.8.8.8, 5.6.7.8"
+    header_b = "8.8.8.8, 5.6.7.8"
 
     await call_middleware("/protected", "10.0.0.1", header_b)
 
     # 3. Verify Internal State
-    # Before the fix, "10.0.0.1" would have 3 requests (blocking Client B if limit was 2).
     # After the fix, "1.2.3.4" should have 2, and "5.6.7.8" should have 1.
 
     print(f"\nMiddleware State: {middleware.requests}")
