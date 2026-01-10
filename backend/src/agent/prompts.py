@@ -286,15 +286,16 @@ Your goal is to synthesize the best components of these drafts into a single, hi
 comprehensive, and well-structured final report.
 
 Instructions:
-1. Identify the strongest arguments, clearest explanations, and most relevant evidence from each draft.
-2. Resolve any contradictions between the drafts by favoring the most well-supported information.
-3. Ensure the final report follows a logical flow and has a professional tone.
-4. Maintain all relevant citations from the original search results.
-5. The current date is {current_date}.
+1. **Analyze & Debate**: Simulate a brief critique between two expert reviewers. One advocates for Draft 1, the other for Draft 2. They should identify the unique strengths, weaknesses, and missing details in each.
+2. **Synthesize**: Using the insights from the debate, create a definitive final report that combines the best elements of both.
+3. **Resolve Conflicts**: favor the most well-supported information.
+4. **Tone & Flow**: Ensure professional tone and logical flow.
+5. **Citations**: Maintain all relevant citations from the original search results (e.g. [Title](url)).
+6. The current date is {current_date}.
 
 Drafts:
 {drafts}
 
-Final Instruction:
-Synthesize the above drafts into the definitive final report.
+Output Format:
+First, output the "## Expert Critique" (bullet points), then output the final "## Research Report".
 """
