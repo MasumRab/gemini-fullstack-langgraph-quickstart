@@ -1,7 +1,7 @@
 import pytest
-from unittest.mock import Mock, patch
-from agent.nodes import generate_plan, web_research, reflection, finalize_answer, load_context
-from langchain_core.messages import HumanMessage
+from unittest.mock import Mock, patch, MagicMock
+from agent.nodes import generate_plan, web_research, reflection, denoising_refiner, load_context
+from langchain_core.messages import HumanMessage, AIMessage
 from agent.models import TEST_MODEL
 
 TEST_MODEL = "gemma-3-27b-it"
@@ -29,15 +29,25 @@ def mock_config():
 class TestGraphNodes:
 
     @patch('agent.nodes.ChatGoogleGenerativeAI')
-    def test_generate_plan_success(self, MockLLM, mock_state, mock_config):
+    @patch("agent.nodes.get_context_manager")
+    @patch("agent.nodes.plan_writer_instructions")
+    def test_generate_plan_success(self, mock_instructions, mock_get_cm, MockLLM, mock_state, mock_config):
+        # Mock prompts
+        mock_get_cm.return_value.truncate_to_fit.return_value = "Mock Prompt"
+        mock_instructions.format.return_value = "Mock Prompt"
+
         # Mock LLM instance and response
         mock_instance = MockLLM.return_value
         mock_instance.with_structured_output.return_value.invoke.return_value = Mock(
             plan=[Mock(title="query1", description="desc", status="pending"), Mock(title="query2", description="desc", status="pending")],
             rationale="rationale"
         )
+        # Mock raw invoke too in case it falls back
+        mock_instance.invoke.return_value = AIMessage(content="Raw plan")
 
-        result = generate_plan(mock_state, mock_config)
+        with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
+            mock_get_llm.return_value = mock_instance
+            result = generate_plan(mock_state, mock_config)
 
         assert "plan" in result
         assert "search_query" in result
@@ -85,23 +95,36 @@ class TestGraphNodes:
             knowledge_gap="None",
             follow_up_queries=[]
         )
-
-        result = reflection(mock_state, mock_config)
+        
+        with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
+             mock_get_llm.return_value = mock_instance
+             result = reflection(mock_state, mock_config)
 
         assert result["is_sufficient"] is True
         assert result["research_loop_count"] == 1
 
     @patch('agent.nodes.ChatGoogleGenerativeAI')
-    def test_finalize_answer(self, MockLLM, mock_state, mock_config):
+    def test_denoising_refiner(self, MockLLM, mock_state, mock_config):
+        # denoising_refiner makes 3 calls: Draft 1, Draft 2, Refine
         mock_instance = MockLLM.return_value
-        mock_instance.invoke.return_value.content = "Final Answer with url: http://short.url"
+        mock_instance.invoke.side_effect = [
+            AIMessage(content="Draft 1"),
+            AIMessage(content="Draft 2"),
+            AIMessage(content="Final Answer with url: http://short.url")
+        ]
 
         state = mock_state.copy()
         state["sources_gathered"] = [{"short_url": "http://short.url", "value": "http://real.url"}]
+        state["validated_web_research_result"] = ["Some context"]
+        
+        with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
+            mock_get_llm.return_value = mock_instance
+            result = denoising_refiner(state, mock_config)
 
-        result = finalize_answer(state, mock_config)
-
-        assert result["messages"][0].content == "Final Answer with url: http://real.url"
+        # It returns messages list where first item is AIMessage
+        assert "messages" in result
+        assert "Final Answer with url: http://real.url" in result["messages"][0].content
+        assert "artifacts" in result
 
     @patch('agent.nodes.load_plan')
     def test_load_context_success(self, mock_load_plan, mock_state):
