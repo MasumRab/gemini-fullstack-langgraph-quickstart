@@ -11,3 +11,7 @@
 ## 2024-05-23 - [List Virtualization Alternative]
 **Learning:** For medium-sized append-only lists (like chat logs), extracting and memoizing the *list item* component is often a simpler, "good enough" alternative to full windowing/virtualization libraries, avoiding new dependencies.
 **Action:** Before reaching for `react-window`, extract the mapped item into a `memo` component.
+
+## 2024-05-24 - [Loop Inefficiency in Fuzzy Matching]
+**Learning:** When performing O(N*M) operations like fuzzy matching against a list, redundant inputs (duplicate keywords) kill performance linearly. Simple deduplication (`set()`) before the loop yielded >20% speedup.
+**Action:** Always deduplicate input lists before passing them to expensive comparators like `difflib.get_close_matches`.

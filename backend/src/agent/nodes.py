@@ -1184,13 +1184,20 @@ def _flatten_queries(queries: List) -> List[str]:
     return flattened
 
 
+# ⚡ Bolt Optimization: Compile regex patterns at module level
+TOKEN_SPLIT_PATTERN = re.compile(r"[^\w]+")
+CITATION_PATTERN = re.compile(r'\[[^\]]+\]\(https?://[^\)]+\)')
+
+
 def _keywords_from_queries(queries: List[str]) -> List[str]:
     """Extract keywords from queries (tokens >= 4 chars)."""
     keywords: List[str] = []
     for query in queries:
-        for token in re.split(r"[^\w]+", query.lower()):
-            if len(token) >= 4:
-                keywords.append(token)
+        # ⚡ Bolt Optimization: Use compiled regex and extend for faster tokenization
+        keywords.extend(
+            token for token in TOKEN_SPLIT_PATTERN.split(query.lower())
+            if len(token) >= 4
+        )
     return keywords
 
 
@@ -1253,34 +1260,36 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         # 1. Heuristics (Pre-filter)
         heuristic_passed = []
 
-        # Check for markdown-style citations [Title](url)
-        citation_pattern = r'\[[^\]]+\]\(https?://[^\)]+\)'
+        # ⚡ Bolt Optimization: Deduplicate keywords to prevent redundant fuzzy matching
+        # If "battery" appears twice in queries, we shouldn't run get_close_matches twice.
+        unique_keywords = list(set(keywords))
 
         for idx, summary in enumerate(summaries):
             normalized_summary = summary.lower()
             match_found = False
 
-            has_citation = bool(re.search(citation_pattern, summary))
+            # ⚡ Bolt Optimization: Use pre-compiled regex
+            has_citation = bool(CITATION_PATTERN.search(summary))
 
             if app_config.require_citations and not has_citation:
                 notes.append(f"Result {idx+1} rejected: Missing citations (Hard Fail).")
                 continue
 
-            if keywords:
-                if any(keyword in normalized_summary for keyword in keywords):
+            if unique_keywords:
+                if any(keyword in normalized_summary for keyword in unique_keywords):
                     match_found = True
                 else:
                     # ⚡ Bolt Optimization: Deduplicate words before fuzzy matching.
                     # Reduces Search Space: For a 5000-word summary with ~150 unique words,
                     # this speeds up get_close_matches by ~97%.
                     summary_words = list(set(normalized_summary.split()))
-                    for keyword in keywords:
+                    for keyword in unique_keywords:
                         matches = difflib.get_close_matches(keyword, summary_words, n=1, cutoff=0.8)
                         if matches:
                             match_found = True
                             break
 
-            if match_found or not keywords:
+            if match_found or not unique_keywords:
                 heuristic_passed.append(summary)
             else:
                 notes.append(f"Result {idx + 1} filtered (Heuristics): Low overlap with query intent.")
