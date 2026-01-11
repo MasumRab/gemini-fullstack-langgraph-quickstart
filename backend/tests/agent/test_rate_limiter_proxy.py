@@ -59,24 +59,26 @@ async def test_rate_limiter_proxy_logic():
         return sent_messages
 
     # Scenario:
-    # Client A (Real IP: 1.2.3.4) -> Proxy (IP: 10.0.0.1) -> App
-    # Client B (Real IP: 5.6.7.8) -> Proxy (IP: 10.0.0.1) -> App
+    # Client A (Real IP: 1.2.3.4) -> Proxy (Trusted LB) -> App
+    # The Trusted LB appends the real client IP to the end of X-Forwarded-For.
+    # The Middleware selects the LAST IP in the list to prevent spoofing.
 
     # 1. Client A sends requests
-    # Header: "1.2.3.4, 10.0.0.1" (standard format: client, proxy1, ...)
-    header_a = "1.2.3.4, 10.0.0.1"
+    # Header: "spoofed_ip, 1.2.3.4" (Client sends "spoofed_ip", Trusted LB appends "1.2.3.4")
+    header_a = "spoofed_ip, 1.2.3.4"
 
+    # We simulate the request coming from the Proxy IP (10.0.0.1) as the direct peer
     await call_middleware("/protected", "10.0.0.1", header_a)
     await call_middleware("/protected", "10.0.0.1", header_a)
 
     # 2. Client B sends requests
-    header_b = "5.6.7.8, 10.0.0.1"
+    # Header: "spoofed_ip, 5.6.7.8"
+    header_b = "spoofed_ip, 5.6.7.8"
 
     await call_middleware("/protected", "10.0.0.1", header_b)
 
     # 3. Verify Internal State
-    # Before the fix, "10.0.0.1" would have 3 requests (blocking Client B if limit was 2).
-    # After the fix, "1.2.3.4" should have 2, and "5.6.7.8" should have 1.
+    # middleware.requests should track "1.2.3.4" (2 requests) and "5.6.7.8" (1 request).
 
     print(f"\nMiddleware State: {middleware.requests}")
 
@@ -87,7 +89,9 @@ async def test_rate_limiter_proxy_logic():
     assert len(middleware.requests["5.6.7.8"]) == 1
 
     # "10.0.0.1" (Proxy IP) should NOT be tracked as a client
+    # nor should "spoofed_ip"
     assert "10.0.0.1" not in middleware.requests
+    assert "spoofed_ip" not in middleware.requests
 
 @pytest.mark.asyncio
 async def test_rate_limiter_truncation():
