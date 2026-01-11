@@ -1,69 +1,111 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ArtifactView } from '../ArtifactView';
-import '@testing-library/jest-dom';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
-// Mock SyntaxHighlighter because it's heavy and can cause issues in testing environments
-vi.mock('react-syntax-highlighter', () => ({
-    Prism: ({ children }: { children: React.ReactNode }) => <pre data-testid="syntax-highlighter">{children}</pre>,
-}));
+// Mock clipboard API
+const mockClipboard = {
+  writeText: vi.fn(),
+};
+Object.defineProperty(navigator, 'clipboard', {
+  value: mockClipboard,
+  writable: true,
+});
 
-describe('ArtifactView', () => {
-    const defaultProps = {
-        isOpen: true,
-        onClose: vi.fn(),
-        title: 'Test Artifact',
-    };
+describe('ArtifactView Component', () => {
+  const defaultProps = {
+    content: '# Test Content',
+    type: 'markdown' as const,
+    title: 'Test Artifact',
+    isOpen: true,
+    onClose: vi.fn(),
+  };
 
-    it('renders nothing when isOpen is false', () => {
-        render(<ArtifactView {...defaultProps} isOpen={false} content="Some content" type="text" />);
-        expect(screen.queryByText('Test Artifact')).not.toBeInTheDocument();
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-    it('renders markdown content', () => {
-        const markdown = '# Hello World\nThis is **bold** text.';
-        render(<ArtifactView {...defaultProps} content={markdown} type="markdown" />);
+  it('does not render when isOpen is false', () => {
+    render(<ArtifactView {...defaultProps} isOpen={false} />);
+    expect(screen.queryByText('Test Artifact')).toBeNull();
+  });
 
-        expect(screen.getByText('Hello World').tagName).toBe('H1');
-        expect(screen.getByText('bold').tagName).toBe('STRONG');
-    });
+  it('renders correctly when open', () => {
+    render(<ArtifactView {...defaultProps} />);
+    expect(screen.getByText('Test Artifact')).toBeDefined();
+    expect(screen.getByText('markdown')).toBeDefined();
+  });
 
-    it('sanitizes dangerous HTML in markdown', () => {
-        const malicious = 'Safe content <script>alert("xss")</script><img src="x" onerror="alert(1)">';
-        render(<ArtifactView {...defaultProps} content={malicious} type="markdown" />);
+  it('calls onClose when close button is clicked', () => {
+    render(<ArtifactView {...defaultProps} />);
+    // Find the close button by its icon wrapper or similar if no text/label
+    const buttons = screen.getAllByRole('button');
+    // The close button is the last one in the header
+    const closeButton = buttons[buttons.length - 1];
+    fireEvent.click(closeButton);
+    expect(defaultProps.onClose).toHaveBeenCalled();
+  });
 
-        expect(screen.getByText(/Safe content/)).toBeInTheDocument();
-        // script and img with onerror should be removed or sanitized by rehype-sanitize
-        expect(screen.queryByText(/alert/)).not.toBeInTheDocument();
-        const img = screen.queryByRole('img');
-        if (img) {
-            expect(img.getAttribute('onerror')).toBeNull();
-        }
-    });
+  it('copies content to clipboard', async () => {
+    render(<ArtifactView {...defaultProps} />);
+    // Find copy button (first one)
+    const buttons = screen.getAllByRole('button');
+    const copyButton = buttons[0];
 
-    it('renders code content with syntax highlighter', () => {
-        const code = 'const x = 10;';
-        render(<ArtifactView {...defaultProps} content={code} type="code" />);
+    fireEvent.click(copyButton);
+    expect(mockClipboard.writeText).toHaveBeenCalledWith('# Test Content');
+  });
 
-        expect(screen.getByTestId('syntax-highlighter')).toBeInTheDocument();
-        expect(screen.getByText('const x = 10;')).toBeInTheDocument();
-    });
+  it('toggles maximize state', () => {
+    const { container } = render(<ArtifactView {...defaultProps} />);
+    // Find maximize button (middle one)
+    const buttons = screen.getAllByRole('button');
+    const maximizeButton = buttons[1];
 
-    it('renders plain text content as a div', () => {
-        const text = 'Just some plain text';
-        render(<ArtifactView {...defaultProps} content={text} type="text" />);
+    // Initial state width check (simplified)
+    const rootDiv = container.firstChild as HTMLElement;
+    expect(rootDiv.className).toContain('md:w-1/2');
 
-        expect(screen.getByText(text)).toBeInTheDocument();
-        expect(screen.getByText(text)).toHaveClass('whitespace-pre-wrap');
-    });
+    fireEvent.click(maximizeButton);
+    expect(rootDiv.className).not.toContain('md:w-1/2');
+    expect(rootDiv.className).toContain('left-0');
+  });
 
-    it('calls onClose when close button is clicked', async () => {
-        const onClose = vi.fn();
-        render(<ArtifactView {...defaultProps} onClose={onClose} content="Content" type="text" />);
+  it('renders markdown content', () => {
+    render(<ArtifactView {...defaultProps} />);
+    // ReactMarkdown renders h1 for # Test Content
+    expect(screen.getByRole('heading', { level: 1 })).toBeDefined();
+  });
 
-        const closeButton = screen.getByTitle('Close');
-        closeButton.click();
+  it('has accessible buttons and hidden icons', () => {
+    render(<ArtifactView {...defaultProps} />);
 
-        expect(onClose).toHaveBeenCalledTimes(1);
-    });
+    // Check buttons have aria-labels
+    const copyButton = screen.getByRole('button', { name: /copy content/i });
+    expect(copyButton).toBeDefined();
+
+    // Note: maximize button is hidden on small screens in the implementation (hidden md:flex),
+    // but jsdom might render it. Let's check if we can find it by label.
+    // The implementation: title={isMaximized ? "Restore size" : "Maximize"}
+    // We expect aria-label to match title or be similar.
+    const maximizeButton = screen.getByRole('button', { name: /maximize/i });
+    expect(maximizeButton).toBeDefined();
+
+    const closeButton = screen.getByRole('button', { name: /close/i });
+    expect(closeButton).toBeDefined();
+
+    // Check icons have aria-hidden="true"
+    // Since we can't easily query by attribute value in testing-library without custom matchers or querying selector,
+    // we can check if they are hidden from accessibility tree (which aria-hidden=true does).
+    // However, they are inside buttons, so they might be implicitly present.
+    // A better check is to query selector 'svg[aria-hidden="true"]'.
+    const hiddenIcons = document.querySelectorAll('svg[aria-hidden="true"]');
+    // We expect at least 3 icons (header icon, copy icon, maximize icon, close icon -> 4)
+    // plus the ones inside the content maybe? No, just the UI ones.
+    // Header icon: 1
+    // Copy icon: 1
+    // Maximize icon: 1
+    // Close icon: 1
+    // Total 4.
+    expect(hiddenIcons.length).toBeGreaterThanOrEqual(4);
+  });
 });

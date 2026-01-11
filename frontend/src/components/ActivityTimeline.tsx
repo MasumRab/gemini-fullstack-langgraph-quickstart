@@ -47,6 +47,46 @@ const getEventIcon = (title: string) => {
   return <Activity className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
 };
 
+// ⚡ Bolt Optimization: Memoized list item component.
+// This ensures that when the parent list grows (processedEvents appends new item),
+// the existing items (0 to N-1) do NOT re-render, significantly reducing
+// virtual DOM diffing overhead during high-frequency streaming updates.
+interface TimelineItemProps {
+  eventItem: ProcessedEvent;
+  showLine: boolean;
+}
+
+const TimelineItem = memo(function TimelineItem({
+  eventItem,
+  showLine,
+}: TimelineItemProps) {
+  return (
+    <div className="relative pl-8 pb-4">
+      {showLine ? (
+        <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-600" />
+      ) : null}
+      <div className="absolute left-0.5 top-2 h-6 w-6 rounded-full bg-neutral-600 flex items-center justify-center ring-4 ring-neutral-700">
+        {getEventIcon(eventItem.title)}
+      </div>
+      <div>
+        <p className="text-sm text-neutral-200 font-medium mb-0.5">
+          {eventItem.title}
+        </p>
+        <p className="text-xs text-neutral-300 leading-relaxed">
+          {typeof eventItem.data === "string"
+            ? eventItem.data
+            : Array.isArray(eventItem.data)
+            ? (eventItem.data as string[]).join(", ")
+            : JSON.stringify(eventItem.data)}
+        </p>
+      </div>
+    </div>
+  );
+});
+// Explicit display name for devtools
+TimelineItem.displayName = "TimelineItem";
+
+
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent (AiMessageBubble)
 // updates due to UI interactions (like Copy button state) but the timeline data hasn't changed.
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent re-renders
@@ -89,6 +129,8 @@ export const ActivityTimeline = memo(function ActivityTimeline({
         <ScrollArea
           id="activity-timeline-content"
           className="max-h-96 overflow-y-auto"
+          role="region"
+          aria-label="Research Activity Log"
         >
           <CardContent>
             {isLoading && processedEvents.length === 0 && (
@@ -107,27 +149,11 @@ export const ActivityTimeline = memo(function ActivityTimeline({
             {processedEvents.length > 0 ? (
               <div className="space-y-0">
                 {processedEvents.map((eventItem, index) => (
-                  <div key={index} className="relative pl-8 pb-4">
-                    {index < processedEvents.length - 1 ||
-                    (isLoading && index === processedEvents.length - 1) ? (
-                      <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-600" />
-                    ) : null}
-                    <div className="absolute left-0.5 top-2 h-6 w-6 rounded-full bg-neutral-600 flex items-center justify-center ring-4 ring-neutral-700">
-                      {getEventIcon(eventItem.title)}
-                    </div>
-                    <div>
-                      <p className="text-sm text-neutral-200 font-medium mb-0.5">
-                        {eventItem.title}
-                      </p>
-                      <p className="text-xs text-neutral-300 leading-relaxed">
-                        {typeof eventItem.data === "string"
-                          ? eventItem.data
-                          : Array.isArray(eventItem.data)
-                          ? (eventItem.data as string[]).join(", ")
-                          : JSON.stringify(eventItem.data)}
-                      </p>
-                    </div>
-                  </div>
+                  <TimelineItem
+                    key={index}
+                    eventItem={eventItem}
+                    showLine={index < processedEvents.length - 1 || (isLoading && index === processedEvents.length - 1)}
+                  />
                 ))}
                 {isLoading && processedEvents.length > 0 && (
                   <div className="relative pl-8 pb-4">
@@ -144,7 +170,7 @@ export const ActivityTimeline = memo(function ActivityTimeline({
               </div>
             ) : !isLoading ? ( // Only show "No activity" if not loading and no events
               <div className="flex flex-col items-center justify-center h-full text-neutral-500 pt-10">
-                <Info className="h-6 w-6 mb-3" />
+                <Info className="h-6 w-6 mb-3" aria-hidden="true" />
                 <p className="text-sm">No activity to display.</p>
                 <p className="text-xs text-neutral-600 mt-1">
                   Timeline will update during processing.

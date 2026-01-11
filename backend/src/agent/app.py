@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from agent.mcp_config import load_mcp_settings
@@ -30,6 +30,11 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         if request.method == "POST":
+            # 🛡️ Sentinel: Reject 'Transfer-Encoding: chunked' to prevent Content-Length bypass (Request Smuggling/DoS)
+            transfer_encoding = request.headers.get("transfer-encoding", "").lower()
+            if "chunked" in transfer_encoding:
+                return Response("Chunked encoding not allowed", status_code=411)
+
             content_length = request.headers.get("content-length")
             if content_length:
                 if int(content_length) > self.max_upload_size:
@@ -131,6 +136,33 @@ class InvokeRequest(BaseModel):
 
     input: dict[str, Any]
     config: dict[str, Any] | None = Field(default_factory=dict)
+
+    @field_validator("input")
+    def validate_input_size(cls, v):
+        """
+        🛡️ Sentinel: Validate that no single string in the input exceeds a reasonable limit.
+        This prevents passing excessively large inputs (e.g. accidentally pasted logs)
+        to the LLM which could cause DoS or Cost spikes.
+
+        Limit: 50,000 characters (~12k tokens).
+        This is generous enough for search queries and summaries but stops abuse.
+        """
+        MAX_INPUT_LENGTH = 50000
+
+        # Recursive check for strings
+        def check_size(obj):
+            if isinstance(obj, str):
+                if len(obj) > MAX_INPUT_LENGTH:
+                    raise ValueError(f"Input string too long ({len(obj)} chars). Max allowed: {MAX_INPUT_LENGTH}")
+            elif isinstance(obj, dict):
+                for key, value in obj.items():
+                    check_size(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    check_size(item)
+
+        check_size(v)
+        return v
 
 
 @app.get("/threads/{thread_id}/state")

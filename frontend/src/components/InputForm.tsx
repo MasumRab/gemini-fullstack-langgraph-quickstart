@@ -1,4 +1,4 @@
-import { useState, memo, useMemo } from "react";
+import { useState, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { SquarePen, Brain, Send, StopCircle, Zap, Cpu } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,40 +18,23 @@ interface InputFormProps {
   hasHistory: boolean;
 }
 
-// ⚡ Bolt Optimization: Memoize InputForm to prevent re-renders on every token update
-// caused by parent ChatMessagesView re-rendering.
-// Since onSubmit/onCancel are now stable (via useAgentState optimization),
-// and isLoading/hasHistory change infrequently, this component will stay idle during streaming.
-export const InputForm: React.FC<InputFormProps> = memo(({
-  onSubmit,
-  onCancel,
-  isLoading,
+// ⚡ Bolt Optimization: Extracted Controls component to decouple it from
+// the InputForm's internal state updates (keystrokes).
+// Wrapped in memo to prevent re-renders when props haven't changed.
+const InputControls = memo(({
+  effort,
+  setEffort,
+  model,
+  setModel,
   hasHistory,
+}: {
+  effort: string;
+  setEffort: (value: string) => void;
+  model: string;
+  setModel: (value: string) => void;
+  hasHistory: boolean;
 }) => {
-  const [internalInputValue, setInternalInputValue] = useState("");
-  const [effort, setEffort] = useState("medium");
-  // Default to gemma-3-27b-it
-  const [model, setModel] = useState("gemma-3-27b-it");
-
-  const handleInternalSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!internalInputValue.trim()) return;
-    onSubmit(internalInputValue, effort, model);
-    setInternalInputValue("");
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Submit with Ctrl+Enter (Windows/Linux) or Cmd+Enter (Mac)
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      handleInternalSubmit();
-    }
-  };
-
-  const isSubmitDisabled = !internalInputValue.trim() || isLoading;
-
-  // ⚡ Bolt Optimization: Memoize controls to prevent re-rendering heavy Select components on every keystroke
-  const inputControls = useMemo(() => (
+  return (
     <div className="flex items-center justify-between">
       <div className="flex flex-row gap-2">
         <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 rounded-xl rounded-t-sm pl-2  max-w-[100%] sm:max-w-[90%]">
@@ -148,7 +131,42 @@ export const InputForm: React.FC<InputFormProps> = memo(({
         </Button>
       )}
     </div>
-  ), [effort, model, hasHistory]);
+  );
+});
+InputControls.displayName = "InputControls";
+
+// ⚡ Bolt Optimization: Memoize InputForm to prevent re-renders on every token update
+// caused by parent ChatMessagesView re-rendering.
+// Since onSubmit/onCancel are now stable (via useAgentState optimization),
+// and isLoading/hasHistory change infrequently, this component will stay idle during streaming.
+export const InputForm: React.FC<InputFormProps> = memo(({
+  onSubmit,
+  onCancel,
+  isLoading,
+  hasHistory,
+}) => {
+  const [internalInputValue, setInternalInputValue] = useState("");
+  const [effort, setEffort] = useState("medium");
+  // Default to gemma-3-27b-it
+  const [model, setModel] = useState("gemma-3-27b-it");
+
+  const handleInternalSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!internalInputValue.trim()) return;
+    onSubmit(internalInputValue, effort, model);
+    setInternalInputValue("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit with Ctrl+Enter (Windows/Linux) or Cmd+Enter (Mac)
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleInternalSubmit();
+    }
+  };
+
+  const isSubmitDisabled = !internalInputValue.trim() || isLoading;
+
 
   return (
     <form
@@ -197,7 +215,14 @@ export const InputForm: React.FC<InputFormProps> = memo(({
           )}
         </div>
       </div>
-      {inputControls}
+
+      <InputControls
+        effort={effort}
+        setEffort={setEffort}
+        model={model}
+        setModel={setModel}
+        hasHistory={hasHistory}
+      />
     </form>
   );
 });

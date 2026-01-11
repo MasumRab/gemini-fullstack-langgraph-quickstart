@@ -8,7 +8,7 @@ Tests cover:
 - web_research node
 - validate_web_results node
 - reflection node
-- finalize_answer node
+- denoising_refiner node
 - Edge cases and error handling
 """
 
@@ -28,7 +28,7 @@ from agent.nodes import (
     web_research,
     validate_web_results,
     reflection,
-    finalize_answer,
+    denoising_refiner,
     content_reader,
     select_next_task,
     execution_router,
@@ -61,6 +61,7 @@ def config():
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": False,
+            "answer_model": TEST_MODEL,
         }
     )
 
@@ -75,6 +76,7 @@ def config_with_confirmation():
             "max_loops": 3,
             "num_queries": 3,
             "require_planning_confirmation": True,
+            "answer_model": TEST_MODEL,
         }
     )
 
@@ -413,33 +415,41 @@ class TestReflection:
             assert result["research_loop_count"] == 2
 
 
-# Tests for finalize_answer
-class TestFinalizeAnswer:
-    """Test suite for finalize_answer node"""
+# Tests for denoising_refiner
+class TestDenoisingRefiner:
+    """Test suite for denoising_refiner node"""
 
     @patch("agent.nodes.answer_instructions")
-    def test_finalize_answer_generates_response(self, mock_instructions, base_state, config):
-        """Test that finalize_answer generates a final response"""
+    @patch("agent.nodes.gemma_answer_instructions")
+    @patch("agent.nodes.denoising_instructions")
+    def test_denoising_refiner_generates_response(self, mock_denoise, mock_gemma, mock_answer, base_state, config):
+        """Test that denoising_refiner generates a final response via 3-step process"""
         # Setup
         base_state["messages"] = [HumanMessage(content="What is quantum computing?")]
         base_state["web_research_result"] = ["Quantum computing uses qubits"]
         base_state["validated_web_research_result"] = ["Quantum computing uses qubits"]
 
+        # Mock LLM for 3 calls: Draft 1, Draft 2, Refine
         mock_chain = MagicMock()
-        mock_chain.invoke.return_value = AIMessage(
-            content="Quantum computing is a field that uses quantum mechanics..."
-        )
+        mock_chain.invoke.side_effect = [
+            AIMessage(content="Draft 1 content"),
+            AIMessage(content="Draft 2 content"),
+            AIMessage(content="Final Refined Content")
+        ]
 
         with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
             mock_get_llm.return_value = mock_chain
 
             # Execute
-            result = finalize_answer(base_state, config)
+            result = denoising_refiner(base_state, config)
 
             # Assert
             assert "messages" in result
             assert len(result["messages"]) > 0
             assert isinstance(result["messages"][0], AIMessage)
+            assert "Final Refined Content" in result["messages"][0].content
+            assert "artifacts" in result
+            assert mock_get_llm.call_count >= 3
 
 # Tests for content_reader
 class TestContentReader:
@@ -463,13 +473,39 @@ class TestContentReader:
         mock_result.items = [mock_evidence_item]
         
         # Configure the mock chain's behavior
-        # Note: We need to handle both structured output (Gemini) and tool calling (Gemma) if we want full coverage
-        # For this test, we assume the mock setup for Gemini path which uses with_structured_output
+        is_gemma = "gemma" in TEST_MODEL.lower()
         
-        # Mocking the nested calls: llm.with_structured_output(EvidenceList).invoke(...)
-        mock_structured_llm = MagicMock()
-        mock_structured_llm.invoke.return_value = mock_result
-        mock_chain.with_structured_output.return_value = mock_structured_llm
+        if is_gemma:
+            # Gemma path uses direct invoke and manual parsing via tool adapter
+            import json
+            tool_call_args = {
+                "items": [
+                    {
+                        "claim": "Quantum computing uses qubits.",
+                        "source_url": "http://example.com/1",
+                        "context_snippet": "Quantum computing uses qubits."
+                    }
+                ]
+            }
+
+            tool_call_response = {
+                "tool_calls": [
+                    {
+                        "name": "EvidenceList",
+                        "args": tool_call_args
+                    }
+                ]
+            }
+            # Ensure proper JSON formatting for tool adapter compatibility
+            json_response = f"```json\n{json.dumps(tool_call_response)}\n```"
+            mock_message = AIMessage(content=json_response)
+            mock_chain.invoke.return_value = mock_message
+        else:
+            # Gemini path uses with_structured_output
+            # Mocking the nested calls: llm.with_structured_output(EvidenceList).invoke(...)
+            mock_structured_llm = MagicMock()
+            mock_structured_llm.invoke.return_value = mock_result
+            mock_chain.with_structured_output.return_value = mock_structured_llm
 
         mock_get_llm.return_value = mock_chain
 
@@ -537,8 +573,8 @@ class TestExecutionFlow:
 
         # Case 2: All done
         base_state["plan"] = [{"status": "done"}, {"status": "done"}]
-        assert execution_router(base_state) == "finalize_answer"
+        assert execution_router(base_state) == "denoising_refiner"
 
         # Case 3: Empty plan (should probably finalize or handle gracefully)
         base_state["plan"] = []
-        assert execution_router(base_state) == "finalize_answer"
+        assert execution_router(base_state) == "denoising_refiner"

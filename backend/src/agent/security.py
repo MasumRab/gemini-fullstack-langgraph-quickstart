@@ -105,9 +105,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
             forwarded = request.headers.get("X-Forwarded-For")
             if forwarded:
-                # Take the first IP in the list (the real client)
+                # 🛡️ Sentinel: Prevent spoofing by using the LAST IP in the list
+                # Proxies (like Render) append the verified client IP to the end.
+                # The first IP can be easily spoofed by the attacker.
                 # Truncate to 100 chars to prevent memory exhaustion attacks
-                client_ip = forwarded.split(",")[0].strip()[:100]
+                client_ip = forwarded.split(",")[-1].strip()[:100]
             else:
                 client_ip = request.client.host if request.client else "unknown"
 
@@ -144,9 +146,28 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     del self.requests[ip]
 
                 # Fallback: If still too large (active attack with >10k distinct IPs),
-                # we must clear to protect memory.
+                # 🛡️ Sentinel: Do NOT clear everything, as that allows attackers to reset everyone's limit.
+                # Instead, if we are full, REJECT new clients.
                 if len(self.requests) > 10000:
-                    self.requests.clear()
+                    # If the client is already known, we updated them above.
+                    # But wait, if we are > 10000, and this is a NEW client_ip (or one that was just added),
+                    # we should remove it and block.
+                    # However, we already added `now` to `active_requests` and set `self.requests[client_ip]`.
+
+                    # We need to check if we just added a NEW key that pushed us over.
+                    # If client_ip was already in requests, we are fine (we are just updating an existing slot).
+                    # If client_ip is NEW, and size > 10000, we should reject.
+
+                    # Optimization: Move the check BEFORE adding to `self.requests`.
+                    # But we used `defaultdict`, so accessing `self.requests[client_ip]` already created the entry if missing.
+
+                    # So, if we are over limit:
+                    # Check if we should allow this IP.
+                    # If we just created it (len=1), delete it and 503.
+                    if len(active_requests) == 1: # This was a new entry (or re-entry after expiry)
+                         # Safe delete using pop to avoid KeyErrors in race conditions
+                         self.requests.pop(client_ip, None)
+                         return Response("Server Busy", status_code=503)
 
             self.requests[client_ip] = active_requests
 

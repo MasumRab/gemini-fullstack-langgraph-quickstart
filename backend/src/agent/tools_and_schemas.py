@@ -41,6 +41,18 @@ class Reflection(BaseModel):
         description="A list of follow-up queries to address the knowledge gap."
     )
 
+class Subsection(BaseModel):
+    title: str = Field(description="Title of the subsection.")
+    description: str = Field(description="Content to cover in this subsection.")
+
+class Section(BaseModel):
+    title: str = Field(description="Title of the main section.")
+    subsections: List[Subsection] = Field(description="List of subsections.")
+
+class Outline(BaseModel):
+    title: str = Field(description="Title of the research report.")
+    sections: List[Section] = Field(description="List of main sections.")
+
 
 def get_mcp_tools() -> List:
     """
@@ -62,7 +74,7 @@ async def get_tools_from_mcp(mcp_config=None):
     try:
         from langchain_mcp_adapters.tools import load_mcp_tools
         from langchain_mcp_adapters.sessions import SSEConnection
-        # TODO: Support Stdio connection if schema allows? For now assuming SSE via endpoint URL
+        # TODO(priority=Low, complexity=Medium, owner=infra): Support Stdio connection if schema allows? For now assuming SSE via endpoint URL
         # headers = {"Authorization": f"Bearer {mcp_config.api_key}"} if mcp_config.api_key else {}
         # NOTE: Test mocks SSEConnection(url=..., headers=...).
         

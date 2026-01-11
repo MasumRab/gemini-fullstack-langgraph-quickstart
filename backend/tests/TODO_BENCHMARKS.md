@@ -93,7 +93,32 @@ if __name__ == "__main__":
     asyncio.run(run_benchmark())
 ```
 
-## 3. Observability Integration
+## 3. Search Performance Evaluation
+To robustly check search performance, we need to measure **Recall** and **Precision**.
+
+### Metrics to Track
+- **Hit Rate @ 3**: Does the correct answer appear in the top 3 results?
+- **Purity**: Percentage of results that are non-spam/valid domains.
+- **Latency**: Time to first byte for search results.
+
+### Implementation Plan
+1. **Create Golden Dataset**: `backend/tests/data/search_golden.json`
+   ```json
+   [
+       {
+           "query": "Who is the CEO of Google?",
+           "expected_url_substring": "google.com",
+           "expected_fact": "Sundar Pichai"
+       }
+   ]
+   ```
+2. **Integration Test**:
+   Create `test_search_quality.py` (marked `@pytest.mark.external`) that:
+   - Runs these queries against the live Tavily/Google adapter.
+   - Asserts that at least one result matches `expected_url_substring`.
+   - Checks that `content` contains `expected_fact`.
+
+## 4. Observability Integration
 Ensure `backend/src/config/app_config.py` loads LangSmith environment variables.
 - `LANGCHAIN_TRACING_V2=true`
 - `LANGCHAIN_API_KEY=...`

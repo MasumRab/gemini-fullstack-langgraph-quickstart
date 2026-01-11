@@ -6,7 +6,11 @@ import React, { useState } from 'react';
 // Mock scroll area to avoid ResizeObserver issues
 vi.mock('@/components/ui/scroll-area', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ScrollArea: ({ children }: any) => <div data-testid="scroll-area">{children}</div>
+  ScrollArea: ({ children, role, 'aria-label': ariaLabel, ...props }: any) => (
+    <div data-testid="scroll-area" role={role} aria-label={ariaLabel} {...props}>
+      {children}
+    </div>
+  ),
 }));
 
 // Mock Lucide icons
@@ -16,6 +20,8 @@ vi.mock('lucide-react', async () => {
     ...actual,
     ChevronDown: () => <div data-testid="chevron-down" />,
     ChevronUp: () => <div data-testid="chevron-up" />,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Info: (props: any) => <div data-testid="info-icon" {...props} />,
   };
 });
 
@@ -37,6 +43,13 @@ describe('ActivityTimeline', () => {
     expect(button.className).toContain('focus-visible:ring-2');
     expect(button).toHaveAttribute('aria-expanded', 'true');
     expect(button).toHaveAttribute('aria-controls', 'activity-timeline-content');
+  });
+
+  it('renders content region with accessibility label', () => {
+    render(<ActivityTimeline {...defaultProps} />);
+    const region = screen.getByRole('region', { name: /research activity log/i });
+    expect(region).toBeInTheDocument();
+    expect(region).toHaveAttribute('id', 'activity-timeline-content');
   });
 
   it('toggles collapse state on click', () => {
@@ -90,5 +103,12 @@ describe('ActivityTimeline', () => {
     fireEvent.click(btn);
     expect(screen.getByTestId('count')).toHaveTextContent('1');
     expect(screen.getByRole('button', { name: /Research Activity/i })).toBeInTheDocument();
+  });
+
+  it('renders Info icon with aria-hidden="true" in empty state', () => {
+    render(<ActivityTimeline {...defaultProps} />);
+    const infoIcon = screen.getByTestId('info-icon');
+    expect(infoIcon).toBeInTheDocument();
+    expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
 });

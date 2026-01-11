@@ -47,7 +47,10 @@ const mdComponents = {
   a: ({ className, children, href, ...props }: MdComponentProps) => (
     <Badge className="text-xs mx-0.5" asChild>
       <a
-        className={cn("text-blue-400 hover:text-blue-300 text-xs", className)}
+        className={cn(
+          "text-blue-400 hover:text-blue-300 text-xs focus-visible:ring-2 focus-visible:ring-neutral-500 rounded-sm",
+          className
+        )}
         href={href}
         target="_blank"
         rel="noopener noreferrer"
@@ -280,7 +283,12 @@ interface PlanningStatusProps {
 const PlanningStatus = memo(({ planningContext, onSendCommand }: PlanningStatusProps) => {
   return (
     <div className="px-4 pt-4">
-      <div className="border border-neutral-700 rounded-2xl bg-neutral-900/50 p-4 space-y-3">
+      <div
+        className="border border-neutral-700 rounded-2xl bg-neutral-900/50 p-4 space-y-3"
+        role="region"
+        aria-label="Planning Status"
+        aria-live="polite"
+      >
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm text-neutral-400 uppercase tracking-wide">

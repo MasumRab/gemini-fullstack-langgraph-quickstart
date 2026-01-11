@@ -34,13 +34,13 @@ GEMMA_3_27B_IT = "gemma-3-27b-it"
 # ============================================================================
 
 # These are the recommended defaults for different tasks
-DEFAULT_QUERY_MODEL = GEMINI_FLASH
+DEFAULT_QUERY_MODEL = GEMMA_3_27B_IT
 """Default model for query generation - fast and efficient."""
 
-DEFAULT_REFLECTION_MODEL = GEMINI_FLASH
+DEFAULT_REFLECTION_MODEL = GEMMA_3_27B_IT
 """Default model for reflection/reasoning - balanced performance."""
 
-DEFAULT_ANSWER_MODEL = GEMINI_FLASH
+DEFAULT_ANSWER_MODEL = GEMMA_3_27B_IT
 """Default model for final answer synthesis - high quality output."""
 
 DEFAULT_VALIDATION_MODEL = GEMMA_3_27B_IT
@@ -63,13 +63,14 @@ MODEL_ALIASES = {
     "pro": GEMINI_PRO,
     "gemini-flash": GEMINI_FLASH,
     "gemini-pro": GEMINI_PRO,
+    "gemma": GEMMA_3_27B_IT,
 }
 
 # ============================================================================
 # Testing Constants
 # ============================================================================
 
-TEST_MODEL = GEMINI_FLASH
+TEST_MODEL = GEMMA_3_27B_IT
 """Model to use in tests - points to a valid, accessible model."""
 
 # ============================================================================
@@ -126,7 +127,7 @@ def is_deprecated_model(model_name: str) -> bool:
     return model_name in _DEPRECATED_MODELS
 
 
-def get_model_or_default(model_name: str, default: str = GEMINI_FLASH) -> str:
+def get_model_or_default(model_name: str, default: str = GEMMA_3_27B_IT) -> str:
     """Get a valid model name, falling back to default if invalid.
     
     Args:

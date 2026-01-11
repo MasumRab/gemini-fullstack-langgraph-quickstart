@@ -20,3 +20,7 @@ This journal tracks critical UX and accessibility learnings. It is NOT a log of 
 ## 2024-12-29 - Accessibility in Artifact Actions
 **Learning:** Action buttons in the `ArtifactView` (Copy, Maximize, Close) relied solely on `title` tooltips, which may not be announced by all screen readers or accessible to touch users.
 **Action:** Explicitly added `aria-label` to these buttons and `aria-hidden="true"` to their icons to ensure robust accessibility.
+
+## 2025-05-18 - Accessibility in Dynamic Planning Status
+**Learning:** The "Planning Mode" UI updates dynamically but lacked `aria-live` regions, making status changes invisible to screen readers without manual polling.
+**Action:** Added `role="region"`, `aria-label`, and `aria-live="polite"` to the `PlanningStatus` component wrapper to ensure updates are announced.

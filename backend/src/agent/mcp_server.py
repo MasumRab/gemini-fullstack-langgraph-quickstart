@@ -22,6 +22,12 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# 🛡️ Sentinel: Limit file read size to 1MB to prevent Memory Exhaustion / DoS
+MAX_FILE_SIZE = 1 * 1024 * 1024  # 1 MB
+
+# 🛡️ Sentinel: Limit directory listing count to prevent Output Flooding
+MAX_DIR_ITEMS = 1000
+
 class ToolResult:
     """Helper to match the spec's ToolResult expectation if not in mcp.types directly as that name"""
     def __init__(self, success: bool, data: Optional[Dict] = None, error: Optional[str] = None):
@@ -131,6 +137,14 @@ class FilesystemMCPServer:
             if not p.exists():
                  return ToolResult(success=False, error=f"File not found: {path}")
 
+            # 🛡️ Sentinel: Check file size before reading
+            file_size = p.stat().st_size
+            if file_size > MAX_FILE_SIZE:
+                return ToolResult(
+                    success=False,
+                    error=f"File too large: {file_size} bytes (Limit: {MAX_FILE_SIZE} bytes)"
+                )
+
             content = p.read_text(encoding='utf-8')
             return ToolResult(
                 success=True,
@@ -165,17 +179,22 @@ class FilesystemMCPServer:
             if not dir_path.exists():
                  return ToolResult(success=False, error=f"Directory not found: {path}")
 
-            files = [
-                {
+            items = []
+            count = 0
+            for f in dir_path.iterdir():
+                items.append({
                     "name": f.name,
                     "type": "file" if f.is_file() else "directory",
                     "size": f.stat().st_size if f.is_file() else None
-                }
-                for f in dir_path.iterdir()
-            ]
+                })
+                count += 1
+                # 🛡️ Sentinel: Limit number of items
+                if count >= MAX_DIR_ITEMS:
+                    break
+
             return ToolResult(
                 success=True,
-                data={"files": files, "count": len(files)}
+                data={"files": items, "count": len(items), "truncated": count >= MAX_DIR_ITEMS}
             )
         except Exception as e:
             return ToolResult(success=False, error=str(e))
