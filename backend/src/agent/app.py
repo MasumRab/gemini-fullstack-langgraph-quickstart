@@ -148,18 +148,22 @@ class InvokeRequest(BaseModel):
         This is generous enough for search queries and summaries but stops abuse.
         """
         MAX_INPUT_LENGTH = 50000
+        MAX_DEPTH = 100
 
         # Recursive check for strings
-        def check_size(obj):
+        def check_size(obj, depth=0):
+            if depth > MAX_DEPTH:
+                raise ValueError(f"Input structure too deep (max {MAX_DEPTH}). This may be a DoS attempt.")
+
             if isinstance(obj, str):
                 if len(obj) > MAX_INPUT_LENGTH:
                     raise ValueError(f"Input string too long ({len(obj)} chars). Max allowed: {MAX_INPUT_LENGTH}")
             elif isinstance(obj, dict):
                 for key, value in obj.items():
-                    check_size(value)
+                    check_size(value, depth + 1)
             elif isinstance(obj, list):
                 for item in obj:
-                    check_size(item)
+                    check_size(item, depth + 1)
 
         check_size(v)
         return v
