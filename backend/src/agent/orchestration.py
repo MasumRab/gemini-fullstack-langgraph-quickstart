@@ -412,19 +412,17 @@ def build_orchestrated_graph(
     Returns:
         Compiled StateGraph with orchestration
     """
-    if tools is None:
-        tools = ToolRegistry()
     if agents is None:
         agents = AgentPool()
 
-    from agent.nodes import load_context, finalize_answer
+    from agent.nodes import load_context, denoising_refiner
 
     builder = StateGraph(OverallState, config_schema=Configuration)
 
     # Core nodes
     builder.add_node("load_context", load_context)
     builder.add_node("coordinator", create_coordinator_node(tools, agents, coordinator_model))
-    builder.add_node("finalize", finalize_answer)
+    builder.add_node("finalize", denoising_refiner)
 
     # Add agent nodes (wrap each agent as a node)
     for agent_name in agents.get_agent_names():

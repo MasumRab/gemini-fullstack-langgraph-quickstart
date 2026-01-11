@@ -17,9 +17,7 @@ from agent.nodes import (
     validate_web_results,
     compression_node,  # New Node
     reflection,
-    finalize_answer,
     denoising_refiner, # New Node
-    evaluate_research,
     update_plan,
     select_next_task,
     execution_router,
@@ -82,7 +80,7 @@ builder.add_node("validate_web_results", validate_web_results)
 builder.add_node("compression_node", compression_node) # Add Compression
 builder.add_node("kg_enrich", kg_enrich) # Add KG Pilot
 builder.add_node("reflection", reflection)
-builder.add_node("finalize_answer", finalize_answer)
+
 builder.add_node("denoising_refiner", denoising_refiner) # Add TTD-DR Refiner
 builder.add_node("update_plan", update_plan)
 builder.add_node("select_next_task", select_next_task)
@@ -107,9 +105,7 @@ builder.add_edge("outline_gen", "generate_plan")
 # builder.add_edge("generate_plan", "planning_mode") # Removed as it's destination of router
 builder.add_edge("generate_plan", "planning_mode")
 
-# TODO(priority=Medium, complexity=Medium): [Open SWE] Wire up 'execution_router' to loop between 'web_research' and 'update_plan'.
-# See docs/tasks/02_OPEN_SWE_TASKS.md
-# Subtask: Create routing logic: `if pending_tasks: return "web_research" else: return "finalize"`.
+
 
 builder.add_conditional_edges(
     "planning_mode", planning_router, ["planning_wait", "select_next_task"]
@@ -133,8 +129,9 @@ builder.add_edge("reflection", "update_plan")
 
 # Update plan goes to execution_router to decide next step
 builder.add_conditional_edges(
-    "update_plan", execution_router, ["select_next_task", "finalize_answer"]
+    "update_plan", execution_router, ["select_next_task", "denoising_refiner"]
 )
+builder.add_edge("denoising_refiner", END)
 
 # Document edges for registry/tooling
 graph_registry.document_edge(
@@ -189,11 +186,11 @@ graph_registry.document_edge(
 )
 graph_registry.document_edge(
     "reflection",
-    "finalize_answer",
-    description="Once sufficient or max loops reached, finalize the response.",
+    "denoising_refiner",
+    description="Once sufficient or max loops reached, finalize the response via high-fidelity refiner.",
 )
 graph_registry.document_edge(
-    "finalize_answer",
+    "denoising_refiner",
     END,
     description="Graph terminates after final answer is produced.",
 )

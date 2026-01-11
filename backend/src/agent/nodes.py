@@ -826,7 +826,7 @@ def execution_router(state: OverallState) -> str:
     plan = state.get("plan", [])
     if any(t.get("status") == "pending" for t in plan):
         return "select_next_task"
-    return "finalize_answer"
+    return "denoising_refiner"
 
 @graph_registry.describe(
     "outline_gen",
@@ -1070,13 +1070,13 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
     "denoising_refiner",
     summary="Refines the final answer by synthesizing multiple drafts (TTD-DR).",
     tags=["synthesis", "quality"],
-    outputs=["messages"],
+    outputs=["messages", "artifacts"],
 )
 def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Refines the final answer by synthesizing multiple drafts.
     Implements TTD-DR pattern for high-fidelity report synthesis.
-    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Ensures URL restoration for citations.
     """
     with observe_span("denoising_refiner", config):
         configurable = Configuration.from_runnable_config(config)
@@ -1089,19 +1089,26 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
         web_results = state.get("validated_web_research_result") or state.get("web_research_result", [])
         summaries = "\n\n".join(web_results)
         
-        # 2. Generate Draft 1 (Standard Answer)
-        prompt_1 = gemma_answer_instructions.format(
-            current_date=get_current_date(),
-            research_topic=topic,
-            summaries=summaries
-        )
+        # 2. Generate Draft 1 (Standard Answer) - Use Gemma instructions if appropriate
+        if is_gemma_model(model_name):
+            prompt_1 = gemma_answer_instructions.format(
+                current_date=get_current_date(),
+                research_topic=topic,
+                summaries=summaries
+            )
+        else:
+            prompt_1 = answer_instructions.format(
+                current_date=get_current_date(),
+                research_topic=topic,
+                summaries=summaries
+            )
         
         llm_1 = _get_rate_limited_llm(model=model_name, temperature=0.7, prompt=prompt_1)
         draft_1 = llm_1.invoke(prompt_1).content
         
-        # 3. Generate Draft 2 (Alternative Perspective/Focus)
-        prompt_2 = prompt_1 + "\n\nNote: Focus more on technical implementation details and edge cases."
-        llm_2 = _get_rate_limited_llm(model=model_name, temperature=0.7, prompt=prompt_2)
+        # 3. Generate Draft 2 (Technical/Deep focus)
+        prompt_2 = draft_1 + "\n\nNote: Focus more on specific data points, technical specifics and precise metrics."
+        llm_2 = _get_rate_limited_llm(model=model_name, temperature=0.5, prompt=prompt_2)
         draft_2 = llm_2.invoke(prompt_2).content
         
         # 4. Denoise/Synthesize
@@ -1111,20 +1118,27 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
         )
         
         llm_refiner = _get_rate_limited_llm(model=model_name, temperature=0, prompt=refine_prompt)
-        final_answer = llm_refiner.invoke(refine_prompt).content
+        final_content = llm_refiner.invoke(refine_prompt).content
         
-        # 5. Create Artifact for Open Canvas
+        # 5. Restore URLs (Critical for Citations)
+        if "sources_gathered" in state:
+            for source in state["sources_gathered"]:
+                pattern = re.escape(source["short_url"])
+                if re.search(pattern, final_content):
+                    final_content = re.sub(pattern, source["value"], final_content)
+
+        # 6. Create Artifact for Open Canvas
         artifact_id = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         artifact = {
             "id": artifact_id,
             "title": f"Research Report: {topic}",
-            "content": final_answer,
+            "content": final_content,
             "type": "markdown",
             "version": 1
         }
         
         return {
-            "messages": [AIMessage(content=f"I have finalized the research report. You can view it in the artifact panel.\n\nSummary: {final_answer[:200]}...")],
+            "messages": [AIMessage(content=f"I have finalized the comprehensive research report. You can interact with it in the preview panel.\n\nSummary: {final_content[:300]}...")],
             "artifacts": {artifact_id: artifact}
         }
 
@@ -1443,88 +1457,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
         }
 
 
-@graph_registry.describe(
-    "evaluate_research",
-    summary="Routing policy deciding between additional web searches or final answer.",
-    tags=["routing", "policy"],
-)
-def evaluate_research(
-    state: ReflectionState,
-    config: RunnableConfig,
-) -> OverallState:
-    """LangGraph routing function that determines the next step in the research flow."""
-    configurable = Configuration.from_runnable_config(config)
-    max_research_loops = (
-        state.get("max_research_loops")
-        if state.get("max_research_loops") is not None
-        else configurable.max_research_loops
-    )
-    if state["is_sufficient"] or state["research_loop_count"] >= max_research_loops:
-        return "finalize_answer"
-    else:
-        return [
-            Send(
-                "web_research",
-                {
-                    "search_query": follow_up_query,
-                    "id": state["number_of_ran_queries"] + int(idx),
-                },
-            )
-            for idx, follow_up_query in enumerate(state["follow_up_queries"])
-        ]
 
 
-@graph_registry.describe(
-    "finalize_answer",
-    summary="Synthesizes final response with deduplicated sources and citations.",
-    tags=["llm", "synthesis"],
-    outputs=["messages", "sources_gathered"],
-)
-def finalize_answer(state: OverallState, config: RunnableConfig):
-    """LangGraph node that finalizes the research summary."""
-    with observe_span("finalize_answer", config):
-        configurable = Configuration.from_runnable_config(config)
-        reasoning_model = state.get("reasoning_model") or configurable.answer_model
 
-        current_date = get_current_date()
 
-        # Use validated (and optionally compressed) results
-        summaries = state.get("validated_web_research_result") or state.get("web_research_result", [])
-
-        # Select prompt based on model
-        if is_gemma_model(reasoning_model):
-            formatted_prompt = gemma_answer_instructions.format(
-                current_date=current_date,
-                research_topic=get_research_topic(state["messages"]),
-                summaries="\n\n".join(summaries), # Cleaner join for XML
-            )
-        else:
-            formatted_prompt = answer_instructions.format(
-                current_date=current_date,
-                research_topic=get_research_topic(state["messages"]),
-                summaries="\n---\n\n".join(summaries),
-            )
-
-        # Use rate-limited LLM
-        llm = _get_rate_limited_llm(
-            model=reasoning_model,
-            temperature=0,
-            prompt=formatted_prompt
-        )
-        result = llm.invoke(formatted_prompt)
-
-        # Replace the short urls with the original urls and add all used urls to the sources_gathered
-        unique_sources = []
-        if "sources_gathered" in state:
-            for source in state["sources_gathered"]:
-                # Robust regex pattern to match the short URL
-                pattern = re.escape(source["short_url"])
-                if re.search(pattern, result.content):
-                    # Replace all occurrences using regex
-                    result.content = re.sub(pattern, source["value"], result.content)
-                    unique_sources.append(source)
-
-        return {
-            "messages": [AIMessage(content=result.content)],
-            "sources_gathered": unique_sources,
-        }
