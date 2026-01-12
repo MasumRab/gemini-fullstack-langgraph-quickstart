@@ -24,3 +24,7 @@ This journal tracks critical UX and accessibility learnings. It is NOT a log of 
 ## 2025-05-18 - Accessibility in Dynamic Planning Status
 **Learning:** The "Planning Mode" UI updates dynamically but lacked `aria-live` regions, making status changes invisible to screen readers without manual polling.
 **Action:** Added `role="region"`, `aria-label`, and `aria-live="polite"` to the `PlanningStatus` component wrapper to ensure updates are announced.
+
+## 2026-01-11 - Accessibility in Scrollable Chat Regions
+**Learning:** Large scrollable areas like the chat history in `ChatMessagesView` lacked semantic roles and accessible names, forcing screen reader users to guess the purpose of the region.
+**Action:** Explicitly added `role="log"` and `aria-label="Chat history"` to the main message scroll area to identify it as a dynamic log of interactions.
