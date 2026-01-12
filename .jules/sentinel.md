@@ -1,5 +1,10 @@
 # Sentinel's Journal
 
+## 2025-02-24 - [Unbounded File Write]
+**Vulnerability:** The `FilesystemMCPServer` enforced file size limits on reads (`read_file`) but lacked a corresponding check on writes (`write_file`), allowing an agent (or attacker) to exhaust disk space by writing massive files.
+**Learning:** Symmetric security controls are crucial. Validating input (read) without validating output/action (write) leaves a gap. DoS can happen via storage exhaustion just as easily as memory exhaustion.
+**Prevention:** Implemented a strict size check in `write_file`, verifying both character count (fail-fast optimization) and byte size against `MAX_FILE_SIZE`.
+
 ## 2025-02-24 - [Recursion DoS Protection]
 **Vulnerability:** Deeply nested JSON inputs (e.g., depth > 1000) sent to the `/agent/invoke` endpoint caused a `RecursionError` in the recursive validation logic, leading to a 500 Internal Server Error and potential DoS via stack exhaustion.
 **Learning:** Recursive validation functions must explicitly track and limit recursion depth, as Python's default stack limit is easily reachable with malicious payloads. Relying on implicit system limits leads to crashes rather than graceful rejections.
