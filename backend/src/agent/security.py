@@ -78,6 +78,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.window = window
         self.protected_paths = protected_paths if protected_paths is not None else []
         self.requests = defaultdict(list)
+        self.last_cleanup = 0.0
 
     async def dispatch(self, request: Request, call_next):
         """Check rate limit for API endpoints."""
@@ -129,7 +130,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
             # Simple Memory Leak Prevention:
             # If dictionary gets too large, perform cleanup to prevent OOM.
-            if len(self.requests) > 10000:
+            # 🛡️ Sentinel: Throttle cleanup to prevent CPU exhaustion (DoS) via O(N) loop
+            if len(self.requests) > 10000 and (now - self.last_cleanup > 10):
+                self.last_cleanup = now
                 # Cleanup: Remove clients that haven't made a request within the window.
                 # Since active_requests for each client might not be updated until they make a request,
                 # we need to check the last timestamp in their list.
@@ -145,29 +148,29 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 for ip in stale_ips:
                     del self.requests[ip]
 
-                # Fallback: If still too large (active attack with >10k distinct IPs),
-                # 🛡️ Sentinel: Do NOT clear everything, as that allows attackers to reset everyone's limit.
-                # Instead, if we are full, REJECT new clients.
-                if len(self.requests) > 10000:
-                    # If the client is already known, we updated them above.
-                    # But wait, if we are > 10000, and this is a NEW client_ip (or one that was just added),
-                    # we should remove it and block.
-                    # However, we already added `now` to `active_requests` and set `self.requests[client_ip]`.
+            # Fallback: If still too large (active attack with >10k distinct IPs),
+            # 🛡️ Sentinel: Do NOT clear everything, as that allows attackers to reset everyone's limit.
+            # Instead, if we are full, REJECT new clients.
+            if len(self.requests) > 10000:
+                # If the client is already known, we updated them above.
+                # But wait, if we are > 10000, and this is a NEW client_ip (or one that was just added),
+                # we should remove it and block.
+                # However, we already added `now` to `active_requests` and set `self.requests[client_ip]`.
 
-                    # We need to check if we just added a NEW key that pushed us over.
-                    # If client_ip was already in requests, we are fine (we are just updating an existing slot).
-                    # If client_ip is NEW, and size > 10000, we should reject.
+                # We need to check if we just added a NEW key that pushed us over.
+                # If client_ip was already in requests, we are fine (we are just updating an existing slot).
+                # If client_ip is NEW, and size > 10000, we should reject.
 
-                    # Optimization: Move the check BEFORE adding to `self.requests`.
-                    # But we used `defaultdict`, so accessing `self.requests[client_ip]` already created the entry if missing.
+                # Optimization: Move the check BEFORE adding to `self.requests`.
+                # But we used `defaultdict`, so accessing `self.requests[client_ip]` already created the entry if missing.
 
-                    # So, if we are over limit:
-                    # Check if we should allow this IP.
-                    # If we just created it (len=1), delete it and 503.
-                    if len(active_requests) == 1: # This was a new entry (or re-entry after expiry)
-                         # Safe delete using pop to avoid KeyErrors in race conditions
-                         self.requests.pop(client_ip, None)
-                         return Response("Server Busy", status_code=503)
+                # So, if we are over limit:
+                # Check if we should allow this IP.
+                # If we just created it (len=1), delete it and 503.
+                if len(active_requests) == 1: # This was a new entry (or re-entry after expiry)
+                     # Safe delete using pop to avoid KeyErrors in race conditions
+                     self.requests.pop(client_ip, None)
+                     return Response("Server Busy", status_code=503)
 
             self.requests[client_ip] = active_requests
 
