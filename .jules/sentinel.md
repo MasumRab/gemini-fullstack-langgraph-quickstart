@@ -1,5 +1,10 @@
 # Sentinel's Journal
 
+## 2025-02-24 - [Recursion DoS Protection]
+**Vulnerability:** Deeply nested JSON inputs (e.g., depth > 1000) sent to the `/agent/invoke` endpoint caused a `RecursionError` in the recursive validation logic, leading to a 500 Internal Server Error and potential DoS via stack exhaustion.
+**Learning:** Recursive validation functions must explicitly track and limit recursion depth, as Python's default stack limit is easily reachable with malicious payloads. Relying on implicit system limits leads to crashes rather than graceful rejections.
+**Prevention:** Implemented a strict `MAX_DEPTH=100` limit in the `check_size` validator. Inputs exceeding this depth now trigger a `ValueError`, resulting in a controlled 422 Unprocessable Entity response.
+
 ## 2025-02-24 - [Rate Limit Bypass via Spoofing]
 **Vulnerability:** `RateLimitMiddleware` used the *first* IP in `X-Forwarded-For` (`split(",")[0]`). Attackers can trivially spoof this by sending `X-Forwarded-For: fake_ip`. The trusted proxy (Render) appends the real IP to the end, but the middleware ignored it, allowing attackers to bypass rate limits by rotating the fake IP.
 **Learning:** In standard proxy setups (like Render), `X-Forwarded-For` is `client, proxy1, proxy2`. The *last* IP is the one added by the immediate upstream (Render) and is the only one we can implicitly trust without a strict IP whitelist.
