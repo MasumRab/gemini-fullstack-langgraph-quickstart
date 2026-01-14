@@ -898,11 +898,30 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Dynamically expands the research DAG based on findings.
 
-    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
-    Logic: Dynamic DAG expansion based on findings.
+    Fine-grained implementation guide:
+    
+    TODO(priority=High, complexity=Low): [flow_update:1] Extract current task from state
+    - Read `current_task_idx` and `plan` from state
+    - Get the task object being evaluated
+    
+    TODO(priority=High, complexity=Medium): [flow_update:2] Analyze task completion
+    - Compare task query against `web_research_result`
+    - Use fuzzy matching or LLM to determine if task is adequately answered
+    - Return completion_score (0.0-1.0)
+    
+    TODO(priority=High, complexity=Medium): [flow_update:3] Identify knowledge gaps
+    - Parse research results for "unclear", "contradictory", or "insufficient" signals
+    - Generate list of follow-up questions if gaps detected
+    
+    TODO(priority=Medium, complexity=High): [flow_update:4] DAG expansion logic
+    - If gaps detected: Create new tasks and insert into plan
+    - If task complete: Mark status='done' and increment current_task_idx
+    - If no more tasks: Set research_complete=True
+    
+    TODO(priority=Low, complexity=Low): [flow_update:5] Return updated state
+    - Return dict with updated `plan`, `current_task_idx`, `research_complete`
+    
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-    Subtask: Analyze findings. Decide to (a) Mark task done, (b) Add new tasks (DAG expansion), (c) Refine existing tasks.
-    Subtask: Output: Updated `todo_list` (DAG structure).
     """
     raise NotImplementedError("flow_update not implemented")
 
@@ -1001,11 +1020,35 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
     """
     Executes a recursive research subgraph for a specific sub-topic.
 
-    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
-    Logic: Recursive research call for sub-topics.
+    Fine-grained implementation guide:
+    
+    TODO(priority=High, complexity=Low): [research_subgraph:1] Extract sub-topic query
+    - Read `subtopic_query` from state (passed via Send)
+    - Validate query is non-empty string
+    
+    TODO(priority=High, complexity=Medium): [research_subgraph:2] Create child graph config
+    - Clone parent config with new thread_id suffix (e.g., `{parent_id}_sub_{idx}`)
+    - Set recursion_depth = parent_depth + 1
+    - Set max_recursion_depth limit (default: 2)
+    
+    TODO(priority=High, complexity=Medium): [research_subgraph:3] Guard against infinite recursion
+    - Check recursion_depth against max_recursion_depth
+    - If exceeded: Return early with partial results and warning
+    
+    TODO(priority=High, complexity=High): [research_subgraph:4] Invoke child graph
+    - Import graph from agent.graph
+    - Call graph.invoke({"messages": [subtopic_query]}, child_config)
+    - Handle exceptions gracefully
+    
+    TODO(priority=Medium, complexity=Medium): [research_subgraph:5] Merge child results
+    - Extract `web_research_result` and `evidence_bank` from child output
+    - Append to parent state's lists
+    - Deduplicate sources
+    
+    TODO(priority=Low, complexity=Low): [research_subgraph:6] Return merged state
+    - Return dict with updated `web_research_result`, `evidence_bank`, `sources_gathered`
+    
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-    Subtask: Input: A sub-topic query.
-    Subtask: Logic: Compile and run a fresh instance of the `ResearchGraph`.
     """
     raise NotImplementedError("research_subgraph not implemented")
 
