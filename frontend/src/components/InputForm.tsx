@@ -122,9 +122,12 @@ const InputControls = memo(({
       </div>
       {hasHistory && (
         <Button
+          type="button"
           className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer rounded-xl rounded-t-sm pl-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
           variant="default"
           onClick={() => window.location.reload()}
+          aria-label="Start a new search session"
+          title="Start a new search session"
         >
           <SquarePen size={16} aria-hidden="true" />
           New Search

@@ -6,8 +6,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock UI components
 vi.mock('@/components/ui/button', () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Button: ({ children, onClick, disabled, type, 'aria-label': ariaLabel }: any) => (
-        <button onClick={onClick} disabled={disabled} type={type} aria-label={ariaLabel}>
+    Button: ({ children, onClick, disabled, type, 'aria-label': ariaLabel, title }: any) => (
+        <button onClick={onClick} disabled={disabled} type={type} aria-label={ariaLabel} title={title}>
             {children}
         </button>
     ),
@@ -194,8 +194,11 @@ describe('InputForm', () => {
         expect(defaultProps.onSubmit).toHaveBeenCalledWith('test query', 'high', 'gemma-3-27b-it');
     });
 
-    it('shows New Search button when history exists', () => {
+    it('shows New Search button with correct type and attributes when history exists', () => {
         render(<InputForm {...defaultProps} hasHistory={true} />);
-        expect(screen.getByRole('button', { name: /new search/i })).toBeInTheDocument();
+        const newSearchBtn = screen.getByRole('button', { name: /start a new search session/i });
+        expect(newSearchBtn).toBeInTheDocument();
+        expect(newSearchBtn).toHaveAttribute('type', 'button');
+        expect(newSearchBtn).toHaveAttribute('title', 'Start a new search session');
     });
 });
