@@ -122,6 +122,9 @@ const InputControls = memo(({
       </div>
       {hasHistory && (
         <Button
+          type="button"
+          aria-label="Start new search"
+          title="Start new search"
           className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer rounded-xl rounded-t-sm pl-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
           variant="default"
           onClick={() => window.location.reload()}
@@ -202,6 +205,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
           ) : (
             <Button
               type="submit"
+              aria-label="Send search query"
               variant="ghost"
               className={`${isSubmitDisabled
                 ? "text-neutral-500"
