@@ -64,6 +64,8 @@ logger = logging.getLogger(__name__)
 # Initialize Google Search Client
 genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+# ⚡ Bolt Optimization: Pre-compile regex for keyword extraction to avoid re-compilation in loops.
+KEYWORD_SPLIT_PATTERN = re.compile(r"[^\w]+")
 
 def _get_rate_limited_llm(model: str, temperature: float = 0, max_retries: int = 2, prompt: str = "") -> ChatGoogleGenerativeAI:
     """Get a rate-limited LLM instance with context management.
@@ -1243,12 +1245,13 @@ def _flatten_queries(queries: List) -> List[str]:
 
 def _keywords_from_queries(queries: List[str]) -> List[str]:
     """Extract keywords from queries (tokens >= 4 chars)."""
-    keywords: List[str] = []
+    keywords: set[str] = set()
     for query in queries:
-        for token in re.split(r"[^\w]+", query.lower()):
+        # ⚡ Bolt Optimization: Use pre-compiled regex and set for deduplication
+        for token in KEYWORD_SPLIT_PATTERN.split(query.lower()):
             if len(token) >= 4:
-                keywords.append(token)
-    return keywords
+                keywords.add(token)
+    return list(keywords)
 
 
 def _validate_single_candidate(candidate: str, flattened_queries: List[str]) -> tuple[str, bool, str | None]:

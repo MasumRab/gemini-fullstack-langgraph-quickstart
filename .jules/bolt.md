@@ -12,6 +12,11 @@
 **Learning:** For medium-sized append-only lists (like chat logs), extracting and memoizing the *list item* component is often a simpler, "good enough" alternative to full windowing/virtualization libraries, avoiding new dependencies.
 **Action:** Before reaching for `react-window`, extract the mapped item into a `memo` component.
 
+## 2024-05-24 - [Regex & Deduplication]
+**Learning:** In tight loops involving string processing (like keyword extraction), compiling regex patterns at module level and using sets for immediate deduplication can significantly reduce overhead compared to repeated `re.split` calls and list appends.
+**Action:** When extracting tokens/keywords from multiple sources, compile regex once and accumulate into a set to avoid O(N*M) downstream redundancy.
+
 ## 2026-01-01 - [Component Extraction for Streaming]
 **Learning:** When optimizing list rendering for streaming data (like chat messages), extracting list items into memoized components is only effective if the props passed to them are stable. Passing the raw index or the entire list often defeats the purpose because the parent re-renders on every update.
 **Action:** Pre-calculate stable boolean flags (e.g., `isLast`, `isLoading`) in the parent map loop and pass those primitive values to the child component instead of raw state objects.
+
