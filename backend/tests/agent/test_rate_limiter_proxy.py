@@ -63,14 +63,15 @@ async def test_rate_limiter_proxy_logic():
     # Client B (Real IP: 5.6.7.8) -> Proxy (IP: 10.0.0.1) -> App
 
     # 1. Client A sends requests
-    # Header: "1.2.3.4, 10.0.0.1" (standard format: client, proxy1, ...)
-    header_a = "1.2.3.4, 10.0.0.1"
+    # Header: "10.0.0.1, 1.2.3.4" (Render format where trusted proxy appends client IP to end)
+    # The middleware expects the last IP to be the client IP.
+    header_a = "10.0.0.1, 1.2.3.4"
 
     await call_middleware("/protected", "10.0.0.1", header_a)
     await call_middleware("/protected", "10.0.0.1", header_a)
 
     # 2. Client B sends requests
-    header_b = "5.6.7.8, 10.0.0.1"
+    header_b = "10.0.0.1, 5.6.7.8"
 
     await call_middleware("/protected", "10.0.0.1", header_b)
 
