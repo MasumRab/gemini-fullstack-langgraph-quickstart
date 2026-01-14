@@ -1243,6 +1243,11 @@ def _flatten_queries(queries: List) -> List[str]:
     return flattened
 
 
+# ⚡ Bolt Optimization: Pre-compile regex patterns for performance
+TOKEN_SPLIT_PATTERN = re.compile(r"[^\w]+")
+CITATION_PATTERN = re.compile(r'\[[^\]]+\]\(https?://[^\)]+\)')
+
+
 def _keywords_from_queries(queries: List[str]) -> List[str]:
     """Extract keywords from queries (tokens >= 4 chars)."""
     keywords: set[str] = set()
@@ -1305,7 +1310,10 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
 
         raw_queries = state.get("search_query", [])
         flattened_queries = _flatten_queries(raw_queries) if isinstance(raw_queries, list) else [str(raw_queries)]
-        keywords = _keywords_from_queries(flattened_queries)
+
+        # ⚡ Bolt Optimization: Deduplicate keywords to avoid redundant fuzzy matching calls.
+        # This reduces expensive O(N) calls to difflib.get_close_matches for duplicate tokens.
+        keywords = list(set(_keywords_from_queries(flattened_queries)))
 
         validated: List[str] = []
         notes: List[str] = []
@@ -1313,14 +1321,12 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         # 1. Heuristics (Pre-filter)
         heuristic_passed = []
 
-        # Check for markdown-style citations [Title](url)
-        citation_pattern = r'\[[^\]]+\]\(https?://[^\)]+\)'
-
         for idx, summary in enumerate(summaries):
             normalized_summary = summary.lower()
             match_found = False
 
-            has_citation = bool(re.search(citation_pattern, summary))
+            # ⚡ Bolt Optimization: Use pre-compiled regex
+            has_citation = bool(CITATION_PATTERN.search(summary))
 
             if app_config.require_citations and not has_citation:
                 notes.append(f"Result {idx+1} rejected: Missing citations (Hard Fail).")
