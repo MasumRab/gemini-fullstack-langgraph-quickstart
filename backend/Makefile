@@ -4,7 +4,7 @@
 all: help
 
 # Define a variable for the test file path.
-TEST_FILE ?= tests/unit_tests/
+TEST_FILE ?= tests/
 
 test:
 	uv run --with-editable . pytest $(TEST_FILE)
@@ -48,6 +48,9 @@ spell_check:
 
 spell_fix:
 	codespell --toml pyproject.toml -w
+
+audit_todos:
+	python ../scripts/extract_todos_structured.py
 
 ######################
 # HELP
