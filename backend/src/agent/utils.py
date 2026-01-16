@@ -50,32 +50,36 @@ def insert_citation_markers(text, citations_list):
     Returns:
         str: The text with citation markers inserted.
     """
-    # Sort citations by end_index in descending order.
-    # If end_index is the same, secondary sort by start_index descending (default 0 if missing).
-    # This ensures that insertions at the end of the string don't affect
-    # the indices of earlier parts of the string that still need to be processed.
+    # ⚡ Bolt Optimization: Sort by end_index ascending for linear O(N) pass.
+    # This replaces O(N^2) string concatenation loop with O(N) list construction.
     sorted_citations = sorted(
         citations_list,
-        key=lambda c: (c["end_index"], c.get("start_index", 0)),
-        reverse=True,
+        key=lambda c: (c["end_index"], c.get("start_index", 0))
     )
 
+    parts = []
+    last_idx = 0
 
-    modified_text = text
-    for citation_info in sorted_citations:
-        # These indices refer to positions in the *original* text,
-        # but since we iterate from the end, they remain valid for insertion
-        # relative to the parts of the string already processed.
-        end_idx = citation_info["end_index"]
+    for citation in sorted_citations:
+        end_idx = citation["end_index"]
+
+        # Append text chunk from last position to current citation position
+        if end_idx > last_idx:
+            parts.append(text[last_idx:end_idx])
+            last_idx = end_idx
+
+        # Build marker
         marker_to_insert = ""
-        for segment in citation_info["segments"]:
+        for segment in citation["segments"]:
             marker_to_insert += f" [{segment['label']}]({segment['short_url']})"
-        # Insert the citation marker at the original end_idx position
-        modified_text = (
-            modified_text[:end_idx] + marker_to_insert + modified_text[end_idx:]
-        )
 
-    return modified_text
+        parts.append(marker_to_insert)
+
+    # Append remaining text
+    if last_idx < len(text):
+        parts.append(text[last_idx:])
+
+    return "".join(parts)
 
 
 def get_citations(response, resolved_urls_map):
@@ -170,3 +174,32 @@ def get_citations(response, resolved_urls_map):
                     pass
         citations.append(citation)
     return citations
+
+def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\n") -> str:
+    """
+    Efficiently joins a list of strings up to a maximum length.
+    Avoids creating the full joined string in memory if it exceeds the limit.
+    """
+    if not strings:
+        return ""
+
+    result_parts = []
+    current_length = 0
+    sep_len = len(separator)
+
+    for i, s in enumerate(strings):
+        # Determine overhead for separator
+        overhead = sep_len if i > 0 else 0
+
+        # Check if we can fit the full string
+        if current_length + overhead + len(s) <= max_length:
+            result_parts.append(s)
+            current_length += overhead + len(s)
+        else:
+            # Truncate
+            remaining = max_length - (current_length + overhead)
+            if remaining > 0:
+                result_parts.append(s[:remaining])
+            break
+
+    return separator.join(result_parts)

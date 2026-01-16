@@ -12,15 +12,18 @@ from starlette.responses import PlainTextResponse
 
 client = TestClient(app, base_url="http://localhost")
 
+
 def test_rate_limiter_integration():
     """Test that the app still works with the modified middleware."""
     response = client.get("/health")
     assert response.status_code == 200
 
+
 # ----------------------------------------------------------------------
 # 2. Unit Test for RateLimitMiddleware Logic (Proxy Support)
 # ----------------------------------------------------------------------
 # We verify that X-Forwarded-For is correctly used to identify clients.
+
 
 @pytest.mark.asyncio
 async def test_rate_limiter_proxy_logic():
@@ -33,7 +36,9 @@ async def test_rate_limiter_proxy_logic():
 
     # Create middleware instance with low limit (2 per minute)
     # We use a distinct path prefix to ensure we hit the logic
-    middleware = RateLimitMiddleware(mock_app, limit=2, window=60, protected_paths=["/protected"])
+    middleware = RateLimitMiddleware(
+        mock_app, limit=2, window=60, protected_paths=["/protected"]
+    )
 
     # Helper to simulate request
     async def call_middleware(path, client_host, x_forwarded_for=None):
@@ -49,6 +54,7 @@ async def test_rate_limiter_proxy_logic():
         }
 
         sent_messages = []
+
         async def mock_send(message):
             sent_messages.append(message)
 
@@ -63,9 +69,8 @@ async def test_rate_limiter_proxy_logic():
     # Client B (Real IP: 5.6.7.8) -> Proxy (IP: 10.0.0.1) -> App
 
     # 1. Client A sends requests
-    # We assume the trusted proxy (Render/LB) sets X-Forwarded-For to the verified client IP.
-    # The middleware takes the LAST IP in the list to prevent spoofing.
-    # So we simulate the header as if the LB presented the client IP.
+    # The trusted proxy (Render) appends the REAL client IP to the end of X-Forwarded-For.
+    # So if Client A is 1.2.3.4, the header seen by app is "..., 1.2.3.4"
     header_a = "1.2.3.4"
 
     await call_middleware("/protected", "10.0.0.1", header_a)
@@ -91,6 +96,7 @@ async def test_rate_limiter_proxy_logic():
     # "10.0.0.1" (Proxy IP) should NOT be tracked as a client
     assert "10.0.0.1" not in middleware.requests
 
+
 @pytest.mark.asyncio
 async def test_rate_limiter_truncation():
     """Test that extremely long headers are truncated to prevent memory exhaustion."""
@@ -99,9 +105,11 @@ async def test_rate_limiter_truncation():
         response = PlainTextResponse("OK")
         await response(scope, receive, send)
 
-    middleware = RateLimitMiddleware(mock_app, limit=10, window=60, protected_paths=["/protected"])
+    middleware = RateLimitMiddleware(
+        mock_app, limit=10, window=60, protected_paths=["/protected"]
+    )
 
-    long_ip = "1.2.3.4" + "a" * 1000 # Very long string
+    long_ip = "1.2.3.4" + "a" * 1000  # Very long string
     headers = [(b"x-forwarded-for", long_ip.encode())]
 
     scope = {
@@ -111,8 +119,11 @@ async def test_rate_limiter_truncation():
         "headers": headers,
     }
 
-    async def mock_send(message): pass
-    async def mock_receive(): return {"type": "http.request"}
+    async def mock_send(message):
+        pass
+
+    async def mock_receive():
+        return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
 

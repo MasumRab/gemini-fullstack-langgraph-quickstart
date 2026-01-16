@@ -9,8 +9,9 @@ from typing import Any
 from fastapi import FastAPI, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -75,6 +76,33 @@ async def lifespan(app: FastAPI):
 # Define the FastAPI app
 app = FastAPI(lifespan=lifespan)
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Overridden handler to prevent RecursionError when serializing deeply nested invalid inputs.
+    Standard FastAPI handler crashes on deep JSON because it tries to echo the input.
+    """
+    # We construct a simplified error list that doesn't include the full 'input' if it's huge
+    errors = []
+    for error in exc.errors():
+        # Copy error dict but remove 'input' or 'ctx' if they might be huge
+        # Pydantic v2 puts input in 'input' key.
+        safe_error = error.copy()
+        if "input" in safe_error:
+            del safe_error["input"]
+        if "ctx" in safe_error:
+            # ctx might contain the exception which might contain the object
+            # For ValueError, it's usually safe, but let's be careful.
+            # We can convert ctx to str or just remove it if needed.
+            # Usually ctx for ValueError is just the exception object.
+            safe_error["ctx"] = str(safe_error["ctx"])
+        errors.append(safe_error)
+
+    return JSONResponse(
+        status_code=422,
+        content={"detail": errors},
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=app_config.cors_origins,
@@ -138,34 +166,48 @@ class InvokeRequest(BaseModel):
     config: dict[str, Any] | None = Field(default_factory=dict)
 
     @field_validator("input")
-    def validate_input_size(cls, v):
+    def validate_input_complexity(cls, v):
         """
-        🛡️ Sentinel: Validate that no single string in the input exceeds a reasonable limit.
-        This prevents passing excessively large inputs (e.g. accidentally pasted logs)
-        to the LLM which could cause DoS or Cost spikes.
-
-        Limit: 50,000 characters (~12k tokens).
-        This is generous enough for search queries and summaries but stops abuse.
+        🛡️ Sentinel: Validate input complexity to prevent Denial of Service (DoS).
+        Checks:
+        1. Max String Length: 50,000 chars (prevents huge blobs)
+        2. Max Total Size: 200,000 chars (prevents memory exhaustion)
+        3. Max Nesting Depth: 50 (prevents RecursionError crashes)
+        4. Max Item Count: 1000 (prevents CPU exhaustion in iteration)
         """
         MAX_INPUT_LENGTH = 50000
-        MAX_DEPTH = 100
+        MAX_TOTAL_CHARS = 200000
+        MAX_DEPTH = 50
+        MAX_ITEMS = 1000
 
-        # Recursive check for strings
-        def check_size(obj, depth=0):
+        stats = {"chars": 0, "items": 0}
+
+        def check_complexity(obj, depth):
             if depth > MAX_DEPTH:
-                raise ValueError(f"Input structure too deep (max {MAX_DEPTH}). This may be a DoS attempt.")
+                raise ValueError(f"Input too deeply nested (limit: {MAX_DEPTH})")
 
             if isinstance(obj, str):
                 if len(obj) > MAX_INPUT_LENGTH:
                     raise ValueError(f"Input string too long ({len(obj)} chars). Max allowed: {MAX_INPUT_LENGTH}")
+                stats["chars"] += len(obj)
             elif isinstance(obj, dict):
+                stats["items"] += len(obj)
                 for key, value in obj.items():
-                    check_size(value, depth + 1)
+                    # Keys also count towards depth and size
+                    check_complexity(key, depth + 1)
+                    check_complexity(value, depth + 1)
             elif isinstance(obj, list):
+                stats["items"] += len(obj)
                 for item in obj:
-                    check_size(item, depth + 1)
+                    check_complexity(item, depth + 1)
 
-        check_size(v)
+            # Check limits at every step to fail fast
+            if stats["chars"] > MAX_TOTAL_CHARS:
+                raise ValueError(f"Total input size too large ({stats['chars']} chars). Max allowed: {MAX_TOTAL_CHARS}")
+            if stats["items"] > MAX_ITEMS:
+                 raise ValueError(f"Too many items in input ({stats['items']}). Max allowed: {MAX_ITEMS}")
+
+        check_complexity(v, 0)
         return v
 
 
