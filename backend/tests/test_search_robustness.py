@@ -79,21 +79,18 @@ class TestSearchRobustness:
         input_data = {
             "http://weird.com": {
                 "title": 12345, # Numeric title
-                "content": {"nested": "dict"} # Malformed content
+                "content": {"nested": "dict"}, # Malformed content
+                "raw_content": {"nested": "raw"} # Malformed raw content
             }
         }
         
-        # The current implementation might crash here or produce str({..}). 
-        # This test documents current behavior or reveals a bug.
-        # Based on code: result.get("raw_content", "") -> if dict, python handles it ok.
-        # But slicing [:max_len] on a dict raises TypeError.
+        # Should proceed without error and convert to string
+        result = process_search_results(input_data)
         
-        # We manually verify if the code handles this, often standard libs don't return dicts for text fields,
-        # but robust code should handle it.
-        try:
-            process_search_results(input_data)
-        except (TypeError, AttributeError):
-            # If it crashes, we might want to flag this. 
-            # For now, let's assume valid JSON schema from provider, but if we want *extreme* robustness:
-            pass 
+        processed = result["http://weird.com"]
+        assert isinstance(processed["title"], str)
+        assert processed["title"] == "12345"
+        assert isinstance(processed["content"], str)
+        # raw_content is used if present, converted to string and truncated
+        assert "{'nested': 'raw'}" in processed["content"]
 
