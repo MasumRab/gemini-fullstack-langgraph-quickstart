@@ -1679,3 +1679,22 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
             "research_loop_count": state["research_loop_count"],
             "number_of_ran_queries": len(state["search_query"]),
         }
+
+
+def evaluate_research(state: OverallState) -> str:
+    """Decides whether to do more research or finalize."""
+    # Check if reflection deemed the research sufficient
+    if state.get("is_sufficient", False):
+        return "finalize_answer"
+
+    # Check loop limits
+    loop_count = state.get("research_loop_count", 0)
+    max_loops = state.get("max_research_loops", 3)
+    if loop_count >= max_loops:
+        return "finalize_answer"
+
+    return "web_research"
+
+
+# Alias for backward compatibility if needed
+finalize_answer = denoising_refiner
