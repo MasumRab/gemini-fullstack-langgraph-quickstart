@@ -28,3 +28,7 @@ This journal tracks critical UX and accessibility learnings. It is NOT a log of 
 ## 2026-01-11 - Accessibility in Scrollable Chat Regions
 **Learning:** Large scrollable areas like the chat history in `ChatMessagesView` lacked semantic roles and accessible names, forcing screen reader users to guess the purpose of the region.
 **Action:** Explicitly added `role="log"` and `aria-label="Chat history"` to the main message scroll area to identify it as a dynamic log of interactions.
+
+## 2026-02-15 - Low Contrast in Small Footer Text
+**Learning:** Small footer text (text-xs) using `text-neutral-500` failed WCAG AA contrast requirements on dark backgrounds, making it difficult to read.
+**Action:** Lightened the text color to `text-neutral-400` (increasing contrast from ~3.6:1 to ~6.6:1) to ensure readability for small font sizes while maintaining visual hierarchy.
