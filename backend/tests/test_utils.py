@@ -291,3 +291,76 @@ class TestGetCitations:
 
         citations = get_citations(response, {"http://x.com": "short"})
         assert len(citations) == 2
+
+# =============================================================================
+# Tests for join_and_truncate
+# =============================================================================
+
+from agent.utils import join_and_truncate
+
+class TestJoinAndTruncate:
+    """Tests for the join_and_truncate function."""
+
+    def test_empty_list(self):
+        """Empty list should return empty string."""
+        assert join_and_truncate([], 100) == ""
+
+    def test_single_string_within_limit(self):
+        """Single string smaller than limit."""
+        assert join_and_truncate(["hello"], 10) == "hello"
+
+    def test_single_string_exceeds_limit(self):
+        """Single string larger than limit should be truncated."""
+        assert join_and_truncate(["hello world"], 5) == "hello"
+
+    def test_multiple_strings_within_limit(self):
+        """Multiple strings fitting within limit."""
+        assert join_and_truncate(["a", "b"], 10, separator=",") == "a,b"
+
+    def test_multiple_strings_exceeds_limit(self):
+        """Truncate when combined length exceeds limit."""
+        # "hello" (5) + "," (1) + "world" (5) = 11
+        # Limit 8 -> "hello,wo"
+        assert join_and_truncate(["hello", "world"], 8, separator=",") == "hello,wo"
+
+    def test_limit_equals_exact_length(self):
+        """Exact match of length."""
+        assert join_and_truncate(["a", "b"], 3, separator=",") == "a,b"
+
+    def test_limit_cuts_at_separator(self):
+        """Limit falls exactly after the first string but before full separator?
+        Actually separator is added if there is a next string.
+        "a" (1) + "," (1) + "b" (1). Limit 1.
+        Result should be "a".
+        """
+        assert join_and_truncate(["a", "b"], 1, separator=",") == "a"
+
+    def test_limit_allows_partial_separator(self):
+        """Logic check: if limit allows part of separator but not full?
+        The implementation assumes separator is all or nothing logic-wise for the next chunk.
+        "a" (1), limit 2, sep "," (1).
+        overhead = 1. cur = 1. 1+1+1 = 3 > 2.
+        remaining = 2 - (1 + 1) = 0.
+        remaining is not > 0, so we break.
+        Result "a".
+        This is preferred behavior: do not include separator if no content from next string can be added.
+        """
+        assert join_and_truncate(["a", "b"], 2, separator=",") == "a"
+
+    def test_limit_cuts_separator_completely(self):
+        """
+        "a", "b", sep=",". limit 1.
+        cur=1. overhead=1. 1+1+1 = 3 > 1.
+        remaining = 1 - (1+1) = -1.
+        remaining <= 0 check logic?
+
+        Code:
+            remaining = max_length - (current_length + overhead)
+            if remaining > 0:
+                 result_parts.append(s[:remaining])
+            break
+
+        remaining = 1 - 2 = -1. Not > 0.
+        Break. parts=["a"]. Result "a". Correct.
+        """
+        assert join_and_truncate(["a", "b"], 1, separator=",") == "a"

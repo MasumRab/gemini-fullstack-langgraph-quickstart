@@ -193,7 +193,7 @@ class TestOrchestratedGraphBuilder:
     """Tests for build_orchestrated_graph."""
 
     @patch("agent.nodes.load_context", MagicMock())
-    @patch("agent.nodes.finalize_answer", MagicMock())
+    @patch("agent.nodes.denoising_refiner", MagicMock())
     def test_build_graph_structure(self):
         """Test that the graph is built with expected nodes."""
         registry = ToolRegistry()

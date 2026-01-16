@@ -11,7 +11,8 @@ import logging
 import os
 import re
 from datetime import datetime
-from typing import List
+from functools import lru_cache
+from typing import List, Dict, Any
 
 from config.app_config import config as app_config
 from search.router import search_router
@@ -33,18 +34,24 @@ from agent.prompts import (
     reflection_instructions,
     checklist_instructions,
     outline_instructions,
-    denoising_instructions
+    denoising_instructions,
 )
 from agent.rate_limiter import get_context_manager, get_rate_limiter
 from agent.registry import graph_registry
 from agent.scoping_prompts import scoping_instructions
 from agent.scoping_schema import ScopingAssessment
-from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS, Plan, Outline
+from agent.tools_and_schemas import (
+    SearchQueryList,
+    Reflection,
+    MCP_TOOLS,
+    Plan,
+    Outline,
+)
 from agent.models import is_gemma_model, is_gemini_model
 from agent.tool_adapter import (
     format_tools_to_json_schema,
     GEMMA_TOOL_INSTRUCTION,
-    parse_tool_calls
+    parse_tool_calls,
 )
 from pydantic import BaseModel, Field
 from agent.state import (
@@ -56,6 +63,7 @@ from agent.state import (
 )
 from agent.utils import (
     get_research_topic,
+    join_and_truncate,
 )
 from observability.langfuse import observe_span
 
@@ -64,53 +72,74 @@ logger = logging.getLogger(__name__)
 # Initialize Google Search Client
 genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+# ⚡ Bolt Optimization: Pre-compile regex for keyword extraction to avoid re-compilation in loops.
+KEYWORD_SPLIT_PATTERN = re.compile(r"[^\w]+")
 
-def _get_rate_limited_llm(model: str, temperature: float = 0, max_retries: int = 2, prompt: str = "") -> ChatGoogleGenerativeAI:
-    """Get a rate-limited LLM instance with context management.
-    
-    Args:
-        model: Model name to use
-        temperature: Temperature setting
-        max_retries: Maximum retry attempts
-        prompt: Prompt text for token estimation
-        
-    Returns:
-        Configured ChatGoogleGenerativeAI instance
-    """
-    # Get rate limiter and context manager
-    rate_limiter = get_rate_limiter(model)
-    context_mgr = get_context_manager(model)
-    
-    # Estimate tokens if prompt provided
-    if prompt:
-        estimated_tokens = context_mgr.estimate_tokens(prompt)
-        
-        # Wait if necessary
-        wait_time = rate_limiter.wait_if_needed(estimated_tokens)
-        if wait_time > 0:
-            logger.info(f"Rate limited: waited {wait_time:.2f}s for {model}")
-        
-        # Log usage
-        usage = rate_limiter.get_current_usage()
-        logger.debug(f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}")
-    
-    # max_retries=0 to pass pydantic validation but hopefully avoid passing it to client
+
+# ⚡ Bolt Optimization: Cache LLM instance creation
+# Creating ChatGoogleGenerativeAI objects involves some overhead.
+# Since config (model, temp) is usually stable within a session, we can reuse instances.
+@lru_cache(maxsize=16)
+def _get_cached_llm_instance(model: str, temperature: float) -> ChatGoogleGenerativeAI:
     return ChatGoogleGenerativeAI(
         model=model,
         temperature=temperature,
         api_key=os.getenv("GEMINI_API_KEY"),
     )
 
+
+def _get_rate_limited_llm(
+    model: str, temperature: float = 0, max_retries: int = 2, prompt: str = ""
+) -> ChatGoogleGenerativeAI:
+    """Get a rate-limited LLM instance with context management.
+
+    Args:
+        model: Model name to use
+        temperature: Temperature setting
+        max_retries: Maximum retry attempts
+        prompt: Prompt text for token estimation
+
+    Returns:
+        Configured ChatGoogleGenerativeAI instance
+    """
+    # Get rate limiter and context manager
+    rate_limiter = get_rate_limiter(model)
+    context_mgr = get_context_manager(model)
+
+    # Estimate tokens if prompt provided
+    if prompt:
+        estimated_tokens = context_mgr.estimate_tokens(prompt)
+
+        # Wait if necessary
+        wait_time = rate_limiter.wait_if_needed(estimated_tokens)
+        if wait_time > 0:
+            logger.info(f"Rate limited: waited {wait_time:.2f}s for {model}")
+
+        # Log usage
+        usage = rate_limiter.get_current_usage()
+        logger.debug(
+            f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}"
+        )
+
+    # ⚡ Bolt Optimization: Use cached factory
+    return _get_cached_llm_instance(model, temperature)
+
+
 # ⚡ Bolt Optimization: Define Pydantic models at module level to avoid
 # reconstruction overhead on every function call.
+
 
 class SearchInput(BaseModel):
     query: str = Field(description="The query to search for.")
 
+
 class EvidenceItem(BaseModel):
     claim: str = Field(description="A distinct factual claim found in the text.")
     source_url: str = Field(description="The source URL associated with the claim.")
-    context_snippet: str = Field(description="A brief snippet of text surrounding the claim.")
+    context_snippet: str = Field(
+        description="A brief snippet of text surrounding the claim."
+    )
+
 
 class EvidenceList(BaseModel):
     items: List[EvidenceItem]
@@ -144,21 +173,18 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
         # 2. Analyze Initial Query
         messages = state["messages"]
         if not messages:
-            return {"scoping_status": "complete"} # Should not happen
+            return {"scoping_status": "complete"}  # Should not happen
 
         # Format prompt first for token estimation
         prompt = scoping_instructions.format(
-            current_date=get_current_date(),
-            research_topic=get_research_topic(messages)
+            current_date=get_current_date(), research_topic=get_research_topic(messages)
         )
 
         # Use rate-limited Gemini to assess ambiguity
         from agent.models import DEFAULT_SCOPING_MODEL
-        
+
         llm = _get_rate_limited_llm(
-            model=DEFAULT_SCOPING_MODEL,
-            temperature=0,
-            prompt=prompt
+            model=DEFAULT_SCOPING_MODEL, temperature=0, prompt=prompt
         )
 
         is_gemma = "gemma" in DEFAULT_SCOPING_MODEL.lower()
@@ -167,7 +193,9 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
             prompt_with_format = f"{prompt}\n\n{parser.get_format_instructions()}"
             try:
                 response = llm.invoke(prompt_with_format)
-                content = response.content if hasattr(response, "content") else str(response)
+                content = (
+                    response.content if hasattr(response, "content") else str(response)
+                )
                 assessment = parser.parse(content)
             except Exception as e:
                 logger.error(f"Scoping LLM failed (Gemma): {e}")
@@ -178,17 +206,19 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
                 assessment = structured_llm.invoke(prompt)
             except Exception as e:
                 logger.error(f"Scoping LLM failed: {e}")
-                return {"scoping_status": "complete"} # Fail open
+                return {"scoping_status": "complete"}  # Fail open
 
         if assessment.is_ambiguous:
             # Create a message to ask the user
-            questions_text = "\n".join([f"- {q}" for q in assessment.clarifying_questions])
+            questions_text = "\n".join(
+                [f"- {q}" for q in assessment.clarifying_questions]
+            )
             msg = f"To ensure I research this effectively, could you clarify:\n{questions_text}"
 
             return {
                 "scoping_status": "active",
                 "clarification_questions": assessment.clarifying_questions,
-                "messages": [AIMessage(content=msg)]
+                "messages": [AIMessage(content=msg)],
             }
 
         return {"scoping_status": "complete"}
@@ -211,7 +241,7 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
         return {
             "todo_list": data.get("todo_list", []),
             "artifacts": data.get("artifacts", {}),
-            "planning_steps": data.get("todo_list", [])
+            "planning_steps": data.get("todo_list", []),
         }
     return {}
 
@@ -251,7 +281,7 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
         llm = _get_rate_limited_llm(
             model=configurable.query_generator_model,
             temperature=1.0,
-            prompt=formatted_prompt
+            prompt=formatted_prompt,
         )
 
         plan_todos = []
@@ -259,7 +289,9 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
 
         # Check if we are using a Gemma model (requires prompt-based tool calling)
         if is_gemma_model(configurable.query_generator_model):
-            logger.info(f"Using Gemma adapter for structured output (and {len(MCP_TOOLS)} MCP tools if present).")
+            logger.info(
+                f"Using Gemma adapter for structured output (and {len(MCP_TOOLS)} MCP tools if present)."
+            )
 
             # Optimization for Gemma: Explicitly request keyword-optimized queries for better search performance
             gemma_optimization_note = "\n\nIMPORTANT: When generating search queries for the plan, use specific KEYWORDS rather than full questions. This improves search engine effectiveness (e.g. 'solid state battery energy density 2024' instead of 'what is the energy density...')."
@@ -272,7 +304,7 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
             plan_tool_schema = {
                 "name": "Plan",
                 "description": "Output structured research plan.",
-                "parameters": Plan.model_json_schema()
+                "parameters": Plan.model_json_schema(),
             }
 
             # 2. Add this "output tool" to the schemas
@@ -287,13 +319,17 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
 
             # 4. Construct instruction
             instruction = GEMMA_TOOL_INSTRUCTION.format(tool_schemas=schemas_str)
-            instruction += "\n\nCRITICAL: You MUST call the 'Plan' tool to provide your answer."
+            instruction += (
+                "\n\nCRITICAL: You MUST call the 'Plan' tool to provide your answer."
+            )
 
             full_prompt = f"{instruction}\n\n{formatted_prompt}"
 
             # 5. Invoke LLM (raw)
             response = llm.invoke(full_prompt)
-            content = response.content if hasattr(response, "content") else str(response)
+            content = (
+                response.content if hasattr(response, "content") else str(response)
+            )
 
             tool_calls = parse_tool_calls(content)
 
@@ -318,9 +354,15 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
 
             # Fallback if parsing failed or model didn't use tool
             if not plan_todos:
-                logger.warning("Gemma did not use Plan tool. Attempting fallback parsing.")
+                logger.warning(
+                    "Gemma did not use Plan tool. Attempting fallback parsing."
+                )
                 # Basic fallback: Treat bullet points as tasks
-                lines = [line.strip("- *") for line in content.split("\n") if line.strip().startswith(("-", "*"))]
+                lines = [
+                    line.strip("- *")
+                    for line in content.split("\n")
+                    if line.strip().startswith(("-", "*"))
+                ]
                 for line in lines:
                     todo = {
                         "task": line,
@@ -334,8 +376,10 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
             # Standard Gemini Path
             # Bind MCP tools if available
             if MCP_TOOLS:
-                 logger.info(f"Binding {len(MCP_TOOLS)} MCP tools to generate_plan model.")
-                 llm = llm.bind_tools(MCP_TOOLS)
+                logger.info(
+                    f"Binding {len(MCP_TOOLS)} MCP tools to generate_plan model."
+                )
+                llm = llm.bind_tools(MCP_TOOLS)
 
             structured_llm = llm.with_structured_output(Plan)
 
@@ -381,6 +425,37 @@ def continue_to_web_research(state: QueryGenerationState):
     ]
 
 
+# ⚡ Bolt Optimization: Helper to execute a single tool call
+# Moved to module level to avoid re-definition overhead in web_research node loop.
+def _exec_single_tool(tool_call: Dict[str, Any], tools_map: Dict[str, Any]) -> str:
+    t_name = tool_call.get("name")
+    t_args = tool_call.get("args") or tool_call.get("arguments") or {}
+
+    selected = tools_map.get(t_name)
+    if selected:
+        try:
+            res = selected.invoke(t_args)
+            return f"\nResult from {t_name}:\n{res}\n"
+        except Exception as e:
+            return f"\nError executing {t_name}: {e}\n"
+    return ""
+
+
+# ⚡ Bolt Optimization: Helper to format search results
+# Moved to module level to avoid re-definition overhead.
+def _format_search_results(
+    results_list: List[Any],
+) -> tuple[List[Dict[str, str]], List[str]]:
+    sources = []
+    texts = []
+    for r in results_list:
+        source = {"label": r.title, "short_url": r.url, "value": r.url}
+        sources.append(source)
+        snippet = r.content or r.raw_content or ""
+        texts.append(f"{snippet} [{r.title}]({r.url})")
+    return sources, texts
+
+
 @graph_registry.describe(
     "web_research",
     summary="Executes web search using configured providers via SearchRouter, with MCP tool support.",
@@ -403,26 +478,11 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
 
         configurable = Configuration.from_runnable_config(config)
 
-        # Helper to format search results (used by both paths)
-        def format_results(results_list):
-            sources = []
-            texts = []
-            for r in results_list:
-                source = {
-                    "label": r.title,
-                    "short_url": r.url,
-                    "value": r.url
-                }
-                sources.append(source)
-                snippet = r.content or r.raw_content or ""
-                texts.append(f"{snippet} [{r.title}]({r.url})")
-            return sources, texts
-
         # If no MCP tools, use direct deterministic search path
         if not MCP_TOOLS:
             try:
                 results = search_router.search(query, max_results=3)
-                sources_gathered, web_research_results = format_results(results)
+                sources_gathered, web_research_results = _format_search_results(results)
                 combined_result = "\n\n".join(web_research_results)
                 return {
                     "sources_gathered": sources_gathered,
@@ -448,7 +508,7 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
         def run_search(query: str) -> str:
             """Perform a web search."""
             res = search_router.search(query, max_results=3)
-            new_sources, texts = format_results(res)
+            new_sources, texts = _format_search_results(res)
             sources_gathered.extend(new_sources)
             return "\n\n".join(texts)
 
@@ -456,7 +516,7 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
             func=run_search,
             name="web_search",
             description="Search the web for information.",
-            args_schema=SearchInput
+            args_schema=SearchInput,
         )
 
         all_tools = [search_tool] + MCP_TOOLS
@@ -465,7 +525,9 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
         tools_map = {t.name: t for t in all_tools}
 
         # Determine model
-        model_name = configurable.query_generator_model # Reusing query model for research agent
+        model_name = (
+            configurable.query_generator_model
+        )  # Reusing query model for research agent
 
         # Construct prompt
         system_prompt = f"""You are a resourceful researcher. You have a query: "{query}".
@@ -476,27 +538,11 @@ Provide the raw result from the tool."""
 
         # Get LLM
         llm = _get_rate_limited_llm(
-            model=model_name,
-            temperature=0,
-            prompt=system_prompt
+            model=model_name, temperature=0, prompt=system_prompt
         )
 
         tool_output = ""
         # sources_gathered is already initialized above for closure capture
-
-        # ⚡ Bolt Optimization: Helper to execute a single tool call
-        def _exec_single_tool(tool_call, tools_map_ref):
-            t_name = tool_call.get("name")
-            t_args = tool_call.get("args") or tool_call.get("arguments") or {}
-
-            selected = tools_map_ref.get(t_name)
-            if selected:
-                try:
-                    res = selected.invoke(t_args)
-                    return f"\nResult from {t_name}:\n{res}\n"
-                except Exception as e:
-                    return f"\nError executing {t_name}: {e}\n"
-            return ""
 
         if is_gemini_model(model_name):
             # Gemini Native Binding
@@ -508,10 +554,17 @@ Provide the raw result from the tool."""
                 # ⚡ Bolt Optimization: Execute tool calls in parallel
                 # This significantly speeds up cases where the LLM decides to call multiple tools
                 # (e.g. searching for multiple sub-topics at once)
-                with concurrent.futures.ThreadPoolExecutor(max_workers=min(5, len(response.tool_calls))) as executor:
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=min(5, len(response.tool_calls))
+                ) as executor:
                     # Submit all tool calls (order doesn't strictly matter for set, but we usually want to preserve it)
                     # To be deterministic, we process based on list order:
-                    results = list(executor.map(lambda tc: _exec_single_tool(tc, tools_map), response.tool_calls))
+                    results = list(
+                        executor.map(
+                            lambda tc: _exec_single_tool(tc, tools_map),
+                            response.tool_calls,
+                        )
+                    )
                     tool_output += "".join(results)
 
             else:
@@ -525,38 +578,50 @@ Provide the raw result from the tool."""
             full_prompt = f"{instruction}\n\n{system_prompt}"
 
             response = llm.invoke(full_prompt)
-            content = response.content if hasattr(response, "content") else str(response)
+            content = (
+                response.content if hasattr(response, "content") else str(response)
+            )
 
-            tool_calls = parse_tool_calls(content, allowed_tools=[t.name for t in all_tools])
+            tool_calls = parse_tool_calls(
+                content, allowed_tools=[t.name for t in all_tools]
+            )
 
             if tool_calls:
-                 # ⚡ Bolt Optimization: Execute tool calls in parallel for Gemma as well
-                with concurrent.futures.ThreadPoolExecutor(max_workers=min(5, len(tool_calls))) as executor:
-                    results = list(executor.map(lambda tc: _exec_single_tool(tc, tools_map), tool_calls))
+                # ⚡ Bolt Optimization: Execute tool calls in parallel for Gemma as well
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=min(5, len(tool_calls))
+                ) as executor:
+                    results = list(
+                        executor.map(
+                            lambda tc: _exec_single_tool(tc, tools_map), tool_calls
+                        )
+                    )
                     tool_output += "".join(results)
             else:
-                 # Fallback: if no tool called, assume the model tried to answer directly or failed
-                 # If it failed to pick a tool, we might fallback to default search?
-                 # For now, treat content as answer
-                 tool_output = content
+                # Fallback: if no tool called, assume the model tried to answer directly or failed
+                # If it failed to pick a tool, we might fallback to default search?
+                # For now, treat content as answer
+                tool_output = content
 
         if not tool_output.strip():
             # Fallback to direct search if LLM did nothing
-            logger.warning(f"LLM produced no output for research. Falling back to direct search for {query}")
+            logger.warning(
+                f"LLM produced no output for research. Falling back to direct search for {query}"
+            )
             try:
                 results = search_router.search(query, max_results=3)
-                sources_gathered, web_research_results = format_results(results)
+                sources_gathered, web_research_results = _format_search_results(results)
                 tool_output = "\n\n".join(web_research_results)
             except Exception as e:
                 return {
                     "sources_gathered": [],
                     "search_query": [query],
                     "web_research_result": [],
-                    "validation_notes": [f"Fallback search failed: {e}"]
+                    "validation_notes": [f"Fallback search failed: {e}"],
                 }
 
         return {
-            "sources_gathered": sources_gathered, # Note: Empty if not direct search path or parsed
+            "sources_gathered": sources_gathered,  # Note: Empty if not direct search path or parsed
             "search_query": [query],
             "web_research_result": [tool_output],
         }
@@ -579,16 +644,18 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
             # If we have a plan, map it to planning_steps format
             plan_steps = []
             for idx, todo in enumerate(plan):
-                 plan_steps.append({
-                    "id": f"plan-{idx}",
-                    "title": todo["task"],
-                    "query": todo["task"],  # Map task to query
-                    "description": "",
-                    "suggested_tool": "web_research",
-                    "status": todo.get("status", "pending"),
-                })
+                plan_steps.append(
+                    {
+                        "id": f"plan-{idx}",
+                        "title": todo["task"],
+                        "query": todo["task"],  # Map task to query
+                        "description": "",
+                        "suggested_tool": "web_research",
+                        "status": todo.get("status", "pending"),
+                    }
+                )
         else:
-             # Backward compatibility: generate from search_query
+            # Backward compatibility: generate from search_query
             queries = state.get("search_query", []) or []
             plan_steps = []
             for idx, query in enumerate(queries):
@@ -610,18 +677,27 @@ def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
             last_content = last_message.get("content", "")
         else:
             last_content = getattr(last_message, "content", "")
-        last_content = last_content.strip().lower() if isinstance(last_content, str) else ""
+        last_content = (
+            last_content.strip().lower() if isinstance(last_content, str) else ""
+        )
 
         if last_content.startswith("/end_plan"):
             return {
                 "planning_steps": [],
                 "planning_status": "auto_approved",
-                "planning_feedback": ["Planning skipped via /end_plan."]
+                "planning_feedback": ["Planning skipped via /end_plan."],
             }
 
-        if planning_status == "auto_approved" and not state.get("planning_steps") and not plan_steps:
-             # Only return empty if truly empty
-            return {"planning_steps": [], "planning_feedback": ["Generated 0 plan steps. No plan available."]}
+        if (
+            planning_status == "auto_approved"
+            and not state.get("planning_steps")
+            and not plan_steps
+        ):
+            # Only return empty if truly empty
+            return {
+                "planning_steps": [],
+                "planning_feedback": ["Generated 0 plan steps. No plan available."],
+            }
 
         if last_content.startswith("/plan"):
             state["planning_status"] = "awaiting_confirmation"
@@ -682,16 +758,16 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
 
         # Inputs
         current_plan = state.get("plan", [])
-        
+
         # Prevent Recursion: Proactively mark current task as done in the context fed to LLM.
         # This ensures the LLM sees the task as completed and moves to the next one,
         # preventing infinite loops where the LLM keeps a task "pending".
         current_idx = state.get("current_task_idx")
         # specific_task_done = False # Unused variable
-        
+
         # Create a working copy for the prompt to avoid modifying state directly yet
         prompt_plan = [dict(t) for t in current_plan]
-        
+
         if current_idx is not None and 0 <= current_idx < len(prompt_plan):
             prompt_plan[current_idx]["status"] = "done"
 
@@ -705,7 +781,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
             current_date=current_date,
             research_topic=research_topic,
             current_plan=json.dumps(prompt_plan, indent=2),
-            research_results="\n\n".join(results)
+            research_results="\n\n".join(results),
         )
 
         # Truncate if needed
@@ -717,8 +793,8 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
         # Get rate-limited LLM
         llm = _get_rate_limited_llm(
             model=model_name,
-            temperature=0, # Low temperature for plan updates to be deterministic/stable
-            prompt=formatted_prompt
+            temperature=0,  # Low temperature for plan updates to be deterministic/stable
+            prompt=formatted_prompt,
         )
 
         plan_todos = []
@@ -731,20 +807,24 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
             plan_tool_schema = {
                 "name": "Plan",
                 "description": "Output structured research plan.",
-                "parameters": Plan.model_json_schema()
+                "parameters": Plan.model_json_schema(),
             }
 
             schemas_list = [plan_tool_schema]
             schemas_str = json.dumps(schemas_list, indent=2)
 
             instruction = GEMMA_TOOL_INSTRUCTION.format(tool_schemas=schemas_str)
-            instruction += "\n\nCRITICAL: You MUST call the 'Plan' tool to provide your answer."
+            instruction += (
+                "\n\nCRITICAL: You MUST call the 'Plan' tool to provide your answer."
+            )
 
             full_prompt = f"{instruction}\n\n{formatted_prompt}"
 
             try:
                 response = llm.invoke(full_prompt)
-                content = response.content if hasattr(response, "content") else str(response)
+                content = (
+                    response.content if hasattr(response, "content") else str(response)
+                )
                 tool_calls = parse_tool_calls(content)
 
                 for tc in tool_calls:
@@ -776,28 +856,28 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                         "title": item.title,
                         "description": item.description,
                         "status": item.status,
-                        "query": item.title
+                        "query": item.title,
                     }
                     plan_todos.append(todo)
             except Exception as e:
                 logger.error(f"Failed to update plan (Gemini): {e}")
                 return {"plan": current_plan}
 
-
-
         # Safety Fallback: Ensure the executed task is actually marked as done in the new plan
         # This overrides the LLM if it fails to update the status, preventing infinite loops.
         if current_idx is not None and 0 <= current_idx < len(current_plan):
-             executed_title = current_plan[current_idx].get("title")
-             # Try to find matching task in new plan
-             for task in plan_todos:
-                 # Check title match (robust against reordering)
-                 if task.get("title") == executed_title:
-                     if task.get("status") != "done":
-                         logger.warning(f"Force-marking task '{executed_title}' as done (LLM left it pending).")
-                         task["status"] = "done"
-                     break
-        
+            executed_title = current_plan[current_idx].get("title")
+            # Try to find matching task in new plan
+            for task in plan_todos:
+                # Check title match (robust against reordering)
+                if task.get("title") == executed_title:
+                    if task.get("status") != "done":
+                        logger.warning(
+                            f"Force-marking task '{executed_title}' as done (LLM left it pending)."
+                        )
+                        task["status"] = "done"
+                    break
+
         return {"plan": plan_todos}
 
 
@@ -814,7 +894,7 @@ def select_next_task(state: OverallState, config: RunnableConfig) -> OverallStat
         if task.get("status") == "pending":
             return {
                 "current_task_idx": idx,
-                "search_query": [task.get("query") or task.get("title")]
+                "search_query": [task.get("query") or task.get("title")],
             }
 
     # Should be handled by execution_router, but safety fallback
@@ -826,7 +906,8 @@ def execution_router(state: OverallState) -> str:
     plan = state.get("plan", [])
     if any(t.get("status") == "pending" for t in plan):
         return "select_next_task"
-    return "finalize_answer"
+    return "denoising_refiner"
+
 
 @graph_registry.describe(
     "outline_gen",
@@ -843,19 +924,18 @@ def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
     with observe_span("outline_gen", config):
         messages = state.get("messages", [])
         topic = get_research_topic(messages)
-        
+
         configurable = Configuration.from_runnable_config(config)
-        model_name = configurable.query_generator_model # Use a strong model
+        model_name = configurable.query_generator_model  # Use a strong model
 
         prompt = outline_instructions.format(
-            current_date=get_current_date(),
-            research_topic=topic
+            current_date=get_current_date(), research_topic=topic
         )
 
         llm = _get_rate_limited_llm(
             model=model_name,
-            temperature=0.2, # Slight variety for creative outlines
-            prompt=prompt
+            temperature=0.2,  # Slight variety for creative outlines
+            prompt=prompt,
         )
 
         try:
@@ -866,13 +946,16 @@ def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
                 # Simple parsing logic for Gemma (expects JSON in markdown)
                 # In a real scenario, we'd use the tool_adapter or PydanticOutputParser
                 response = llm.invoke(prompt)
-                content = response.content if hasattr(response, "content") else str(response)
+                content = (
+                    response.content if hasattr(response, "content") else str(response)
+                )
                 # Heuristic: Find first { and last }
                 import json
-                start = content.find('{')
-                end = content.rfind('}')
+
+                start = content.find("{")
+                end = content.rfind("}")
                 if start != -1 and end != -1:
-                    outline_data = json.loads(content[start:end+1])
+                    outline_data = json.loads(content[start : end + 1])
                 else:
                     raise ValueError("Could not find JSON in Gemma output")
             else:
@@ -887,24 +970,66 @@ def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
                 "outline": {
                     "title": topic,
                     "sections": [
-                        {"title": "Introduction", "subsections": [{"title": "Overview", "description": "General summary of the topic"}]},
-                        {"title": "Analysis", "subsections": [{"title": "Key Findings", "description": "Main results of the research"}]},
-                        {"title": "Conclusion", "subsections": [{"title": "Summary", "description": "Final thoughts"}]}
-                    ]
+                        {
+                            "title": "Introduction",
+                            "subsections": [
+                                {
+                                    "title": "Overview",
+                                    "description": "General summary of the topic",
+                                }
+                            ],
+                        },
+                        {
+                            "title": "Analysis",
+                            "subsections": [
+                                {
+                                    "title": "Key Findings",
+                                    "description": "Main results of the research",
+                                }
+                            ],
+                        },
+                        {
+                            "title": "Conclusion",
+                            "subsections": [
+                                {"title": "Summary", "description": "Final thoughts"}
+                            ],
+                        },
+                    ],
                 }
             }
+
 
 def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Dynamically expands the research DAG based on findings.
 
-    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'flow_update' Node (FlowSearch)
-    Logic: Dynamic DAG expansion based on findings.
+    Fine-grained implementation guide:
+
+    TODO(priority=High, complexity=Low): [flow_update:1] Extract current task from state
+    - Read `current_task_idx` and `plan` from state
+    - Get the task object being evaluated
+
+    TODO(priority=High, complexity=Medium): [flow_update:2] Analyze task completion
+    - Compare task query against `web_research_result`
+    - Use fuzzy matching or LLM to determine if task is adequately answered
+    - Return completion_score (0.0-1.0)
+
+    TODO(priority=High, complexity=Medium): [flow_update:3] Identify knowledge gaps
+    - Parse research results for "unclear", "contradictory", or "insufficient" signals
+    - Generate list of follow-up questions if gaps detected
+
+    TODO(priority=Medium, complexity=High): [flow_update:4] DAG expansion logic
+    - If gaps detected: Create new tasks and insert into plan
+    - If task complete: Mark status='done' and increment current_task_idx
+    - If no more tasks: Set research_complete=True
+
+    TODO(priority=Low, complexity=Low): [flow_update:5] Return updated state
+    - Return dict with updated `plan`, `current_task_idx`, `research_complete`
+
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-    Subtask: Analyze findings. Decide to (a) Mark task done, (b) Add new tasks (DAG expansion), (c) Refine existing tasks.
-    Subtask: Output: Updated `todo_list` (DAG structure).
     """
     raise NotImplementedError("flow_update not implemented")
+
 
 @graph_registry.describe(
     "content_reader",
@@ -919,7 +1044,9 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     with observe_span("content_reader", config):
         # Prefer validated results, fallback to raw
-        results = state.get("validated_web_research_result") or state.get("web_research_result", [])
+        results = state.get("validated_web_research_result") or state.get(
+            "web_research_result", []
+        )
         if not results:
             return {"evidence_bank": []}
 
@@ -930,7 +1057,8 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
 
         # Prepare content
         # Limit content size to avoid context window issues
-        combined_text = "\n\n".join(results)[:50000] # Cap at 50k chars roughly
+        # ⚡ Bolt Optimization: Use join_and_truncate to avoid building full string before slicing.
+        combined_text = join_and_truncate(results, 50000)
 
         prompt = f"""
         Analyze the following search results and extract structured evidence.
@@ -944,11 +1072,7 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
         """
 
         # Get rate-limited LLM
-        llm = _get_rate_limited_llm(
-            model=model_name,
-            temperature=0,
-            prompt=prompt
-        )
+        llm = _get_rate_limited_llm(model=model_name, temperature=0, prompt=prompt)
 
         extracted_evidence: List[Evidence] = []
 
@@ -957,7 +1081,7 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
             schema = {
                 "name": "EvidenceList",
                 "description": "Extract structured evidence.",
-                "parameters": EvidenceList.model_json_schema()
+                "parameters": EvidenceList.model_json_schema(),
             }
             schemas_str = json.dumps([schema], indent=2)
             instruction = GEMMA_TOOL_INSTRUCTION.format(tool_schemas=schemas_str)
@@ -965,18 +1089,22 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
 
             try:
                 response = llm.invoke(full_prompt)
-                content = response.content if hasattr(response, "content") else str(response)
+                content = (
+                    response.content if hasattr(response, "content") else str(response)
+                )
                 tool_calls = parse_tool_calls(content)
 
                 for tc in tool_calls:
                     if tc["name"] == "EvidenceList":
                         items = tc["args"].get("items", [])
                         for item in items:
-                            extracted_evidence.append({
-                                "claim": item.get("claim", ""),
-                                "source_url": item.get("source_url", ""),
-                                "context_snippet": item.get("context_snippet", "")
-                            })
+                            extracted_evidence.append(
+                                {
+                                    "claim": item.get("claim", ""),
+                                    "source_url": item.get("source_url", ""),
+                                    "context_snippet": item.get("context_snippet", ""),
+                                }
+                            )
             except Exception as e:
                 logger.error(f"Content Reader (Gemma) failed: {e}")
 
@@ -987,27 +1115,55 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
                 result = structured_llm.invoke(prompt)
                 if result and result.items:
                     for item in result.items:
-                        extracted_evidence.append({
-                            "claim": item.claim,
-                            "source_url": item.source_url,
-                            "context_snippet": item.context_snippet
-                        })
+                        extracted_evidence.append(
+                            {
+                                "claim": item.claim,
+                                "source_url": item.source_url,
+                                "context_snippet": item.context_snippet,
+                            }
+                        )
             except Exception as e:
                 logger.error(f"Content Reader (Gemini) failed: {e}")
 
         return {"evidence_bank": extracted_evidence}
 
+
 def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Executes a recursive research subgraph for a specific sub-topic.
 
-    TODO(priority=High, complexity=High): [SOTA Deep Research] Implement 'research_subgraph' Node (GPT Researcher)
-    Logic: Recursive research call for sub-topics.
+    Fine-grained implementation guide:
+
+    TODO(priority=High, complexity=Low): [research_subgraph:1] Extract sub-topic query
+    - Read `subtopic_query` from state (passed via Send)
+    - Validate query is non-empty string
+
+    TODO(priority=High, complexity=Medium): [research_subgraph:2] Create child graph config
+    - Clone parent config with new thread_id suffix (e.g., `{parent_id}_sub_{idx}`)
+    - Set recursion_depth = parent_depth + 1
+    - Set max_recursion_depth limit (default: 2)
+
+    TODO(priority=High, complexity=Medium): [research_subgraph:3] Guard against infinite recursion
+    - Check recursion_depth against max_recursion_depth
+    - If exceeded: Return early with partial results and warning
+
+    TODO(priority=High, complexity=High): [research_subgraph:4] Invoke child graph
+    - Import graph from agent.graph
+    - Call graph.invoke({"messages": [subtopic_query]}, child_config)
+    - Handle exceptions gracefully
+
+    TODO(priority=Medium, complexity=Medium): [research_subgraph:5] Merge child results
+    - Extract `web_research_result` and `evidence_bank` from child output
+    - Append to parent state's lists
+    - Deduplicate sources
+
+    TODO(priority=Low, complexity=Low): [research_subgraph:6] Return merged state
+    - Return dict with updated `web_research_result`, `evidence_bank`, `sources_gathered`
+
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-    Subtask: Input: A sub-topic query.
-    Subtask: Logic: Compile and run a fresh instance of the `ResearchGraph`.
     """
     raise NotImplementedError("research_subgraph not implemented")
+
 
 @graph_registry.describe(
     "checklist_verifier",
@@ -1029,34 +1185,44 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
 
         # Fallback to research summaries if evidence bank is empty
         if not evidence_bank:
-            evidence_source = state.get("validated_web_research_result") or state.get("web_research_result", [])
+            evidence_source = state.get("validated_web_research_result") or state.get(
+                "web_research_result", []
+            )
             evidence_text = "\n\n".join(evidence_source)
         else:
             # Format evidence bank items
             evidence_items = []
             for item in evidence_bank:
-                evidence_items.append(f"Claim: {item.get('claim')}\nSource: {item.get('source_url')}\nContext: {item.get('context_snippet')}")
+                evidence_items.append(
+                    f"Claim: {item.get('claim')}\nSource: {item.get('source_url')}\nContext: {item.get('context_snippet')}"
+                )
             evidence_text = "\n---\n".join(evidence_items)
 
         if not outline:
-            return {"validation_notes": ["Skipped Checklist Verification: No outline available."]}
+            return {
+                "validation_notes": [
+                    "Skipped Checklist Verification: No outline available."
+                ]
+            }
 
         if not evidence_text:
-             return {"validation_notes": ["Skipped Checklist Verification: No evidence gathered."]}
+            return {
+                "validation_notes": [
+                    "Skipped Checklist Verification: No evidence gathered."
+                ]
+            }
 
         prompt = checklist_instructions.format(
-            outline=json.dumps(outline, indent=2) if isinstance(outline, dict) else str(outline),
-            evidence=evidence_text
+            outline=json.dumps(outline, indent=2)
+            if isinstance(outline, dict)
+            else str(outline),
+            evidence=evidence_text,
         )
 
         # Use rate-limited LLM (using answer model or validation model)
         model = configurable.answer_model
 
-        llm = _get_rate_limited_llm(
-            model=model,
-            temperature=0,
-            prompt=prompt
-        )
+        llm = _get_rate_limited_llm(model=model, temperature=0, prompt=prompt)
 
         try:
             response = llm.invoke(prompt)
@@ -1066,67 +1232,98 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
             logger.error(f"Checklist verification failed: {e}")
             return {"validation_notes": [f"Checklist verification failed: {e}"]}
 
+
 @graph_registry.describe(
     "denoising_refiner",
     summary="Refines the final answer by synthesizing multiple drafts (TTD-DR).",
     tags=["synthesis", "quality"],
-    outputs=["messages"],
+    outputs=["messages", "artifacts"],
 )
 def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Refines the final answer by synthesizing multiple drafts.
     Implements TTD-DR pattern for high-fidelity report synthesis.
-    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Ensures URL restoration for citations.
     """
     with observe_span("denoising_refiner", config):
         configurable = Configuration.from_runnable_config(config)
         model_name = configurable.answer_model
-        
+
         # 1. Gather research context
         messages = state.get("messages", [])
         topic = get_research_topic(messages)
-        
-        web_results = state.get("validated_web_research_result") or state.get("web_research_result", [])
-        summaries = "\n\n".join(web_results)
-        
-        # 2. Generate Draft 1 (Standard Answer)
-        prompt_1 = gemma_answer_instructions.format(
-            current_date=get_current_date(),
-            research_topic=topic,
-            summaries=summaries
+
+        web_results = state.get("validated_web_research_result") or state.get(
+            "web_research_result", []
         )
-        
-        llm_1 = _get_rate_limited_llm(model=model_name, temperature=0.7, prompt=prompt_1)
+        summaries = "\n\n".join(web_results)
+
+        # 2. Generate Draft 1 (Standard Answer) - Use Gemma instructions if appropriate
+        if is_gemma_model(model_name):
+            prompt_1 = gemma_answer_instructions.format(
+                current_date=get_current_date(),
+                research_topic=topic,
+                summaries=summaries,
+            )
+        else:
+            prompt_1 = answer_instructions.format(
+                current_date=get_current_date(),
+                research_topic=topic,
+                summaries=summaries,
+            )
+
+        llm_1 = _get_rate_limited_llm(
+            model=model_name, temperature=0.7, prompt=prompt_1
+        )
         draft_1 = llm_1.invoke(prompt_1).content
-        
-        # 3. Generate Draft 2 (Alternative Perspective/Focus)
-        prompt_2 = prompt_1 + "\n\nNote: Focus more on technical implementation details and edge cases."
-        llm_2 = _get_rate_limited_llm(model=model_name, temperature=0.7, prompt=prompt_2)
+
+        # 3. Generate Draft 2 (Technical/Deep focus)
+        prompt_2 = (
+            draft_1
+            + "\n\nNote: Focus more on specific data points, technical specifics and precise metrics."
+        )
+        llm_2 = _get_rate_limited_llm(
+            model=model_name, temperature=0.5, prompt=prompt_2
+        )
         draft_2 = llm_2.invoke(prompt_2).content
-        
+
         # 4. Denoise/Synthesize
         refine_prompt = denoising_instructions.format(
             current_date=get_current_date(),
-            drafts=f"--- DRAFT 1 ---\n{draft_1}\n\n--- DRAFT 2 ---\n{draft_2}"
+            drafts=f"--- DRAFT 1 ---\n{draft_1}\n\n--- DRAFT 2 ---\n{draft_2}",
         )
-        
-        llm_refiner = _get_rate_limited_llm(model=model_name, temperature=0, prompt=refine_prompt)
-        final_answer = llm_refiner.invoke(refine_prompt).content
-        
-        # 5. Create Artifact for Open Canvas
+
+        llm_refiner = _get_rate_limited_llm(
+            model=model_name, temperature=0, prompt=refine_prompt
+        )
+        final_content = llm_refiner.invoke(refine_prompt).content
+
+        # 5. Restore URLs (Critical for Citations)
+        if "sources_gathered" in state:
+            for source in state["sources_gathered"]:
+                pattern = re.escape(source["short_url"])
+                if re.search(pattern, final_content):
+                    final_content = re.sub(pattern, source["value"], final_content)
+
+        # 6. Create Artifact for Open Canvas
         artifact_id = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         artifact = {
             "id": artifact_id,
             "title": f"Research Report: {topic}",
-            "content": final_answer,
+            "content": final_content,
             "type": "markdown",
-            "version": 1
+            "version": 1,
         }
-        
+
         return {
-            "messages": [AIMessage(content=f"I have finalized the research report. You can view it in the artifact panel.\n\nSummary: {final_answer[:200]}...")],
-            "artifacts": {artifact_id: artifact}
+            "messages": [
+                AIMessage(
+                    content=f"I have finalized the comprehensive research report. You can interact with it in the preview panel.\n\nSummary: {final_content[:300]}..."
+                )
+            ],
+            "artifacts": {artifact_id: artifact},
         }
+
 
 def update_artifact(id: str, content: str, type: str) -> str:
     """
@@ -1140,6 +1337,7 @@ def update_artifact(id: str, content: str, type: str) -> str:
         "created_at": datetime.now().isoformat(),
     }
     return json.dumps(artifact)
+
 
 def planning_router(state: OverallState, config: RunnableConfig):
     """Route based on planning status and user commands."""
@@ -1166,7 +1364,10 @@ def planning_router(state: OverallState, config: RunnableConfig):
         # Switch to sequential execution via select_next_task
         return "select_next_task"
 
-    if getattr(configurable, "require_planning_confirmation", False) and planning_status != "confirmed":
+    if (
+        getattr(configurable, "require_planning_confirmation", False)
+        and planning_status != "confirmed"
+    ):
         return "planning_wait"
 
     # Default: Proceed to execution (sequential)
@@ -1184,29 +1385,35 @@ def _flatten_queries(queries: List) -> List[str]:
     return flattened
 
 
+# ⚡ Bolt Optimization: Pre-compile regex patterns for performance
+TOKEN_SPLIT_PATTERN = re.compile(r"[^\w]+")
+CITATION_PATTERN = re.compile(r"\[[^\]]+\]\(https?://[^\)]+\)")
+
+
 def _keywords_from_queries(queries: List[str]) -> List[str]:
     """Extract keywords from queries (tokens >= 4 chars)."""
-    keywords: List[str] = []
+    keywords: set[str] = set()
     for query in queries:
-        for token in re.split(r"[^\w]+", query.lower()):
+        # ⚡ Bolt Optimization: Use pre-compiled regex and set for deduplication
+        for token in TOKEN_SPLIT_PATTERN.split(query.lower()):
             if len(token) >= 4:
-                keywords.append(token)
-    return keywords
+                keywords.add(token)
+    return list(keywords)
 
 
-def _validate_single_candidate(candidate: str, flattened_queries: List[str]) -> tuple[str, bool, str | None]:
+def _validate_single_candidate(
+    candidate: str, flattened_queries: List[str]
+) -> tuple[str, bool, str | None]:
     """Helper to validate a single candidate using LLM."""
     prompt = f"""
-    Verify if the following snippet actually contains relevant information for the query: "{flattened_queries[0] if flattened_queries else 'research topic'}"
+    Verify if the following snippet actually contains relevant information for the query: "{flattened_queries[0] if flattened_queries else "research topic"}"
     Snippet: "{candidate[:500]}..."
     Reply with "YES" or "NO" only.
     """
 
     # Use rate-limited LLM
     llm = _get_rate_limited_llm(
-        model=app_config.model_validation,
-        temperature=0,
-        prompt=prompt
+        model=app_config.model_validation, temperature=0, prompt=prompt
     )
 
     try:
@@ -1217,10 +1424,14 @@ def _validate_single_candidate(candidate: str, flattened_queries: List[str]) -> 
         if "YES" in content.upper():
             return candidate, True, None
         else:
-            return candidate, False, "Result rejected by LLM Validator: Content mismatch."
+            return (
+                candidate,
+                False,
+                "Result rejected by LLM Validator: Content mismatch.",
+            )
     except Exception as e:
         logger.warning(f"LLM validation failed: {e}. Accepting candidate.")
-        return candidate, True, None # Fail open on error
+        return candidate, True, None  # Fail open on error
 
 
 @graph_registry.describe(
@@ -1240,12 +1451,21 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         if not summaries:
             return {
                 "validated_web_research_result": [],
-                "validation_notes": ["No web research summaries available for validation."],
+                "validation_notes": [
+                    "No web research summaries available for validation."
+                ],
             }
 
         raw_queries = state.get("search_query", [])
-        flattened_queries = _flatten_queries(raw_queries) if isinstance(raw_queries, list) else [str(raw_queries)]
-        keywords = _keywords_from_queries(flattened_queries)
+        flattened_queries = (
+            _flatten_queries(raw_queries)
+            if isinstance(raw_queries, list)
+            else [str(raw_queries)]
+        )
+
+        # ⚡ Bolt Optimization: Deduplicate keywords to avoid redundant fuzzy matching calls.
+        # This reduces expensive O(N) calls to difflib.get_close_matches for duplicate tokens.
+        keywords = list(set(_keywords_from_queries(flattened_queries)))
 
         validated: List[str] = []
         notes: List[str] = []
@@ -1253,17 +1473,17 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         # 1. Heuristics (Pre-filter)
         heuristic_passed = []
 
-        # Check for markdown-style citations [Title](url)
-        citation_pattern = r'\[[^\]]+\]\(https?://[^\)]+\)'
-
         for idx, summary in enumerate(summaries):
             normalized_summary = summary.lower()
             match_found = False
 
-            has_citation = bool(re.search(citation_pattern, summary))
+            # ⚡ Bolt Optimization: Use pre-compiled regex
+            has_citation = bool(CITATION_PATTERN.search(summary))
 
             if app_config.require_citations and not has_citation:
-                notes.append(f"Result {idx+1} rejected: Missing citations (Hard Fail).")
+                notes.append(
+                    f"Result {idx + 1} rejected: Missing citations (Hard Fail)."
+                )
                 continue
 
             if keywords:
@@ -1275,7 +1495,9 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                     # this speeds up get_close_matches by ~97%.
                     summary_words = list(set(normalized_summary.split()))
                     for keyword in keywords:
-                        matches = difflib.get_close_matches(keyword, summary_words, n=1, cutoff=0.8)
+                        matches = difflib.get_close_matches(
+                            keyword, summary_words, n=1, cutoff=0.8
+                        )
                         if matches:
                             match_found = True
                             break
@@ -1283,7 +1505,9 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
             if match_found or not keywords:
                 heuristic_passed.append(summary)
             else:
-                notes.append(f"Result {idx + 1} filtered (Heuristics): Low overlap with query intent.")
+                notes.append(
+                    f"Result {idx + 1} filtered (Heuristics): Low overlap with query intent."
+                )
 
         # 2. LLM Validation (Hybrid Mode)
         if app_config.validation_mode == "hybrid" and heuristic_passed:
@@ -1297,8 +1521,13 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                 # Submit all validation tasks
                 # Collect results as they complete (order doesn't strictly matter for set, but we usually want to preserve it)
                 # To preserve order, we can map over heuristic_passed
-                results = list(executor.map(lambda c: _validate_single_candidate(c, flattened_queries), heuristic_passed))
-                
+                results = list(
+                    executor.map(
+                        lambda c: _validate_single_candidate(c, flattened_queries),
+                        heuristic_passed,
+                    )
+                )
+
                 for candidate, is_valid, note in results:
                     if is_valid:
                         validated_by_llm.append(candidate)
@@ -1317,6 +1546,7 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
             "validation_notes": notes,
         }
 
+
 @graph_registry.describe(
     "compression_node",
     summary="Tiered compression of research results.",
@@ -1329,10 +1559,12 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
     2. Abstractive: Summarize while keeping citations (if enabled).
     """
     if not app_config.compression_enabled:
-        return {} # No change
+        return {}  # No change
 
     # Fallback to web_research_result if validation was skipped or returned empty (backward compat)
-    results = state.get("validated_web_research_result", []) or state.get("web_research_result", [])
+    results = state.get("validated_web_research_result", []) or state.get(
+        "web_research_result", []
+    )
     if not results:
         return {}
 
@@ -1362,12 +1594,12 @@ def compression_node(state: OverallState, config: RunnableConfig) -> OverallStat
             # Use context manager to truncate if needed
             context_mgr = get_context_manager(app_config.model_compression)
             truncated_prompt = context_mgr.truncate_to_fit(prompt)
-            
+
             # Use rate-limited LLM
             llm = _get_rate_limited_llm(
                 model=app_config.model_compression,
                 temperature=0,
-                prompt=truncated_prompt
+                prompt=truncated_prompt,
             )
             compressed = llm.invoke(truncated_prompt).content
             return {"validated_web_research_result": [compressed]}
@@ -1398,7 +1630,9 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
 
         current_date = get_current_date()
         # Use validated results for reflection
-        summaries_source = state.get("validated_web_research_result") or state.get("web_research_result", [])
+        summaries_source = state.get("validated_web_research_result") or state.get(
+            "web_research_result", []
+        )
 
         formatted_prompt = reflection_instructions.format(
             current_date=current_date,
@@ -1408,18 +1642,20 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
 
         # Use rate-limited LLM
         llm = _get_rate_limited_llm(
-            model=reasoning_model,
-            temperature=1.0,
-            prompt=formatted_prompt
+            model=reasoning_model, temperature=1.0, prompt=formatted_prompt
         )
 
         is_gemma = "gemma" in reasoning_model.lower()
         if is_gemma:
             parser = PydanticOutputParser(pydantic_object=Reflection)
-            prompt_with_format = f"{formatted_prompt}\n\n{parser.get_format_instructions()}"
+            prompt_with_format = (
+                f"{formatted_prompt}\n\n{parser.get_format_instructions()}"
+            )
             try:
                 response = llm.invoke(prompt_with_format, config=config)
-                content = response.content if hasattr(response, "content") else str(response)
+                content = (
+                    response.content if hasattr(response, "content") else str(response)
+                )
                 result = parser.parse(content)
             except Exception as e:
                 logger.error(f"Reflection LLM failed (Gemma): {e}")
@@ -1432,7 +1668,9 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
                     "number_of_ran_queries": len(state["search_query"]),
                 }
         else:
-            result = llm.with_structured_output(Reflection).invoke(formatted_prompt, config=config)
+            result = llm.with_structured_output(Reflection).invoke(
+                formatted_prompt, config=config
+            )
 
         return {
             "is_sufficient": result.is_sufficient,
@@ -1443,88 +1681,20 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
         }
 
 
-@graph_registry.describe(
-    "evaluate_research",
-    summary="Routing policy deciding between additional web searches or final answer.",
-    tags=["routing", "policy"],
-)
-def evaluate_research(
-    state: ReflectionState,
-    config: RunnableConfig,
-) -> OverallState:
-    """LangGraph routing function that determines the next step in the research flow."""
-    configurable = Configuration.from_runnable_config(config)
-    max_research_loops = (
-        state.get("max_research_loops")
-        if state.get("max_research_loops") is not None
-        else configurable.max_research_loops
-    )
-    if state["is_sufficient"] or state["research_loop_count"] >= max_research_loops:
+def evaluate_research(state: OverallState) -> str:
+    """Decides whether to do more research or finalize."""
+    # Check if reflection deemed the research sufficient
+    if state.get("is_sufficient", False):
         return "finalize_answer"
-    else:
-        return [
-            Send(
-                "web_research",
-                {
-                    "search_query": follow_up_query,
-                    "id": state["number_of_ran_queries"] + int(idx),
-                },
-            )
-            for idx, follow_up_query in enumerate(state["follow_up_queries"])
-        ]
+
+    # Check loop limits
+    loop_count = state.get("research_loop_count", 0)
+    max_loops = state.get("max_research_loops", 3)
+    if loop_count >= max_loops:
+        return "finalize_answer"
+
+    return "web_research"
 
 
-@graph_registry.describe(
-    "finalize_answer",
-    summary="Synthesizes final response with deduplicated sources and citations.",
-    tags=["llm", "synthesis"],
-    outputs=["messages", "sources_gathered"],
-)
-def finalize_answer(state: OverallState, config: RunnableConfig):
-    """LangGraph node that finalizes the research summary."""
-    with observe_span("finalize_answer", config):
-        configurable = Configuration.from_runnable_config(config)
-        reasoning_model = state.get("reasoning_model") or configurable.answer_model
-
-        current_date = get_current_date()
-
-        # Use validated (and optionally compressed) results
-        summaries = state.get("validated_web_research_result") or state.get("web_research_result", [])
-
-        # Select prompt based on model
-        if is_gemma_model(reasoning_model):
-            formatted_prompt = gemma_answer_instructions.format(
-                current_date=current_date,
-                research_topic=get_research_topic(state["messages"]),
-                summaries="\n\n".join(summaries), # Cleaner join for XML
-            )
-        else:
-            formatted_prompt = answer_instructions.format(
-                current_date=current_date,
-                research_topic=get_research_topic(state["messages"]),
-                summaries="\n---\n\n".join(summaries),
-            )
-
-        # Use rate-limited LLM
-        llm = _get_rate_limited_llm(
-            model=reasoning_model,
-            temperature=0,
-            prompt=formatted_prompt
-        )
-        result = llm.invoke(formatted_prompt)
-
-        # Replace the short urls with the original urls and add all used urls to the sources_gathered
-        unique_sources = []
-        if "sources_gathered" in state:
-            for source in state["sources_gathered"]:
-                # Robust regex pattern to match the short URL
-                pattern = re.escape(source["short_url"])
-                if re.search(pattern, result.content):
-                    # Replace all occurrences using regex
-                    result.content = re.sub(pattern, source["value"], result.content)
-                    unique_sources.append(source)
-
-        return {
-            "messages": [AIMessage(content=result.content)],
-            "sources_gathered": unique_sources,
-        }
+# Alias for backward compatibility if needed
+finalize_answer = denoising_refiner

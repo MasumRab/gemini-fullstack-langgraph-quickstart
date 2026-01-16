@@ -40,10 +40,30 @@ def validate(settings: MCPSettings) -> None:
     if settings.enabled and not settings.endpoint:
         raise ValueError("MCP enabled but MCP_ENDPOINT missing")
 
-# TODO(priority=High, complexity=Medium): [MCP Integration] Implement full McpConnectionManager with SSE support.
-# Should handle connection pooling and error recovery.
-# Subtask: Implement `McpConnectionManager` class.
-# Subtask: Support SSE transport via HTTP/S endpoint.
+# Fine-grained implementation guide for MCP Integration:
+#
+# TODO(priority=High, complexity=Low): [MCP:1] Define SSE client interface
+# - Create abstract base class for MCP transport
+# - Define methods: connect(), disconnect(), send_message(), receive_stream()
+#
+# TODO(priority=High, complexity=Medium): [MCP:2] Implement SSE transport
+# - Use httpx or aiohttp for Server-Sent Events
+# - Handle reconnection with exponential backoff
+# - Parse SSE event format (event:, data:, id:)
+#
+# TODO(priority=Medium, complexity=Medium): [MCP:3] Connection pooling
+# - Maintain pool of persistent connections
+# - Implement health checks and automatic reconnection
+# - Thread-safe connection acquisition/release
+#
+# TODO(priority=Medium, complexity=Low): [MCP:4] Error recovery
+# - Catch and log transport errors
+# - Retry failed tool calls with backoff
+# - Return graceful fallback on persistent failure
+#
+# TODO(priority=Low, complexity=Low): [MCP:5] Metrics and observability
+# - Track connection latency, success/failure rates
+# - Integrate with Langfuse spans
 class McpConnectionManager:
     def __init__(self, settings: Optional[MCPSettings] = None):
         self.settings = settings or load_mcp_settings()
@@ -70,7 +90,12 @@ class McpConnectionManager:
         ]
 
     async def get_tools(self):
+        # TODO(priority=High, complexity=Medium): [MCP:6] Implement actual SSE tool discovery
+        # - Connect to MCP endpoint from settings
+        # - Fetch tool list via SSE stream
+        # - Convert to LangChain StructuredTool format
         if not self.settings.enabled:
             return []
         # Return stubs or connect to real MCP server
         return []
+

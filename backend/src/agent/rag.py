@@ -446,6 +446,11 @@ Respond in JSON format:
                 seen_content.add(chunk.content)
                 unique_chunks.append((chunk, score))
 
+        # ⚡ Bolt Optimization: Sort unique chunks by relevance score descending.
+        # This ensures that when we truncate to max_tokens, we keep the highest quality evidence
+        # regardless of which subgoal found it, rather than blindly preferring the first subgoal's results.
+        unique_chunks.sort(key=lambda x: x[1], reverse=True)
+
         context_parts = []
         total_chars = 0
         max_chars = max_tokens * 4
@@ -487,5 +492,13 @@ class Resource:
     pass
 
 def create_rag_tool(resources):
+    """
+    Legacy compatibility stub - returns None.
+    
+    TODO(priority=Low, complexity=Medium): [rag:legacy] Replace stub with real implementation
+    - Migrate callers to use DeepSearchRAG directly
+    - Remove this function once all callers are updated
+    - Update tests that mock this function
+    """
     logger.warning("Using legacy create_rag_tool stub")
     return None
