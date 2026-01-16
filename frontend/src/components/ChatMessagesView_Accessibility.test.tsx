@@ -48,4 +48,21 @@ describe('ChatMessagesView Planning Mode', () => {
     // We will implement it on the region for simplicity and robustness
     expect(region).toHaveAttribute('aria-live', 'polite');
   });
+
+  it('renders processing indicator with status role when loading', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const messages: any[] = [{ type: 'human', content: 'hello', id: '1' }];
+    const props = {
+      ...defaultProps,
+      isLoading: true,
+      messages
+    };
+    render(<ChatMessagesView {...props} />);
+
+    // Note: We expect 'status' role to be present on the loading indicator container
+    // If this fails, it means the role="status" is missing or configured incorrectly
+    const status = screen.getByRole('status');
+    expect(status).toBeInTheDocument();
+    expect(status).toHaveTextContent('Processing...');
+  });
 });
