@@ -14,12 +14,12 @@ describe("WelcomeScreen", () => {
     isLoading: false,
   };
 
-  it("renders with a main landmark for accessibility", () => {
+  it("does not render with a main landmark (handled by parent App)", () => {
     render(<WelcomeScreen {...defaultProps} />);
 
-    // This should fail initially as there is no main role
-    const mainLandmark = screen.getByRole("main");
-    expect(mainLandmark).toBeInTheDocument();
+    // WelcomeScreen should not have a main landmark to avoid nesting in App's main
+    const mainLandmark = screen.queryByRole("main");
+    expect(mainLandmark).not.toBeInTheDocument();
   });
 
   it("renders the welcome heading", () => {
