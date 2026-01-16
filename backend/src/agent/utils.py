@@ -174,3 +174,32 @@ def get_citations(response, resolved_urls_map):
                     pass
         citations.append(citation)
     return citations
+
+def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\n") -> str:
+    """
+    Efficiently joins a list of strings up to a maximum length.
+    Avoids creating the full joined string in memory if it exceeds the limit.
+    """
+    if not strings:
+        return ""
+
+    result_parts = []
+    current_length = 0
+    sep_len = len(separator)
+
+    for i, s in enumerate(strings):
+        # Determine overhead for separator
+        overhead = sep_len if i > 0 else 0
+
+        # Check if we can fit the full string
+        if current_length + overhead + len(s) <= max_length:
+            result_parts.append(s)
+            current_length += overhead + len(s)
+        else:
+            # Truncate
+            remaining = max_length - (current_length + overhead)
+            if remaining > 0:
+                result_parts.append(s[:remaining])
+            break
+
+    return separator.join(result_parts)

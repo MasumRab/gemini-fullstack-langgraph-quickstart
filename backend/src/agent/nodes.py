@@ -56,6 +56,7 @@ from agent.state import (
 )
 from agent.utils import (
     get_research_topic,
+    join_and_truncate,
 )
 from observability.langfuse import observe_span
 
@@ -951,7 +952,8 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
 
         # Prepare content
         # Limit content size to avoid context window issues
-        combined_text = "\n\n".join(results)[:50000] # Cap at 50k chars roughly
+        # ⚡ Bolt Optimization: Use join_and_truncate to avoid building full string before slicing.
+        combined_text = join_and_truncate(results, 50000)
 
         prompt = f"""
         Analyze the following search results and extract structured evidence.
