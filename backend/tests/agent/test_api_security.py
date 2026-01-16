@@ -143,10 +143,13 @@ class TestAPISecurity:
         async def call_next(req):
             return Response("ok")
 
+        # 🛡️ Sentinel: Manually reset last_cleanup to ensure logic triggers
+        mw.last_cleanup = 0
+
         await mw.dispatch(request, call_next)
 
         # Expected behavior:
-        # 1. Cleanup runs because len > 10000.
+        # 1. Cleanup runs because len > 10000 AND last_cleanup is old.
         # 2. Stale IPs (5000) are removed.
         # 3. Active IPs (5002) are kept.
         # 4. New client IP is added.
@@ -158,4 +161,60 @@ class TestAPISecurity:
 
         assert "stale_ip_0" not in mw.requests
         assert "active_ip_0" in mw.requests
+        assert "new_client_ip" in mw.requests
+
+    @pytest.mark.asyncio
+    async def test_memory_cleanup_throttled(self):
+        """Test that cleanup DOES NOT run if called too frequently."""
+        from agent.security import RateLimitMiddleware
+        app = FastAPI()
+        mw = RateLimitMiddleware(app, limit=100, window=60, protected_paths=["/"])
+
+        now = time.time()
+        # Add 10001 stale entries (older than window=60s)
+        for i in range(10001):
+             mw.requests[f"stale_ip_{i}"] = [now - 100]
+
+        # Set last_cleanup to NOW (simulating it just ran)
+        mw.last_cleanup = now
+
+        scope = {
+            'type': 'http',
+            'path': '/',
+            'headers': [],
+            'client': ('new_client_ip', 8000),
+            'method': 'GET',
+            'scheme': 'http'
+        }
+        request = Request(scope)
+        async def call_next(req): return Response("ok")
+
+        # Dispatch should SKIP cleanup
+        await mw.dispatch(request, call_next)
+
+        # Should still be full (minus manual edits if any) + 1 new client
+        # Wait, if it skips cleanup, it checks fallback:
+        # if len > 10000: if new client: remove and 503.
+        # So it should be 10001 (original) and request Rejected.
+
+        # But wait, logic is:
+        # 1. Add current_requests.append(now)
+        # 2. Check len(active) > limit (no, new client has 1)
+        # 3. Check len(self.requests) > 10000 (Yes, 10001+1=10002)
+        # 4. Check throttle (Skipped because recently cleaned)
+        # 5. Fallback: len > 10000 check.
+        #    if len(active_requests) == 1: pop and 503.
+
+        # So "new_client_ip" is removed. Size remains 10001.
+        assert len(mw.requests) == 10001
+        assert "stale_ip_0" in mw.requests # Was NOT cleaned
+
+        # Now reset last_cleanup to 0 and try again
+        mw.last_cleanup = 0
+
+        # Dispatch should RUN cleanup
+        await mw.dispatch(request, call_next)
+
+        # Should be cleaned: 10001 stale removed. 1 new added.
+        assert len(mw.requests) == 1
         assert "new_client_ip" in mw.requests

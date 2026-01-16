@@ -1253,7 +1253,7 @@ def _keywords_from_queries(queries: List[str]) -> List[str]:
     keywords: set[str] = set()
     for query in queries:
         # ⚡ Bolt Optimization: Use pre-compiled regex and set for deduplication
-        for token in KEYWORD_SPLIT_PATTERN.split(query.lower()):
+        for token in TOKEN_SPLIT_PATTERN.split(query.lower()):
             if len(token) >= 4:
                 keywords.add(token)
     return list(keywords)
