@@ -1,6 +1,6 @@
 import { useState, memo } from "react";
 import { Button } from "@/components/ui/button";
-import { SquarePen, Brain, Send, StopCircle, Zap, Cpu } from "lucide-react";
+import { SquarePen, Brain, Send, StopCircle, Zap, Cpu, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -190,7 +190,22 @@ export const InputForm: React.FC<InputFormProps> = memo(({
                         md:text-base  min-h-[56px] max-h-[200px]`}
           rows={1}
         />
-        <div className="-mt-3">
+        <div className="-mt-3 flex items-center gap-1">
+          {!isLoading && internalInputValue.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Clear input"
+              title="Clear input"
+              className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-600/50 p-2 cursor-pointer rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
+              onClick={() => {
+                setInternalInputValue("");
+              }}
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </Button>
+          )}
           {isLoading ? (
             <Button
               type="button"
