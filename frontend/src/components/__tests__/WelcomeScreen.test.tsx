@@ -14,12 +14,12 @@ describe("WelcomeScreen", () => {
     isLoading: false,
   };
 
-  it("renders with a main landmark for accessibility", () => {
+  it("renders as a generic container to avoid nested main landmarks", () => {
     render(<WelcomeScreen {...defaultProps} />);
 
-    // This should fail initially as there is no main role
-    const mainLandmark = screen.getByRole("main");
-    expect(mainLandmark).toBeInTheDocument();
+    // Should not have a main role because App.tsx already provides one
+    const mainLandmark = screen.queryByRole("main");
+    expect(mainLandmark).not.toBeInTheDocument();
   });
 
   it("renders the welcome heading", () => {
