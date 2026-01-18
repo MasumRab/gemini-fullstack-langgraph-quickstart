@@ -78,6 +78,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.window = window
         self.protected_paths = protected_paths if protected_paths is not None else []
         self.requests = defaultdict(list)
+        self.last_cleanup = 0.0
 
     async def dispatch(self, request: Request, call_next):
         """Check rate limit for API endpoints."""
@@ -129,21 +130,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
             # Simple Memory Leak Prevention:
             # If dictionary gets too large, perform cleanup to prevent OOM.
+            # 🛡️ Sentinel: Throttle cleanup to at most once every 60s to prevent Algorithmic Complexity DoS
+            # where an attacker keeps the count just above 10,000 to trigger O(N) scan on every request.
             if len(self.requests) > 10000:
-                # Cleanup: Remove clients that haven't made a request within the window.
-                # Since active_requests for each client might not be updated until they make a request,
-                # we need to check the last timestamp in their list.
-                # Note: This is an O(N) operation where N is number of clients.
-                # It only runs when we hit the threshold.
-                stale_ips = []
-                for ip, timestamps in self.requests.items():
-                    # If list is empty (shouldn't happen with logic above but possible)
-                    # or if the most recent request is older than window
-                    if not timestamps or (now - timestamps[-1] > self.window):
-                        stale_ips.append(ip)
+                if now - self.last_cleanup > 60:
+                    self.last_cleanup = now
+                    # Cleanup: Remove clients that haven't made a request within the window.
+                    # Since active_requests for each client might not be updated until they make a request,
+                    # we need to check the last timestamp in their list.
+                    # Note: This is an O(N) operation where N is number of clients.
+                    # It only runs when we hit the threshold.
+                    stale_ips = []
+                    for ip, timestamps in self.requests.items():
+                        # If list is empty (shouldn't happen with logic above but possible)
+                        # or if the most recent request is older than window
+                        if not timestamps or (now - timestamps[-1] > self.window):
+                            stale_ips.append(ip)
 
-                for ip in stale_ips:
-                    del self.requests[ip]
+                    for ip in stale_ips:
+                        del self.requests[ip]
 
                 # Fallback: If still too large (active attack with >10k distinct IPs),
                 # 🛡️ Sentinel: Do NOT clear everything, as that allows attackers to reset everyone's limit.

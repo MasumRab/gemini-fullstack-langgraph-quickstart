@@ -158,12 +158,12 @@ def test_keywords_from_queries_multiple_queries():
 
 
 def test_keywords_from_queries_handles_duplicates():
-    """Test that duplicate keywords are included multiple times."""
+    """Test that duplicate keywords are deduplicated."""
     queries = ["learning machine learning"]
     result = _keywords_from_queries(queries)
 
-    # The function doesn't deduplicate, so "learning" appears twice
-    assert result.count("learning") == 2
+    # The function deduplicates using set()
+    assert result.count("learning") == 1
     assert result.count("machine") == 1
 
 
