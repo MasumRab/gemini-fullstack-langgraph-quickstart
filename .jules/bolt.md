@@ -12,7 +12,6 @@
 **Learning:** For medium-sized append-only lists (like chat logs), extracting and memoizing the *list item* component is often a simpler, "good enough" alternative to full windowing/virtualization libraries, avoiding new dependencies.
 **Action:** Before reaching for `react-window`, extract the mapped item into a `memo` component.
 
-<<<<<<< HEAD
 ## 2024-05-24 - [Regex & Deduplication]
 **Learning:** In tight loops involving string processing (like keyword extraction), compiling regex patterns at module level and using sets for immediate deduplication can significantly reduce overhead compared to repeated `re.split` calls and list appends.
 **Action:** When extracting tokens/keywords from multiple sources, compile regex once and accumulate into a set to avoid O(N*M) downstream redundancy.
@@ -28,3 +27,7 @@
 ## 2025-05-24 - [LLM Client Instantiation Overhead]
 **Learning:** Creating `ChatGoogleGenerativeAI` instances carries a small but non-zero cost (~1.6ms). In high-concurrency scenarios (like parallel validation of 10+ search results), this adds up and churns objects.
 **Action:** Use `functools.lru_cache` to reuse LLM client instances when configuration (model, temp) is stable.
+
+## 2025-05-25 - [Control Flow Node Optimization]
+**Learning:** Even sequential control nodes (like Coordinators and Supervisors) benefit from cached resource instantiation. Instantiating heavy clients inside frequently called routing functions adds latency to every step of the graph, which compounds in long-running agents.
+**Action:** Centralize cached factories in utility modules (e.g. `get_cached_llm`) and use them in all graph nodes, not just high-concurrency ones.

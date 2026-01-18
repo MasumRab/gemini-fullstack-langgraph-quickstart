@@ -1,5 +1,8 @@
 from typing import Any, Dict, List
+import os
+from functools import lru_cache
 from langchain_core.messages import AnyMessage, AIMessage, HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 def get_research_topic(messages: List[AnyMessage]) -> str:
@@ -207,3 +210,15 @@ def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\
             break
 
     return separator.join(result_parts)
+
+
+# ⚡ Bolt Optimization: Cache LLM instance creation
+# Creating ChatGoogleGenerativeAI objects involves some overhead.
+# Since config (model, temp) is usually stable within a session, we can reuse instances.
+@lru_cache(maxsize=16)
+def get_cached_llm(model: str, temperature: float) -> ChatGoogleGenerativeAI:
+    return ChatGoogleGenerativeAI(
+        model=model,
+        temperature=temperature,
+        api_key=os.getenv("GEMINI_API_KEY"),
+    )
