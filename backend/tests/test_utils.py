@@ -292,6 +292,19 @@ class TestGetCitations:
         citations = get_citations(response, {"http://x.com": "short"})
         assert len(citations) == 2
 
+    def test_citations_handle_titles_without_dots(self):
+        """Titles without dots should be preserved (no IndexError)."""
+        segment = MockSegment(start_index=0, end_index=5)
+        support = MockSupport(segment=segment, grounding_chunk_indices=[0])
+        chunk = MockChunk(uri="http://google.com", title="Google")
+        candidate = MockCandidate(grounding_supports=[support], grounding_chunks=[chunk])
+        response = MockResponse(candidates=[candidate])
+        resolved_map = {"http://google.com": "short_url"}
+
+        citations = get_citations(response, resolved_map)
+        assert len(citations) == 1
+        assert citations[0]["segments"][0]["label"] == "Google"
+
 # =============================================================================
 # Tests for join_and_truncate
 # =============================================================================

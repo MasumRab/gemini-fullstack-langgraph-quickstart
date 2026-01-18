@@ -160,9 +160,13 @@ def get_citations(response, resolved_urls_map):
                 try:
                     chunk = candidate.grounding_metadata.grounding_chunks[ind]
                     resolved_url = resolved_urls_map.get(chunk.web.uri, None)
+                    title = chunk.web.title
+                    # Remove file extension if present (e.g. "Doc.pdf" -> "Doc")
+                    # If no dot, use full title.
+                    label = title.split(".")[0] if title and "." in title else title
                     citation["segments"].append(
                         {
-                            "label": chunk.web.title.split(".")[:-1][0],
+                            "label": label,
                             "short_url": resolved_url,
                             "value": chunk.web.uri,
                         }
