@@ -26,4 +26,10 @@ describe("WelcomeScreen", () => {
     render(<WelcomeScreen {...defaultProps} />);
     expect(screen.getByRole("heading", { level: 1, name: /welcome/i })).toBeInTheDocument();
   });
+
+  it("renders the footer with correct role", () => {
+    render(<WelcomeScreen {...defaultProps} />);
+    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+    expect(screen.getByRole("contentinfo")).toHaveTextContent("Powered by Google Gemini and LangChain LangGraph.");
+  });
 });
