@@ -41,8 +41,12 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
                 # 🛡️ Sentinel: Enforce Content-Length for state-changing methods to prevent streaming DoS
                 return Response("Content-Length required", status_code=411)
 
-            if int(content_length) > self.max_upload_size:
-                return Response("Request entity too large", status_code=413)
+            try:
+                # 🛡️ Sentinel: Prevent 500 crashes from malformed Content-Length headers
+                if int(content_length) > self.max_upload_size:
+                    return Response("Request entity too large", status_code=413)
+            except ValueError:
+                return Response("Invalid Content-Length", status_code=400)
         return await call_next(request)
 
 
