@@ -14,10 +14,10 @@ describe("WelcomeScreen", () => {
     isLoading: false,
   };
 
-  it("does not render with a main landmark (handled by parent App)", () => {
+  it("renders as a generic container to avoid nested main landmarks", () => {
     render(<WelcomeScreen {...defaultProps} />);
 
-    // WelcomeScreen should not have a main landmark to avoid nesting in App's main
+    // Should not have a main role because App.tsx already provides one
     const mainLandmark = screen.queryByRole("main");
     expect(mainLandmark).not.toBeInTheDocument();
   });

@@ -215,7 +215,15 @@ def process_search_results(
     summarized_results = {}
 
     for url, result in unique_results.items():
+        # Ensure raw_content is a string
         raw_content = result.get("raw_content", "")
+
+        # Handle None specifically to treat it as missing content
+        if raw_content is None:
+            raw_content = ""
+
+        if not isinstance(raw_content, str):
+            raw_content = str(raw_content)
 
         if not raw_content:
             # No raw content, use the short snippet
@@ -230,8 +238,16 @@ def process_search_results(
             # No model, just truncate
             content = raw_content[:max_content_length]
 
+        # Ensure title and content are strings
+        title = result.get("title", "Untitled")
+        if not isinstance(title, str):
+            title = str(title)
+
+        if not isinstance(content, str):
+            content = str(content)
+
         summarized_results[url] = {
-            "title": result.get("title", "Untitled"),
+            "title": title,
             "content": content
         }
 
