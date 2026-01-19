@@ -26,20 +26,19 @@ Usage:
     )
 """
 
-import os
 from typing import Dict, List, Any, Callable, Optional, Union
 from dataclasses import dataclass, field
 import logging
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, StructuredTool
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
 
 from agent.state import OverallState
 from agent.configuration import Configuration
 from agent.models import GEMINI_PRO
+from agent.utils import get_cached_llm
 
 logger = logging.getLogger(__name__)
 
@@ -335,11 +334,8 @@ Respond with JSON:
 """
 
         try:
-            llm = ChatGoogleGenerativeAI(
-                model=model,
-                temperature=0,
-                api_key=os.getenv("GEMINI_API_KEY"),
-            )
+            # ⚡ Bolt Optimization: Use centralized cached factory
+            llm = get_cached_llm(model, 0)
             response = llm.invoke(prompt)
             content = response.content if hasattr(response, "content") else str(response)
 
@@ -483,4 +479,3 @@ def get_default_registry() -> ToolRegistry:
 def get_default_pool() -> AgentPool:
     """Get an AgentPool with default agents loaded."""
     return AgentPool()
-

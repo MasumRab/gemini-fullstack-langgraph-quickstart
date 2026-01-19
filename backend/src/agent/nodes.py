@@ -11,7 +11,6 @@ import logging
 import os
 import re
 from datetime import datetime
-from functools import lru_cache
 from typing import List, Dict, Any
 
 from config.app_config import config as app_config
@@ -64,6 +63,7 @@ from agent.state import (
 from agent.utils import (
     get_research_topic,
     join_and_truncate,
+    get_cached_llm,
 )
 from observability.langfuse import observe_span
 
@@ -74,18 +74,6 @@ genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # ⚡ Bolt Optimization: Pre-compile regex for keyword extraction to avoid re-compilation in loops.
 KEYWORD_SPLIT_PATTERN = re.compile(r"[^\w]+")
-
-
-# ⚡ Bolt Optimization: Cache LLM instance creation
-# Creating ChatGoogleGenerativeAI objects involves some overhead.
-# Since config (model, temp) is usually stable within a session, we can reuse instances.
-@lru_cache(maxsize=16)
-def _get_cached_llm_instance(model: str, temperature: float) -> ChatGoogleGenerativeAI:
-    return ChatGoogleGenerativeAI(
-        model=model,
-        temperature=temperature,
-        api_key=os.getenv("GEMINI_API_KEY"),
-    )
 
 
 def _get_rate_limited_llm(
@@ -121,8 +109,8 @@ def _get_rate_limited_llm(
             f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}"
         )
 
-    # ⚡ Bolt Optimization: Use cached factory
-    return _get_cached_llm_instance(model, temperature)
+    # ⚡ Bolt Optimization: Use centralized cached factory
+    return get_cached_llm(model, temperature)
 
 
 # ⚡ Bolt Optimization: Define Pydantic models at module level to avoid
