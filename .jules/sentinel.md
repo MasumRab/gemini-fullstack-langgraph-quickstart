@@ -49,3 +49,8 @@
 **Vulnerability:** The `InvokeRequest` input validation was vulnerable to deeply nested JSON payloads (`RecursionError`). Furthermore, the default FastAPI error handler crashed when attempting to serialize these deeply nested inputs back to the client, resulting in a 500 error instead of a 422.
 **Learning:** Validating input structure is not enough if the error reporting mechanism itself is vulnerable to the same structure. Deeply nested objects can crash serializers (like `jsonable_encoder`) even after validation fails.
 **Prevention:** Implemented a `validate_input_complexity` validator (checking depth and total size) AND a custom `RequestValidationError` handler that strips the `input` field from the error response to prevent serialization crashes.
+
+## 2025-02-24 - [Middleware Header Validation]
+**Vulnerability:** `ContentSizeLimitMiddleware` naively cast the `Content-Length` header to `int()`, assuming it was always numeric. Malformed headers (e.g., "garbage") caused an unhandled `ValueError`, leading to a 500 Internal Server Error crash instead of a 400 Bad Request.
+**Learning:** Middleware runs before the main application logic and exception handlers. Unhandled exceptions in middleware often bypass standard error reporting or crash the request processing pipeline entirely. Headers should never be trusted to be well-formed.
+**Prevention:** Wrapped header parsing in `try-except ValueError` blocks to strictly validate format and return appropriate HTTP 4xx error codes (400) instead of crashing.
