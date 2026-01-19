@@ -118,9 +118,9 @@ export const ActivityTimeline = memo(function ActivityTimeline({
           >
             Research Activity
             {isTimelineCollapsed ? (
-              <ChevronDown className="h-4 w-4 mr-2" aria-hidden="true" />
+              <ChevronDown className="h-4 w-4 ml-2" aria-hidden="true" />
             ) : (
-              <ChevronUp className="h-4 w-4 mr-2" aria-hidden="true" />
+              <ChevronUp className="h-4 w-4 ml-2" aria-hidden="true" />
             )}
           </button>
         </CardDescription>
