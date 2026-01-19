@@ -1,15 +1,15 @@
-from typing import List, Optional, Any
 import os
-import asyncio
+from typing import Any, List
 
-from pydantic import BaseModel, Field
 from langchain_core.tools import StructuredTool
+from pydantic import BaseModel, Field
 
 from agent.mcp_config import McpConnectionManager
 from agent.mcp_server import FilesystemMCPServer
 
 # Global list to hold MCP tools config or instances
 MCP_TOOLS: List[Any] = []
+
 
 class SearchQueryList(BaseModel):
     query: List[str] = Field(
@@ -21,9 +21,14 @@ class SearchQueryList(BaseModel):
 
 
 class Todo(BaseModel):
-    title: str = Field(description="A concise title for the task (acting as the search query).")
-    description: Optional[str] = Field(description="A brief description of what to look for.")
+    title: str = Field(
+        description="A concise title for the task (acting as the search query)."
+    )
+    description: str | None = Field(
+        description="A brief description of what to look for."
+    )
     status: str = Field(description="Set to 'pending' by default.", default="pending")
+
 
 class Plan(BaseModel):
     plan: List[Todo] = Field(description="A list of tasks (Todos) to execute.")
@@ -41,13 +46,16 @@ class Reflection(BaseModel):
         description="A list of follow-up queries to address the knowledge gap."
     )
 
+
 class Subsection(BaseModel):
     title: str = Field(description="Title of the subsection.")
     description: str = Field(description="Content to cover in this subsection.")
 
+
 class Section(BaseModel):
     title: str = Field(description="Title of the main section.")
     subsections: List[Subsection] = Field(description="List of subsections.")
+
 
 class Outline(BaseModel):
     title: str = Field(description="Title of the research report.")
@@ -55,8 +63,7 @@ class Outline(BaseModel):
 
 
 def get_mcp_tools() -> List:
-    """
-    Retrieves MCP-based tools.
+    """Retrieves MCP-based tools.
     Currently returns the Persistence tools (load_thread_plan, save_thread_plan).
     """
     manager = McpConnectionManager()
@@ -64,24 +71,23 @@ def get_mcp_tools() -> List:
     # but LangGraph handles async tools fine.
     return manager.get_persistence_tools()
 
+
 async def get_tools_from_mcp(mcp_config=None):
-    """
-    Connects to an MCP server and loads available tools.
-    """
+    """Connects to an MCP server and loads available tools."""
     if not mcp_config or not mcp_config.enabled or not mcp_config.endpoint:
         return []
 
     try:
-        from langchain_mcp_adapters.tools import load_mcp_tools
         from langchain_mcp_adapters.sessions import SSEConnection
+        from langchain_mcp_adapters.tools import load_mcp_tools
         # TODO(priority=Low, complexity=Medium, owner=infra): Support Stdio connection if schema allows? For now assuming SSE via endpoint URL
         # headers = {"Authorization": f"Bearer {mcp_config.api_key}"} if mcp_config.api_key else {}
         # NOTE: Test mocks SSEConnection(url=..., headers=...).
-        
+
         # We need to construct arguments for SSEConnection dynamically based on availability
         conn_kwargs = {"url": mcp_config.endpoint}
         if mcp_config.api_key:
-             conn_kwargs["headers"] = {"Authorization": f"Bearer {mcp_config.api_key}"}
+            conn_kwargs["headers"] = {"Authorization": f"Bearer {mcp_config.api_key}"}
 
         async with SSEConnection(**conn_kwargs) as session:
             return await load_mcp_tools(session)
@@ -93,10 +99,9 @@ async def get_tools_from_mcp(mcp_config=None):
         print(f"Error loading MCP tools: {e}")
         return []
 
+
 async def get_global_tools() -> List[Any]:
-    """
-    Aggregates MCP tools (Persistence) and Custom tools (Filesystem).
-    """
+    """Aggregates MCP tools (Persistence) and Custom tools (Filesystem)."""
     tools = []
 
     # 1. Get Persistence Tools
@@ -125,22 +130,28 @@ async def get_global_tools() -> List[Any]:
         res = await server.list_directory(path)
         return str(res.data) if res.success else f"Error: {res.error}"
 
-    tools.append(StructuredTool.from_function(
-        coroutine=read_file_wrapper,
-        name="read_file",
-        description="Read contents of a file. Args: path"
-    ))
+    tools.append(
+        StructuredTool.from_function(
+            coroutine=read_file_wrapper,
+            name="read_file",
+            description="Read contents of a file. Args: path",
+        )
+    )
 
-    tools.append(StructuredTool.from_function(
-        coroutine=write_file_wrapper,
-        name="write_file",
-        description="Write content to a file. Args: path, content"
-    ))
+    tools.append(
+        StructuredTool.from_function(
+            coroutine=write_file_wrapper,
+            name="write_file",
+            description="Write content to a file. Args: path, content",
+        )
+    )
 
-    tools.append(StructuredTool.from_function(
-        coroutine=list_directory_wrapper,
-        name="list_directory",
-        description="List files in a directory. Args: path"
-    ))
+    tools.append(
+        StructuredTool.from_function(
+            coroutine=list_directory_wrapper,
+            name="list_directory",
+            description="List files in a directory. Args: path",
+        )
+    )
 
     return tools

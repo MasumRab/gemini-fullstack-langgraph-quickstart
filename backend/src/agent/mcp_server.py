@@ -1,10 +1,8 @@
-import asyncio
-import json
-from pathlib import Path
-from typing import Dict, List, Optional, Any
-from mcp import Tool
-from mcp.server.fastmcp import FastMCP # Attempting to use High Level API if available, or fallback to manual server
 import logging
+from pathlib import Path
+from typing import Dict, List
+
+from mcp import Tool
 
 # We will use the standard MCPServer class from mcp (low level) as per spec, or FastMCP if it's easier.
 # The spec uses MCPServer but imports seem slightly different in latest mcp.
@@ -13,9 +11,9 @@ import logging
 # Based on "from mcp import MCPServer, Tool, ToolResult", this looks like a specific version.
 
 try:
-    from mcp.server import Server
-    from mcp.types import Tool, TextContent, EmbeddedResource, ImageContent
     import mcp.types as types
+    from mcp.server import Server
+    from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool
 except ImportError:
     # Fallback or different import structure
     pass
@@ -28,16 +26,20 @@ MAX_FILE_SIZE = 1 * 1024 * 1024  # 1 MB
 # 🛡️ Sentinel: Limit directory listing count to prevent Output Flooding
 MAX_DIR_ITEMS = 1000
 
+
 class ToolResult:
     """Helper to match the spec's ToolResult expectation if not in mcp.types directly as that name"""
-    def __init__(self, success: bool, data: Optional[Dict] = None, error: Optional[str] = None):
+
+    def __init__(
+        self, success: bool, data: Dict | None = None, error: str | None = None
+    ):
         self.success = success
         self.data = data
         self.error = error
 
+
 class FilesystemMCPServer:
-    """
-    MCP Server for filesystem operations.
+    """MCP Server for filesystem operations.
     Enables agent to read/write research artifacts.
     """
 
@@ -49,47 +51,55 @@ class FilesystemMCPServer:
 
     def _register_tools(self):
         """Register available filesystem tools"""
-
         # We store tools in a list of wrappers that include the handler
-        self.tools.append(self._create_tool(
-            name="read_file",
-            description="Read contents of a file",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "File path to read"}
+        self.tools.append(
+            self._create_tool(
+                name="read_file",
+                description="Read contents of a file",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "File path to read"}
+                    },
+                    "required": ["path"],
                 },
-                "required": ["path"]
-            },
-            handler=self.read_file
-        ))
+                handler=self.read_file,
+            )
+        )
 
-        self.tools.append(self._create_tool(
-            name="write_file",
-            description="Write content to a file",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "File path to write"},
-                    "content": {"type": "string", "description": "Content to write"}
+        self.tools.append(
+            self._create_tool(
+                name="write_file",
+                description="Write content to a file",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "File path to write"},
+                        "content": {
+                            "type": "string",
+                            "description": "Content to write",
+                        },
+                    },
+                    "required": ["path", "content"],
                 },
-                "required": ["path", "content"]
-            },
-            handler=self.write_file
-        ))
+                handler=self.write_file,
+            )
+        )
 
-        self.tools.append(self._create_tool(
-            name="list_directory",
-            description="List files in a directory",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "Directory path"}
+        self.tools.append(
+            self._create_tool(
+                name="list_directory",
+                description="List files in a directory",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "Directory path"}
+                    },
+                    "required": ["path"],
                 },
-                "required": ["path"]
-            },
-            handler=self.list_directory
-        ))
+                handler=self.list_directory,
+            )
+        )
 
     def _create_tool(self, name, description, parameters, handler):
         """Helper to create a tool object with a handler attached"""
@@ -104,7 +114,7 @@ class FilesystemMCPServer:
             def __init__(self, name, description, parameters, handler):
                 self.name = name
                 self.description = description
-                self.inputSchema = parameters # using inputSchema to match MCP spec
+                self.inputSchema = parameters  # using inputSchema to match MCP spec
                 self.handler = handler
 
         return SimpleTool(name, description, parameters, handler)
@@ -127,29 +137,23 @@ class FilesystemMCPServer:
     async def read_file(self, path: str) -> ToolResult:
         """Read file contents"""
         if not self._check_path_allowed(path):
-            return ToolResult(
-                success=False,
-                error=f"Path not allowed: {path}"
-            )
+            return ToolResult(success=False, error=f"Path not allowed: {path}")
 
         try:
             p = Path(path)
             if not p.exists():
-                 return ToolResult(success=False, error=f"File not found: {path}")
+                return ToolResult(success=False, error=f"File not found: {path}")
 
             # 🛡️ Sentinel: Check file size before reading
             file_size = p.stat().st_size
             if file_size > MAX_FILE_SIZE:
                 return ToolResult(
                     success=False,
-                    error=f"File too large: {file_size} bytes (Limit: {MAX_FILE_SIZE} bytes)"
+                    error=f"File too large: {file_size} bytes (Limit: {MAX_FILE_SIZE} bytes)",
                 )
 
-            content = p.read_text(encoding='utf-8')
-            return ToolResult(
-                success=True,
-                data={"content": content, "path": path}
-            )
+            content = p.read_text(encoding="utf-8")
+            return ToolResult(success=True, data={"content": content, "path": path})
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
@@ -163,23 +167,22 @@ class FilesystemMCPServer:
         if len(content) > MAX_FILE_SIZE:
             return ToolResult(
                 success=False,
-                error=f"Content too large: {len(content)} chars (Limit: {MAX_FILE_SIZE} bytes)"
+                error=f"Content too large: {len(content)} chars (Limit: {MAX_FILE_SIZE} bytes)",
             )
 
-        content_bytes = content.encode('utf-8')
+        content_bytes = content.encode("utf-8")
         if len(content_bytes) > MAX_FILE_SIZE:
             return ToolResult(
                 success=False,
-                error=f"Content too large: {len(content_bytes)} bytes (Limit: {MAX_FILE_SIZE} bytes)"
+                error=f"Content too large: {len(content_bytes)} bytes (Limit: {MAX_FILE_SIZE} bytes)",
             )
 
         try:
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(content, encoding='utf-8')
+            p.write_text(content, encoding="utf-8")
             return ToolResult(
-                success=True,
-                data={"path": path, "bytes_written": len(content)}
+                success=True, data={"path": path, "bytes_written": len(content)}
             )
         except Exception as e:
             return ToolResult(success=False, error=str(e))
@@ -192,16 +195,18 @@ class FilesystemMCPServer:
         try:
             dir_path = Path(path)
             if not dir_path.exists():
-                 return ToolResult(success=False, error=f"Directory not found: {path}")
+                return ToolResult(success=False, error=f"Directory not found: {path}")
 
             items = []
             count = 0
             for f in dir_path.iterdir():
-                items.append({
-                    "name": f.name,
-                    "type": "file" if f.is_file() else "directory",
-                    "size": f.stat().st_size if f.is_file() else None
-                })
+                items.append(
+                    {
+                        "name": f.name,
+                        "type": "file" if f.is_file() else "directory",
+                        "size": f.stat().st_size if f.is_file() else None,
+                    }
+                )
                 count += 1
                 # 🛡️ Sentinel: Limit number of items
                 if count >= MAX_DIR_ITEMS:
@@ -209,7 +214,11 @@ class FilesystemMCPServer:
 
             return ToolResult(
                 success=True,
-                data={"files": items, "count": len(items), "truncated": count >= MAX_DIR_ITEMS}
+                data={
+                    "files": items,
+                    "count": len(items),
+                    "truncated": count >= MAX_DIR_ITEMS,
+                },
             )
         except Exception as e:
             return ToolResult(success=False, error=str(e))

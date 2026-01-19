@@ -1,9 +1,10 @@
 import os
-import logging
-import importlib.util
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
-from config.validation import validate_environment, check_env_strict
+
+from config.validation import check_env_strict, validate_environment
+
 
 class TestValidation:
     @pytest.fixture
@@ -20,15 +21,19 @@ class TestValidation:
 
     def test_validate_environment_with_gemini_key(self, mock_env):
         """Test validation passes with GEMINI_API_KEY."""
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), \
-             patch("importlib.util.find_spec", return_value=MagicMock()):
+        with (
+            patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}),
+            patch("importlib.util.find_spec", return_value=MagicMock()),
+        ):
             checks = validate_environment()
             assert checks["api_key"] is True
 
     def test_validate_environment_with_google_key(self, mock_env):
         """Test validation passes with GOOGLE_API_KEY."""
-        with patch.dict(os.environ, {"GOOGLE_API_KEY": "test-key"}), \
-             patch("importlib.util.find_spec", return_value=MagicMock()):
+        with (
+            patch.dict(os.environ, {"GOOGLE_API_KEY": "test-key"}),
+            patch("importlib.util.find_spec", return_value=MagicMock()),
+        ):
             checks = validate_environment()
             assert checks["api_key"] is True
 
@@ -64,7 +69,9 @@ class TestValidation:
     def test_check_env_strict_failure(self, mock_env, caplog):
         """Test strict check fails and logs errors when env is invalid."""
         # Ensure validation returns failure
-        with patch("config.validation.validate_environment", return_value={"api_key": False}):
+        with patch(
+            "config.validation.validate_environment", return_value={"api_key": False}
+        ):
             result = check_env_strict()
             assert result is False
             assert "Startup Validation Failed: Missing API Key" in caplog.text
@@ -72,13 +79,19 @@ class TestValidation:
     def test_check_env_strict_pkg_failure(self, mock_env, caplog):
         """Test strict check fails when package is missing."""
         # Ensure validation returns failure
-        with patch("config.validation.validate_environment", return_value={"api_key": True, "pkg_langchain": False}):
+        with patch(
+            "config.validation.validate_environment",
+            return_value={"api_key": True, "pkg_langchain": False},
+        ):
             result = check_env_strict()
             assert result is False
             assert "Missing Package: pkg_langchain" in caplog.text
 
     def test_check_env_strict_success(self, mock_env):
         """Test strict check passes when everything is valid."""
-        with patch("config.validation.validate_environment", return_value={"api_key": True, "pkg_langchain": True}):
+        with patch(
+            "config.validation.validate_environment",
+            return_value={"api_key": True, "pkg_langchain": True},
+        ):
             result = check_env_strict()
             assert result is True

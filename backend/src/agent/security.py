@@ -1,9 +1,10 @@
 """Security middleware for the agent application."""
 
-import time
 import ipaddress
+import time
 from collections import defaultdict
-from typing import List, Optional
+from typing import List
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -67,7 +68,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         app,
         limit: int = 100,
         window: int = 60,
-        protected_paths: Optional[List[str]] = None,
+        protected_paths: List[str] | None = None,
     ):
         """Initialize the rate limiter.
 

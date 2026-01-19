@@ -1,15 +1,18 @@
-from dataclasses import dataclass, field
-from typing import Optional, List, Tuple
 import os
+from dataclasses import dataclass, field
+from typing import List, Tuple
+
 
 @dataclass(frozen=True)
 class MCPSettings:
     """Configuration settings for Model Context Protocol (MCP)."""
+
     enabled: bool
-    endpoint: Optional[str] = None
-    api_key: Optional[str] = None
+    endpoint: str | None = None
+    api_key: str | None = None
     timeout_seconds: int = 30
     tool_whitelist: Tuple[str, ...] = field(default_factory=tuple)
+
 
 def load_mcp_settings() -> MCPSettings:
     """Loads MCP settings from environment variables."""
@@ -32,13 +35,15 @@ def load_mcp_settings() -> MCPSettings:
         endpoint=endpoint,
         api_key=api_key,
         timeout_seconds=timeout,
-        tool_whitelist=whitelist
+        tool_whitelist=whitelist,
     )
+
 
 def validate(settings: MCPSettings) -> None:
     """Validates the MCP settings."""
     if settings.enabled and not settings.endpoint:
         raise ValueError("MCP enabled but MCP_ENDPOINT missing")
+
 
 # Fine-grained implementation guide for MCP Integration:
 #
@@ -65,28 +70,27 @@ def validate(settings: MCPSettings) -> None:
 # - Track connection latency, success/failure rates
 # - Integrate with Langfuse spans
 class McpConnectionManager:
-    def __init__(self, settings: Optional[MCPSettings] = None):
+    def __init__(self, settings: MCPSettings | None = None):
         self.settings = settings or load_mcp_settings()
         self.clients = []
 
     def get_persistence_tools(self) -> List:
-        """
-        Returns persistence tools wrapped for LangChain.
-        """
+        """Returns persistence tools wrapped for LangChain."""
         from langchain_core.tools import StructuredTool
+
         from agent.mcp_persistence import load_thread_plan, save_thread_plan
-        
+
         return [
             StructuredTool.from_function(
                 func=load_thread_plan,
                 name="load_thread_plan",
-                description="Loads the plan and artifacts for a specific thread from the local file system."
+                description="Loads the plan and artifacts for a specific thread from the local file system.",
             ),
             StructuredTool.from_function(
                 func=save_thread_plan,
                 name="save_thread_plan",
-                description="Saves the plan and artifacts for a specific thread to the local file system."
-            )
+                description="Saves the plan and artifacts for a specific thread to the local file system.",
+            ),
         ]
 
     async def get_tools(self):
@@ -98,4 +102,3 @@ class McpConnectionManager:
             return []
         # Return stubs or connect to real MCP server
         return []
-

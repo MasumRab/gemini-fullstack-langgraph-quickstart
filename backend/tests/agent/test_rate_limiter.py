@@ -1,10 +1,10 @@
 """Tests for RateLimiter."""
 
 import unittest
-from unittest.mock import MagicMock, patch
-from datetime import datetime, date, timedelta
-from zoneinfo import ZoneInfo
-from agent.rate_limiter import RateLimiter, PACIFIC_TZ
+from datetime import datetime, timedelta
+
+from agent.rate_limiter import PACIFIC_TZ, RateLimiter
+
 
 class TestRateLimiter(unittest.TestCase):
     def test_daily_reset_logic(self):
@@ -44,6 +44,7 @@ class TestRateLimiter(unittest.TestCase):
         # Should NOT be cleared
         self.assertEqual(len(limiter._requests_per_day), 1)
         self.assertEqual(limiter._last_reset_date, today)
+
 
 if __name__ == "__main__":
     unittest.main()

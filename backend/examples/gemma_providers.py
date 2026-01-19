@@ -1,5 +1,4 @@
-"""
-Gemma Model Integration Scaffolding.
+"""Gemma Model Integration Scaffolding.
 
 This module provides reference implementations for integrating Gemma models
 via various providers (Vertex AI, Ollama, LlamaCpp).
@@ -8,20 +7,18 @@ These classes are designed to be adapted into the main `llm_client.py`
 or used as standalone clients for specific nodes.
 """
 
-import json
-import os
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
 # ============================================================================
 # 1. Google Vertex AI (Cloud)
 # ============================================================================
 
+
 class VertexAIGemmaClient:
     """Client for Gemma models deployed on Google Vertex AI."""
 
     def __init__(self, project_id: str, location: str, endpoint_id: str):
-        """
-        Initialize Vertex AI client.
+        """Initialize Vertex AI client.
 
         Args:
             project_id: GCP Project ID.
@@ -33,7 +30,9 @@ class VertexAIGemmaClient:
             from google.protobuf import json_format
             from google.protobuf.struct_pb2 import Value
         except ImportError:
-            raise ImportError("Please install 'google-cloud-aiplatform' to use VertexAIGemmaClient")
+            raise ImportError(
+                "Please install 'google-cloud-aiplatform' to use VertexAIGemmaClient"
+            )
 
         self.project_id = project_id
         self.location = location
@@ -41,7 +40,9 @@ class VertexAIGemmaClient:
 
         self.api_endpoint = f"{location}-aiplatform.googleapis.com"
         client_options = {"api_endpoint": self.api_endpoint}
-        self.client = aiplatform.gapic.PredictionServiceClient(client_options=client_options)
+        self.client = aiplatform.gapic.PredictionServiceClient(
+            client_options=client_options
+        )
         self.endpoint_path = self.client.endpoint_path(
             project=project_id, location=location, endpoint=endpoint_id
         )
@@ -51,9 +52,7 @@ class VertexAIGemmaClient:
         self._Value = Value
 
     def predict(self, prompt: str, max_tokens: int = 256, **kwargs) -> str:
-        """
-        Send prediction request to Vertex AI Endpoint.
-        """
+        """Send prediction request to Vertex AI Endpoint."""
         instance_dict = {"inputs": prompt, "max_tokens": max_tokens, **kwargs}
 
         # Convert dictionary to Protobuf Struct
@@ -67,9 +66,7 @@ class VertexAIGemmaClient:
         self._json_format.ParseDict(parameters_dict, parameters)
 
         response = self.client.predict(
-            endpoint=self.endpoint_path,
-            instances=instances,
-            parameters=parameters
+            endpoint=self.endpoint_path, instances=instances, parameters=parameters
         )
 
         # Parse response (structure depends on model signature, typically response.predictions[0])
@@ -81,33 +78,34 @@ class VertexAIGemmaClient:
 # 2. Ollama (Local Service)
 # ============================================================================
 
+
 class OllamaGemmaClient:
     """Client for local Gemma models via Ollama API."""
 
-    def __init__(self, model_name: str = "gemma:7b", base_url: str = "http://localhost:11434"):
-        """
-        Initialize Ollama client.
+    def __init__(
+        self, model_name: str = "gemma:7b", base_url: str = "http://localhost:11434"
+    ):
+        """Initialize Ollama client.
 
         Args:
             model_name: Name of the model to use (e.g., 'gemma:7b').
             base_url: URL of the Ollama server.
         """
         import requests
+
         self.requests = requests
         self.base_url = base_url
         self.model_name = model_name
         self.generate_url = f"{base_url}/api/generate"
         self.chat_url = f"{base_url}/api/chat"
 
-    def generate(self, prompt: str, system: Optional[str] = None, **kwargs) -> str:
-        """
-        Generate text completion.
-        """
+    def generate(self, prompt: str, system: str | None = None, **kwargs) -> str:
+        """Generate text completion."""
         payload = {
             "model": self.model_name,
             "prompt": prompt,
             "stream": False,
-            **kwargs
+            **kwargs,
         }
         if system:
             payload["system"] = system
@@ -117,8 +115,7 @@ class OllamaGemmaClient:
         return response.json().get("response", "")
 
     def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
-        """
-        Chat completion.
+        """Chat completion.
 
         Args:
             messages: List of dicts with 'role' and 'content'.
@@ -127,7 +124,7 @@ class OllamaGemmaClient:
             "model": self.model_name,
             "messages": messages,
             "stream": False,
-            **kwargs
+            **kwargs,
         }
 
         response = self.requests.post(self.chat_url, json=payload)
@@ -139,12 +136,12 @@ class OllamaGemmaClient:
 # 3. LlamaCpp (Local Embedded)
 # ============================================================================
 
+
 class LlamaCppGemmaClient:
     """Client for embedded local inference using llama-cpp-python."""
 
     def __init__(self, model_path: str, n_gpu_layers: int = -1, **kwargs):
-        """
-        Initialize LlamaCpp client.
+        """Initialize LlamaCpp client.
 
         Args:
             model_path: Path to the .gguf model file.
@@ -161,31 +158,20 @@ class LlamaCppGemmaClient:
         self.llm = Llama(
             model_path=model_path,
             n_gpu_layers=n_gpu_layers,
-            chat_format="gemma", # Important for Gemma models
+            chat_format="gemma",  # Important for Gemma models
             verbose=False,
-            **kwargs
+            **kwargs,
         )
 
     def generate(self, prompt: str, max_tokens: int = 256, **kwargs) -> str:
-        """
-        Generate text.
-        """
-        output = self.llm(
-            prompt,
-            max_tokens=max_tokens,
-            **kwargs
-        )
-        return output['choices'][0]['text']
+        """Generate text."""
+        output = self.llm(prompt, max_tokens=max_tokens, **kwargs)
+        return output["choices"][0]["text"]
 
     def create_chat_completion(self, messages: List[Dict[str, str]], **kwargs) -> str:
-        """
-        Chat completion using built-in chat formatting.
-        """
-        output = self.llm.create_chat_completion(
-            messages=messages,
-            **kwargs
-        )
-        return output['choices'][0]['message']['content']
+        """Chat completion using built-in chat formatting."""
+        output = self.llm.create_chat_completion(messages=messages, **kwargs)
+        return output["choices"][0]["message"]["content"]
 
 
 # ============================================================================

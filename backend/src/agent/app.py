@@ -6,26 +6,27 @@ import pathlib
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Response, Request
+from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from agent.mcp_config import load_mcp_settings
-from agent.security import SecurityHeadersMiddleware, RateLimitMiddleware
+from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 from agent.tools_and_schemas import MCP_TOOLS, get_tools_from_mcp
 from config.app_config import config as app_config
 from config.validation import check_env_strict
+
 
 # Define Middleware for Content Size Limit (Defense against DoS)
 class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
     """Middleware to limit the size of the request body."""
 
-    def __init__(self, app, max_upload_size: int = 10 * 1024 * 1024): # 10MB
+    def __init__(self, app, max_upload_size: int = 10 * 1024 * 1024):  # 10MB
         super().__init__(app)
         self.max_upload_size = max_upload_size
 
@@ -79,10 +80,10 @@ async def lifespan(app: FastAPI):
 # Define the FastAPI app
 app = FastAPI(lifespan=lifespan)
 
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """
-    Overridden handler to prevent RecursionError when serializing deeply nested invalid inputs.
+    """Overridden handler to prevent RecursionError when serializing deeply nested invalid inputs.
     Standard FastAPI handler crashes on deep JSON because it tries to echo the input.
     """
     # We construct a simplified error list that doesn't include the full 'input' if it's huge
@@ -106,6 +107,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": errors},
     )
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=app_config.cors_origins,
@@ -115,10 +117,7 @@ app.add_middleware(
 )
 
 # Add Trusted Host Middleware (Guard against Host Header attacks)
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=app_config.allowed_hosts
-)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=app_config.allowed_hosts)
 
 # Add Content Size Limit Middleware (Guard against DoS)
 app.add_middleware(ContentSizeLimitMiddleware, max_upload_size=10 * 1024 * 1024)
@@ -126,10 +125,7 @@ app.add_middleware(ContentSizeLimitMiddleware, max_upload_size=10 * 1024 * 1024)
 # Add Rate Limiting (INNER - added before SecurityHeaders)
 # Limit to 100 requests per minute per IP for sensitive API endpoints
 app.add_middleware(
-    RateLimitMiddleware,
-    limit=100,
-    window=60,
-    protected_paths=["/agent", "/threads"]
+    RateLimitMiddleware, limit=100, window=60, protected_paths=["/agent", "/threads"]
 )
 
 # Add Security Headers (OUTERMOST - added last)
@@ -170,8 +166,7 @@ class InvokeRequest(BaseModel):
 
     @field_validator("input")
     def validate_input_complexity(cls, v):
-        """
-        🛡️ Sentinel: Validate input complexity to prevent Denial of Service (DoS).
+        """🛡️ Sentinel: Validate input complexity to prevent Denial of Service (DoS).
         Checks:
         1. Max String Length: 50,000 chars (prevents huge blobs)
         2. Max Total Size: 200,000 chars (prevents memory exhaustion)
@@ -191,7 +186,9 @@ class InvokeRequest(BaseModel):
 
             if isinstance(obj, str):
                 if len(obj) > MAX_INPUT_LENGTH:
-                    raise ValueError(f"Input string too long ({len(obj)} chars). Max allowed: {MAX_INPUT_LENGTH}")
+                    raise ValueError(
+                        f"Input string too long ({len(obj)} chars). Max allowed: {MAX_INPUT_LENGTH}"
+                    )
                 stats["chars"] += len(obj)
             elif isinstance(obj, dict):
                 stats["items"] += len(obj)
@@ -206,9 +203,13 @@ class InvokeRequest(BaseModel):
 
             # Check limits at every step to fail fast
             if stats["chars"] > MAX_TOTAL_CHARS:
-                raise ValueError(f"Total input size too large ({stats['chars']} chars). Max allowed: {MAX_TOTAL_CHARS}")
+                raise ValueError(
+                    f"Total input size too large ({stats['chars']} chars). Max allowed: {MAX_TOTAL_CHARS}"
+                )
             if stats["items"] > MAX_ITEMS:
-                 raise ValueError(f"Too many items in input ({stats['items']}). Max allowed: {MAX_ITEMS}")
+                raise ValueError(
+                    f"Too many items in input ({stats['items']}). Max allowed: {MAX_ITEMS}"
+                )
 
         check_complexity(v, 0)
         return v

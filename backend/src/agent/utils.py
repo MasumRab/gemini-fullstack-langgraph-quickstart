@@ -1,11 +1,10 @@
 from typing import Any, Dict, List
-from langchain_core.messages import AnyMessage, AIMessage, HumanMessage
+
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 
 
 def get_research_topic(messages: List[AnyMessage]) -> str:
-    """
-    Get the research topic from the messages.
-    """
+    """Get the research topic from the messages."""
     # check if request has a history and combine the messages into a single string
     if len(messages) == 1:
         research_topic = messages[-1].content
@@ -20,11 +19,10 @@ def get_research_topic(messages: List[AnyMessage]) -> str:
 
 
 def resolve_urls(urls_to_resolve: List[Any], id: int) -> Dict[str, str]:
-    """
-    Create a map of the vertex ai search urls (very long) to a short url with a unique id for each url.
+    """Create a map of the vertex ai search urls (very long) to a short url with a unique id for each url.
     Ensures each original URL gets a consistent shortened form while maintaining uniqueness.
     """
-    prefix = f"https://vertexaisearch.cloud.google.com/id/"
+    prefix = "https://vertexaisearch.cloud.google.com/id/"
     urls = [site.web.uri for site in urls_to_resolve]
 
     # Create a dictionary that maps each unique URL to its first occurrence index
@@ -37,8 +35,7 @@ def resolve_urls(urls_to_resolve: List[Any], id: int) -> Dict[str, str]:
 
 
 def insert_citation_markers(text, citations_list):
-    """
-    Inserts citation markers into a text string based on start and end indices.
+    """Inserts citation markers into a text string based on start and end indices.
 
     Args:
         text (str): The original text string.
@@ -53,8 +50,7 @@ def insert_citation_markers(text, citations_list):
     # ⚡ Bolt Optimization: Sort by end_index ascending for linear O(N) pass.
     # This replaces O(N^2) string concatenation loop with O(N) list construction.
     sorted_citations = sorted(
-        citations_list,
-        key=lambda c: (c["end_index"], c.get("start_index", 0))
+        citations_list, key=lambda c: (c["end_index"], c.get("start_index", 0))
     )
 
     parts = []
@@ -83,8 +79,7 @@ def insert_citation_markers(text, citations_list):
 
 
 def get_citations(response, resolved_urls_map):
-    """
-    Extracts and formats citation information from a Gemini model's response.
+    """Extracts and formats citation information from a Gemini model's response.
 
     This function processes the grounding metadata provided in the response to
     construct a list of citation objects. Each citation object includes the
@@ -179,9 +174,11 @@ def get_citations(response, resolved_urls_map):
         citations.append(citation)
     return citations
 
-def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\n") -> str:
-    """
-    Efficiently joins a list of strings up to a maximum length.
+
+def join_and_truncate(
+    strings: List[str], max_length: int, separator: str = "\n\n"
+) -> str:
+    """Efficiently joins a list of strings up to a maximum length.
     Avoids creating the full joined string in memory if it exceeds the limit.
     """
     if not strings:

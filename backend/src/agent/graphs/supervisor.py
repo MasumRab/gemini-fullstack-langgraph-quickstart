@@ -1,28 +1,30 @@
-import os
 import logging
-from typing import Dict, Any, List
+import os
+from typing import Any, Dict
+
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.graph import StateGraph, START, END
-from agent.state import OverallState
+from langgraph.graph import END, START, StateGraph
+
 from agent.configuration import Configuration
 from agent.nodes import (
-    load_context,
-    generate_plan,
-    planning_mode,
-    planning_wait,
-    planning_router,
-    web_research,
-    validate_web_results,
-    reflection,
+    evaluate_research,
     finalize_answer,
-    evaluate_research
+    generate_plan,
+    load_context,
+    planning_mode,
+    planning_router,
+    planning_wait,
+    reflection,
+    validate_web_results,
+    web_research,
 )
 from agent.registry import graph_registry
-
+from agent.state import OverallState
 from config.app_config import config as app_config
 
 logger = logging.getLogger(__name__)
+
 
 @graph_registry.describe(
     "compress_context",
@@ -90,11 +92,14 @@ def compress_context(state: OverallState, config: RunnableConfig) -> Dict[str, A
             return {"web_research_result": [compressed_content]}
 
         except Exception as e:
-            logger.warning(f"Compression failed in supervisor: {e}. Returning uncompressed history.")
+            logger.warning(
+                f"Compression failed in supervisor: {e}. Returning uncompressed history."
+            )
             return {"web_research_result": unique_results}
 
     # Default fallback
     return {"web_research_result": unique_results}
+
 
 builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("load_context", load_context)
@@ -103,7 +108,7 @@ builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
 builder.add_node("web_research", web_research)
 builder.add_node("validate_web_results", validate_web_results)
-builder.add_node("compress_context", compress_context) # The new node
+builder.add_node("compress_context", compress_context)  # The new node
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 
@@ -117,13 +122,11 @@ builder.add_conditional_edges(
     "planning_wait", planning_router, ["planning_wait", "web_research"]
 )
 builder.add_edge("web_research", "validate_web_results")
-builder.add_edge("validate_web_results", "compress_context") # Inject compression
-builder.add_edge("compress_context", "reflection") # Reflect on compressed context
+builder.add_edge("validate_web_results", "compress_context")  # Inject compression
+builder.add_edge("compress_context", "reflection")  # Reflect on compressed context
 builder.add_conditional_edges(
     "reflection", evaluate_research, ["web_research", "finalize_answer"]
 )
 builder.add_edge("finalize_answer", END)
 
 graph = builder.compile(name="pro-search-agent-supervisor")
-
-

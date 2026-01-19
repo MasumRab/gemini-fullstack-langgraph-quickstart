@@ -1,7 +1,9 @@
 import os
 import unittest
 from unittest import mock
-from agent.mcp_config import load_mcp_settings, validate, MCPSettings
+
+from agent.mcp_config import MCPSettings, load_mcp_settings, validate
+
 
 class TestMCPSettings(unittest.TestCase):
     def test_default_settings(self):
@@ -19,7 +21,7 @@ class TestMCPSettings(unittest.TestCase):
             "MCP_ENABLED": "true",
             "MCP_ENDPOINT": "http://localhost:8080",
             "MCP_TIMEOUT": "60",
-            "MCP_TOOL_WHITELIST": "read_file,write_file"
+            "MCP_TOOL_WHITELIST": "read_file,write_file",
         }
         with mock.patch.dict(os.environ, env):
             settings = load_mcp_settings()
