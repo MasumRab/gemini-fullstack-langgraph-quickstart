@@ -1,8 +1,6 @@
-import os
 import logging
 from typing import Dict, Any, List
 from langchain_core.runnables import RunnableConfig
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 from agent.state import OverallState
 from agent.configuration import Configuration
@@ -19,6 +17,7 @@ from agent.nodes import (
     evaluate_research
 )
 from agent.registry import graph_registry
+from agent.utils import get_cached_llm
 
 from config.app_config import config as app_config
 
@@ -77,10 +76,10 @@ def compress_context(state: OverallState, config: RunnableConfig) -> Dict[str, A
         """
 
         try:
-            llm = ChatGoogleGenerativeAI(
+            # ⚡ Bolt Optimization: Use centralized cached factory
+            llm = get_cached_llm(
                 model=app_config.model_compression,
                 temperature=0,
-                api_key=os.getenv("GEMINI_API_KEY"),
             )
             response = llm.invoke(prompt)
             compressed_content = response.content
@@ -125,5 +124,3 @@ builder.add_conditional_edges(
 builder.add_edge("finalize_answer", END)
 
 graph = builder.compile(name="pro-search-agent-supervisor")
-
-
