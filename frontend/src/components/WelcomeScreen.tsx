@@ -30,6 +30,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         isLoading={isLoading}
         onCancel={onCancel}
         hasHistory={false}
+        autoFocus={true}
       />
     </div>
     <p className="text-xs text-neutral-400">
