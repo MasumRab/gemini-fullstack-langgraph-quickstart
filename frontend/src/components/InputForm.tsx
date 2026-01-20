@@ -182,6 +182,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
       >
         <Textarea
           aria-label="Chat input"
+          aria-required="true"
           value={internalInputValue}
           onChange={(e) => setInternalInputValue(e.target.value)}
           onKeyDown={handleKeyDown}

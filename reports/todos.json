@@ -1,0 +1,457 @@
+[
+  {
+    "file": "./reports/PR_REPORT.md",
+    "line": 34,
+    "content": "## \ud83d\udcdd TODOs",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./reports/PR_REPORT.md",
+    "line": 35,
+    "content": "- **Status:** No TODOs were modified or added in this run. Existing TODOs remain unchanged.",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./scripts/extract_todos_structured.py",
+    "line": 21,
+    "content": "if 'TODO' in line:",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./scripts/extract_todos_structured.py",
+    "line": 24,
+    "content": "# Try to parse structured TODOs if they exist",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./scripts/extract_todos_structured.py",
+    "line": 25,
+    "content": "# Format: TODO(priority=<Level>, complexity=<Level>):",
+    "priority": "<Level>",
+    "complexity": "<Level>"
+  },
+  {
+    "file": "./scripts/extract_todos_structured.py",
+    "line": 29,
+    "content": "match = re.search(r'TODO\\(priority=(.*?), complexity=(.*?)\\):', content)",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/PR19_ANALYSIS.md",
+    "line": 137,
+    "content": "**TODOs Added**:",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/PR19_ANALYSIS.md",
+    "line": 139,
+    "content": "# TODO: Phase 2 - Rename 'generate_query' to 'generate_plan'",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/PR19_ANALYSIS.md",
+    "line": 140,
+    "content": "# TODO: Future - Insert 'save_plan' step here to persist the generated plan automatically",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/PR19_ANALYSIS.md",
+    "line": 151,
+    "content": "- \u26a0\ufe0f Document the planned migration path for TODOs",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/PR19_ANALYSIS.md",
+    "line": 351,
+    "content": "- Verify all TODOs have tracking issues",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/TODO_SESSION.md",
+    "line": 1,
+    "content": "# Session TODO - Unfinished/Interrupted Tasks",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/TEST_GENERATION_SUMMARY.md",
+    "line": 13,
+    "content": "- Added `compress_context` node with TODO comments for LLM summarization",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/TEST_GENERATION_SUMMARY.md",
+    "line": 224,
+    "content": "When the TODOs are implemented, add tests for:",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./docs/TEST_GENERATION_SUMMARY.md",
+    "line": 226,
+    "content": "1. **compress_context LLM integration** (when TODO is completed):",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1,
+    "content": "# TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).",
+    "priority": "Low",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 2,
+    "content": "# TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.",
+    "priority": "Medium",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 148,
+    "content": "TODO(priority=High, complexity=High): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).",
+    "priority": "High",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 996,
+    "content": "TODO(priority=High, complexity=Low): [flow_update:1] Extract current task from state",
+    "priority": "High",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1000,
+    "content": "TODO(priority=High, complexity=Medium): [flow_update:2] Analyze task completion",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1005,
+    "content": "TODO(priority=High, complexity=Medium): [flow_update:3] Identify knowledge gaps",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1009,
+    "content": "TODO(priority=Medium, complexity=High): [flow_update:4] DAG expansion logic",
+    "priority": "Medium",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1014,
+    "content": "TODO(priority=Low, complexity=Low): [flow_update:5] Return updated state",
+    "priority": "Low",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1125,
+    "content": "TODO(priority=High, complexity=Low): [research_subgraph:1] Extract sub-topic query",
+    "priority": "High",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1129,
+    "content": "TODO(priority=High, complexity=Medium): [research_subgraph:2] Create child graph config",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1134,
+    "content": "TODO(priority=High, complexity=Medium): [research_subgraph:3] Guard against infinite recursion",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1138,
+    "content": "TODO(priority=High, complexity=High): [research_subgraph:4] Invoke child graph",
+    "priority": "High",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1143,
+    "content": "TODO(priority=Medium, complexity=Medium): [research_subgraph:5] Merge child results",
+    "priority": "Medium",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/nodes.py",
+    "line": 1148,
+    "content": "TODO(priority=Low, complexity=Low): [research_subgraph:6] Return merged state",
+    "priority": "Low",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/agent/mcp_config.py",
+    "line": 45,
+    "content": "# TODO(priority=High, complexity=Low): [MCP:1] Define SSE client interface",
+    "priority": "High",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/agent/mcp_config.py",
+    "line": 49,
+    "content": "# TODO(priority=High, complexity=Medium): [MCP:2] Implement SSE transport",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/mcp_config.py",
+    "line": 54,
+    "content": "# TODO(priority=Medium, complexity=Medium): [MCP:3] Connection pooling",
+    "priority": "Medium",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/mcp_config.py",
+    "line": 59,
+    "content": "# TODO(priority=Medium, complexity=Low): [MCP:4] Error recovery",
+    "priority": "Medium",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/agent/mcp_config.py",
+    "line": 64,
+    "content": "# TODO(priority=Low, complexity=Low): [MCP:5] Metrics and observability",
+    "priority": "Low",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/agent/mcp_config.py",
+    "line": 93,
+    "content": "# TODO(priority=High, complexity=Medium): [MCP:6] Implement actual SSE tool discovery",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/tools_and_schemas.py",
+    "line": 77,
+    "content": "# TODO(priority=Low, complexity=Medium, owner=infra): Support Stdio connection if schema allows? For now assuming SSE via endpoint URL",
+    "priority": "Low",
+    "complexity": "Medium, owner=infra"
+  },
+  {
+    "file": "./backend/src/agent/rag.py",
+    "line": 498,
+    "content": "TODO(priority=Low, complexity=Medium): [rag:legacy] Replace stub with real implementation",
+    "priority": "Low",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/agent/graph.py",
+    "line": 204,
+    "content": "# Removed stale TODOs for visualization as draw_graph_png is now implemented.",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 3,
+    "content": "# TODO(priority=High, complexity=Low): [mle_bench:1] Dataset loader",
+    "priority": "High",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 8,
+    "content": "# TODO(priority=High, complexity=Medium): [mle_bench:2] Agent runner",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 13,
+    "content": "# TODO(priority=Medium, complexity=Medium): [mle_bench:3] Output evaluator",
+    "priority": "Medium",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 18,
+    "content": "# TODO(priority=Medium, complexity=Low): [mle_bench:4] Metrics aggregator",
+    "priority": "Medium",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 23,
+    "content": "# TODO(priority=Low, complexity=Low): [mle_bench:5] Report generator",
+    "priority": "Low",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 33,
+    "content": "# TODO(priority=High, complexity=Low): [mle_bench:1] Load dataset",
+    "priority": "High",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 36,
+    "content": "# TODO(priority=High, complexity=Medium): [mle_bench:2] Run agent",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 43,
+    "content": "# TODO(priority=Medium, complexity=Medium): [mle_bench:3] Evaluate",
+    "priority": "Medium",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 49,
+    "content": "# TODO(priority=Medium, complexity=Low): [mle_bench:4] Aggregate",
+    "priority": "Medium",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/mle_bench.py",
+    "line": 53,
+    "content": "# TODO(priority=Low, complexity=Low): [mle_bench:5] Report",
+    "priority": "Low",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 3,
+    "content": "# TODO(priority=High, complexity=Low): [deep_bench:1] Dataset loader",
+    "priority": "High",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 8,
+    "content": "# TODO(priority=High, complexity=Medium): [deep_bench:2] Agent runner",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 13,
+    "content": "# TODO(priority=Medium, complexity=High): [deep_bench:3] Report scorer",
+    "priority": "Medium",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 18,
+    "content": "# TODO(priority=Medium, complexity=Medium): [deep_bench:4] Citation verifier",
+    "priority": "Medium",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 23,
+    "content": "# TODO(priority=Medium, complexity=Low): [deep_bench:5] Metrics aggregator",
+    "priority": "Medium",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 28,
+    "content": "# TODO(priority=Low, complexity=Low): [deep_bench:6] Report generator",
+    "priority": "Low",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 38,
+    "content": "# TODO(priority=High, complexity=Low): [deep_bench:1] Load dataset",
+    "priority": "High",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 41,
+    "content": "# TODO(priority=High, complexity=Medium): [deep_bench:2] Run agent",
+    "priority": "High",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 48,
+    "content": "# TODO(priority=Medium, complexity=High): [deep_bench:3] Score reports",
+    "priority": "Medium",
+    "complexity": "High"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 54,
+    "content": "# TODO(priority=Medium, complexity=Medium): [deep_bench:4] Verify citations",
+    "priority": "Medium",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 58,
+    "content": "# TODO(priority=Medium, complexity=Low): [deep_bench:5] Aggregate",
+    "priority": "Medium",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/src/evaluation/deep_research_bench.py",
+    "line": 61,
+    "content": "# TODO(priority=Low, complexity=Low): [deep_bench:6] Report",
+    "priority": "Low",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/tests/test_mcp.py",
+    "line": 7,
+    "content": "# TODO(priority=Medium, complexity=Low): [test_mcp:1] Test disabled MCP returns empty list",
+    "priority": "Medium",
+    "complexity": "Low"
+  },
+  {
+    "file": "./backend/tests/test_mcp.py",
+    "line": 11,
+    "content": "# TODO(priority=Medium, complexity=Medium): [test_mcp:2] Test connection error handling",
+    "priority": "Medium",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/tests/test_mcp.py",
+    "line": 15,
+    "content": "# TODO(priority=Medium, complexity=Medium): [test_mcp:3] Test tool whitelist filtering",
+    "priority": "Medium",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/tests/test_mcp.py",
+    "line": 20,
+    "content": "# TODO(priority=Low, complexity=Medium): [test_mcp:4] Test tool execution with real MCP server",
+    "priority": "Low",
+    "complexity": "Medium"
+  },
+  {
+    "file": "./backend/tests/TODO_BENCHMARKS.md",
+    "line": 1,
+    "content": "# TODO: Benmarking & Evaluation Framework",
+    "priority": "Unknown",
+    "complexity": "Unknown"
+  }
+]
