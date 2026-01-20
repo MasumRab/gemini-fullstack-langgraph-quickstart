@@ -15,7 +15,7 @@ vi.mock('@/components/ui/button', () => ({
 
 vi.mock('@/components/ui/textarea', () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Textarea: ({ value, onChange, onKeyDown, placeholder, 'aria-label': ariaLabel }: any) => (
+    Textarea: ({ value, onChange, onKeyDown, placeholder, 'aria-label': ariaLabel, 'aria-required': ariaRequired }: any) => (
         <textarea
             value={value}
             onChange={onChange}
@@ -23,6 +23,7 @@ vi.mock('@/components/ui/textarea', () => ({
             placeholder={placeholder}
             role="textbox"
             aria-label={ariaLabel}
+            aria-required={ariaRequired}
         />
     ),
 }));
@@ -85,7 +86,9 @@ describe('InputForm', () => {
 
     it('renders input field', () => {
         render(<InputForm {...defaultProps} />);
-        expect(screen.getByRole('textbox', { name: /chat input/i })).toBeInTheDocument();
+        const input = screen.getByRole('textbox', { name: /chat input/i });
+        expect(input).toBeInTheDocument();
+        expect(input).toHaveAttribute('aria-required', 'true');
     });
 
     it('calls onSubmit when form is submitted with text', async () => {
