@@ -16,6 +16,7 @@ interface InputFormProps {
   onCancel: () => void;
   isLoading: boolean;
   hasHistory: boolean;
+  autoFocus?: boolean;
 }
 
 // ⚡ Bolt Optimization: Extracted Controls component to decouple it from
@@ -147,6 +148,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
   onCancel,
   isLoading,
   hasHistory,
+  autoFocus = false,
 }) => {
   const [internalInputValue, setInternalInputValue] = useState("");
   const [effort, setEffort] = useState("medium");
@@ -181,6 +183,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
           } break-words min-h-7 bg-neutral-700 px-4 pt-3 `}
       >
         <Textarea
+          autoFocus={autoFocus}
           aria-label="Chat input"
           aria-required="true"
           value={internalInputValue}
