@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, memo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SquarePen, Brain, Send, StopCircle, Zap, Cpu, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -152,12 +152,24 @@ export const InputForm: React.FC<InputFormProps> = memo(({
   const [effort, setEffort] = useState("medium");
   // Default to gemma-3-27b-it
   const [model, setModel] = useState("gemma-3-27b-it");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [internalInputValue]);
 
   const handleInternalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!internalInputValue.trim()) return;
     onSubmit(internalInputValue, effort, model);
     setInternalInputValue("");
+    // Reset height after submit
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -181,6 +193,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
           } break-words min-h-7 bg-neutral-700 px-4 pt-3 `}
       >
         <Textarea
+          ref={textareaRef}
           aria-label="Chat input"
           aria-required="true"
           value={internalInputValue}
@@ -189,7 +202,6 @@ export const InputForm: React.FC<InputFormProps> = memo(({
           placeholder="Who won the Euro 2024 and scored the most goals?"
           className={`w-full text-neutral-100 placeholder-neutral-500 resize-none border-0 focus:outline-none focus:ring-0 outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 shadow-none
                         md:text-base  min-h-[56px] max-h-[200px]`}
-          rows={1}
         />
         <div className="-mt-3 flex items-center gap-1">
           {!isLoading && internalInputValue.length > 0 && (
