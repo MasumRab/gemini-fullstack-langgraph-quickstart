@@ -31,3 +31,7 @@
 ## 2025-05-25 - [Control Flow Node Optimization]
 **Learning:** Even sequential control nodes (like Coordinators and Supervisors) benefit from cached resource instantiation. Instantiating heavy clients inside frequently called routing functions adds latency to every step of the graph, which compounds in long-running agents.
 **Action:** Centralize cached factories in utility modules (e.g. `get_cached_llm`) and use them in all graph nodes, not just high-concurrency ones.
+
+## 2025-06-15 - [Fuzzy Match Optimization]
+**Learning:** `difflib.get_close_matches` scans and sorts the entire candidate list to find the "best" matches. When simply checking for *existence* of any match, a custom lazy-evaluation function that returns on the first hit is significantly faster (O(1) best case vs O(N) always).
+**Action:** For boolean "is there a match?" checks, implement a custom loop with early return instead of using `get_close_matches`.

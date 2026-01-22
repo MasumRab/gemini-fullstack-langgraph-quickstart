@@ -1378,6 +1378,22 @@ TOKEN_SPLIT_PATTERN = re.compile(r"[^\w]+")
 CITATION_PATTERN = re.compile(r"\[[^\]]+\]\(https?://[^\)]+\)")
 
 
+# ⚡ Bolt Optimization: Lazy fuzzy match helper
+# Returns True as soon as a match is found, avoiding full sort/scan of get_close_matches.
+def has_fuzzy_match(word: str, possibilities: set[str], cutoff: float = 0.8) -> bool:
+    s = difflib.SequenceMatcher()
+    s.set_seq2(word)
+    for x in possibilities:
+        s.set_seq1(x)
+        if (
+            s.real_quick_ratio() >= cutoff
+            and s.quick_ratio() >= cutoff
+            and s.ratio() >= cutoff
+        ):
+            return True
+    return False
+
+
 def _keywords_from_queries(queries: List[str]) -> List[str]:
     """Extract keywords from queries (tokens >= 4 chars)."""
     keywords: set[str] = set()
@@ -1462,10 +1478,8 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         heuristic_passed = []
 
         for idx, summary in enumerate(summaries):
-            normalized_summary = summary.lower()
-            match_found = False
-
             # ⚡ Bolt Optimization: Use pre-compiled regex
+            # Check citations BEFORE lowercasing/tokenizing to save memory/cpu on rejected items.
             has_citation = bool(CITATION_PATTERN.search(summary))
 
             if app_config.require_citations and not has_citation:
@@ -1474,6 +1488,9 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                 )
                 continue
 
+            normalized_summary = summary.lower()
+            match_found = False
+
             if keywords:
                 if any(keyword in normalized_summary for keyword in keywords):
                     match_found = True
@@ -1481,8 +1498,10 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                     # ⚡ Bolt Optimization: Deduplicate words before fuzzy matching.
                     # Reduces Search Space: For a 5000-word summary with ~150 unique words,
                     # this speeds up get_close_matches by ~97%.
-                    summary_words = list(set(normalized_summary.split()))
+                    # ⚡ Bolt Optimization: Avoid list() cast, iterate set directly.
+                    summary_words = set(normalized_summary.split())
                     for keyword in keywords:
+                        # ⚡ Bolt Optimization: Use lazy fuzzy match that returns early
                         if has_fuzzy_match(keyword, summary_words, cutoff=0.8):
                             match_found = True
                             break
