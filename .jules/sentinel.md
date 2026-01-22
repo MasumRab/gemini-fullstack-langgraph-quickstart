@@ -54,3 +54,8 @@
 **Vulnerability:** `ContentSizeLimitMiddleware` naively cast the `Content-Length` header to `int()`, assuming it was always numeric. Malformed headers (e.g., "garbage") caused an unhandled `ValueError`, leading to a 500 Internal Server Error crash instead of a 400 Bad Request.
 **Learning:** Middleware runs before the main application logic and exception handlers. Unhandled exceptions in middleware often bypass standard error reporting or crash the request processing pipeline entirely. Headers should never be trusted to be well-formed.
 **Prevention:** Wrapped header parsing in `try-except ValueError` blocks to strictly validate format and return appropriate HTTP 4xx error codes (400) instead of crashing.
+
+## 2025-02-24 - [Negative Content-Length Handling]
+**Vulnerability:** The `ContentSizeLimitMiddleware` correctly parsed `Content-Length` as an integer but did not validate that it was non-negative. Negative values (e.g., `-1`) are invalid per RFC 9110 but could be passed to downstream components or bypass size checks if logic assumed positive integers.
+**Learning:** Integer parsing alone is insufficient for semantic validation. "Valid format" != "Valid value". Security boundaries must enforce protocol constraints (like non-negative lengths) explicitly to prevent logic errors or smuggling.
+**Prevention:** Added an explicit check `if cl_int < 0` to return `400 Bad Request` immediately, ensuring strictly valid Content-Length values.

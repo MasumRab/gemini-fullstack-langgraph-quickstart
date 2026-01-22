@@ -43,7 +43,13 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
 
             try:
                 # 🛡️ Sentinel: Prevent 500 crashes from malformed Content-Length headers
-                if int(content_length) > self.max_upload_size:
+                cl_int = int(content_length)
+
+                # 🛡️ Sentinel: Reject negative Content-Length (RFC 9110 violation)
+                if cl_int < 0:
+                    return Response("Invalid Content-Length", status_code=400)
+
+                if cl_int > self.max_upload_size:
                     return Response("Request entity too large", status_code=413)
             except ValueError:
                 return Response("Invalid Content-Length", status_code=400)
