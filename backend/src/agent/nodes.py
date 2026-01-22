@@ -5,6 +5,7 @@
 # Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
 
 import concurrent.futures
+import difflib
 import json
 import logging
 import os

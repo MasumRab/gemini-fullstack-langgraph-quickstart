@@ -15,7 +15,7 @@ vi.mock('@/components/ui/button', () => ({
 
 vi.mock('@/components/ui/textarea', () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Textarea: ({ value, onChange, onKeyDown, placeholder, 'aria-label': ariaLabel, 'aria-required': ariaRequired, ref }: any) => (
+    Textarea: ({ value, onChange, onKeyDown, placeholder, 'aria-label': ariaLabel, 'aria-required': ariaRequired, ref, autoFocus }: any) => (
         <textarea
             ref={ref}
             value={value}
@@ -25,6 +25,7 @@ vi.mock('@/components/ui/textarea', () => ({
             role="textbox"
             aria-label={ariaLabel}
             aria-required={ariaRequired}
+            autoFocus={autoFocus}
         />
     ),
 }));
@@ -90,6 +91,12 @@ describe('InputForm', () => {
         const input = screen.getByRole('textbox', { name: /chat input/i });
         expect(input).toBeInTheDocument();
         expect(input).toHaveAttribute('aria-required', 'true');
+    });
+
+    it('passes autoFocus to textarea', () => {
+        render(<InputForm {...defaultProps} autoFocus={true} />);
+        const input = screen.getByRole('textbox', { name: /chat input/i });
+        expect(input).toHaveFocus();
     });
 
     it('calls onSubmit when form is submitted with text', async () => {
