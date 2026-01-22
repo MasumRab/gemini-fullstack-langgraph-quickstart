@@ -158,6 +158,21 @@ class FilesystemMCPServer:
         if not self._check_path_allowed(path):
             return ToolResult(success=False, error=f"Path not allowed: {path}")
 
+        # 🛡️ Sentinel: Check content size before writing to prevent Disk Fill DoS
+        # Optimization: Check char count first to avoid encoding huge strings (OOM risk)
+        if len(content) > MAX_FILE_SIZE:
+            return ToolResult(
+                success=False,
+                error=f"Content too large: {len(content)} chars (Limit: {MAX_FILE_SIZE} bytes)"
+            )
+
+        content_bytes = content.encode('utf-8')
+        if len(content_bytes) > MAX_FILE_SIZE:
+            return ToolResult(
+                success=False,
+                error=f"Content too large: {len(content_bytes)} bytes (Limit: {MAX_FILE_SIZE} bytes)"
+            )
+
         try:
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)

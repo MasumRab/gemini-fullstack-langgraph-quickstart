@@ -162,7 +162,7 @@ def test_keywords_from_queries_handles_duplicates():
     queries = ["learning machine learning"]
     result = _keywords_from_queries(queries)
 
-    # The function deduplicates using set()
+    # The function uses set() to deduplicate for performance
     assert result.count("learning") == 1
     assert result.count("machine") == 1
 

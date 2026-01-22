@@ -1,6 +1,6 @@
 import time
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 from agent.security import RateLimitMiddleware
 
 @pytest.mark.asyncio

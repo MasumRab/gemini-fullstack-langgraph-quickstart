@@ -1,6 +1,6 @@
-import { useState, memo } from "react";
+import { useState, memo, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { SquarePen, Brain, Send, StopCircle, Zap, Cpu } from "lucide-react";
+import { SquarePen, Brain, Send, StopCircle, Zap, Cpu, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -122,6 +122,9 @@ const InputControls = memo(({
       </div>
       {hasHistory && (
         <Button
+          type="button"
+          aria-label="Start a new search session"
+          title="Start a new search session"
           className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer rounded-xl rounded-t-sm pl-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
           variant="default"
           onClick={() => window.location.reload()}
@@ -146,6 +149,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
   hasHistory,
 }) => {
   const [internalInputValue, setInternalInputValue] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [effort, setEffort] = useState("medium");
   // Default to gemma-3-27b-it
   const [model, setModel] = useState("gemma-3-27b-it");
@@ -178,7 +182,9 @@ export const InputForm: React.FC<InputFormProps> = memo(({
           } break-words min-h-7 bg-neutral-700 px-4 pt-3 `}
       >
         <Textarea
+          ref={textareaRef}
           aria-label="Chat input"
+          aria-required="true"
           value={internalInputValue}
           onChange={(e) => setInternalInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -187,7 +193,23 @@ export const InputForm: React.FC<InputFormProps> = memo(({
                         md:text-base  min-h-[56px] max-h-[200px]`}
           rows={1}
         />
-        <div className="-mt-3">
+        <div className="-mt-3 flex items-center gap-1">
+          {!isLoading && internalInputValue.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Clear input"
+              title="Clear input"
+              className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-600/50 p-2 cursor-pointer rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
+              onClick={() => {
+                setInternalInputValue("");
+                textareaRef.current?.focus();
+              }}
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </Button>
+          )}
           {isLoading ? (
             <Button
               type="button"

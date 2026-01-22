@@ -6,8 +6,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock UI components
 vi.mock('@/components/ui/button', () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Button: ({ children, onClick, disabled, type, 'aria-label': ariaLabel }: any) => (
-        <button onClick={onClick} disabled={disabled} type={type} aria-label={ariaLabel}>
+    Button: ({ children, onClick, disabled, type, 'aria-label': ariaLabel, title }: any) => (
+        <button onClick={onClick} disabled={disabled} type={type} aria-label={ariaLabel} title={title}>
             {children}
         </button>
     ),
@@ -15,14 +15,16 @@ vi.mock('@/components/ui/button', () => ({
 
 vi.mock('@/components/ui/textarea', () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Textarea: ({ value, onChange, onKeyDown, placeholder, 'aria-label': ariaLabel }: any) => (
+    Textarea: ({ value, onChange, onKeyDown, placeholder, 'aria-label': ariaLabel, 'aria-required': ariaRequired, ref }: any) => (
         <textarea
+            ref={ref}
             value={value}
             onChange={onChange}
             onKeyDown={onKeyDown}
             placeholder={placeholder}
             role="textbox"
             aria-label={ariaLabel}
+            aria-required={ariaRequired}
         />
     ),
 }));
@@ -85,7 +87,9 @@ describe('InputForm', () => {
 
     it('renders input field', () => {
         render(<InputForm {...defaultProps} />);
-        expect(screen.getByRole('textbox', { name: /chat input/i })).toBeInTheDocument();
+        const input = screen.getByRole('textbox', { name: /chat input/i });
+        expect(input).toBeInTheDocument();
+        expect(input).toHaveAttribute('aria-required', 'true');
     });
 
     it('calls onSubmit when form is submitted with text', async () => {
@@ -147,7 +151,7 @@ describe('InputForm', () => {
         expect(modelSelectRoot).not.toBeNull();
 
         // Find the hidden button specifically inside the Model Select
-        // eslint-disable-next-line testing-library/no-node-access
+
         const changeModelButton = modelSelectRoot!.querySelector('button[data-testid="mock-select-option-gemini-2.5-flash"]');
         expect(changeModelButton).not.toBeNull();
 
@@ -177,7 +181,7 @@ describe('InputForm', () => {
         const effortSelectRoot = effortTrigger.closest('div[data-testid="select-root"]');
         expect(effortSelectRoot).not.toBeNull();
 
-        // eslint-disable-next-line testing-library/no-node-access
+
         const changeEffortButton = effortSelectRoot!.querySelector('button[data-testid="mock-select-option-high"]');
         expect(changeEffortButton).not.toBeNull();
 
@@ -194,8 +198,35 @@ describe('InputForm', () => {
         expect(defaultProps.onSubmit).toHaveBeenCalledWith('test query', 'high', 'gemma-3-27b-it');
     });
 
-    it('shows New Search button when history exists', () => {
+    it('shows New Search button with correct attributes when history exists', () => {
         render(<InputForm {...defaultProps} hasHistory={true} />);
-        expect(screen.getByRole('button', { name: /new search/i })).toBeInTheDocument();
+        const newSearchButton = screen.getByRole('button', { name: /start a new search session/i });
+        expect(newSearchButton).toBeInTheDocument();
+        expect(newSearchButton).toHaveAttribute('type', 'button');
+        expect(newSearchButton).toHaveAttribute('title', 'Start a new search session');
+    });
+
+    it('clears input and sets focus back to textarea when Clear button is clicked', async () => {
+        const user = userEvent.setup();
+        render(<InputForm {...defaultProps} />);
+
+        const input = screen.getByRole('textbox', { name: /chat input/i });
+        await user.type(input, 'test query');
+
+        const clearButton = screen.getByRole('button', { name: /clear input/i });
+        expect(clearButton).toBeInTheDocument();
+
+        // Spy on focus method
+        // Since we are mocking Textarea, the focus method on the element might be different
+        // We need to ensure our mock forwards ref or we access the DOM element directly
+        // However, in JSDOM, focus() works on elements.
+
+        // Wait, since we are mocking Textarea, we need to make sure the mock renders a textarea element that can receive focus.
+        // Our mock does render a <textarea>, so it should work.
+
+        await user.click(clearButton);
+
+        expect(input).toHaveValue('');
+        expect(input).toHaveFocus();
     });
 });

@@ -1,8 +1,10 @@
 """Security middleware for the agent application."""
 
+import ipaddress
 import time
 from collections import defaultdict
-from typing import List, Optional
+from typing import List
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -25,11 +27,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Strict Transport Security (HSTS)
         # Max-age: 1 year. Include subdomains.
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
 
         # Permissions Policy
         # Restrict access to sensitive features the agent doesn't need
-        response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
+        )
 
         # Content Security Policy (CSP)
         # Default to very strict (API only), but allow styles/images if needed for simple UI
@@ -57,12 +63,31 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Simple in-memory rate limiting middleware."""
 
+    def get_client_key(self, ip: str) -> str:
+        """Normalize IP address to a rate limit key.
+
+        For IPv4, returns the IP.
+        For IPv6, returns the /64 prefix to prevent subnet rotation attacks.
+        """
+        try:
+            obj = ipaddress.ip_address(ip)
+            if isinstance(obj, ipaddress.IPv6Address):
+                # Mask to /64
+                val = int(obj)
+                mask = (1 << 128) - (1 << 64)
+                masked = val & mask
+                return str(ipaddress.IPv6Address(masked)) + "/64"
+            return str(obj)
+        except ValueError:
+            # If not a valid IP, just return as is (could be "unknown" or malformed)
+            return ip
+
     def __init__(
         self,
         app,
         limit: int = 100,
         window: int = 60,
-        protected_paths: Optional[List[str]] = None,
+        protected_paths: List[str] | None = None,
     ):
         """Initialize the rate limiter.
 
@@ -78,7 +103,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.window = window
         self.protected_paths = protected_paths if protected_paths is not None else []
         self.requests = defaultdict(list)
+        # 🛡️ Sentinel: Optimize cleanup frequency to prevent DoS via Iteration attacks
         self.last_cleanup = 0.0
+        self.cleanup_interval = 60  # seconds
 
     async def dispatch(self, request: Request, call_next):
         """Check rate limit for API endpoints."""
@@ -106,24 +133,43 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
             forwarded = request.headers.get("X-Forwarded-For")
             if forwarded:
-                # 🛡️ Sentinel: Prevent spoofing by using the LAST IP in the list
+                # 🛡️ Sentinel: Prevent spoofing by traversing from the end (trusted proxies)
                 # Proxies (like Render) append the verified client IP to the end.
-                # The first IP can be easily spoofed by the attacker.
+                # We traverse backwards to find the first non-private IP to avoid blocking the proxy itself.
+                try:
+                    ips = [ip.strip() for ip in forwarded.split(",")]
+                    client_ip = ips[-1]  # Default to last IP
+                    for ip in reversed(ips):
+                        try:
+                            # Check if IP is public (not private, not loopback)
+                            ip_obj = ipaddress.ip_address(ip)
+                            if not ip_obj.is_private and not ip_obj.is_loopback:
+                                client_ip = ip
+                                break
+                        except ValueError:
+                            continue  # Skip invalid IPs
+                except Exception:
+                    # Fallback to simple extraction if parsing fails
+                    client_ip = forwarded.split(",")[-1].strip()
+
                 # Truncate to 100 chars to prevent memory exhaustion attacks
-                client_ip = forwarded.split(",")[-1].strip()[:100]
+                client_ip = client_ip[:100]
             else:
                 client_ip = request.client.host if request.client else "unknown"
+
+            # 🛡️ Sentinel: Group IPv6 addresses by /64 prefix to prevent subnet rotation attacks
+            client_key = self.get_client_key(client_ip)
 
             now = time.time()
 
             # Clean old requests (simple sliding window)
-            current_requests = self.requests[client_ip]
+            current_requests = self.requests[client_key]
             # Prune old timestamps
             active_requests = [t for t in current_requests if now - t < self.window]
 
             if len(active_requests) >= self.limit:
                 # Update map with pruned list before returning
-                self.requests[client_ip] = active_requests
+                self.requests[client_key] = active_requests
                 return Response("Too Many Requests", status_code=429)
 
             active_requests.append(now)
@@ -133,7 +179,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # 🛡️ Sentinel: Throttle cleanup to at most once every 60s to prevent Algorithmic Complexity DoS
             # where an attacker keeps the count just above 10,000 to trigger O(N) scan on every request.
             if len(self.requests) > 10000:
-                if now - self.last_cleanup > 60:
+                if now - self.last_cleanup > self.cleanup_interval:
                     self.last_cleanup = now
                     # Cleanup: Remove clients that haven't made a request within the window.
                     # Since active_requests for each client might not be updated until they make a request,
@@ -169,11 +215,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     # So, if we are over limit:
                     # Check if we should allow this IP.
                     # If we just created it (len=1), delete it and 503.
-                    if len(active_requests) == 1: # This was a new entry (or re-entry after expiry)
-                         # Safe delete using pop to avoid KeyErrors in race conditions
-                         self.requests.pop(client_ip, None)
-                         return Response("Server Busy", status_code=503)
+                    if (
+                        len(active_requests) == 1
+                    ):  # This was a new entry (or re-entry after expiry)
+                        # Safe delete using pop to avoid KeyErrors in race conditions
+                        self.requests.pop(client_key, None)
+                        return Response("Server Busy", status_code=503)
 
-            self.requests[client_ip] = active_requests
+            self.requests[client_key] = active_requests
 
         return await call_next(request)

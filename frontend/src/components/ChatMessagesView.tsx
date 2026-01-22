@@ -285,6 +285,15 @@ function areMessageItemPropsEqual(
   prev: MessageItemProps,
   next: MessageItemProps
 ) {
+  // ⚡ Bolt Optimization: Check specific activity for this message instead of whole map.
+  // This prevents re-renders when other messages update their activity.
+  const prevActivity = prev.message.id
+    ? prev.historicalActivities[prev.message.id]
+    : undefined;
+  const nextActivity = next.message.id
+    ? next.historicalActivities[next.message.id]
+    : undefined;
+
   return (
     prev.message.id === next.message.id &&
     prev.message.content === next.message.content &&
@@ -293,7 +302,7 @@ function areMessageItemPropsEqual(
     prev.isOverallLoading === next.isOverallLoading &&
     prev.copiedMessageId === next.copiedMessageId &&
     prev.liveActivity === next.liveActivity &&
-    prev.historicalActivities === next.historicalActivities &&
+    prevActivity === nextActivity &&
     prev.handleCopy === next.handleCopy &&
     prev.mdComponents === next.mdComponents
   );
@@ -563,7 +572,7 @@ export function ChatMessagesView({
                       />
                     </div>
                   ) : (
-                    <div className="flex items-center justify-start h-full">
+                    <div className="flex items-center justify-start h-full" role="status">
                       <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" aria-hidden="true" />
                       <span>Processing...</span>
                     </div>

@@ -1,5 +1,10 @@
 # Sentinel's Journal
 
+## 2025-02-24 - [Unbounded File Write]
+**Vulnerability:** The `FilesystemMCPServer` enforced file size limits on reads (`read_file`) but lacked a corresponding check on writes (`write_file`), allowing an agent (or attacker) to exhaust disk space by writing massive files.
+**Learning:** Symmetric security controls are crucial. Validating input (read) without validating output/action (write) leaves a gap. DoS can happen via storage exhaustion just as easily as memory exhaustion.
+**Prevention:** Implemented a strict size check in `write_file`, verifying both character count (fail-fast optimization) and byte size against `MAX_FILE_SIZE`.
+
 ## 2025-02-24 - [Recursion DoS Protection]
 **Vulnerability:** Deeply nested JSON inputs (e.g., depth > 1000) sent to the `/agent/invoke` endpoint caused a `RecursionError` in the recursive validation logic, leading to a 500 Internal Server Error and potential DoS via stack exhaustion.
 **Learning:** Recursive validation functions must explicitly track and limit recursion depth, as Python's default stack limit is easily reachable with malicious payloads. Relying on implicit system limits leads to crashes rather than graceful rejections.
@@ -44,3 +49,8 @@
 **Vulnerability:** The `InvokeRequest` input validation was vulnerable to deeply nested JSON payloads (`RecursionError`). Furthermore, the default FastAPI error handler crashed when attempting to serialize these deeply nested inputs back to the client, resulting in a 500 error instead of a 422.
 **Learning:** Validating input structure is not enough if the error reporting mechanism itself is vulnerable to the same structure. Deeply nested objects can crash serializers (like `jsonable_encoder`) even after validation fails.
 **Prevention:** Implemented a `validate_input_complexity` validator (checking depth and total size) AND a custom `RequestValidationError` handler that strips the `input` field from the error response to prevent serialization crashes.
+
+## 2025-02-24 - [Middleware Header Validation]
+**Vulnerability:** `ContentSizeLimitMiddleware` naively cast the `Content-Length` header to `int()`, assuming it was always numeric. Malformed headers (e.g., "garbage") caused an unhandled `ValueError`, leading to a 500 Internal Server Error crash instead of a 400 Bad Request.
+**Learning:** Middleware runs before the main application logic and exception handlers. Unhandled exceptions in middleware often bypass standard error reporting or crash the request processing pipeline entirely. Headers should never be trusted to be well-formed.
+**Prevention:** Wrapped header parsing in `try-except ValueError` blocks to strictly validate format and return appropriate HTTP 4xx error codes (400) instead of crashing.

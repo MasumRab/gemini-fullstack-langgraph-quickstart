@@ -1,6 +1,8 @@
 import pytest
+from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
-from agent.app import app
+from fastapi import Request, Response
+from agent.app import app, ContentSizeLimitMiddleware
 
 # Initialize TestClient with a trusted host (localhost) to pass TrustedHostMiddleware
 client = TestClient(app, base_url="http://localhost")
@@ -40,3 +42,67 @@ def test_trusted_host_middleware():
     # Note: We must explicitly set the Host header to override the client's default (localhost)
     response = client.get("/health", headers={"host": "evil.com"})
     assert response.status_code == 400
+
+@pytest.mark.asyncio
+async def test_content_size_limit_missing_length():
+    """Test that ContentSizeLimitMiddleware rejects POST/PUT/PATCH without Content-Length."""
+
+    async def mock_call_next(request):
+        return Response("OK", status_code=200)
+
+    app_mock = MagicMock()
+    middleware = ContentSizeLimitMiddleware(app_mock)
+
+    async def receive():
+        return {'type': 'http.request', 'body': b'data'}
+
+    # 1. POST without Content-Length
+    scope = {
+        'type': 'http',
+        'method': 'POST',
+        'headers': [], # No Content-Length
+        'path': '/test',
+    }
+    request = Request(scope, receive)
+
+    response = await middleware.dispatch(request, mock_call_next)
+    assert response.status_code == 411
+    assert response.body == b"Content-Length required"
+
+    # 2. PUT without Content-Length
+    scope['method'] = 'PUT'
+    request = Request(scope, receive)
+    response = await middleware.dispatch(request, mock_call_next)
+    assert response.status_code == 411
+
+    # 3. GET without Content-Length (Should pass)
+    scope['method'] = 'GET'
+    request = Request(scope, receive)
+    response = await middleware.dispatch(request, mock_call_next)
+    assert response.status_code == 200
+
+@pytest.mark.asyncio
+async def test_content_size_limit_invalid_length():
+    """Test that ContentSizeLimitMiddleware handles invalid Content-Length gracefully."""
+
+    async def mock_call_next(request):
+        return Response("OK", status_code=200)
+
+    app_mock = MagicMock()
+    middleware = ContentSizeLimitMiddleware(app_mock)
+
+    async def receive():
+        return {'type': 'http.request', 'body': b'data'}
+
+    # Invalid Content-Length
+    scope = {
+        'type': 'http',
+        'method': 'POST',
+        'headers': [(b'content-length', b'invalid')],
+        'path': '/test',
+    }
+    request = Request(scope, receive)
+
+    response = await middleware.dispatch(request, mock_call_next)
+    assert response.status_code == 400
+    assert response.body == b"Invalid Content-Length"

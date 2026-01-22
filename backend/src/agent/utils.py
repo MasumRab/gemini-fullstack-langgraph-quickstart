@@ -1,5 +1,9 @@
 from typing import Any, Dict, List
+import os
+import difflib
+from functools import lru_cache
 from langchain_core.messages import AnyMessage, AIMessage, HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 def get_research_topic(messages: List[AnyMessage]) -> str:
@@ -160,9 +164,13 @@ def get_citations(response, resolved_urls_map):
                 try:
                     chunk = candidate.grounding_metadata.grounding_chunks[ind]
                     resolved_url = resolved_urls_map.get(chunk.web.uri, None)
+                    title = chunk.web.title
+                    # Remove file extension if present (e.g. "Doc.pdf" -> "Doc")
+                    # If no dot, use full title.
+                    label = title.split(".")[0] if title and "." in title else title
                     citation["segments"].append(
                         {
-                            "label": chunk.web.title.split(".")[:-1][0],
+                            "label": label,
                             "short_url": resolved_url,
                             "value": chunk.web.uri,
                         }
@@ -174,3 +182,69 @@ def get_citations(response, resolved_urls_map):
                     pass
         citations.append(citation)
     return citations
+
+def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\n") -> str:
+    """
+    Efficiently joins a list of strings up to a maximum length.
+    Avoids creating the full joined string in memory if it exceeds the limit.
+    """
+    if not strings:
+        return ""
+
+    result_parts = []
+    current_length = 0
+    sep_len = len(separator)
+
+    for i, s in enumerate(strings):
+        # Determine overhead for separator
+        overhead = sep_len if i > 0 else 0
+
+        # Check if we can fit the full string
+        if current_length + overhead + len(s) <= max_length:
+            result_parts.append(s)
+            current_length += overhead + len(s)
+        else:
+            # Truncate
+            remaining = max_length - (current_length + overhead)
+            if remaining > 0:
+                result_parts.append(s[:remaining])
+            break
+
+    return separator.join(result_parts)
+
+
+# ⚡ Bolt Optimization: Cache LLM instance creation
+# Creating ChatGoogleGenerativeAI objects involves some overhead.
+# Since config (model, temp) is usually stable within a session, we can reuse instances.
+@lru_cache(maxsize=16)
+def get_cached_llm(model: str, temperature: float) -> ChatGoogleGenerativeAI:
+    return ChatGoogleGenerativeAI(
+        model=model,
+        temperature=temperature,
+        api_key=os.getenv("GEMINI_API_KEY"),
+    )
+
+
+def has_fuzzy_match(keyword: str, candidates: List[str], cutoff: float = 0.8) -> bool:
+    """
+    Checks if there is any candidate in the list that has a fuzzy match ratio >= cutoff
+    with the keyword. Returns True immediately on the first match.
+    Avoids sorting overhead of get_close_matches.
+
+    Args:
+        keyword: The word to match against.
+        candidates: List of words to search in.
+        cutoff: Minimum similarity ratio (0.0 to 1.0).
+
+    Returns:
+        True if a match is found, False otherwise.
+    """
+    # Reuse SequenceMatcher instance for efficiency
+    matcher = difflib.SequenceMatcher(b=keyword)
+
+    for candidate in candidates:
+        matcher.set_seq1(candidate)
+        # Check quick_ratio first as an upper bound
+        if matcher.quick_ratio() >= cutoff and matcher.ratio() >= cutoff:
+            return True
+    return False

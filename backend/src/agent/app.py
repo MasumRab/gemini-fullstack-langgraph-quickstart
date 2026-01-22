@@ -30,16 +30,23 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
         self.max_upload_size = max_upload_size
 
     async def dispatch(self, request: Request, call_next):
-        if request.method == "POST":
+        if request.method in ("POST", "PUT", "PATCH"):
             # 🛡️ Sentinel: Reject 'Transfer-Encoding: chunked' to prevent Content-Length bypass (Request Smuggling/DoS)
             transfer_encoding = request.headers.get("transfer-encoding", "").lower()
             if "chunked" in transfer_encoding:
                 return Response("Chunked encoding not allowed", status_code=411)
 
             content_length = request.headers.get("content-length")
-            if content_length:
+            if not content_length:
+                # 🛡️ Sentinel: Enforce Content-Length for state-changing methods to prevent streaming DoS
+                return Response("Content-Length required", status_code=411)
+
+            try:
+                # 🛡️ Sentinel: Prevent 500 crashes from malformed Content-Length headers
                 if int(content_length) > self.max_upload_size:
                     return Response("Request entity too large", status_code=413)
+            except ValueError:
+                return Response("Invalid Content-Length", status_code=400)
         return await call_next(request)
 
 

@@ -24,3 +24,10 @@
 **Learning:** When optimizing list rendering for streaming data (like chat messages), extracting list items into memoized components is only effective if the props passed to them are stable. Passing the raw index or the entire list often defeats the purpose because the parent re-renders on every update.
 **Action:** Pre-calculate stable boolean flags (e.g., `isLast`, `isLoading`) in the parent map loop and pass those primitive values to the child component instead of raw state objects.
 
+## 2025-05-24 - [LLM Client Instantiation Overhead]
+**Learning:** Creating `ChatGoogleGenerativeAI` instances carries a small but non-zero cost (~1.6ms). In high-concurrency scenarios (like parallel validation of 10+ search results), this adds up and churns objects.
+**Action:** Use `functools.lru_cache` to reuse LLM client instances when configuration (model, temp) is stable.
+
+## 2025-05-25 - [Control Flow Node Optimization]
+**Learning:** Even sequential control nodes (like Coordinators and Supervisors) benefit from cached resource instantiation. Instantiating heavy clients inside frequently called routing functions adds latency to every step of the graph, which compounds in long-running agents.
+**Action:** Centralize cached factories in utility modules (e.g. `get_cached_llm`) and use them in all graph nodes, not just high-concurrency ones.
