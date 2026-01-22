@@ -111,4 +111,28 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders a semantic list when events are present', () => {
+    const events = [
+      { title: 'Researching topic', data: 'some query' },
+      { title: 'Analyzing results', data: 'some analysis' },
+    ];
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    // By default, if events are present, it collapses. Wait, the useEffect collapses it.
+    // So we need to expand it first.
+    const button = screen.getByRole('button');
+    // If it's collapsed (ChevronDown), click it.
+    if (screen.queryByTestId('chevron-down')) {
+      fireEvent.click(button);
+    }
+
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent('Researching topic');
+    expect(items[1]).toHaveTextContent('Analyzing results');
+  });
 });
