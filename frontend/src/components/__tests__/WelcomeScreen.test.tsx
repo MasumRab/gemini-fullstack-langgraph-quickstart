@@ -26,4 +26,11 @@ describe("WelcomeScreen", () => {
     render(<WelcomeScreen {...defaultProps} />);
     expect(screen.getByRole("heading", { level: 1, name: /welcome/i })).toBeInTheDocument();
   });
+
+  it("renders the semantic footer", () => {
+    render(<WelcomeScreen {...defaultProps} />);
+    const footer = screen.getByRole("contentinfo");
+    expect(footer).toBeInTheDocument();
+    expect(footer).toHaveTextContent(/Powered by Google Gemini and LangChain LangGraph/);
+  });
 });
