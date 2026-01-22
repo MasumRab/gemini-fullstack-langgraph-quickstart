@@ -5,7 +5,6 @@
 # Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
 
 import concurrent.futures
-import difflib
 import json
 import logging
 import os
@@ -64,6 +63,7 @@ from agent.utils import (
     get_research_topic,
     join_and_truncate,
     get_cached_llm,
+    has_fuzzy_match,
 )
 from observability.langfuse import observe_span
 
@@ -1483,10 +1483,7 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                     # this speeds up get_close_matches by ~97%.
                     summary_words = list(set(normalized_summary.split()))
                     for keyword in keywords:
-                        matches = difflib.get_close_matches(
-                            keyword, summary_words, n=1, cutoff=0.8
-                        )
-                        if matches:
+                        if has_fuzzy_match(keyword, summary_words, cutoff=0.8):
                             match_found = True
                             break
 
