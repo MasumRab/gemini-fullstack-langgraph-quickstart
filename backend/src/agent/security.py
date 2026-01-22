@@ -1,9 +1,10 @@
 """Security middleware for the agent application."""
 
-import time
 import ipaddress
+import time
 from collections import defaultdict
-from typing import List, Optional
+from typing import List
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -62,12 +63,31 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Simple in-memory rate limiting middleware."""
 
+    def get_client_key(self, ip: str) -> str:
+        """Normalize IP address to a rate limit key.
+
+        For IPv4, returns the IP.
+        For IPv6, returns the /64 prefix to prevent subnet rotation attacks.
+        """
+        try:
+            obj = ipaddress.ip_address(ip)
+            if isinstance(obj, ipaddress.IPv6Address):
+                # Mask to /64
+                val = int(obj)
+                mask = (1 << 128) - (1 << 64)
+                masked = val & mask
+                return str(ipaddress.IPv6Address(masked)) + "/64"
+            return str(obj)
+        except ValueError:
+            # If not a valid IP, just return as is (could be "unknown" or malformed)
+            return ip
+
     def __init__(
         self,
         app,
         limit: int = 100,
         window: int = 60,
-        protected_paths: Optional[List[str]] = None,
+        protected_paths: List[str] | None = None,
     ):
         """Initialize the rate limiter.
 
@@ -137,16 +157,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             else:
                 client_ip = request.client.host if request.client else "unknown"
 
+            # 🛡️ Sentinel: Group IPv6 addresses by /64 prefix to prevent subnet rotation attacks
+            client_key = self.get_client_key(client_ip)
+
             now = time.time()
 
             # Clean old requests (simple sliding window)
-            current_requests = self.requests[client_ip]
+            current_requests = self.requests[client_key]
             # Prune old timestamps
             active_requests = [t for t in current_requests if now - t < self.window]
 
             if len(active_requests) >= self.limit:
                 # Update map with pruned list before returning
-                self.requests[client_ip] = active_requests
+                self.requests[client_key] = active_requests
                 return Response("Too Many Requests", status_code=429)
 
             active_requests.append(now)
@@ -194,9 +217,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     len(active_requests) == 1
                 ):  # This was a new entry (or re-entry after expiry)
                     # Safe delete using pop to avoid KeyErrors in race conditions
-                    self.requests.pop(client_ip, None)
+                    self.requests.pop(client_key, None)
                     return Response("Server Busy", status_code=503)
 
-            self.requests[client_ip] = active_requests
+            self.requests[client_key] = active_requests
 
         return await call_next(request)
