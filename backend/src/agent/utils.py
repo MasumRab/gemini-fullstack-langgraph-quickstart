@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 import os
+import difflib
 from functools import lru_cache
 from langchain_core.messages import AnyMessage, AIMessage, HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -222,3 +223,28 @@ def get_cached_llm(model: str, temperature: float) -> ChatGoogleGenerativeAI:
         temperature=temperature,
         api_key=os.getenv("GEMINI_API_KEY"),
     )
+
+
+def has_fuzzy_match(keyword: str, candidates: List[str], cutoff: float = 0.8) -> bool:
+    """
+    Checks if there is any candidate in the list that has a fuzzy match ratio >= cutoff
+    with the keyword. Returns True immediately on the first match.
+    Avoids sorting overhead of get_close_matches.
+
+    Args:
+        keyword: The word to match against.
+        candidates: List of words to search in.
+        cutoff: Minimum similarity ratio (0.0 to 1.0).
+
+    Returns:
+        True if a match is found, False otherwise.
+    """
+    # Reuse SequenceMatcher instance for efficiency
+    matcher = difflib.SequenceMatcher(b=keyword)
+
+    for candidate in candidates:
+        matcher.set_seq1(candidate)
+        # Check quick_ratio first as an upper bound
+        if matcher.quick_ratio() >= cutoff and matcher.ratio() >= cutoff:
+            return True
+    return False

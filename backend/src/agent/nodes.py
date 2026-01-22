@@ -5,7 +5,6 @@
 # Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
 
 import concurrent.futures
-import difflib
 import json
 import logging
 import os
@@ -64,6 +63,7 @@ from agent.utils import (
     get_research_topic,
     join_and_truncate,
     get_cached_llm,
+    has_fuzzy_match,
 )
 from observability.langfuse import observe_span
 
