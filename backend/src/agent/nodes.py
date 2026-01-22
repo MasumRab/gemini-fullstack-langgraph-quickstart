@@ -254,6 +254,9 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
         if state.get("initial_search_query_count") is None:
             state["initial_search_query_count"] = configurable.number_of_initial_queries
 
+        # 🛡️ Sentinel: Enforce limit to prevent DoS via massive query generation
+        state["initial_search_query_count"] = min(state["initial_search_query_count"], 10)
+
         # Format the prompt
         current_date = get_current_date()
         formatted_prompt = plan_writer_instructions.format(
@@ -1694,7 +1697,8 @@ def evaluate_research(state: OverallState) -> str:
 
     # Check loop limits
     loop_count = state.get("research_loop_count", 0)
-    max_loops = state.get("max_research_loops", 3)
+    # 🛡️ Sentinel: Enforce limit to prevent infinite loops (DoS)
+    max_loops = min(state.get("max_research_loops", 3), 5)
     if loop_count >= max_loops:
         return "finalize_answer"
 
