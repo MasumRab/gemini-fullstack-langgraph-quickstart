@@ -241,8 +241,23 @@ def has_fuzzy_match(keyword: str, candidates: List[str], cutoff: float = 0.8) ->
     """
     # Reuse SequenceMatcher instance for efficiency
     matcher = difflib.SequenceMatcher(b=keyword)
+    kw_len = len(keyword)
+
+    # ⚡ Bolt Optimization: Pre-calculate length bounds to skip obvious mismatches.
+    # Based on the formula: 2 * min_len / (len_a + len_b) >= cutoff
+    if cutoff > 0:
+        upper_bound = kw_len * (2 - cutoff) / cutoff
+        lower_bound = kw_len * cutoff / (2 - cutoff)
+    else:
+        upper_bound = float("inf")
+        lower_bound = 0
 
     for candidate in candidates:
+        cand_len = len(candidate)
+        # Skip if length difference is too large for the cutoff
+        if not (lower_bound <= cand_len <= upper_bound):
+            continue
+
         matcher.set_seq1(candidate)
         # Check quick_ratio first as an upper bound
         if matcher.quick_ratio() >= cutoff and matcher.ratio() >= cutoff:
