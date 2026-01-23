@@ -57,4 +57,33 @@ describe('ChatMessagesView Markdown Links', () => {
     expect(link.className).toContain('border'); // from Badge
     expect(link.className).toContain('text-blue-400'); // from our custom className passed to a tag
   });
+
+  it('sanitizes javascript: links', () => {
+    const message: Message = {
+      type: "ai",
+      content: "Here is a [bad link](javascript:alert(1))",
+      id: "msg-2"
+    };
+
+    render(<ChatMessagesView {...defaultProps} messages={[message]} />);
+
+    const link = screen.getByText('bad link');
+
+    // It should render the text, but the href should be sanitized (removed or empty)
+    // ReactMarkdown default urlTransform might remove it or make it javascript:void(0) or similar?
+    // rehype-sanitize typically removes unsafe attributes.
+    // Let's check if href is missing or safe.
+    // If it was raw html, it would be stripped.
+    // For markdown links, if protocol is bad, it might just be <a>text</a>
+
+    // Check if href is NOT javascript:alert(1)
+    expect(link).not.toHaveAttribute('href', 'javascript:alert(1)');
+
+    // It probably has no href, or a safe one.
+    // Let's print it if verification fails, but for now assert safe.
+    const href = link.getAttribute('href');
+    if (href) {
+        expect(href).not.toMatch(/^javascript:/i);
+    }
+  });
 });
