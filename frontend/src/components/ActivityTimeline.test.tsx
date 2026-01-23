@@ -111,4 +111,26 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders activity events as a list', () => {
+    const events = [
+      { title: 'Event 1', data: 'Data 1' },
+      { title: 'Event 2', data: 'Data 2' },
+    ];
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    // Ensure the list is expanded (it auto-collapses on data by default, so we must expand it)
+    const button = screen.getByRole('button');
+    if (button.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(button);
+    }
+
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent('Event 1');
+    expect(items[1]).toHaveTextContent('Event 2');
+  });
 });
