@@ -111,4 +111,20 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders events as a semantic list', () => {
+    const events = [{ title: 'Event 1', data: 'Data 1' }, { title: 'Event 2', data: 'Data 2' }];
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    // It collapses by default when events are present, so we need to expand it
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
+
+    const list = screen.getByRole('list', { name: /activity events/i });
+    expect(list).toBeInTheDocument();
+    expect(list).toHaveClass('list-none');
+
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+  });
 });
