@@ -410,3 +410,24 @@ class TestHasFuzzyMatch:
         # "apple" vs "apply" -> ratio is 0.8.
         assert has_fuzzy_match("apple", ["apply"], cutoff=0.9) is False
         assert has_fuzzy_match("apple", ["apply"], cutoff=0.7) is True
+
+    def test_length_optimization(self):
+        """Test that length-based optimization works correctly."""
+        # Valid match with different lengths: "apple" (5) vs "apples" (6)
+        # Ratio: 2*5 / 11 = 0.909 >= 0.8.
+        # Bounds check:
+        # Upper for 5, cutoff 0.8: 5 * 1.5 = 7.5. 6 <= 7.5. OK.
+        # Lower for 5, cutoff 0.8: 5 * 0.66 = 3.33. 6 >= 3.33. OK.
+        assert has_fuzzy_match("apple", ["apples"], cutoff=0.8) is True
+
+        # Vastly different lengths should be skipped/fail
+        # "a" (1) vs "aaaaa" (5). Ratio 2/6 = 0.33. Cutoff 0.8.
+        # Bounds check: Upper for 1: 1.5. 5 > 1.5. Skipped.
+        assert has_fuzzy_match("a", ["aaaaa"], cutoff=0.8) is False
+
+        # Edge case: cutoff 1.0 (Exact length required)
+        # Upper: kw_len * 1 / 1 = kw_len.
+        # Lower: kw_len * 1 / 1 = kw_len.
+        # So must be exact length.
+        assert has_fuzzy_match("abc", ["abcd"], cutoff=1.0) is False
+        assert has_fuzzy_match("abc", ["abc"], cutoff=1.0) is True
