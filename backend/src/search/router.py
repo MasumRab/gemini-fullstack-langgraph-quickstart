@@ -1,18 +1,21 @@
+"""Search router module for handling multiple search providers."""
 import logging
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Dict, List
 
-from config.app_config import config, AppConfig
+from config.app_config import AppConfig, config
+
 from .provider import SearchProvider, SearchResult
-from .providers.google_adapter import GoogleSearchAdapter
-from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-from .providers.brave_adapter import BraveSearchAdapter
-from .providers.tavily_adapter import TavilyAdapter
 from .providers.bing_adapter import BingAdapter
+from .providers.brave_adapter import BraveSearchAdapter
+from .providers.duckduckgo_adapter import DuckDuckGoAdapter
+from .providers.google_adapter import GoogleSearchAdapter
+from .providers.tavily_adapter import TavilyAdapter
 
 logger = logging.getLogger(__name__)
 
 class SearchProviderType(Enum):
+    """Enumeration of supported search providers."""
     GOOGLE = "google"
     DUCKDUCKGO = "duckduckgo"
     BRAVE = "brave"
@@ -20,60 +23,49 @@ class SearchProviderType(Enum):
     BING = "bing"
 
 class SearchRouter:
-    """
-    Routes search queries to the appropriate provider with fallback logic.
-    """
+    """Routes search queries to the appropriate provider with fallback logic."""
+
+    # ⚡ Bolt Optimization: Lazy instantiation mapping to reduce startup time
+    _PROVIDER_CLASSES = {
+        SearchProviderType.GOOGLE.value: GoogleSearchAdapter,
+        SearchProviderType.DUCKDUCKGO.value: DuckDuckGoAdapter,
+        SearchProviderType.BRAVE.value: BraveSearchAdapter,
+        SearchProviderType.TAVILY.value: TavilyAdapter,
+        SearchProviderType.BING.value: BingAdapter,
+    }
 
     def __init__(self, app_config: AppConfig = config):
         """Initialize router with config."""
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
-        self._init_providers()
 
-    def _init_providers(self):
-        """Initialize providers based on availability and config."""
-        # Google
+    def _get_provider(self, name: str) -> SearchProvider | None:
+        # Return cached provider if exists
+        if name in self.providers:
+            return self.providers[name]
+
+        # Lazy initialization
+        adapter_cls = self._PROVIDER_CLASSES.get(name)
+        if not adapter_cls:
+            return None
+
         try:
-            self.providers[SearchProviderType.GOOGLE.value] = GoogleSearchAdapter()
+            logger.debug(f"Initializing search provider: {name}")
+            instance = adapter_cls()
+            self.providers[name] = instance
+            return instance
         except Exception as e:
-            logger.debug(f"Google adapter failed to init: {e}")
-
-        # Brave
-        try:
-            self.providers[SearchProviderType.BRAVE.value] = BraveSearchAdapter()
-        except Exception as e:
-            logger.debug(f"Brave adapter failed to init: {e}")
-
-        # DuckDuckGo
-        try:
-            self.providers[SearchProviderType.DUCKDUCKGO.value] = DuckDuckGoAdapter()
-        except Exception as e:
-            logger.debug(f"DuckDuckGo adapter failed to init: {e}")
-
-        # Tavily
-        try:
-            self.providers[SearchProviderType.TAVILY.value] = TavilyAdapter()
-        except Exception as e:
-            logger.debug(f"Tavily adapter failed to init: {e}")
-
-        # Bing
-        try:
-            self.providers[SearchProviderType.BING.value] = BingAdapter()
-        except Exception as e:
-            logger.debug(f"Bing adapter failed to init: {e}")
-
-    def _get_provider(self, name: str) -> Optional[SearchProvider]:
-        return self.providers.get(name)
+            logger.debug(f"{name} adapter failed to init: {e}")
+            return None
 
     def search(
         self,
         query: str,
         max_results: int = 5,
-        provider_name: Optional[str] = None,
+        provider_name: str | None = None,
         attempt_fallback: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search with routing and fallback logic.
+        """Execute search with routing and fallback logic.
 
         Args:
             query: Search query
