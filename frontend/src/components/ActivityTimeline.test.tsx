@@ -111,4 +111,19 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders list and listitems for accessibility', () => {
+    const events = [{ title: 'Event 1', data: 'Data' }];
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    // Ensure the list is visible (collapsed by default logic might interfere if not handled)
+    const button = screen.getByRole('button');
+    if (button.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(button);
+    }
+
+    expect(screen.getByRole('list')).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByText('Event 1')).toBeInTheDocument();
+  });
 });
