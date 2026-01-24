@@ -111,4 +111,21 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders events as a semantic list', () => {
+    const events = [{ title: 'Event 1', data: 'Data' }];
+    render(<ActivityTimeline {...defaultProps} processedEvents={events} />);
+
+    // Logic: if (!isLoading && processedEvents.length !== 0) -> setIsTimelineCollapsed(true)
+    // So it starts collapsed. We need to expand it.
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
+
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent('Event 1');
+  });
 });
