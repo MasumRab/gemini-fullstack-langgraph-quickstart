@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useState, ReactNode, memo, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -142,6 +143,7 @@ const mdComponents = {
 
 // ⚡ Bolt Optimization: Define remark plugins as a constant to ensure referential stability.
 const markdownPlugins = [remarkGfm];
+const rehypePlugins = [rehypeSanitize];
 
 // Props for HumanMessageBubble
 interface HumanMessageBubbleProps {
@@ -172,7 +174,11 @@ const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = memo(({
     <div
       className={`text-white rounded-3xl break-words min-h-7 bg-neutral-700 max-w-[100%] sm:max-w-[90%] px-4 pt-3 rounded-br-lg`}
     >
-      <ReactMarkdown components={mdComponents} remarkPlugins={markdownPlugins}>
+      <ReactMarkdown
+        components={mdComponents}
+        remarkPlugins={markdownPlugins}
+        rehypePlugins={rehypePlugins}
+      >
         {typeof message.content === "string"
           ? message.content
           : JSON.stringify(message.content)}
@@ -240,7 +246,11 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(({
           />
         </div>
       )}
-      <ReactMarkdown components={mdComponents} remarkPlugins={markdownPlugins}>
+      <ReactMarkdown
+        components={mdComponents}
+        remarkPlugins={markdownPlugins}
+        rehypePlugins={rehypePlugins}
+      >
         {typeof message.content === "string"
           ? message.content
           : JSON.stringify(message.content)}
