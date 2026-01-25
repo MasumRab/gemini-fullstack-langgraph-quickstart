@@ -150,7 +150,12 @@ class TestSearchRouter:
         ddg_mock.search.assert_called_once()
 
     def test_search_all_fail(self, mock_config, mock_adapters):
-        """Test empty list returned when all providers fail."""
+        """Test empty list returned when all providers fail.
+
+        Fix: Updated expectation to assert empty list instead of exception.
+        This ensures robustness: if all providers including fallback fail,
+        the app should return empty results rather than crashing.
+        """
         router = SearchRouter(app_config=mock_config)
         mock_config.search_provider = "google"
         mock_config.search_fallback = "duckduckgo"
@@ -163,8 +168,8 @@ class TestSearchRouter:
         # DDG fails
         ddg_mock.search.side_effect = Exception("DDG Fail")
 
-        with pytest.raises(Exception, match="DDG Fail"):
-            router.search("query")
+        results = router.search("query")
+        assert results == []
 
     def test_search_no_provider_available(self, mock_config, mock_adapters):
         """Test ValueError when no providers are configured/available."""
