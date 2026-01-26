@@ -10,10 +10,10 @@ test:
 	uv run --with-editable . pytest $(TEST_FILE)
 
 test_watch:
-	uv run --with-editable . ptw --snapshot-update --now . -- -vv tests/unit_tests
+	uv run --with-editable . watchfiles "uv run pytest tests/" .
 
 test_profile:
-	uv run --with-editable . pytest -vv tests/unit_tests/ --profile-svg
+	uv run --with-editable . pytest -vv tests/ --profile-svg
 
 extended_tests:
 	uv run --with-editable . pytest --only-extended $(TEST_FILE)

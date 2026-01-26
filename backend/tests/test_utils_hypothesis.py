@@ -2,6 +2,7 @@ from hypothesis import given, strategies as st, settings, HealthCheck
 import pytest
 from agent.utils import insert_citation_markers
 
+@pytest.mark.extended
 @settings(suppress_health_check=[HealthCheck.too_slow])
 @given(
     text=st.text(min_size=1, max_size=500),
@@ -21,6 +22,7 @@ def test_insert_citation_never_raises(text, end_indices):
     except Exception as e:
         pytest.fail(f"insert_citation_markers raised exception: {e}")
 
+@pytest.mark.extended
 @given(st.text())
 def test_insert_citation_empty_citations(text):
     """Test that providing empty citations returns the original text."""
