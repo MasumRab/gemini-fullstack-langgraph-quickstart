@@ -1,12 +1,15 @@
 """Security middleware for the agent application."""
 
 import ipaddress
+import logging
 import time
 from collections import defaultdict
 from typing import List
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -170,6 +173,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if len(active_requests) >= self.limit:
                 # Update map with pruned list before returning
                 self.requests[client_key] = active_requests
+                logger.warning(f"Rate limit exceeded for {client_key} on {path}")
                 return Response("Too Many Requests", status_code=429)
 
             active_requests.append(now)
@@ -218,6 +222,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 ):  # This was a new entry (or re-entry after expiry)
                     # Safe delete using pop to avoid KeyErrors in race conditions
                     self.requests.pop(client_key, None)
+                    logger.warning(
+                        f"Server busy (max clients): rejected new client {client_key} on {path}"
+                    )
                     return Response("Server Busy", status_code=503)
 
             self.requests[client_key] = active_requests
