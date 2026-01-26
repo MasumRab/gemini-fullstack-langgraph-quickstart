@@ -1379,20 +1379,6 @@ TOKEN_SPLIT_PATTERN = re.compile(r"[^\w]+")
 CITATION_PATTERN = re.compile(r"\[[^\]]+\]\(https?://[^\)]+\)")
 
 
-# ⚡ Bolt Optimization: Lazy fuzzy match helper
-# Returns True as soon as a match is found, avoiding full sort/scan of get_close_matches.
-def has_fuzzy_match(word: str, possibilities: set[str], cutoff: float = 0.8) -> bool:
-    s = difflib.SequenceMatcher()
-    s.set_seq2(word)
-    for x in possibilities:
-        s.set_seq1(x)
-        if (
-            s.real_quick_ratio() >= cutoff
-            and s.quick_ratio() >= cutoff
-            and s.ratio() >= cutoff
-        ):
-            return True
-    return False
 
 
 def _keywords_from_queries(queries: List[str]) -> List[str]:
