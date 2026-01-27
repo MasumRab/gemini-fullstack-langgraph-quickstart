@@ -111,4 +111,24 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders as a semantic list with role="list" and "listitem"', () => {
+    const events = [
+      { title: 'Event 1', data: 'Data 1' },
+      { title: 'Event 2', data: 'Data 2' },
+    ];
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    // Expand the timeline
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
+
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+
+    const listItems = screen.getAllByRole('listitem');
+    expect(listItems).toHaveLength(2);
+    expect(listItems[0]).toHaveTextContent('Event 1');
+    expect(listItems[1]).toHaveTextContent('Event 2');
+  });
 });
