@@ -88,6 +88,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         limit: int = 100,
         window: int = 60,
         protected_paths: List[str] | None = None,
+        trust_proxy_headers: bool = False,
     ):
         """Initialize the rate limiter.
 
@@ -97,11 +98,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             window: Time window in seconds.
             protected_paths: List of path prefixes to apply rate limiting to.
                              If None, applies to all paths.
+            trust_proxy_headers: Whether to trust X-Forwarded-For headers.
         """
         super().__init__(app)
         self.limit = limit
         self.window = window
         self.protected_paths = protected_paths if protected_paths is not None else []
+        self.trust_proxy_headers = trust_proxy_headers
         self.requests = defaultdict(list)
         # 🛡️ Sentinel: Optimize cleanup frequency to prevent DoS via Iteration attacks
         self.last_cleanup = 0
@@ -131,8 +134,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if is_protected:
             # 🛡️ Sentinel: Support X-Forwarded-For for proxies (Render/Load Balancers)
             # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
+            # 🛡️ Sentinel: Only parse X-Forwarded-For if explicitly trusted to prevent spoofing.
             forwarded = request.headers.get("X-Forwarded-For")
-            if forwarded:
+            if forwarded and self.trust_proxy_headers:
                 # 🛡️ Sentinel: Prevent spoofing by traversing from the end (trusted proxies)
                 # Proxies (like Render) append the verified client IP to the end.
                 # We traverse backwards to find the first non-private IP to avoid blocking the proxy itself.
