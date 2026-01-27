@@ -28,6 +28,41 @@ if str(SRC_PATH) not in sys.path:
 
 
 # =============================================================================
+# Pytest Hooks
+# =============================================================================
+
+def pytest_addoption(parser):
+    """Add custom command line options."""
+    parser.addoption(
+        "--only-extended",
+        action="store_true",
+        default=False,
+        help="run only tests marked with extended",
+    )
+
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line("markers", "extended: mark test as extended/slow test")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Filter tests based on command line options."""
+    if config.getoption("--only-extended"):
+        # --only-extended given in cli: do not run non-extended tests
+        skip_non_extended = pytest.mark.skip(reason="skipped because --only-extended is set")
+        for item in items:
+            if "extended" not in item.keywords:
+                item.add_marker(skip_non_extended)
+    else:
+        # --only-extended not given in cli: skip extended tests
+        skip_extended = pytest.mark.skip(reason="use --only-extended option to run")
+        for item in items:
+            if "extended" in item.keywords:
+                item.add_marker(skip_extended)
+
+
+# =============================================================================
 # State Fixtures
 # =============================================================================
 
