@@ -111,4 +111,26 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders events as a semantic list', () => {
+    const events = [
+      { title: 'Event 1', data: 'Data 1' },
+      { title: 'Event 2', data: 'Data 2' },
+    ];
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    // Expand the list manually since it auto-collapses when not loading
+    const button = screen.getByRole('button', { name: /Research Activity/i });
+    fireEvent.click(button);
+
+    // Ensure the container is a list
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+
+    // Ensure items are listitems
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent('Event 1');
+    expect(items[1]).toHaveTextContent('Event 2');
+  });
 });
