@@ -266,8 +266,8 @@ def format_search_output(summarized_results: Dict[str, dict]) -> str:
         return "No valid search results found. Please try different search queries."
 
     # ⚡ Bolt Optimization: Use list accumulation and join instead of string concatenation.
-    # String concatenation in a loop can be O(n^2) due to repeated copying.
     # Building a list of parts and joining them is O(n) and more memory efficient.
+    # This avoids the O(n^2) performance hit from repeated string copying.
     output_parts = ["Search results:\n\n"]
 
     for i, (url, result) in enumerate(summarized_results.items(), 1):
