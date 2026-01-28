@@ -301,7 +301,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 reset_time = oldest_request_time + self.window
                 retry_after = max(1, int(math.ceil(reset_time - now)))
 
-                logger.warning(f"Rate limit exceeded for {client_key} on {path}")
+                logger.warning(f"Rate limit exceeded for client {client_key} on path {path}")
 
                 return JSONResponse(
                     status_code=429,
@@ -355,6 +355,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 ):  # This was a new entry (or re-entry after expiry)
                     # Safe delete using pop to avoid KeyErrors in race conditions
                     self.requests.pop(client_key, None)
+                    logger.warning(
+                        f"Server busy (max clients exceeded) for client {client_key} on path {path}"
+                    )
                     return Response("Server Busy", status_code=503)
 
             self.requests[client_key] = active_requests
