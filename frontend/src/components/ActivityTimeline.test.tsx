@@ -111,4 +111,22 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders events list with semantic list roles', () => {
+    const events = [
+      { title: 'Searching for info', data: 'query' },
+      { title: 'Found results', data: 'results' },
+    ];
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    const button = screen.getByRole('button', { name: /Research Activity/i });
+    // It auto-collapses when loaded, so we must expand it
+    fireEvent.click(button);
+
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+
+    const listItems = screen.getAllByRole('listitem');
+    expect(listItems).toHaveLength(2);
+  });
 });
