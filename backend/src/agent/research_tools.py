@@ -266,15 +266,16 @@ def format_search_output(summarized_results: Dict[str, dict]) -> str:
     if not summarized_results:
         return "No valid search results found. Please try different search queries."
 
-    formatted_output = "Search results:\n\n"
+    # ⚡ Bolt Optimization: Use list join instead of O(N^2) string concatenation
+    output_parts = ["Search results:\n\n"]
 
     for i, (url, result) in enumerate(summarized_results.items(), 1):
-        formatted_output += f"\n--- SOURCE {i}: {result['title']} ---\n"
-        formatted_output += f"URL: {url}\n\n"
-        formatted_output += f"SUMMARY:\n{result['content']}\n\n"
-        formatted_output += "-" * 80 + "\n"
+        output_parts.append(f"\n--- SOURCE {i}: {result['title']} ---\n")
+        output_parts.append(f"URL: {url}\n\n")
+        output_parts.append(f"SUMMARY:\n{result['content']}\n\n")
+        output_parts.append("-" * 80 + "\n")
 
-    return formatted_output
+    return "".join(output_parts)
 
 
 # =============================================================================

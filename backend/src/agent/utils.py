@@ -14,12 +14,14 @@ def get_research_topic(messages: List[AnyMessage]) -> str:
     if len(messages) == 1:
         research_topic = messages[-1].content
     else:
-        research_topic = ""
+        # ⚡ Bolt Optimization: Use list join instead of O(N^2) string concatenation
+        topic_parts = []
         for message in messages:
             if isinstance(message, HumanMessage):
-                research_topic += f"User: {message.content}\n"
+                topic_parts.append(f"User: {message.content}\n")
             elif isinstance(message, AIMessage):
-                research_topic += f"Assistant: {message.content}\n"
+                topic_parts.append(f"Assistant: {message.content}\n")
+        research_topic = "".join(topic_parts)
     return research_topic
 
 
