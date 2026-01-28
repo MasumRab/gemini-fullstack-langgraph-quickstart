@@ -88,6 +88,9 @@ filterwarnings = [
     "ignore:.*SwigPy.*:DeprecationWarning",
     "ignore:.*swigvarlink.*:DeprecationWarning",
 ]
+markers = [
+    "extended: mark test as extended/slow",
+]
 
 [dependency-groups]
 dev = [
