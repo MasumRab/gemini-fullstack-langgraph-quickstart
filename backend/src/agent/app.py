@@ -2,6 +2,7 @@
 """FastAPI application for the agent."""
 
 import json
+import logging
 import pathlib
 from contextlib import asynccontextmanager
 from typing import Any
@@ -21,6 +22,8 @@ from agent.tools_and_schemas import MCP_TOOLS, get_tools_from_mcp
 from config.app_config import config as app_config
 from config.validation import check_env_strict
 
+logger = logging.getLogger(__name__)
+
 # Define Middleware for Content Size Limit (Defense against DoS)
 class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
     """Middleware to limit the size of the request body."""
@@ -34,18 +37,26 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
             # 🛡️ Sentinel: Reject 'Transfer-Encoding: chunked' to prevent Content-Length bypass (Request Smuggling/DoS)
             transfer_encoding = request.headers.get("transfer-encoding", "").lower()
             if "chunked" in transfer_encoding:
+                logger.warning("Rejected chunked transfer encoding (DoS protection)")
                 return Response("Chunked encoding not allowed", status_code=411)
 
             content_length = request.headers.get("content-length")
             if not content_length:
                 # 🛡️ Sentinel: Enforce Content-Length for state-changing methods to prevent streaming DoS
+                logger.warning("Rejected request missing Content-Length (DoS protection)")
                 return Response("Content-Length required", status_code=411)
 
             try:
                 # 🛡️ Sentinel: Prevent 500 crashes from malformed Content-Length headers
                 if int(content_length) > self.max_upload_size:
+                    logger.warning(
+                        f"Rejected request with content length {content_length} > {self.max_upload_size}"
+                    )
                     return Response("Request entity too large", status_code=413)
             except ValueError:
+                logger.warning(
+                    f"Rejected request with invalid content length: {content_length}"
+                )
                 return Response("Invalid Content-Length", status_code=400)
         return await call_next(request)
 
