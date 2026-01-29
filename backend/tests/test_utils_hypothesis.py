@@ -2,6 +2,8 @@ from hypothesis import given, strategies as st, settings, HealthCheck
 import pytest
 from agent.utils import insert_citation_markers
 
+pytestmark = pytest.mark.extended
+
 @settings(suppress_health_check=[HealthCheck.too_slow])
 @given(
     text=st.text(min_size=1, max_size=500),
