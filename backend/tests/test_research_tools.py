@@ -2,8 +2,10 @@
 
 Tests cover search functions, summarization, deduplication, and tool definitions.
 """
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from agent.models import GEMINI_FLASH, GEMINI_PRO
 
 

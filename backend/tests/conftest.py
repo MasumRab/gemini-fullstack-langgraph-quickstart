@@ -3,13 +3,13 @@
 This module provides reusable fixtures that can be used across all test files.
 Fixtures are designed to be path-insensitive and robust to minor code changes.
 """
+import os
 import pathlib
 import sys
-from typing import Any, Dict, List
 from types import SimpleNamespace
+from typing import Any, Dict, List
 
 import pytest
-import os
 
 # Set dummy API key before any imports that might use it
 os.environ["GEMINI_API_KEY"] = "dummy_key_for_tests"

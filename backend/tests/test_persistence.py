@@ -3,9 +3,6 @@
 Tests cover save/load operations, edge cases, and error handling.
 Uses temporary directories to avoid touching real filesystem.
 """
-import json
-import os
-import pytest
 
 
 class TestPersistence:
