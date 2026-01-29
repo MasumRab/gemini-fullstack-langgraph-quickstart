@@ -2,11 +2,16 @@
 
 import ipaddress
 import time
+import logging
+import math
 from collections import defaultdict
 from typing import List
 
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -170,7 +175,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if len(active_requests) >= self.limit:
                 # Update map with pruned list before returning
                 self.requests[client_key] = active_requests
-                return Response("Too Many Requests", status_code=429)
+
+                # Calculate retry_after
+                oldest_request_time = active_requests[0]
+                reset_time = oldest_request_time + self.window
+                retry_after = max(1, int(math.ceil(reset_time - now)))
+
+                logger.warning(f"Rate limit exceeded for {client_key}")
+
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Too Many Requests", "retry_after": retry_after},
+                    headers={"Retry-After": str(retry_after)},
+                )
 
             active_requests.append(now)
 
