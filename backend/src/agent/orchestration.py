@@ -26,18 +26,18 @@ Usage:
     )
 """
 
-from typing import Dict, List, Any, Callable, Optional, Union
-from dataclasses import dataclass, field
 import logging
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, StructuredTool
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
-from agent.state import OverallState
 from agent.configuration import Configuration
 from agent.models import GEMINI_PRO
+from agent.state import OverallState
 from agent.utils import get_cached_llm
 
 logger = logging.getLogger(__name__)
@@ -147,7 +147,7 @@ class ToolRegistry:
         if name in self._tools:
             del self._tools[name]
 
-    def get_tools(self, category: Optional[str] = None) -> List[BaseTool]:
+    def get_tools(self, category: str | None = None) -> List[BaseTool]:
         """Get registered tools as LangChain tools."""
         tools = []
         for spec in self._tools.values():
@@ -166,7 +166,7 @@ class ToolRegistry:
         """Get list of registered tool names."""
         return list(self._tools.keys())
 
-    def get_tool(self, name: str) -> Optional[ToolSpec]:
+    def get_tool(self, name: str) -> ToolSpec | None:
         """Get a specific tool spec."""
         return self._tools.get(name)
 
@@ -262,7 +262,7 @@ class AgentPool:
         if name in self._agents:
             del self._agents[name]
 
-    def get_agent(self, name: str) -> Optional[AgentSpec]:
+    def get_agent(self, name: str) -> AgentSpec | None:
         """Get a specific agent."""
         return self._agents.get(name)
 
@@ -387,8 +387,8 @@ def create_task_router(agents: AgentPool):
 # =============================================================================
 
 def build_orchestrated_graph(
-    tools: Optional[ToolRegistry] = None,
-    agents: Optional[AgentPool] = None,
+    tools: ToolRegistry | None = None,
+    agents: AgentPool | None = None,
     coordinator_model: str = GEMINI_PRO,
     name: str = "orchestrated-agent",
 ) -> StateGraph:
@@ -411,7 +411,7 @@ def build_orchestrated_graph(
     if agents is None:
         agents = AgentPool()
 
-    from agent.nodes import load_context, denoising_refiner
+    from agent.nodes import denoising_refiner, load_context
 
     builder = StateGraph(OverallState, config_schema=Configuration)
 

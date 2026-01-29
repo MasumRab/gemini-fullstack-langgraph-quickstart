@@ -1,6 +1,9 @@
-from hypothesis import given, strategies as st, settings, HealthCheck
 import pytest
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+
 from agent.utils import insert_citation_markers
+
 
 @settings(suppress_health_check=[HealthCheck.too_slow])
 @given(

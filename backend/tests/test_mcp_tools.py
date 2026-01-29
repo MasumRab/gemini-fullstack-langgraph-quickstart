@@ -1,8 +1,10 @@
-import asyncio
-import pytest
 from unittest.mock import MagicMock, patch
-from agent.tools_and_schemas import get_tools_from_mcp
+
+import pytest
+
 from agent.mcp_config import MCPSettings
+from agent.tools_and_schemas import get_tools_from_mcp
+
 
 @pytest.mark.asyncio
 async def test_get_tools_from_mcp_disabled():

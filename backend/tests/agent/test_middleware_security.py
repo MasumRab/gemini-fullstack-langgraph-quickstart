@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
-from fastapi.testclient import TestClient
+
+import pytest
 from fastapi import Request, Response
-from agent.app import app, ContentSizeLimitMiddleware
+from fastapi.testclient import TestClient
+
+from agent.app import ContentSizeLimitMiddleware, app
 
 # Initialize TestClient with a trusted host (localhost) to pass TrustedHostMiddleware
 client = TestClient(app, base_url="http://localhost")

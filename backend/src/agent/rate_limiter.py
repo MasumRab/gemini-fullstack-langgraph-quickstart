@@ -7,13 +7,13 @@ This module provides utilities to stay within Gemini API rate limits:
 - Context window size limits
 """
 
-import time
 import logging
-from functools import lru_cache
-from datetime import datetime, timedelta
-from typing import Dict, Optional
+import time
 from collections import deque
+from datetime import datetime
+from functools import lru_cache
 from threading import Lock
+from typing import Dict
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -244,7 +244,7 @@ class ContextWindowManager:
         # Rough estimation: 1 token ≈ 4 characters
         return len(text) // 4
     
-    def truncate_to_fit(self, text: str, max_tokens: Optional[int] = None) -> str:
+    def truncate_to_fit(self, text: str, max_tokens: int | None = None) -> str:
         """Truncate text to fit within token limit.
         
         Args:
@@ -270,7 +270,7 @@ class ContextWindowManager:
         
         return truncated + "\n\n[... truncated to fit context window ...]"
     
-    def split_into_chunks(self, text: str, chunk_size: Optional[int] = None) -> list[str]:
+    def split_into_chunks(self, text: str, chunk_size: int | None = None) -> list[str]:
         """Split text into chunks that fit within context window.
         
         Args:

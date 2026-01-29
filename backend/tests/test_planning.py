@@ -4,8 +4,8 @@ Tests cover planning_mode, planning_router, and planning_wait with various
 state configurations and flags.
 """
 import pytest
-from agent.nodes import planning_mode, planning_router, planning_wait
 
+from agent.nodes import planning_mode, planning_router, planning_wait
 
 # =============================================================================
 # Helper function

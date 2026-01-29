@@ -1,35 +1,33 @@
 import os
+
 from dotenv import load_dotenv
+from langgraph.graph import END, START, StateGraph
 
-from langgraph.graph import StateGraph, START, END
-
-from agent.state import OverallState
 from agent.configuration import Configuration
-from agent.registry import graph_registry
-from agent.nodes import (
-    load_context,
-    scoping_node, # New Node
-    generate_plan,
-    planning_mode,
-    planning_wait,
-    planning_router,
-    web_research,
-    validate_web_results,
-    compression_node,  # New Node
-    reflection,
-    denoising_refiner, # New Node
-    update_plan,
-    select_next_task,
-    execution_router,
-    outline_gen, # New Node
-    checklist_verifier, # New Node
-)
-from agent.kg import kg_enrich # New Node
+from agent.kg import kg_enrich  # New Node
 from agent.mcp_config import load_mcp_settings, validate
-from agent.memory_tools import save_plan_tool, load_plan_tool
+from agent.nodes import (
+    checklist_verifier,  # New Node
+    compression_node,  # New Node
+    denoising_refiner,  # New Node
+    execution_router,
+    generate_plan,
+    load_context,
+    outline_gen,  # New Node
+    planning_mode,
+    planning_router,
+    planning_wait,
+    reflection,
+    scoping_node,  # New Node
+    select_next_task,
+    update_plan,
+    validate_web_results,
+    web_research,
+)
+from agent.registry import graph_registry
+from agent.state import OverallState
 
 # Ensure config is loaded
-from config.app_config import config
 
 load_dotenv()
 

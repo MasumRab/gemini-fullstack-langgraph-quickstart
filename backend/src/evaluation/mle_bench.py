@@ -27,8 +27,7 @@
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 
 def evaluate_mle_bench():
-    """
-    Evaluates the agent on MLE-bench tasks.
+    """Evaluates the agent on MLE-bench tasks.
     """
     # TODO(priority=High, complexity=Low): [mle_bench:1] Load dataset
     dataset = []  # load_mle_dataset()
