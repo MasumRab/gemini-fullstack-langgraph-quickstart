@@ -1,6 +1,12 @@
 import logging
-from typing import Any, Union
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from typing import Any
+
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +21,7 @@ logger = logging.getLogger(__name__)
     reraise=True
 )
 def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
-    """
-    Robustly calls an LLM client, handling different interfaces (invoke vs generate)
+    """Robustly calls an LLM client, handling different interfaces (invoke vs generate)
     and applying retries.
 
     Args:

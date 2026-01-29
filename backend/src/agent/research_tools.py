@@ -8,23 +8,24 @@ import asyncio
 import logging
 import os
 from datetime import datetime
-from typing import Annotated, Any, Dict, List, Literal, Optional
+from typing import Annotated, Dict, List, Literal
 
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import InjectedToolArg, tool
+
 from agent.models import (
+    DEFAULT_ANSWER_MODEL,
     GEMINI_FLASH,
     GEMINI_FLASH_LITE,
     GEMINI_PRO,
-    DEFAULT_ANSWER_MODEL,
 )
 
 # Try to import Tavily client, fall back to None if not available
 try:
-    from tavily import TavilyClient, AsyncTavilyClient
+    from tavily import AsyncTavilyClient, TavilyClient
     TAVILY_AVAILABLE = True
 except ImportError:
     TAVILY_AVAILABLE = False
@@ -32,7 +33,6 @@ except ImportError:
     AsyncTavilyClient = None
 
 from agent.prompts import summarize_webpage_prompt
-
 
 # =============================================================================
 # Utility Functions
@@ -47,7 +47,7 @@ def get_today_str() -> str:
     return datetime.now().strftime("%a %b %d, %Y")
 
 
-def get_tavily_api_key(config: Optional[RunnableConfig] = None) -> str:
+def get_tavily_api_key(config: RunnableConfig | None = None) -> str:
     """Retrieve Tavily API key from config or environment.
 
     Args:
@@ -82,7 +82,7 @@ def tavily_search_multiple(
     max_results: int = 3,
     topic: Literal["general", "news", "finance"] = "general",
     include_raw_content: bool = True,
-    config: Optional[RunnableConfig] = None,
+    config: RunnableConfig | None = None,
 ) -> List[dict]:
     """Perform search using Tavily API for multiple queries.
 
@@ -125,7 +125,7 @@ async def tavily_search_async(
     max_results: int = 5,
     topic: Literal["general", "news", "finance"] = "general",
     include_raw_content: bool = True,
-    config: Optional[RunnableConfig] = None,
+    config: RunnableConfig | None = None,
 ) -> List[dict]:
     """Execute multiple Tavily search queries asynchronously.
 
@@ -199,7 +199,7 @@ def deduplicate_search_results(search_results: List[dict]) -> Dict[str, dict]:
 
 def process_search_results(
     unique_results: Dict[str, dict],
-    summarization_model: Optional[BaseChatModel] = None,
+    summarization_model: BaseChatModel | None = None,
     max_content_length: int = 250000,
 ) -> Dict[str, dict]:
     """Process search results by summarizing content where available.
@@ -361,7 +361,7 @@ async def summarize_webpage_async(
 
         return formatted_summary
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logging.warning(f"Summarization timed out after {timeout} seconds")
         return webpage_content[:1000] + "..." if len(webpage_content) > 1000 else webpage_content
     except Exception as e:

@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List
 
 PLAN_DIR = "plans"
 
@@ -30,7 +30,7 @@ def save_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[s
     except Exception as e:
         print(f"Error saving plan for thread {thread_id}: {e}")
 
-def load_plan(thread_id: str) -> Optional[Dict[str, Any]]:
+def load_plan(thread_id: str) -> Dict[str, Any] | None:
     """Loads the plan and artifacts from a JSON file."""
     if not thread_id:
         return None
@@ -40,7 +40,7 @@ def load_plan(thread_id: str) -> Optional[Dict[str, Any]]:
         return None
     
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         print(f"Error loading plan for thread {thread_id}: {e}")

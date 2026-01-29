@@ -1,12 +1,10 @@
 import ast
-import os
 import sys
-import pkg_resources
-import matplotlib.pyplot as plt
-import scipy.cluster.hierarchy as sch
-import numpy as np
-from collections import defaultdict
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.cluster.hierarchy as sch
 
 # Set up paths
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
@@ -37,7 +35,7 @@ PACKAGE_MAPPING = {
 def get_third_party_imports(file_path):
     """Parses a python file and returns a set of third-party base modules imported."""
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             tree = ast.parse(f.read())
     except Exception as e:
         print(f"Skipping {file_path}: {e}")

@@ -1,5 +1,4 @@
-"""
-Gemma Model Integration Scaffolding.
+"""Gemma Model Integration Scaffolding.
 
 This module provides reference implementations for integrating Gemma models
 via various providers (Vertex AI, Ollama, LlamaCpp).
@@ -8,9 +7,7 @@ These classes are designed to be adapted into the main `llm_client.py`
 or used as standalone clients for specific nodes.
 """
 
-import json
-import os
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
 # ============================================================================
 # 1. Google Vertex AI (Cloud)
@@ -20,8 +17,7 @@ class VertexAIGemmaClient:
     """Client for Gemma models deployed on Google Vertex AI."""
 
     def __init__(self, project_id: str, location: str, endpoint_id: str):
-        """
-        Initialize Vertex AI client.
+        """Initialize Vertex AI client.
 
         Args:
             project_id: GCP Project ID.
@@ -51,8 +47,7 @@ class VertexAIGemmaClient:
         self._Value = Value
 
     def predict(self, prompt: str, max_tokens: int = 256, **kwargs) -> str:
-        """
-        Send prediction request to Vertex AI Endpoint.
+        """Send prediction request to Vertex AI Endpoint.
         """
         instance_dict = {"inputs": prompt, "max_tokens": max_tokens, **kwargs}
 
@@ -85,8 +80,7 @@ class OllamaGemmaClient:
     """Client for local Gemma models via Ollama API."""
 
     def __init__(self, model_name: str = "gemma:7b", base_url: str = "http://localhost:11434"):
-        """
-        Initialize Ollama client.
+        """Initialize Ollama client.
 
         Args:
             model_name: Name of the model to use (e.g., 'gemma:7b').
@@ -99,9 +93,8 @@ class OllamaGemmaClient:
         self.generate_url = f"{base_url}/api/generate"
         self.chat_url = f"{base_url}/api/chat"
 
-    def generate(self, prompt: str, system: Optional[str] = None, **kwargs) -> str:
-        """
-        Generate text completion.
+    def generate(self, prompt: str, system: str | None = None, **kwargs) -> str:
+        """Generate text completion.
         """
         payload = {
             "model": self.model_name,
@@ -117,8 +110,7 @@ class OllamaGemmaClient:
         return response.json().get("response", "")
 
     def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
-        """
-        Chat completion.
+        """Chat completion.
 
         Args:
             messages: List of dicts with 'role' and 'content'.
@@ -143,8 +135,7 @@ class LlamaCppGemmaClient:
     """Client for embedded local inference using llama-cpp-python."""
 
     def __init__(self, model_path: str, n_gpu_layers: int = -1, **kwargs):
-        """
-        Initialize LlamaCpp client.
+        """Initialize LlamaCpp client.
 
         Args:
             model_path: Path to the .gguf model file.
@@ -167,8 +158,7 @@ class LlamaCppGemmaClient:
         )
 
     def generate(self, prompt: str, max_tokens: int = 256, **kwargs) -> str:
-        """
-        Generate text.
+        """Generate text.
         """
         output = self.llm(
             prompt,
@@ -178,8 +168,7 @@ class LlamaCppGemmaClient:
         return output['choices'][0]['text']
 
     def create_chat_completion(self, messages: List[Dict[str, str]], **kwargs) -> str:
-        """
-        Chat completion using built-in chat formatting.
+        """Chat completion using built-in chat formatting.
         """
         output = self.llm.create_chat_completion(
             messages=messages,

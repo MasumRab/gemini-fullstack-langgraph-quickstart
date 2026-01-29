@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+
 
 def is_enabled() -> bool:
     """Check if Langfuse observability is enabled via environment variables."""

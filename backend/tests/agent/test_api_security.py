@@ -1,11 +1,11 @@
 
-import unittest
-from unittest.mock import MagicMock, patch
 import time
-from fastapi import FastAPI, Response, Request
-from fastapi.testclient import TestClient
-from starlette.middleware.base import BaseHTTPMiddleware
+from unittest.mock import patch
+
 import pytest
+from fastapi import FastAPI, Request, Response
+from fastapi.testclient import TestClient
+
 
 class TestAPISecurity:
 

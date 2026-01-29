@@ -8,21 +8,19 @@ Tests cover:
 - Graph compilation and structure
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any
-from langchain_core.runnables import RunnableConfig
-
-from agent.state import OverallState
-from agent.graphs.supervisor import compress_context, graph
-
-
 # =============================================================================
 # Fixtures
 # =============================================================================
-
 import dataclasses
+from typing import Any, Dict
+from unittest.mock import patch
+
+import pytest
+from langchain_core.runnables import RunnableConfig
+
 from agent.graphs import supervisor
+from agent.graphs.supervisor import compress_context, graph
+
 
 @pytest.fixture(autouse=True)
 def disable_compression():

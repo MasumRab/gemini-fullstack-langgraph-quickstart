@@ -1,9 +1,8 @@
-from typing import List, Optional, Any
 import os
-import asyncio
+from typing import Any, List
 
-from pydantic import BaseModel, Field
 from langchain_core.tools import StructuredTool
+from pydantic import BaseModel, Field
 
 from agent.mcp_config import McpConnectionManager
 from agent.mcp_server import FilesystemMCPServer
@@ -22,7 +21,7 @@ class SearchQueryList(BaseModel):
 
 class Todo(BaseModel):
     title: str = Field(description="A concise title for the task (acting as the search query).")
-    description: Optional[str] = Field(description="A brief description of what to look for.")
+    description: str | None = Field(description="A brief description of what to look for.")
     status: str = Field(description="Set to 'pending' by default.", default="pending")
 
 class Plan(BaseModel):
@@ -55,8 +54,7 @@ class Outline(BaseModel):
 
 
 def get_mcp_tools() -> List:
-    """
-    Retrieves MCP-based tools.
+    """Retrieves MCP-based tools.
     Currently returns the Persistence tools (load_thread_plan, save_thread_plan).
     """
     manager = McpConnectionManager()
@@ -65,15 +63,14 @@ def get_mcp_tools() -> List:
     return manager.get_persistence_tools()
 
 async def get_tools_from_mcp(mcp_config=None):
-    """
-    Connects to an MCP server and loads available tools.
+    """Connects to an MCP server and loads available tools.
     """
     if not mcp_config or not mcp_config.enabled or not mcp_config.endpoint:
         return []
 
     try:
-        from langchain_mcp_adapters.tools import load_mcp_tools
         from langchain_mcp_adapters.sessions import SSEConnection
+        from langchain_mcp_adapters.tools import load_mcp_tools
         # TODO(priority=Low, complexity=Medium, owner=infra): Support Stdio connection if schema allows? For now assuming SSE via endpoint URL
         # headers = {"Authorization": f"Bearer {mcp_config.api_key}"} if mcp_config.api_key else {}
         # NOTE: Test mocks SSEConnection(url=..., headers=...).
@@ -94,8 +91,7 @@ async def get_tools_from_mcp(mcp_config=None):
         return []
 
 async def get_global_tools() -> List[Any]:
-    """
-    Aggregates MCP tools (Persistence) and Custom tools (Filesystem).
+    """Aggregates MCP tools (Persistence) and Custom tools (Filesystem).
     """
     tools = []
 

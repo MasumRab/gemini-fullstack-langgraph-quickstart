@@ -1,26 +1,26 @@
-from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass, field, asdict
-import numpy as np
-import time
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 import logging
+import time
 import uuid
-import os
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
 
-from config.app_config import config
+import numpy as np
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 from agent.llm_client import call_llm_robust
 
 # Optional imports for RAG dependencies
 try:
-    from sentence_transformers import SentenceTransformer
     import faiss
+    from sentence_transformers import SentenceTransformer
 except ImportError:
     SentenceTransformer = None
     faiss = None
 
 # Optional Chroma
 try:
-    from rag.chroma_store import ChromaStore, EvidenceChunk as ChromaEvidenceChunk
+    from rag.chroma_store import ChromaStore
+    from rag.chroma_store import EvidenceChunk as ChromaEvidenceChunk
     CHROMA_AVAILABLE = True
 except ImportError:
     CHROMA_AVAILABLE = False
@@ -41,8 +41,7 @@ class EvidenceChunk:
     metadata: Dict = field(default_factory=dict)
 
 class DeepSearchRAG:
-    """
-    RAG system optimized for deep research workflows.
+    """RAG system optimized for deep research workflows.
     Implements continuous evidence auditing and context pruning.
     Now supports hybrid store (FAISS + Chroma) with dual-write.
     """
@@ -130,7 +129,7 @@ class DeepSearchRAG:
         self.max_context_chunks = max_context_chunks
         self.subgoal_evidence_map: Dict[str, List[int]] = {} # Primarily tracks FAISS IDs if active
 
-    def retrieve_from_chroma(self, query: str, top_k: int, query_embedding: Optional[List[float]] = None) -> List[Tuple[EvidenceChunk, float]]:
+    def retrieve_from_chroma(self, query: str, top_k: int, query_embedding: List[float] | None = None) -> List[Tuple[EvidenceChunk, float]]:
         """Retrieve directly from Chroma store if enabled."""
         if not self.use_chroma:
             raise ValueError("Chroma not enabled")
@@ -160,10 +159,9 @@ class DeepSearchRAG:
         self,
         documents: List[Dict],
         subgoal_id: str,
-        metadata: Optional[Dict] = None
+        metadata: Dict | None = None
     ) -> List[int]:
-        """
-        Ingest web search results into the RAG system.
+        """Ingest web search results into the RAG system.
         Supports dual-write.
         """
         ingested_ids = []
@@ -261,12 +259,11 @@ class DeepSearchRAG:
         self,
         query: str,
         top_k: int = 10,
-        subgoal_filter: Optional[str] = None,
+        subgoal_filter: str | None = None,
         min_score: float = 0.0,
-        query_embedding: Optional[List[float]] = None
+        query_embedding: List[float] | None = None
     ) -> List[Tuple[EvidenceChunk, float]]:
-        """
-        Retrieve relevant evidence.
+        """Retrieve relevant evidence.
         If dual-write is on, respects RAG_STORE preference for retrieval.
         """
         # Decide which store to read from
@@ -311,8 +308,7 @@ class DeepSearchRAG:
         return []
 
     def audit_and_prune(self, subgoal_id: str, relevance_threshold: float = 0.5, diversity_weight: float = 0.3) -> Dict:
-        """
-        Audit and prune low-relevance evidence for a specific subgoal.
+        """Audit and prune low-relevance evidence for a specific subgoal.
 
         Currently optimized for FAISS. If Chroma-only, this would need a Chroma-specific
         implementation using `get` and `delete`.
@@ -406,7 +402,7 @@ Respond in JSON format:
         except Exception as e:
             return {"verified": False, "confidence": 0.0, "reason": f"verification_error: {str(e)}"}
 
-    def get_context_for_synthesis(self, query: str, max_tokens: int = 4000, subgoal_ids: Optional[List[str]] = None) -> str:
+    def get_context_for_synthesis(self, query: str, max_tokens: int = 4000, subgoal_ids: List[str] | None = None) -> str:
         all_chunks = []
 
         # ⚡ Bolt Optimization: Pre-compute query embedding once for all subgoals
@@ -492,8 +488,7 @@ class Resource:
     pass
 
 def create_rag_tool(resources):
-    """
-    Legacy compatibility stub - returns None.
+    """Legacy compatibility stub - returns None.
     
     TODO(priority=Low, complexity=Medium): [rag:legacy] Replace stub with real implementation
     - Migrate callers to use DeepSearchRAG directly
