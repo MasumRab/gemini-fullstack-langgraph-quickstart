@@ -111,4 +111,31 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders events as a semantic list', () => {
+    const events = [
+      { title: 'Event 1', data: 'Data 1' },
+      { title: 'Event 2', data: 'Data 2' },
+    ];
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    // Timeline logic: if (!isLoading && processedEvents.length !== 0) -> collapsed = true.
+    // So we need to expand it.
+    const button = screen.getByRole('button');
+    if (button.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(button);
+    }
+
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+    expect(list.tagName).toBe('UL');
+
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0].tagName).toBe('LI');
+    expect(items[1].tagName).toBe('LI');
+
+    expect(screen.getByText('Event 1')).toBeInTheDocument();
+    expect(screen.getByText('Event 2')).toBeInTheDocument();
+  });
 });
