@@ -111,4 +111,35 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders events as a list for accessibility', () => {
+    const events = [
+      { title: 'Event 1', data: 'Data 1' },
+      { title: 'Event 2', data: 'Data 2' },
+    ];
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    // Expand the timeline
+    const button = screen.getByRole('button', { name: /Research Activity/i });
+    fireEvent.click(button);
+
+    // Check for list role
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+
+    // Check for listitem roles
+    const listItems = screen.getAllByRole('listitem');
+    expect(listItems).toHaveLength(2);
+    expect(listItems[0]).toHaveTextContent('Event 1');
+    expect(listItems[1]).toHaveTextContent('Event 2');
+  });
+
+  it('renders loading state as a list item', () => {
+      // Test initial loading
+      render(<ActivityTimeline processedEvents={[]} isLoading={true} />);
+      const list = screen.getByRole('list');
+      expect(list).toBeInTheDocument();
+      const listItem = screen.getByRole('listitem');
+      expect(listItem).toHaveTextContent('Searching...');
+  });
 });
