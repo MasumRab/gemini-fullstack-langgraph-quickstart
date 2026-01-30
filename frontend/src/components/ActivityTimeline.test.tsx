@@ -111,4 +111,28 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders events as a semantic list', () => {
+    const events = [
+      { title: 'Event 1', data: 'Data 1' },
+      { title: 'Event 2', data: 'Data 2' },
+    ];
+
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    // With events and !isLoading, the component defaults to collapsed (useEffect).
+    // We need to expand it to see the content.
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
+
+    // Now check for semantic list
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+    expect(list).toHaveClass('space-y-0'); // or whatever class we expect, but role is key
+
+    const listItems = screen.getAllByRole('listitem');
+    expect(listItems).toHaveLength(2);
+    expect(listItems[0]).toHaveTextContent('Event 1');
+    expect(listItems[1]).toHaveTextContent('Event 2');
+  });
 });
