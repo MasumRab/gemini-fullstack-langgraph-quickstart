@@ -61,7 +61,7 @@ const TimelineItem = memo(function TimelineItem({
   showLine,
 }: TimelineItemProps) {
   return (
-    <div className="relative pl-8 pb-4">
+    <li className="relative pl-8 pb-4">
       {showLine ? (
         <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-600" />
       ) : null}
@@ -80,7 +80,7 @@ const TimelineItem = memo(function TimelineItem({
             : JSON.stringify(eventItem.data)}
         </p>
       </div>
-    </div>
+    </li>
   );
 });
 // Explicit display name for devtools
@@ -134,20 +134,22 @@ export const ActivityTimeline = memo(function ActivityTimeline({
         >
           <CardContent>
             {isLoading && processedEvents.length === 0 && (
-              <div className="relative pl-8 pb-4">
-                <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-800" />
-                <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-800 flex items-center justify-center ring-4 ring-neutral-900">
-                  <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-sm text-neutral-300 font-medium">
-                    Searching...
-                  </p>
-                </div>
-              </div>
+              <ul className="list-none m-0 p-0 space-y-0" role="list">
+                <li className="relative pl-8 pb-4">
+                  <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-800" />
+                  <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-800 flex items-center justify-center ring-4 ring-neutral-900">
+                    <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-neutral-300 font-medium">
+                      Searching...
+                    </p>
+                  </div>
+                </li>
+              </ul>
             )}
             {processedEvents.length > 0 ? (
-              <div className="space-y-0">
+              <ul className="space-y-0 list-none m-0 p-0" role="list">
                 {processedEvents.map((eventItem, index) => (
                   <TimelineItem
                     key={index}
@@ -156,7 +158,7 @@ export const ActivityTimeline = memo(function ActivityTimeline({
                   />
                 ))}
                 {isLoading && processedEvents.length > 0 && (
-                  <div className="relative pl-8 pb-4">
+                  <li className="relative pl-8 pb-4">
                     <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-600 flex items-center justify-center ring-4 ring-neutral-700">
                       <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" aria-hidden="true" />
                     </div>
@@ -165,9 +167,9 @@ export const ActivityTimeline = memo(function ActivityTimeline({
                         Searching...
                       </p>
                     </div>
-                  </div>
+                  </li>
                 )}
-              </div>
+              </ul>
             ) : !isLoading ? ( // Only show "No activity" if not loading and no events
               <div className="flex flex-col items-center justify-center h-full text-neutral-500 pt-10">
                 <Info className="h-6 w-6 mb-3" aria-hidden="true" />
