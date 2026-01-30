@@ -27,6 +27,7 @@ class SearchRouter:
         """Initialize router with config."""
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
+<<<<<<< HEAD
         self._providers_lock = threading.Lock()
 
     def _get_provider(self, name: str) -> SearchProvider | None:
@@ -68,6 +69,42 @@ class SearchRouter:
                 )
 
             return self.providers.get(name)
+=======
+
+    def _load_provider(self, name: str) -> Optional[SearchProvider]:
+        """Lazily load provider class and instantiate."""
+        if name in self.providers:
+            return self.providers[name]
+
+        provider = None
+        try:
+            if name == SearchProviderType.GOOGLE.value:
+                from .providers.google_adapter import GoogleSearchAdapter
+                provider = GoogleSearchAdapter()
+            elif name == SearchProviderType.DUCKDUCKGO.value:
+                from .providers.duckduckgo_adapter import DuckDuckGoAdapter
+                provider = DuckDuckGoAdapter()
+            elif name == SearchProviderType.BRAVE.value:
+                from .providers.brave_adapter import BraveSearchAdapter
+                provider = BraveSearchAdapter()
+            elif name == SearchProviderType.TAVILY.value:
+                from .providers.tavily_adapter import TavilyAdapter
+                provider = TavilyAdapter()
+            elif name == SearchProviderType.BING.value:
+                from .providers.bing_adapter import BingAdapter
+                provider = BingAdapter()
+
+            if provider:
+                self.providers[name] = provider
+
+        except Exception as e:
+            logger.debug(f"Failed to lazy load provider {name}: {e}")
+
+        return provider
+
+    def _get_provider(self, name: str) -> Optional[SearchProvider]:
+        return self._load_provider(name)
+>>>>>>> 5d045b0 (Refactor SearchRouter to lazily load provider adapters on first use for faster startup.)
 
     def search(
         self,
@@ -94,6 +131,8 @@ class SearchRouter:
             provider = self._get_provider(primary_name)
 
         if not provider:
+            # Fallback was also unavailable or failed to init
+            logger.error("No valid search provider available.")
             raise ValueError("No valid search provider available.")
 
         # Execute with reliability-first logic

@@ -1,6 +1,10 @@
 # Bolt's Journal
 This journal documents critical performance learnings for the codebase.
 
+## 2024-05-23 - Lazy Loading Search Providers
+**Learning:** Moving heavy SDK imports (like `google.genai`) inside methods significantly improves startup time and robustness.
+**Action:** Use local imports inside factory methods for optional integrations or heavy dependencies. When testing, patch the class at its *source definition*, not the module namespace.
+
 ## 2024-05-24 - [Initial Entry]
 **Learning:** Initial setup of Bolt's journal.
 **Action:** Use this file to record specific performance insights.

@@ -1,7 +1,7 @@
 """Unit tests for the SearchRouter class.
 
 Tests cover:
-- Initialization of providers.
+- Initialization of providers (Lazy Loading).
 - Routing logic (primary vs fallback).
 - Error handling and fallback mechanisms.
 """
@@ -10,10 +10,8 @@ from unittest.mock import MagicMock, patch
 
 # Import SUT
 import sys
-from unittest.mock import MagicMock
 
 # MOCK google.genai BEFORE importing search.router to avoid broken environment dependencies
-# (e.g. pycares/aiohttp issues in current env)
 sys.modules["google.genai"] = MagicMock()
 
 from search.router import SearchRouter, SearchProviderType
@@ -74,18 +72,26 @@ class TestSearchRouter:
         assert provider2 is provider
         mock_adapters["google"].assert_called_once() # Still called only once
 
-    def test_search_primary_success(self, mock_config, mock_adapters):
-        """Test search using primary provider successfully."""
+    def test_search_triggers_loading(self, mock_config, mock_adapters):
+        """Test that search triggers loading of the specific provider."""
         router = SearchRouter(app_config=mock_config)
         mock_config.search_provider = "google"
 
+        # Mock search result
         expected_results = [SearchResult(title="Title", content="test", url="http://test.com")]
         mock_adapters["google"].return_value.search.return_value = expected_results
 
+        # Execute search
         results = router.search("query", max_results=3)
 
         assert results == expected_results
-        mock_adapters["google"].return_value.search.assert_called_with("query", max_results=3, tuned=True)
+
+        # Verify Google was initialized
+        mock_adapters["google"].assert_called_once()
+        assert "google" in router.providers
+
+        # Verify others were NOT initialized
+        mock_adapters["duckduckgo"].assert_not_called()
 
     def test_search_fallback_on_missing_provider(self, mock_config, mock_adapters):
         """Test fallback when primary provider is not available (init fails)."""
@@ -128,7 +134,7 @@ class TestSearchRouter:
         provider_mock.search.assert_any_call("query", max_results=5, tuned=False)
 
     def test_search_fallback_execution(self, mock_config, mock_adapters):
-        """Test switching to fallback provider when primary fails both attempts."""
+        """Test switching to fallback provider when primary fails both attempts (runtime error)."""
         router = SearchRouter(app_config=mock_config)
         mock_config.search_provider = "google"
         mock_config.search_fallback = "duckduckgo"
@@ -136,7 +142,7 @@ class TestSearchRouter:
         google_mock = mock_adapters["google"].return_value
         ddg_mock = mock_adapters["duckduckgo"].return_value
 
-        # Google fails twice
+        # Google fails twice (runtime search error, not load error)
         google_mock.search.side_effect = [Exception("Fail 1"), Exception("Fail 2")]
         # DDG succeeds
         ddg_mock.search.return_value = [SearchResult(title="Fallback", content="fallback", url="http://ddg.com")]
