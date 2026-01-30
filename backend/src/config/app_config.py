@@ -1,3 +1,4 @@
+"""Application configuration module."""
 from dataclasses import dataclass, field
 from typing import Tuple, List
 import os
@@ -54,6 +55,7 @@ class AppConfig:
     model_compression: str = os.getenv("MODEL_COMPRESSION", "gemma-3-27b-it")
 
     # Security Configuration
+    trust_proxy_headers: bool = os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
     CORS_ORIGINS: List[str] = field(
         default_factory=lambda: os.getenv(
             "CORS_ORIGINS", "http://localhost:5173"
