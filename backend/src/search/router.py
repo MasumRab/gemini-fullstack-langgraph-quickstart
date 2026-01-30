@@ -4,11 +4,6 @@ from enum import Enum
 
 from config.app_config import config, AppConfig
 from .provider import SearchProvider, SearchResult
-from .providers.google_adapter import GoogleSearchAdapter
-from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-from .providers.brave_adapter import BraveSearchAdapter
-from .providers.tavily_adapter import TavilyAdapter
-from .providers.bing_adapter import BingAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -28,42 +23,40 @@ class SearchRouter:
         """Initialize router with config."""
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
-        self._init_providers()
 
-    def _init_providers(self):
-        """Initialize providers based on availability and config."""
-        # Google
-        try:
-            self.providers[SearchProviderType.GOOGLE.value] = GoogleSearchAdapter()
-        except Exception as e:
-            logger.debug(f"Google adapter failed to init: {e}")
+    def _load_provider(self, name: str) -> Optional[SearchProvider]:
+        """Lazily load provider class and instantiate."""
+        if name in self.providers:
+            return self.providers[name]
 
-        # Brave
+        provider = None
         try:
-            self.providers[SearchProviderType.BRAVE.value] = BraveSearchAdapter()
-        except Exception as e:
-            logger.debug(f"Brave adapter failed to init: {e}")
+            if name == SearchProviderType.GOOGLE.value:
+                from .providers.google_adapter import GoogleSearchAdapter
+                provider = GoogleSearchAdapter()
+            elif name == SearchProviderType.DUCKDUCKGO.value:
+                from .providers.duckduckgo_adapter import DuckDuckGoAdapter
+                provider = DuckDuckGoAdapter()
+            elif name == SearchProviderType.BRAVE.value:
+                from .providers.brave_adapter import BraveSearchAdapter
+                provider = BraveSearchAdapter()
+            elif name == SearchProviderType.TAVILY.value:
+                from .providers.tavily_adapter import TavilyAdapter
+                provider = TavilyAdapter()
+            elif name == SearchProviderType.BING.value:
+                from .providers.bing_adapter import BingAdapter
+                provider = BingAdapter()
 
-        # DuckDuckGo
-        try:
-            self.providers[SearchProviderType.DUCKDUCKGO.value] = DuckDuckGoAdapter()
-        except Exception as e:
-            logger.debug(f"DuckDuckGo adapter failed to init: {e}")
+            if provider:
+                self.providers[name] = provider
 
-        # Tavily
-        try:
-            self.providers[SearchProviderType.TAVILY.value] = TavilyAdapter()
         except Exception as e:
-            logger.debug(f"Tavily adapter failed to init: {e}")
+            logger.debug(f"Failed to lazy load provider {name}: {e}")
 
-        # Bing
-        try:
-            self.providers[SearchProviderType.BING.value] = BingAdapter()
-        except Exception as e:
-            logger.debug(f"Bing adapter failed to init: {e}")
+        return provider
 
     def _get_provider(self, name: str) -> Optional[SearchProvider]:
-        return self.providers.get(name)
+        return self._load_provider(name)
 
     def search(
         self,
@@ -91,6 +84,8 @@ class SearchRouter:
             provider = self._get_provider(primary_name)
 
         if not provider:
+            # Fallback was also unavailable or failed to init
+            logger.error("No valid search provider available.")
             raise ValueError("No valid search provider available.")
 
         # Execute with reliability-first logic
