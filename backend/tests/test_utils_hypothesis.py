@@ -2,8 +2,9 @@ from hypothesis import given, strategies as st, settings, HealthCheck
 import pytest
 from agent.utils import insert_citation_markers
 
-# Mark these tests as extended because they are slow property-based tests
-
+# Mark these tests as extended because they are property-based tests using Hypothesis,
+# which can be slow and resource-intensive. They are excluded from the default test run
+# to keep CI fast, but can be run explicitly with `make extended_tests` or `pytest --only-extended`.
 pytestmark = pytest.mark.extended
 
 @settings(suppress_health_check=[HealthCheck.too_slow])
