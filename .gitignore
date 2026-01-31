@@ -207,3 +207,5 @@ model_test_results.txt
 validation_coverage.txt
 temp_cell.txt
 markdownlint-cli2-results.json
+frontend/test-results/
+frontend/playwright-report/
