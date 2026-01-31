@@ -111,4 +111,25 @@ describe('ActivityTimeline', () => {
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('renders events as a semantic list', () => {
+    const events = [
+      { title: 'Event 1', data: 'Data 1' },
+      { title: 'Event 2', data: 'Data 2' },
+    ];
+    // Need to simulate clicking the expand button because it might be collapsed by default if not loading
+    // Wait, the logic is: if (!isLoading && events.length !== 0) -> collapsed.
+    // So we need to click to expand.
+
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    const button = screen.getByRole('button');
+    fireEvent.click(button); // Expand it
+
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+
+    const listItems = screen.getAllByRole('listitem');
+    expect(listItems).toHaveLength(2);
+  });
 });
