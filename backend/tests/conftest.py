@@ -154,3 +154,38 @@ def make_ai_message(content: str):
     """Create a mock AIMessage-like object."""
     from langchain_core.messages import AIMessage
     return AIMessage(content=content)
+
+
+# =============================================================================
+# Pytest Hooks
+# =============================================================================
+
+def pytest_addoption(parser):
+    """Add command line options to pytest."""
+    parser.addoption(
+        "--only-extended",
+        action="store_true",
+        default=False,
+        help="run only tests marked as extended",
+    )
+
+
+def pytest_configure(config):
+    """Configure pytest."""
+    config.addinivalue_line("markers", "extended: mark test as extended/slow")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Filter tests based on command line options."""
+    if config.getoption("--only-extended"):
+        # --only-extended given: do not skip extended tests, skip everything else
+        skip_non_extended = pytest.mark.skip(reason="skipped because --only-extended was provided")
+        for item in items:
+            if "extended" not in item.keywords:
+                item.add_marker(skip_non_extended)
+    else:
+        # standard run: skip extended tests
+        skip_extended = pytest.mark.skip(reason="need --only-extended option to run")
+        for item in items:
+            if "extended" in item.keywords:
+                item.add_marker(skip_extended)
