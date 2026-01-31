@@ -141,6 +141,20 @@ This document summarizes the comprehensive unit test suite created for the backe
 - Follow-up query handling
 - Boundary conditions
 
+### 8. `test_proxy_security.py` - Proxy Security Tests
+**Purpose**: Verify `RateLimitMiddleware` security regarding proxy headers.
+
+**Coverage**:
+- ✅ `X-Forwarded-For` ignored by default (secure default)
+- ✅ `X-Forwarded-For` respected when configured
+- ✅ Spoofing prevention logic
+
+**Test Count**: 2 tests
+
+**Key Scenarios**:
+- Untrusted proxy ignores header (prevents spoofing)
+- Trusted proxy respects header (supports load balancers)
+
 ## Total Test Coverage
 
 ### Test Statistics
