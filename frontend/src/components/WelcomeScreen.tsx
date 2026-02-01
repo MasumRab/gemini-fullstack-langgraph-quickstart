@@ -33,7 +33,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         autoFocus={true}
       />
     </div>
-    <footer className="text-xs text-neutral-400" role="contentinfo">
+    <footer className="text-xs text-neutral-300" role="contentinfo">
       Powered by Google Gemini and LangChain LangGraph.
     </footer>
   </div>
