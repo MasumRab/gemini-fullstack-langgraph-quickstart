@@ -8,23 +8,20 @@ Tests cover:
 - State validation and edge cases
 """
 
+
 import pytest
-from typing import List, Dict, Any
 
 from agent.state import (
-    create_rag_resources,
     OverallState,
     ReflectionState,
-    Query,
-    QueryGenerationState,
-    WebSearchState,
     SearchStateOutput,
+    create_rag_resources,
 )
-
 
 # =============================================================================
 # Tests for create_rag_resources Function
 # =============================================================================
+
 
 class TestCreateRagResources:
     """Test suite for create_rag_resources function."""
@@ -82,7 +79,7 @@ class TestCreateRagResources:
         # Assert docstring exists and is detailed
         assert docstring is not None
         assert len(docstring) > 50  # Should be substantial
-        
+
         # Check for key documentation elements
         assert "extension point" in docstring.lower()
         assert "example" in docstring.lower()
@@ -92,15 +89,15 @@ class TestCreateRagResources:
     def test_create_rag_resources_function_signature(self):
         """Test that create_rag_resources has correct function signature."""
         import inspect
-        
+
         # Get function signature
         sig = inspect.signature(create_rag_resources)
         params = list(sig.parameters.keys())
-        
+
         # Assert signature is as expected
         assert len(params) == 1
         assert params[0] == "resource_uris"
-        
+
         # Check parameter annotation
         # NOTE: annotation can be string 'list[str]' or type list[str] depending on imports
         # Since 'from __future__ import annotations' is present, it might be a string at runtime
@@ -113,6 +110,7 @@ class TestCreateRagResources:
 # Tests for State TypedDict Structures
 # =============================================================================
 
+
 class TestOverallState:
     """Test suite for OverallState TypedDict."""
 
@@ -120,7 +118,7 @@ class TestOverallState:
         """Test that OverallState defines all required fields."""
         # Get annotations
         annotations = OverallState.__annotations__
-        
+
         # Check for essential fields
         essential_fields = [
             "messages",
@@ -133,7 +131,7 @@ class TestOverallState:
             "planning_status",
             "research_loop_count",
         ]
-        
+
         for field in essential_fields:
             assert field in annotations, f"Field {field} missing from OverallState"
 
@@ -144,7 +142,7 @@ class TestReflectionState:
     def test_reflection_state_has_required_fields(self):
         """Test that ReflectionState defines all required fields."""
         annotations = ReflectionState.__annotations__
-        
+
         required_fields = [
             "is_sufficient",
             "knowledge_gap",
@@ -152,7 +150,7 @@ class TestReflectionState:
             "research_loop_count",
             "number_of_ran_queries",
         ]
-        
+
         for field in required_fields:
             assert field in annotations, f"Field {field} missing from ReflectionState"
 
@@ -162,11 +160,11 @@ class TestReflectionState:
         # With string annotations, might be 'bool' or forward ref
         anno = annotations["is_sufficient"]
         if hasattr(anno, "__forward_arg__"):
-             assert anno.__forward_arg__ == "bool"
+            assert anno.__forward_arg__ == "bool"
         elif isinstance(anno, str):
-             assert anno == "bool"
+            assert anno == "bool"
         else:
-             assert anno == bool
+            assert anno == bool
 
 
 class TestSearchStateOutput:
@@ -176,7 +174,7 @@ class TestSearchStateOutput:
         """Test SearchStateOutput dataclass has running_summary field."""
         # Create instance
         output = SearchStateOutput()
-        
+
         # Check field exists and defaults to None
         assert hasattr(output, "running_summary")
         assert output.running_summary is None
@@ -185,7 +183,7 @@ class TestSearchStateOutput:
         """Test that running_summary can be set."""
         # Create instance with summary
         output = SearchStateOutput(running_summary="Test summary")
-        
+
         # Assert value is set
         assert output.running_summary == "Test summary"
 

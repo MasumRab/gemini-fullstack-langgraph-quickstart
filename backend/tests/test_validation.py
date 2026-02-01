@@ -1,11 +1,11 @@
-import os
-import pytest
 import logging
-from unittest.mock import patch, MagicMock
-from config.validation import validate_environment, check_env_strict
+import os
+from unittest.mock import patch
+
+from config.validation import check_env_strict, validate_environment
+
 
 class TestValidation:
-
     @patch.dict(os.environ, {"GEMINI_API_KEY": "test_key"}, clear=True)
     def test_validate_environment_success(self):
         """Test validation passes when all requirements are met."""
@@ -64,17 +64,14 @@ class TestValidation:
                 "api_key": True,
                 "pkg_langchain": True,
                 "pkg_langgraph": True,
-                "pkg_google_genai": True
+                "pkg_google_genai": True,
             }
             assert check_env_strict() is True
 
     def test_check_env_strict_failure(self, caplog):
         """Test strict check returns False (and logs) when invalid."""
         with patch("config.validation.validate_environment") as mock_val:
-            mock_val.return_value = {
-                "api_key": False,
-                "pkg_langchain": True
-            }
+            mock_val.return_value = {"api_key": False, "pkg_langchain": True}
             # Capture logs to verify the error path
             with caplog.at_level(logging.ERROR):
                 result = check_env_strict()

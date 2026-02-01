@@ -1,0 +1,4 @@
+## 2025-02-18 - Rate Limit IP Spoofing via Unverified Proxy Headers
+**Vulnerability:** The `RateLimitMiddleware` was using `X-Forwarded-For` to determine the client IP address without verifying if the request came from a trusted proxy. This allowed attackers to spoof their IP address by simply adding an `X-Forwarded-For` header, bypassing rate limits.
+**Learning:** Defaulting to "trusting" headers like `X-Forwarded-For` is dangerous in environments where the application might be exposed directly to the internet. Middleware should deny-by-default (or ignore-by-default) unless explicitly configured to trust the upstream proxy.
+**Prevention:** Always require an explicit configuration (e.g., `TRUST_PROXY_HEADERS=true`) before using headers that can be controlled by the client for security decisions (auth, rate limiting, etc.).

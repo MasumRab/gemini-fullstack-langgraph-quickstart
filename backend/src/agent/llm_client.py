@@ -1,8 +1,15 @@
 import logging
-from typing import Any, Union
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from typing import Any
+
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 logger = logging.getLogger(__name__)
+
 
 # Define a retry strategy: wait 1s, 2s, 4s, etc., up to 3 times
 # You can customize this or make it configurable via kwargs if needed,
@@ -12,11 +19,10 @@ logger = logging.getLogger(__name__)
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=1, max=10),
     retry=retry_if_exception_type(Exception),
-    reraise=True
+    reraise=True,
 )
 def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
-    """
-    Robustly calls an LLM client, handling different interfaces (invoke vs generate)
+    """Robustly calls an LLM client, handling different interfaces (invoke vs generate)
     and applying retries.
 
     Args:
@@ -42,7 +48,7 @@ def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
             response = llm_client.generate(prompt, **kwargs)
             # Response handling might vary
             if hasattr(response, "text"):
-                 return response.text
+                return response.text
             return str(response)
 
         # 3. Fallback to callable (some custom wrappers)

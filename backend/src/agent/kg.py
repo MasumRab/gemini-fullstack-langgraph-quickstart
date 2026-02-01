@@ -1,21 +1,22 @@
-from typing import Dict, Any, List
 import logging
 import re
-from config.app_config import config
 
 logger = logging.getLogger(__name__)
 
 # Try to import cognee, fail gracefully
 try:
     import cognee
+
     COGNEE_AVAILABLE = True
 except ImportError:
     COGNEE_AVAILABLE = False
     logger.warning("Cognee not installed. Knowledge Graph enrichment will be skipped.")
 
-from agent.state import OverallState
 from langchain_core.runnables import RunnableConfig
+
 from agent.registry import graph_registry
+from agent.state import OverallState
+
 
 @graph_registry.describe(
     "kg_enrich",
@@ -32,7 +33,9 @@ async def kg_enrich(state: OverallState, config: RunnableConfig) -> OverallState
     if not COGNEE_AVAILABLE:
         return {}
 
-    results = state.get("validated_web_research_result", []) or state.get("web_research_result", [])
+    results = state.get("validated_web_research_result", []) or state.get(
+        "web_research_result", []
+    )
     if not results:
         return {}
 

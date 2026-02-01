@@ -1,16 +1,18 @@
 import logging
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Dict, List
 
-from config.app_config import config, AppConfig
+from config.app_config import AppConfig, config
+
 from .provider import SearchProvider, SearchResult
-from .providers.google_adapter import GoogleSearchAdapter
-from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-from .providers.brave_adapter import BraveSearchAdapter
-from .providers.tavily_adapter import TavilyAdapter
 from .providers.bing_adapter import BingAdapter
+from .providers.brave_adapter import BraveSearchAdapter
+from .providers.duckduckgo_adapter import DuckDuckGoAdapter
+from .providers.google_adapter import GoogleSearchAdapter
+from .providers.tavily_adapter import TavilyAdapter
 
 logger = logging.getLogger(__name__)
+
 
 class SearchProviderType(Enum):
     GOOGLE = "google"
@@ -19,9 +21,9 @@ class SearchProviderType(Enum):
     TAVILY = "tavily"
     BING = "bing"
 
+
 class SearchRouter:
-    """
-    Routes search queries to the appropriate provider with fallback logic.
+    """Routes search queries to the appropriate provider with fallback logic.
     """
 
     def __init__(self, app_config: AppConfig = config):
@@ -62,18 +64,17 @@ class SearchRouter:
         except Exception as e:
             logger.debug(f"Bing adapter failed to init: {e}")
 
-    def _get_provider(self, name: str) -> Optional[SearchProvider]:
+    def _get_provider(self, name: str) -> SearchProvider | None:
         return self.providers.get(name)
 
     def search(
         self,
         query: str,
         max_results: int = 5,
-        provider_name: Optional[str] = None,
+        provider_name: str | None = None,
         attempt_fallback: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search with routing and fallback logic.
+        """Execute search with routing and fallback logic.
 
         Args:
             query: Search query
@@ -119,6 +120,7 @@ class SearchRouter:
                 # If we get here, all attempts failed
                 logger.error("All search attempts failed.")
                 return []
+
 
 # Singleton instance
 search_router = SearchRouter()

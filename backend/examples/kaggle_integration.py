@@ -1,5 +1,4 @@
-"""
-Kaggle Models Integration Scaffolding.
+"""Kaggle Models Integration Scaffolding.
 
 This module provides reference implementations for downloading and integrating
 models from Kaggle (https://www.kaggle.com/models) into the agent architecture.
@@ -13,23 +12,23 @@ Prerequisites:
     pip install kagglehub transformers torch accelerate
 """
 
-import json
 import os
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List
+
 
 # Define a base LLM interface compatible with the project
 class BaseLLMClient:
     def generate(self, prompt: str, **kwargs) -> str:
         raise NotImplementedError
 
+
 class KaggleModelLoader:
     """Helper to download and load models from Kaggle."""
 
     @staticmethod
-    def download(handle: str, path: Optional[str] = None) -> str:
-        """
-        Download a model from Kaggle.
+    def download(handle: str, path: str | None = None) -> str:
+        """Download a model from Kaggle.
 
         Args:
             handle: Kaggle model handle (e.g., 'google/gemma/pyTorch/2b').
@@ -48,25 +47,24 @@ class KaggleModelLoader:
         print(f"Model downloaded to: {model_path}")
         return model_path
 
+
 class KaggleHuggingFaceClient(BaseLLMClient):
-    """
-    Adapter for Kaggle models compatible with Hugging Face Transformers.
+    """Adapter for Kaggle models compatible with Hugging Face Transformers.
 
     This is useful for models like Gemma, Llama, Mistral available on Kaggle
     in PyTorch/Transformers format.
     """
 
     def __init__(self, model_handle: str, device: str = "auto"):
-        """
-        Initialize the client.
+        """Initialize the client.
 
         Args:
             model_handle: Kaggle model handle or local path.
             device: 'auto', 'cuda', or 'cpu'.
         """
         try:
-            from transformers import AutoTokenizer, AutoModelForCausalLM
             import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
         except ImportError:
             raise ImportError("Please install 'transformers' and 'torch'.")
 
@@ -81,9 +79,7 @@ class KaggleHuggingFaceClient(BaseLLMClient):
         # 2. Load Tokenizer & Model
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_path,
-            device_map=device,
-            torch_dtype="auto"
+            self.model_path, device_map=device, torch_dtype="auto"
         )
 
     def generate(self, prompt: str, max_new_tokens: int = 512, **kwargs) -> str:
@@ -98,12 +94,14 @@ class KaggleHuggingFaceClient(BaseLLMClient):
         )
 
         # Decode only the new tokens
-        generated_text = self.tokenizer.decode(outputs[0][inputs.input_ids.shape[1]:], skip_special_tokens=True)
+        generated_text = self.tokenizer.decode(
+            outputs[0][inputs.input_ids.shape[1] :], skip_special_tokens=True
+        )
         return generated_text
 
+
 class SimpleReActAgent:
-    """
-    A simple ReAct (Reason+Act) wrapper to enable tool use for
+    """A simple ReAct (Reason+Act) wrapper to enable tool use for
     plain text-generation models downloaded from Kaggle.
 
     This replaces the native function calling capabilities of API-based models.
@@ -134,7 +132,9 @@ User: {input}
     def __init__(self, llm: BaseLLMClient, tools: List[Any]):
         self.llm = llm
         self.tools = {t.name: t for t in tools}
-        self.tool_descriptions = "\n".join([f"{t.name}: {t.description}" for t in tools])
+        self.tool_descriptions = "\n".join(
+            [f"{t.name}: {t.description}" for t in tools]
+        )
         self.tool_names = ", ".join([t.name for t in tools])
 
     def run(self, user_input: str, max_steps: int = 5) -> str:
@@ -142,7 +142,7 @@ User: {input}
         history = self.REACT_PROMPT_TEMPLATE.format(
             tool_descriptions=self.tool_descriptions,
             tool_names=self.tool_names,
-            input=user_input
+            input=user_input,
         )
 
         for i in range(max_steps):
@@ -151,7 +151,9 @@ User: {input}
             history += response
 
             # 2. Parse Action
-            action_match = re.search(r"Action: (.*?)[\n\r]+Action Input: (.*)", response, re.DOTALL)
+            action_match = re.search(
+                r"Action: (.*?)[\n\r]+Action Input: (.*)", response, re.DOTALL
+            )
 
             if "Final Answer:" in response:
                 return response.split("Final Answer:")[-1].strip()
@@ -177,6 +179,7 @@ User: {input}
 
         return "Agent stopped due to iteration limit."
 
+
 # Example Usage Mock
 if __name__ == "__main__":
     # This block allows manual testing if dependencies are installed
@@ -185,19 +188,28 @@ if __name__ == "__main__":
         class MockTool:
             name = "calculator"
             description = "Calculates math expressions"
+
             def invoke(self, input_str):
                 # Use a safe math expression evaluator instead of eval()
                 import ast
                 import operator as op
-                operators = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
-                             ast.Div: op.truediv, ast.Pow: op.pow,
-                             ast.UnaryOp: op.neg}
-                
+
+                operators = {
+                    ast.Add: op.add,
+                    ast.Sub: op.sub,
+                    ast.Mult: op.mul,
+                    ast.Div: op.truediv,
+                    ast.Pow: op.pow,
+                    ast.UnaryOp: op.neg,
+                }
+
                 def _eval(node):
                     if isinstance(node, ast.Constant):
                         return node.value
                     elif isinstance(node, ast.BinOp):
-                        return operators[type(node.op)](_eval(node.left), _eval(node.right))
+                        return operators[type(node.op)](
+                            _eval(node.left), _eval(node.right)
+                        )
                     elif isinstance(node, ast.UnaryOp):
                         return operators[type(node.op)](_eval(node.operand))
                     else:
@@ -206,12 +218,14 @@ if __name__ == "__main__":
                 try:
                     # Strip any potential quotes if model passed it as string
                     input_str = input_str.strip("'\"")
-                    result = _eval(ast.parse(input_str, mode='eval').body)
+                    result = _eval(ast.parse(input_str, mode="eval").body)
                     return str(result)
                 except Exception as e:
                     return f"Error evaluating expression: {str(e)}"
 
-        print("This module provides scaffolding. To run a real test, install kagglehub and transformers.")
+        print(
+            "This module provides scaffolding. To run a real test, install kagglehub and transformers."
+        )
         # client = KaggleHuggingFaceClient("google/gemma/pyTorch/2b-it")
         # agent = SimpleReActAgent(client, [MockTool()])
         # print(agent.run("What is 20 * 5?"))

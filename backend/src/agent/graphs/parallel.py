@@ -1,19 +1,20 @@
-from langgraph.graph import StateGraph, START, END
-from agent.state import OverallState
+from langgraph.graph import END, START, StateGraph
+
 from agent.configuration import Configuration
 from agent.nodes import (
-    load_context,
-    generate_plan,
-    planning_mode,
-    planning_wait,
-    planning_router,
-    web_research,
-    validate_web_results,
-    reflection,
+    evaluate_research,
     finalize_answer,
-    evaluate_research
+    generate_plan,
+    load_context,
+    planning_mode,
+    planning_router,
+    planning_wait,
+    reflection,
+    validate_web_results,
+    web_research,
 )
 from agent.registry import graph_registry
+from agent.state import OverallState
 
 # Create our Agent Graph using the standard builder wiring
 builder = StateGraph(OverallState, config_schema=Configuration)
@@ -43,13 +44,45 @@ builder.add_conditional_edges(
 builder.add_edge("finalize_answer", END)
 
 # Document edges (metadata only)
-graph_registry.document_edge("generate_plan", "planning_mode", description="Initial plan is prepared for user review.")
-graph_registry.document_edge("planning_mode", "web_research", description="Once approved (or auto-approved), plan steps dispatch to web research.")
-graph_registry.document_edge("planning_mode", "planning_wait", description="If confirmation is required, execution pauses for user feedback.")
-graph_registry.document_edge("web_research", "validate_web_results", description="Heuristic validation guards against irrelevant summaries.")
-graph_registry.document_edge("validate_web_results", "reflection", description="Only validated summaries reach the reasoning loop.")
-graph_registry.document_edge("reflection", "web_research", description="Follow-up queries trigger additional web searches until sufficient.")
-graph_registry.document_edge("reflection", "finalize_answer", description="Once sufficient or max loops reached, finalize the response.")
-graph_registry.document_edge("finalize_answer", END, description="Graph terminates after final answer is produced.")
+graph_registry.document_edge(
+    "generate_plan",
+    "planning_mode",
+    description="Initial plan is prepared for user review.",
+)
+graph_registry.document_edge(
+    "planning_mode",
+    "web_research",
+    description="Once approved (or auto-approved), plan steps dispatch to web research.",
+)
+graph_registry.document_edge(
+    "planning_mode",
+    "planning_wait",
+    description="If confirmation is required, execution pauses for user feedback.",
+)
+graph_registry.document_edge(
+    "web_research",
+    "validate_web_results",
+    description="Heuristic validation guards against irrelevant summaries.",
+)
+graph_registry.document_edge(
+    "validate_web_results",
+    "reflection",
+    description="Only validated summaries reach the reasoning loop.",
+)
+graph_registry.document_edge(
+    "reflection",
+    "web_research",
+    description="Follow-up queries trigger additional web searches until sufficient.",
+)
+graph_registry.document_edge(
+    "reflection",
+    "finalize_answer",
+    description="Once sufficient or max loops reached, finalize the response.",
+)
+graph_registry.document_edge(
+    "finalize_answer",
+    END,
+    description="Graph terminates after final answer is produced.",
+)
 
 graph = builder.compile(name="pro-search-agent-parallel")

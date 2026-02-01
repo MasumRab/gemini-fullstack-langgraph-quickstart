@@ -1,17 +1,16 @@
-from typing import List, Dict, Any, Optional
 import json
 import logging
-import asyncio
+from typing import Any, Dict, List
 
-from agent.rag import DeepSearchRAG
 from agent.mcp_client import MCPToolUser
-from agent.mcp_server import FilesystemMCPServer
+from agent.rag import DeepSearchRAG
 
 # Mock/Simple interfaces for Planner, Searcher, Refiner to make it self-contained
 # In a real app, these might come from `backend/src/agent/graph.py` or `nodes.py`
 # but we need a clean class for the Notebooks.
 
 logger = logging.getLogger(__name__)
+
 
 class QueryPlanner:
     def __init__(self, llm):
@@ -23,10 +22,12 @@ class QueryPlanner:
         Return JSON list of objects: [{{"id": "sg_1", "query": "sub question 1"}}, ...]
         """
         try:
-             # Adapt to llm_client interface
+            # Adapt to llm_client interface
             if hasattr(self.llm, "invoke"):
-                 response = self.llm.invoke(prompt)
-                 content = response.content if hasattr(response, "content") else str(response)
+                response = self.llm.invoke(prompt)
+                content = (
+                    response.content if hasattr(response, "content") else str(response)
+                )
             elif hasattr(self.llm, "generate"):
                 content = self.llm.generate(prompt)
             else:
@@ -39,16 +40,19 @@ class QueryPlanner:
             # Fallback
             return [{"id": "sg_1", "query": query}]
 
+
 class WebSearcher:
     """Mock Web Searcher using DuckDuckGo or Tavily if available, else Mock"""
+
     def __init__(self):
         try:
             from langchain_community.tools import TavilySearchResults
+
             self.tool = TavilySearchResults(max_results=3)
         except ImportError:
             self.tool = None
         except Exception:
-             self.tool = None
+            self.tool = None
 
     def search(self, query: str) -> List[Dict]:
         if self.tool:
@@ -57,20 +61,31 @@ class WebSearcher:
                 # Normalize to list of dicts {content, url, score}
                 normalized = []
                 for r in results:
-                    normalized.append({
-                        "content": r.get("content", ""),
-                        "url": r.get("url", ""),
-                        "score": 0.8 # Dummy score
-                    })
+                    normalized.append(
+                        {
+                            "content": r.get("content", ""),
+                            "url": r.get("url", ""),
+                            "score": 0.8,  # Dummy score
+                        }
+                    )
                 return normalized
             except Exception as e:
                 logger.warning(f"Search tool failed: {e}")
 
         # Fallback Mock
         return [
-            {"content": f"Mock content about {query}. This is a simulated search result.", "url": "http://mock-source.com", "score": 0.5},
-            {"content": f"More details on {query} found here.", "url": "http://wiki-mock.org", "score": 0.6}
+            {
+                "content": f"Mock content about {query}. This is a simulated search result.",
+                "url": "http://mock-source.com",
+                "score": 0.5,
+            },
+            {
+                "content": f"More details on {query} found here.",
+                "url": "http://wiki-mock.org",
+                "score": 0.6,
+            },
         ]
+
 
 class AnswerRefiner:
     def __init__(self, llm):
@@ -86,12 +101,13 @@ class AnswerRefiner:
         Answer:"""
 
         if hasattr(self.llm, "invoke"):
-             response = self.llm.invoke(prompt)
-             return response.content if hasattr(response, "content") else str(response)
+            response = self.llm.invoke(prompt)
+            return response.content if hasattr(response, "content") else str(response)
         elif hasattr(self.llm, "generate"):
             return self.llm.generate(prompt)
         else:
             return str(self.llm(prompt))
+
 
 class DeepSearchAgent:
     def __init__(self, llm_client, mcp_servers: List = None):
@@ -111,6 +127,7 @@ class DeepSearchAgent:
 
         # 1. Plan
         subgoals_data = self.planner.decompose(query)
+
         # Convert dicts to objects for easier handling if needed, or just use dicts
         # Using simple objects
         class SubGoal:
@@ -127,9 +144,7 @@ class DeepSearchAgent:
 
             # 3. Ingest into RAG
             self.rag.ingest_research_results(
-                documents=docs,
-                subgoal_id=sg.id,
-                metadata={"subgoal": sg.query}
+                documents=docs, subgoal_id=sg.id, metadata={"subgoal": sg.query}
             )
 
             # 4. Audit evidence
@@ -138,9 +153,7 @@ class DeepSearchAgent:
 
             # 5. Verify coverage
             verification = self.rag.verify_subgoal_coverage(
-                subgoal=sg.query,
-                subgoal_id=sg.id,
-                llm_client=self.llm
+                subgoal=sg.query, subgoal_id=sg.id, llm_client=self.llm
             )
             logger.info(f"Verification for {sg.id}: {verification.get('verified')}")
 
@@ -153,8 +166,7 @@ class DeepSearchAgent:
 
         # 6. Synthesize final answer
         context = self.rag.get_context_for_synthesis(
-            query=query,
-            subgoal_ids=[sg.id for sg in subgoals]
+            query=query, subgoal_ids=[sg.id for sg in subgoals]
         )
 
         final_answer = self.refiner.synthesize(query, context)
@@ -164,11 +176,13 @@ class DeepSearchAgent:
         """Helper for evaluation to see what's in RAG"""
         docs = []
         for idx, chunk in self.rag.doc_store.items():
-            docs.append({
-                "content": chunk.content,
-                "url": chunk.source_url,
-                "score": chunk.relevance_score
-            })
+            docs.append(
+                {
+                    "content": chunk.content,
+                    "url": chunk.source_url,
+                    "score": chunk.relevance_score,
+                }
+            )
         return docs
 
     async def research_with_artifacts(self, query: str, save_path: str):
@@ -182,7 +196,7 @@ class DeepSearchAgent:
         # 2. Plan artifact saving
         save_plan = self.mcp.plan_tool_sequence(
             task_description=f"Save research results to {save_path}",
-            llm_client=self.llm
+            llm_client=self.llm,
         )
 
         # 3. Execute plan
@@ -202,14 +216,14 @@ class DeepSearchAgent:
 
         # We will iterate the plan and inject 'answer' if content is placeholder or missing
         for step in save_plan:
-             if step.get("tool", "").endswith("write_file"):
-                 params = step.get("params", {})
-                 if "content" not in params or params["content"] in ["<content>", "RESULT"]:
-                     params["content"] = answer
+            if step.get("tool", "").endswith("write_file"):
+                params = step.get("params", {})
+                if "content" not in params or params["content"] in [
+                    "<content>",
+                    "RESULT",
+                ]:
+                    params["content"] = answer
 
         save_results = await self.mcp.execute_plan(save_plan)
 
-        return {
-            "answer": answer,
-            "artifacts_saved": save_results
-        }
+        return {"answer": answer, "artifacts_saved": save_results}

@@ -1,26 +1,27 @@
-from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass, field, asdict
-import numpy as np
-import time
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 import logging
+import time
 import uuid
-import os
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
 
-from config.app_config import config
+import numpy as np
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 from agent.llm_client import call_llm_robust
 
 # Optional imports for RAG dependencies
 try:
-    from sentence_transformers import SentenceTransformer
     import faiss
+    from sentence_transformers import SentenceTransformer
 except ImportError:
     SentenceTransformer = None
     faiss = None
 
 # Optional Chroma
 try:
-    from rag.chroma_store import ChromaStore, EvidenceChunk as ChromaEvidenceChunk
+    from rag.chroma_store import ChromaStore
+    from rag.chroma_store import EvidenceChunk as ChromaEvidenceChunk
+
     CHROMA_AVAILABLE = True
 except ImportError:
     CHROMA_AVAILABLE = False
@@ -29,9 +30,11 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class EvidenceChunk:
     """Individual evidence unit with metadata"""
+
     content: str
     source_url: str
     subgoal_id: str
@@ -40,24 +43,25 @@ class EvidenceChunk:
     chunk_id: str
     metadata: Dict = field(default_factory=dict)
 
+
 class DeepSearchRAG:
-    """
-    RAG system optimized for deep research workflows.
+    """RAG system optimized for deep research workflows.
     Implements continuous evidence auditing and context pruning.
     Now supports hybrid store (FAISS + Chroma) with dual-write.
     """
 
     def __init__(
         self,
-        config=None, # Allow injecting config
+        config=None,  # Allow injecting config
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         chunk_size: int = 512,
         chunk_overlap: int = 50,
-        max_context_chunks: int = 10
+        max_context_chunks: int = 10,
     ):
         self.embedding_model = embedding_model
         # Use provided config or fallback to global
         from config.app_config import config as global_config
+
         self.config = config or global_config
 
         # Load embedding model
@@ -81,7 +85,9 @@ class DeepSearchRAG:
         # - use_faiss/use_chroma flags control which stores are active
         # - Dual-write overrides individual flags to ensure both stores receive data
         self.use_faiss = requested_store == "faiss" or self.config.dual_write
-        self.use_chroma = (requested_store == "chroma" or self.config.dual_write) and CHROMA_AVAILABLE
+        self.use_chroma = (
+            requested_store == "chroma" or self.config.dual_write
+        ) and CHROMA_AVAILABLE
 
         # FAISS Init
         if self.use_faiss:
@@ -95,14 +101,16 @@ class DeepSearchRAG:
         # Chroma Init
         if self.use_chroma and CHROMA_AVAILABLE:
             # Configurable path
-            persist_path = getattr(self.config, 'chroma_persist_path', "./chroma_db")
+            persist_path = getattr(self.config, "chroma_persist_path", "./chroma_db")
 
             # Create wrapper for consistent embeddings between FAISS and Chroma
             embedding_fn = None
             if self.embedder:
+
                 class ConsistentEmbeddingFunction:
                     def __init__(self, model):
                         self.model = model
+
                     def __call__(self, input):
                         # Ensure input is list of strings
                         if isinstance(input, str):
@@ -116,21 +124,27 @@ class DeepSearchRAG:
             self.chroma = ChromaStore(
                 collection_name="deep_search_evidence",
                 persist_path=persist_path,
-                embedding_function=embedding_fn
+                embedding_function=embedding_fn,
             )
-            logger.warning("Dual write enabled but ChromaDB is missing. Writing to FAISS only.")
+            logger.warning(
+                "Dual write enabled but ChromaDB is missing. Writing to FAISS only."
+            )
 
         # Text splitting
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            separators=["\n\n", "\n", ".", "!", "?", ",", " ", ""]
+            separators=["\n\n", "\n", ".", "!", "?", ",", " ", ""],
         )
 
         self.max_context_chunks = max_context_chunks
-        self.subgoal_evidence_map: Dict[str, List[int]] = {} # Primarily tracks FAISS IDs if active
+        self.subgoal_evidence_map: Dict[
+            str, List[int]
+        ] = {}  # Primarily tracks FAISS IDs if active
 
-    def retrieve_from_chroma(self, query: str, top_k: int, query_embedding: Optional[List[float]] = None) -> List[Tuple[EvidenceChunk, float]]:
+    def retrieve_from_chroma(
+        self, query: str, top_k: int, query_embedding: List[float] | None = None
+    ) -> List[Tuple[EvidenceChunk, float]]:
         """Retrieve directly from Chroma store if enabled."""
         if not self.use_chroma:
             raise ValueError("Chroma not enabled")
@@ -144,26 +158,25 @@ class DeepSearchRAG:
         # Map ChromaEvidenceChunk back to EvidenceChunk
         results = self.chroma.retrieve(query, top_k=top_k, query_embedding=embedding)
         return [
-            (EvidenceChunk(
-                content=c.content,
-                source_url=c.source_url,
-                subgoal_id=c.subgoal_id,
-                relevance_score=c.relevance_score,
-                timestamp=c.timestamp,
-                chunk_id=c.chunk_id,
-                metadata=c.metadata
-            ), score)
+            (
+                EvidenceChunk(
+                    content=c.content,
+                    source_url=c.source_url,
+                    subgoal_id=c.subgoal_id,
+                    relevance_score=c.relevance_score,
+                    timestamp=c.timestamp,
+                    chunk_id=c.chunk_id,
+                    metadata=c.metadata,
+                ),
+                score,
+            )
             for c, score in results
         ]
 
     def ingest_research_results(
-        self,
-        documents: List[Dict],
-        subgoal_id: str,
-        metadata: Optional[Dict] = None
+        self, documents: List[Dict], subgoal_id: str, metadata: Dict | None = None
     ) -> List[int]:
-        """
-        Ingest web search results into the RAG system.
+        """Ingest web search results into the RAG system.
         Supports dual-write.
         """
         ingested_ids = []
@@ -180,10 +193,7 @@ class DeepSearchRAG:
 
             for chunk in doc_chunks:
                 # ⚡ Bolt Optimization: Prepare for batch processing
-                chunks_to_process.append({
-                    "chunk": chunk,
-                    "doc": doc
-                })
+                chunks_to_process.append({"chunk": chunk, "doc": doc})
 
         # ⚡ Bolt Optimization: Batch Embedding
         # Call the model once for all chunks instead of N times (N=docs*chunks)
@@ -209,7 +219,7 @@ class DeepSearchRAG:
 
             # FAISS Logic
             if self.use_faiss:
-                current_id = start_id + i # Incremental ID for FAISS
+                current_id = start_id + i  # Incremental ID for FAISS
 
                 evidence = EvidenceChunk(
                     content=chunk,
@@ -218,7 +228,7 @@ class DeepSearchRAG:
                     relevance_score=doc.get("score", 0.0),
                     timestamp=current_time,
                     chunk_id=chunk_id_str,
-                    metadata=metadata or {}
+                    metadata=metadata or {},
                 )
 
                 self.doc_store[current_id] = evidence
@@ -232,22 +242,24 @@ class DeepSearchRAG:
 
             # Chroma Logic
             if self.use_chroma and CHROMA_AVAILABLE:
-                chroma_chunks.append(ChromaEvidenceChunk(
-                    content=chunk,
-                    source_url=doc.get("url", "unknown"),
-                    subgoal_id=subgoal_id,
-                    relevance_score=doc.get("score", 0.0),
-                    timestamp=current_time,
-                    chunk_id=chunk_id_str,
-                    metadata=metadata or {}
-                ))
+                chroma_chunks.append(
+                    ChromaEvidenceChunk(
+                        content=chunk,
+                        source_url=doc.get("url", "unknown"),
+                        subgoal_id=subgoal_id,
+                        relevance_score=doc.get("score", 0.0),
+                        timestamp=current_time,
+                        chunk_id=chunk_id_str,
+                        metadata=metadata or {},
+                    )
+                )
                 embeddings_list.append(embedding.tolist())
 
         # ⚡ Bolt Optimization: Batch FAISS Add
         if self.use_faiss and faiss_embeddings:
             self.index_with_ids.add_with_ids(
                 np.array(faiss_embeddings, dtype=np.float32),
-                np.array(faiss_ids, dtype=np.int64)
+                np.array(faiss_ids, dtype=np.int64),
             )
             self.next_id += len(faiss_ids)
 
@@ -261,19 +273,20 @@ class DeepSearchRAG:
         self,
         query: str,
         top_k: int = 10,
-        subgoal_filter: Optional[str] = None,
+        subgoal_filter: str | None = None,
         min_score: float = 0.0,
-        query_embedding: Optional[List[float]] = None
+        query_embedding: List[float] | None = None,
     ) -> List[Tuple[EvidenceChunk, float]]:
-        """
-        Retrieve relevant evidence.
+        """Retrieve relevant evidence.
         If dual-write is on, respects RAG_STORE preference for retrieval.
         """
         # Decide which store to read from
         read_source = self.config.rag_store
 
         if read_source == "chroma" and self.use_chroma and CHROMA_AVAILABLE:
-            return self.retrieve_from_chroma(query, top_k, query_embedding=query_embedding)
+            return self.retrieve_from_chroma(
+                query, top_k, query_embedding=query_embedding
+            )
 
         elif self.use_faiss:
             # Existing FAISS logic
@@ -288,10 +301,7 @@ class DeepSearchRAG:
                 q_emb = np.array([raw_emb], dtype=np.float32)
 
             k_search = min(top_k * 2, self.index_with_ids.ntotal)
-            distances, indices = self.index_with_ids.search(
-                q_emb,
-                k=k_search
-            )
+            distances, indices = self.index_with_ids.search(q_emb, k=k_search)
 
             results = []
             for dist, idx in zip(distances[0], indices[0]):
@@ -310,9 +320,13 @@ class DeepSearchRAG:
 
         return []
 
-    def audit_and_prune(self, subgoal_id: str, relevance_threshold: float = 0.5, diversity_weight: float = 0.3) -> Dict:
-        """
-        Audit and prune low-relevance evidence for a specific subgoal.
+    def audit_and_prune(
+        self,
+        subgoal_id: str,
+        relevance_threshold: float = 0.5,
+        diversity_weight: float = 0.3,
+    ) -> Dict:
+        """Audit and prune low-relevance evidence for a specific subgoal.
 
         Currently optimized for FAISS. If Chroma-only, this would need a Chroma-specific
         implementation using `get` and `delete`.
@@ -343,7 +357,11 @@ class DeepSearchRAG:
         scored_evidence = []
         for eid in evidence_ids:
             evidence = self.doc_store[eid]
-            score = float(evidence.relevance_score) if evidence.relevance_score is not None else 0.0
+            score = (
+                float(evidence.relevance_score)
+                if evidence.relevance_score is not None
+                else 0.0
+            )
             scored_evidence.append((eid, score, evidence))
 
         scored_evidence.sort(key=lambda x: x[1], reverse=True)
@@ -357,23 +375,36 @@ class DeepSearchRAG:
 
         avg_score = 0.0
         if kept_ids:
-             avg_score = float(np.mean([x[1] for x in scored_evidence if x[0] in kept_ids]))
+            avg_score = float(
+                np.mean([x[1] for x in scored_evidence if x[0] in kept_ids])
+            )
 
         return {
             "status": "success",
             "original_count": original_count,
             "kept_count": len(kept_ids),
             "pruned_count": pruned_count,
-            "avg_score": avg_score
+            "avg_score": avg_score,
         }
 
     # ... keep existing methods (verify_subgoal_coverage, get_context_for_synthesis, export_state) ...
-    def verify_subgoal_coverage(self, subgoal: str, subgoal_id: str, llm_client, confidence_threshold: float = 0.7) -> Dict:
+    def verify_subgoal_coverage(
+        self,
+        subgoal: str,
+        subgoal_id: str,
+        llm_client,
+        confidence_threshold: float = 0.7,
+    ) -> Dict:
         evidence_list = self.retrieve(query=subgoal, subgoal_filter=subgoal_id, top_k=5)
         if not evidence_list:
             return {"verified": False, "confidence": 0.0, "reason": "no_evidence"}
 
-        combined_evidence = "\n\n".join([f"[{i+1}] {e.content[:200]}..." for i, (e, _) in enumerate(evidence_list)])
+        combined_evidence = "\n\n".join(
+            [
+                f"[{i + 1}] {e.content[:200]}..."
+                for i, (e, _) in enumerate(evidence_list)
+            ]
+        )
 
         verification_prompt = f"""
 Verify if the following evidence adequately addresses the research sub-goal.
@@ -391,6 +422,7 @@ Respond in JSON format:
 }}
 """
         import json
+
         try:
             response_text = call_llm_robust(llm_client, verification_prompt)
 
@@ -398,15 +430,24 @@ Respond in JSON format:
             if "```json" in response_text:
                 response_text = response_text.split("```json")[1].split("```")[0]
             elif "```" in response_text:
-                 response_text = response_text.split("```")[1].split("```")[0]
+                response_text = response_text.split("```")[1].split("```")[0]
 
             result = json.loads(response_text)
             result["evidence_count"] = len(evidence_list)
             return result
         except Exception as e:
-            return {"verified": False, "confidence": 0.0, "reason": f"verification_error: {str(e)}"}
+            return {
+                "verified": False,
+                "confidence": 0.0,
+                "reason": f"verification_error: {str(e)}",
+            }
 
-    def get_context_for_synthesis(self, query: str, max_tokens: int = 4000, subgoal_ids: Optional[List[str]] = None) -> str:
+    def get_context_for_synthesis(
+        self,
+        query: str,
+        max_tokens: int = 4000,
+        subgoal_ids: List[str] | None = None,
+    ) -> str:
         all_chunks = []
 
         # ⚡ Bolt Optimization: Pre-compute query embedding once for all subgoals
@@ -429,14 +470,14 @@ Respond in JSON format:
                     query=query,
                     subgoal_filter=sg_id,
                     top_k=self.max_context_chunks,
-                    query_embedding=query_embedding
+                    query_embedding=query_embedding,
                 )
                 all_chunks.extend(chunks)
         else:
             all_chunks = self.retrieve(
                 query=query,
                 top_k=self.max_context_chunks,
-                query_embedding=query_embedding
+                query_embedding=query_embedding,
             )
 
         seen_content = set()
@@ -474,8 +515,9 @@ Respond in JSON format:
         return {
             "doc_count": count,
             "subgoal_map": {k: len(v) for k, v in self.subgoal_evidence_map.items()},
-            "next_id": getattr(self, "next_id", 0)
+            "next_id": getattr(self, "next_id", 0),
         }
+
 
 # Compatibility exports
 class _RAGConfig:
@@ -483,18 +525,21 @@ class _RAGConfig:
     enable_fallback = True
     max_documents = 5
 
+
 rag_config = _RAGConfig()
+
 
 def is_rag_enabled() -> bool:
     return True
 
+
 class Resource:
     pass
 
+
 def create_rag_tool(resources):
-    """
-    Legacy compatibility stub - returns None.
-    
+    """Legacy compatibility stub - returns None.
+
     TODO(priority=Low, complexity=Medium): [rag:legacy] Replace stub with real implementation
     - Migrate callers to use DeepSearchRAG directly
     - Remove this function once all callers are updated

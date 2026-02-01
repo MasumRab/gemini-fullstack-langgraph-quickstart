@@ -11,48 +11,34 @@ import logging
 import os
 import re
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from config.app_config import config as app_config
-from search.router import search_router
 from google.genai import Client
 from langchain_core.messages import AIMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.types import Send
+from pydantic import BaseModel, Field
 
 from agent.configuration import Configuration
+from agent.models import is_gemini_model, is_gemma_model
 from agent.persistence import load_plan, save_plan
 from agent.prompts import (
     answer_instructions,
+    checklist_instructions,
+    denoising_instructions,
     gemma_answer_instructions,
     get_current_date,
-    plan_writer_instructions,
-    plan_updater_instructions,
-    reflection_instructions,
-    checklist_instructions,
     outline_instructions,
-    denoising_instructions,
+    plan_updater_instructions,
+    plan_writer_instructions,
+    reflection_instructions,
 )
 from agent.rate_limiter import get_context_manager, get_rate_limiter
 from agent.registry import graph_registry
 from agent.scoping_prompts import scoping_instructions
 from agent.scoping_schema import ScopingAssessment
-from agent.tools_and_schemas import (
-    SearchQueryList,
-    Reflection,
-    MCP_TOOLS,
-    Plan,
-    Outline,
-)
-from agent.models import is_gemma_model, is_gemini_model
-from agent.tool_adapter import (
-    format_tools_to_json_schema,
-    GEMMA_TOOL_INSTRUCTION,
-    parse_tool_calls,
-)
-from pydantic import BaseModel, Field
 from agent.state import (
     Evidence,
     OverallState,
@@ -60,13 +46,26 @@ from agent.state import (
     ReflectionState,
     WebSearchState,
 )
-from agent.utils import (
-    get_research_topic,
-    join_and_truncate,
-    get_cached_llm,
-    has_fuzzy_match,
+from agent.tool_adapter import (
+    GEMMA_TOOL_INSTRUCTION,
+    format_tools_to_json_schema,
+    parse_tool_calls,
 )
+from agent.tools_and_schemas import (
+    MCP_TOOLS,
+    Outline,
+    Plan,
+    Reflection,
+)
+from agent.utils import (
+    get_cached_llm,
+    get_research_topic,
+    has_fuzzy_match,
+    join_and_truncate,
+)
+from config.app_config import config as app_config
 from observability.langfuse import observe_span
+from search.router import search_router
 
 logger = logging.getLogger(__name__)
 
@@ -738,8 +737,7 @@ def planning_wait(state: OverallState) -> OverallState:
     outputs=["plan"],
 )
 def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Updates the research plan based on latest findings.
+    """Updates the research plan based on latest findings.
     Implements FlowSearch/Open SWE logic to dynamically adjust tasks.
     """
     with observe_span("update_plan", config):
@@ -905,8 +903,7 @@ def execution_router(state: OverallState) -> str:
     outputs=["outline"],
 )
 def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Generates a hierarchical outline (Sections -> Subsections) for the research.
+    """Generates a hierarchical outline (Sections -> Subsections) for the research.
     Implements STORM pattern for structured long-form content generation.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
@@ -989,8 +986,7 @@ def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
 
 
 def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Dynamically expands the research DAG based on findings.
+    """Dynamically expands the research DAG based on findings.
 
     Fine-grained implementation guide:
 
@@ -1027,8 +1023,7 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     outputs=["evidence_bank"],
 )
 def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Extracts structured evidence from raw web content.
+    """Extracts structured evidence from raw web content.
     Implements ManuSearch logic to convert raw search results into `Evidence` objects.
     """
     with observe_span("content_reader", config):
@@ -1118,8 +1113,7 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
 
 
 def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Executes a recursive research subgraph for a specific sub-topic.
+    """Executes a recursive research subgraph for a specific sub-topic.
 
     Fine-grained implementation guide:
 
@@ -1161,8 +1155,7 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
     outputs=["validation_notes"],
 )
 def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Audits gathered evidence against the outline requirements.
+    """Audits gathered evidence against the outline requirements.
 
     Generates a markdown report flagging missing citations or insufficient evidence
     for each section of the outline.
@@ -1229,8 +1222,7 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
     outputs=["messages", "artifacts"],
 )
 def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Refines the final answer by synthesizing multiple drafts.
+    """Refines the final answer by synthesizing multiple drafts.
     Implements TTD-DR pattern for high-fidelity report synthesis.
     Ensures URL restoration for citations.
     """
@@ -1315,8 +1307,7 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
 
 
 def update_artifact(id: str, content: str, type: str) -> str:
-    """
-    Updates a collaborative artifact.
+    """Updates a collaborative artifact.
     Returns a JSON string representation of the updated artifact.
     """
     artifact = {

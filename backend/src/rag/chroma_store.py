@@ -1,7 +1,7 @@
-from typing import List, Dict, Optional, Tuple, Any
 import logging
-import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Tuple
+
 import chromadb
 from chromadb.config import Settings
 
@@ -11,9 +11,11 @@ from chromadb.config import Settings
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class EvidenceChunk:
     """Individual evidence unit with metadata."""
+
     content: str
     source_url: str
     subgoal_id: str
@@ -22,9 +24,9 @@ class EvidenceChunk:
     chunk_id: str
     metadata: Dict = field(default_factory=dict)
 
+
 class ChromaStore:
-    """
-    ChromaDB implementation of the RAG store.
+    """ChromaDB implementation of the RAG store.
     """
 
     def __init__(
@@ -32,27 +34,32 @@ class ChromaStore:
         collection_name: str = "deep_search_evidence",
         persist_path: str = "./chroma_db",
         embedding_function: Any = None,
-        allow_reset: bool = False
+        allow_reset: bool = False,
     ):
+        """Args:
+        collection_name: Name of the Chroma collection.
+        persist_path: Path to persist the DB.
+        embedding_function: Optional embedding function. If None, uses default (all-MiniLM-L6-v2 compatible).
+        allow_reset: Whether to allow resetting the database (destructive).
         """
-        Args:
-            collection_name: Name of the Chroma collection.
-            persist_path: Path to persist the DB.
-            embedding_function: Optional embedding function. If None, uses default (all-MiniLM-L6-v2 compatible).
-            allow_reset: Whether to allow resetting the database (destructive).
-        """
-        self.client = chromadb.PersistentClient(path=persist_path, settings=Settings(allow_reset=allow_reset))
+        self.client = chromadb.PersistentClient(
+            path=persist_path, settings=Settings(allow_reset=allow_reset)
+        )
 
         # Use default embedding function if none provided (Chroma uses all-MiniLM-L6-v2 by default)
         self.collection = self.client.get_or_create_collection(
-            name=collection_name,
-            embedding_function=embedding_function
+            name=collection_name, embedding_function=embedding_function
         )
-        logger.info(f"Initialized ChromaStore with collection '{collection_name}' at '{persist_path}'")
+        logger.info(
+            f"Initialized ChromaStore with collection '{collection_name}' at '{persist_path}'"
+        )
 
-    def add_evidence(self, evidence_list: List[EvidenceChunk], embeddings: Optional[List[List[float]]] = None):
-        """
-        Add evidence chunks to the store.
+    def add_evidence(
+        self,
+        evidence_list: List[EvidenceChunk],
+        embeddings: List[List[float]] | None = None,
+    ):
+        """Add evidence chunks to the store.
 
         Args:
             evidence_list: List of EvidenceChunk objects.
@@ -72,7 +79,7 @@ class ChromaStore:
                 "subgoal_id": e.subgoal_id,
                 "relevance_score": float(e.relevance_score),
                 "timestamp": float(e.timestamp),
-                **e.metadata
+                **e.metadata,
             }
             metadatas.append(meta)
 
@@ -80,19 +87,18 @@ class ChromaStore:
             ids=ids,
             documents=documents,
             metadatas=metadatas,
-            embeddings=embeddings if embeddings is not None else None
+            embeddings=embeddings if embeddings is not None else None,
         )
 
     def retrieve(
         self,
         query: str,
         top_k: int = 10,
-        subgoal_filter: Optional[str] = None,
+        subgoal_filter: str | None = None,
         min_score: float = 0.0,
-        query_embedding: Optional[List[float]] = None
+        query_embedding: List[float] | None = None,
     ) -> List[Tuple[EvidenceChunk, float]]:
-        """
-        Retrieve relevant evidence.
+        """Retrieve relevant evidence.
 
         Args:
             query: Search text.
@@ -113,7 +119,7 @@ class ChromaStore:
             query_texts=[query] if query_embedding is None else None,
             query_embeddings=[query_embedding] if query_embedding is not None else None,
             n_results=top_k,
-            where=where_filter if where_filter else None
+            where=where_filter if where_filter else None,
         )
 
         if not results["ids"] or not results["ids"][0]:
@@ -124,7 +130,9 @@ class ChromaStore:
 
         # ids, distances, metadatas, documents are lists of lists (one list per query)
         ids = results["ids"][0]
-        distances = results["distances"][0] if results["distances"] else [0.0] * len(ids)
+        distances = (
+            results["distances"][0] if results["distances"] else [0.0] * len(ids)
+        )
         metas = results["metadatas"][0] if results["metadatas"] else [{}] * len(ids)
         docs = results["documents"][0] if results["documents"] else [""] * len(ids)
 
@@ -147,7 +155,12 @@ class ChromaStore:
                 subgoal_id=meta.get("subgoal_id", ""),
                 relevance_score=meta.get("relevance_score", 0.0),
                 timestamp=meta.get("timestamp", 0.0),
-                metadata={k: v for k, v in meta.items() if k not in ["source_url", "subgoal_id", "relevance_score", "timestamp"]}
+                metadata={
+                    k: v
+                    for k, v in meta.items()
+                    if k
+                    not in ["source_url", "subgoal_id", "relevance_score", "timestamp"]
+                },
             )
 
             parsed_results.append((evidence, similarity))

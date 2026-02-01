@@ -1,6 +1,7 @@
 import json
-import pytest
+
 from agent.state import OverallState, Todo, validate_scoping
+
 
 def test_typing_smoke():
     """Ensure OverallState can be instantiated with new fields."""
@@ -13,6 +14,7 @@ def test_typing_smoke():
     assert s["query"].startswith("What")
     assert isinstance(s["plan"], list)
     assert s["plan"][0]["title"] == "Search papers"
+
 
 def test_serialization_roundtrip():
     """Ensure OverallState with new fields survives JSON serialization."""
@@ -28,22 +30,22 @@ def test_serialization_roundtrip():
     assert isinstance(r["plan"], list)
     assert r["plan"][0]["done"] is True
 
+
 def test_backward_compatibility_partial():
     """Ensure legacy code can create partial states without new fields."""
-    partial: OverallState = {
-        "todo_list": [{"title": "legacy"}]
-    }
+    partial: OverallState = {"todo_list": [{"title": "legacy"}]}
     # code that consumes OverallState should tolerate missing scoping fields
     assert "todo_list" in partial
     assert "plan" not in partial
     assert "query" not in partial
+
 
 def test_validate_scoping():
     """Test the runtime validation helper."""
     valid_state: OverallState = {
         "query": "foo",
         "clarifications_needed": [],
-        "user_answers": []
+        "user_answers": [],
     }
     assert validate_scoping(valid_state) is True
 
@@ -52,6 +54,7 @@ def test_validate_scoping():
         # missing other fields
     }
     assert validate_scoping(invalid_state) is False
+
 
 def test_consumer_integration():
     """Simulate a function consuming OverallState to ensure runtime safety."""
@@ -69,6 +72,7 @@ def test_consumer_integration():
     state_without_plan: OverallState = {}
     assert process_plan(state_without_plan) == []
 
+
 def test_todo_structure():
     """Verify Todo structure matches requirements."""
     t: Todo = {
@@ -77,6 +81,6 @@ def test_todo_structure():
         "description": "Details",
         "done": False,
         "status": "pending",
-        "result": None
+        "result": None,
     }
     assert t["id"] == "123"

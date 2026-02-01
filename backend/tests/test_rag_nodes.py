@@ -2,8 +2,6 @@ import pathlib
 import sys
 from types import SimpleNamespace
 
-import pytest
-
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
 SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
@@ -40,7 +38,9 @@ def test_rag_fallback_to_web_handles_continue_iterations(monkeypatch):
     monkeypatch.setattr(rag_nodes, "rag_config", SimpleNamespace(enable_fallback=False))
 
     assert (
-        rag_nodes.rag_fallback_to_web({"research_loop_count": 1, "rag_documents": ["doc"]})
+        rag_nodes.rag_fallback_to_web(
+            {"research_loop_count": 1, "rag_documents": ["doc"]}
+        )
         == "web_research"
     )
 
