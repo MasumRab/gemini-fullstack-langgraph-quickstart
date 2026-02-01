@@ -2,16 +2,18 @@
 
 Tests cover filtering logic, edge cases, and fallback behavior.
 """
+
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 from langchain_core.runnables import RunnableConfig
 
 from agent.nodes import validate_web_results
-from config.app_config import AppConfig
 
 # =============================================================================
 # Tests for validate_web_results
 # =============================================================================
+
 
 @pytest.fixture
 def mock_app_config():
@@ -19,8 +21,9 @@ def mock_app_config():
     with patch("agent.nodes.app_config") as mock_config:
         # Default settings for tests
         mock_config.require_citations = False
-        mock_config.validation_mode = "fast" # Skip LLM validation by default
+        mock_config.validation_mode = "fast"  # Skip LLM validation by default
         yield mock_config
+
 
 class TestValidateWebResults:
     """Tests for the validate_web_results function."""
@@ -84,7 +87,9 @@ class TestValidateWebResults:
         # So it returns []
 
         assert result["validated_web_research_result"] == []
-        assert any("All summaries failed" in note for note in result["validation_notes"])
+        assert any(
+            "All summaries failed" in note for note in result["validation_notes"]
+        )
 
     def test_handles_empty_summaries(self, mock_app_config):
         """Should handle empty web_research_result gracefully."""
@@ -116,7 +121,9 @@ class TestValidateWebResults:
         result = validate_web_results(state, config)
 
         # With no keywords, should fallback to keeping all
-        assert result["validated_web_research_result"] == ["Some summary about nothing."]
+        assert result["validated_web_research_result"] == [
+            "Some summary about nothing."
+        ]
 
     def test_case_insensitive_matching(self, mock_app_config):
         """Keyword matching should be case-insensitive."""
@@ -131,7 +138,9 @@ class TestValidateWebResults:
 
         result = validate_web_results(state, config)
 
-        assert "python is great for beginners." in result["validated_web_research_result"]
+        assert (
+            "python is great for beginners." in result["validated_web_research_result"]
+        )
 
     def test_nested_query_lists_are_flattened(self, mock_app_config):
         """Nested query lists should be flattened before processing."""
@@ -198,6 +207,7 @@ class TestValidateWebResults:
 
 # Additional comprehensive tests from remote branch
 
+
 def test_validate_web_results_with_fuzzy_matching(mock_app_config):
     """Test that fuzzy matching catches similar but not exact keywords."""
     state = {
@@ -239,10 +249,7 @@ def test_validate_web_results_validation_notes_format(mock_app_config):
     """Test that validation notes are properly formatted."""
     state = {
         "search_query": ["specific"],
-        "web_research_result": [
-            "Specific information here.",
-            "Unrelated content."
-        ],
+        "web_research_result": ["Specific information here.", "Unrelated content."],
     }
     config = RunnableConfig(configurable={})
 
@@ -258,9 +265,7 @@ def test_validate_web_results_no_keywords_extracted(mock_app_config):
     """Test behavior when no keywords can be extracted from queries."""
     state = {
         "search_query": ["a", "is", "the"],  # All too short
-        "web_research_result": [
-            "Some summary text."
-        ],
+        "web_research_result": ["Some summary text."],
     }
     config = RunnableConfig(configurable={})
 
@@ -277,7 +282,7 @@ def test_validate_web_results_all_summaries_relevant(mock_app_config):
         "web_research_result": [
             "Technology advances every year.",
             "New technology breakthroughs announced.",
-            "Technology sector grows rapidly."
+            "Technology sector grows rapidly.",
         ],
     }
     config = RunnableConfig(configurable={})
@@ -291,9 +296,7 @@ def test_validate_web_results_special_characters_in_query(mock_app_config):
     """Test handling queries with special characters."""
     state = {
         "search_query": ["machine-learning & deep-learning"],
-        "web_research_result": [
-            "Machine learning and deep learning are related."
-        ],
+        "web_research_result": ["Machine learning and deep learning are related."],
     }
     config = RunnableConfig(configurable={})
 
@@ -320,9 +323,7 @@ def test_validate_web_results_query_as_string_not_list(mock_app_config):
     """Test handling when search_query is a string instead of list."""
     state = {
         "search_query": "single query string",
-        "web_research_result": [
-            "Information about single query topics."
-        ],
+        "web_research_result": ["Information about single query topics."],
     }
     config = RunnableConfig(configurable={})
 
@@ -339,7 +340,7 @@ def test_validate_web_results_preserves_order(mock_app_config):
         "web_research_result": [
             "First test result.",
             "Second test result.",
-            "Third test result."
+            "Third test result.",
         ],
     }
     config = RunnableConfig(configurable={})
@@ -351,6 +352,7 @@ def test_validate_web_results_preserves_order(mock_app_config):
     assert "Second" in validated[1]
     assert "Third" in validated[2]
 
+
 def test_require_citations_enforcement(mock_app_config):
     """Test that validation enforces citations when enabled."""
     mock_app_config.require_citations = True
@@ -359,7 +361,7 @@ def test_require_citations_enforcement(mock_app_config):
         "search_query": ["test"],
         "web_research_result": [
             "Result with citation [Title](http://example.com).",
-            "Result without citation."
+            "Result without citation.",
         ],
     }
     config = RunnableConfig(configurable={})
@@ -380,7 +382,7 @@ def test_require_citations_enforcement(mock_app_config):
         "search_query": ["test"],
         "web_research_result": [
             "Test result with citation [Title](http://example.com).",
-            "Test result without citation."
+            "Test result without citation.",
         ],
     }
     # Now both contain "Test", so both pass heuristics.

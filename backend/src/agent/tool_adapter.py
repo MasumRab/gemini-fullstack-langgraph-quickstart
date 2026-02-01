@@ -1,9 +1,9 @@
 """Adapter for handling tool calling with models that do not support native API tool binding (e.g. Gemma)."""
 
 import json
-import re
 import logging
-from typing import Any, Dict, List, Optional
+import re
+from typing import Any, Dict, List
 
 from langchain_core.tools import BaseTool
 
@@ -39,41 +39,42 @@ You are an expert agent with access to the following tools:
 If no tool is needed, just respond with the text answer.
 """
 
+
 def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
-    """
-    Converts a list of LangChain tools into a readable JSON schema string for the prompt.
+    """Converts a list of LangChain tools into a readable JSON schema string for the prompt.
     """
     tool_schemas = []
     for tool in tools:
         # Pydantic v1 uses .args, v2 uses .args_schema or model_json_schema()
         if hasattr(tool, "get_input_schema"):
-             input_schema = tool.get_input_schema()
-             if hasattr(input_schema, "model_json_schema"):
-                 parameters = input_schema.model_json_schema()
-             elif hasattr(input_schema, "schema"):
-                 parameters = input_schema.schema()
-             else:
-                 parameters = tool.args
+            input_schema = tool.get_input_schema()
+            if hasattr(input_schema, "model_json_schema"):
+                parameters = input_schema.model_json_schema()
+            elif hasattr(input_schema, "schema"):
+                parameters = input_schema.schema()
+            else:
+                parameters = tool.args
         else:
-             parameters = tool.args
+            parameters = tool.args
 
         schema = {
             "name": tool.name,
             "description": tool.description,
-            "parameters": parameters
+            "parameters": parameters,
         }
         tool_schemas.append(schema)
 
     return json.dumps(tool_schemas, indent=2)
 
 
-def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) -> List[Dict[str, Any]]:
-    """
-    Parses the LLM output for JSON tool calls.
+def parse_tool_calls(
+    content: str, allowed_tools: List[str] | None = None
+) -> List[Dict[str, Any]]:
+    """Parses the LLM output for JSON tool calls.
     Robustly handles markdown blocks and fallback JSON extraction.
     """
     # Debug logging to see what the model actually output
-    logger.debug(f"Raw LLM Output for Tool Parsing:\n{content}\n" + "-"*20)
+    logger.debug(f"Raw LLM Output for Tool Parsing:\n{content}\n" + "-" * 20)
 
     tool_calls = []
 
@@ -86,10 +87,10 @@ def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) ->
     else:
         # 2. Fallback: Try to find a raw JSON object (first { to last })
         try:
-            start = content.find('{')
-            end = content.rfind('}')
+            start = content.find("{")
+            end = content.rfind("}")
             if start != -1 and end != -1:
-                candidate = content[start:end+1]
+                candidate = content[start : end + 1]
                 json.loads(candidate)
                 json_str = candidate
         except Exception:
@@ -104,7 +105,7 @@ def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) ->
 
         # Handle list of tool calls (some models might output a list directly)
         if isinstance(data, list):
-             calls = data
+            calls = data
         # Handle standard wrapper
         elif isinstance(data, dict):
             if "tool_calls" in data:
@@ -113,14 +114,16 @@ def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) ->
                 # Single tool call object
                 calls = [data]
             elif "function" in data:
-                 calls = [data["function"]]
+                calls = [data["function"]]
             else:
                 # Fallback: Implicit Arguments Object
                 # If the dict keys look like arguments for a known tool
                 # Specific check for 'Plan' tool which uses 'plan' key
-                if "plan" in data and (allowed_tools is None or "Plan" in allowed_tools):
-                     calls = [{"name": "Plan", "args": data}]
-                elif "name" in data: # Malformed tool call object without args wrapper?
+                if "plan" in data and (
+                    allowed_tools is None or "Plan" in allowed_tools
+                ):
+                    calls = [{"name": "Plan", "args": data}]
+                elif "name" in data:  # Malformed tool call object without args wrapper?
                     calls = [data]
                 else:
                     # Risky fallback: if only one tool is allowed, assume it's that one
@@ -159,14 +162,12 @@ def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) ->
                     pass
 
             import uuid
+
             call_id = f"call_{uuid.uuid4().hex[:8]}"
 
-            tool_calls.append({
-                "name": name,
-                "args": arguments,
-                "id": call_id,
-                "type": "tool_call"
-            })
+            tool_calls.append(
+                {"name": name, "args": arguments, "id": call_id, "type": "tool_call"}
+            )
 
     except json.JSONDecodeError as e:
         logger.error(f"JSON decode failed: {e}")

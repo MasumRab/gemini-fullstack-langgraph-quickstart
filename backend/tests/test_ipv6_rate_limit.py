@@ -1,14 +1,18 @@
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+
 from agent.security import RateLimitMiddleware
+
 
 class MockApp:
     pass
 
+
 def test_get_client_key_ipv4():
     mw = RateLimitMiddleware(MockApp())
     assert mw.get_client_key("192.168.1.1") == "192.168.1.1"
+
 
 def test_get_client_key_ipv6():
     mw = RateLimitMiddleware(MockApp())
@@ -26,9 +30,11 @@ def test_get_client_key_ipv6():
     assert key1.endswith("/64")
     assert key1 != key3
 
+
 def test_get_client_key_invalid():
     mw = RateLimitMiddleware(MockApp())
     assert mw.get_client_key("invalid_ip") == "invalid_ip"
+
 
 @pytest.mark.asyncio
 async def test_ipv6_rate_limiting_shared_bucket():
@@ -40,7 +46,7 @@ async def test_ipv6_rate_limiting_shared_bucket():
     req1 = MagicMock()
     req1.url.path = "/api/test"
     req1.client.host = "2001:db8::1"
-    req1.headers.get.return_value = None # No X-Forwarded-For
+    req1.headers.get.return_value = None  # No X-Forwarded-For
 
     async def call_next(request):
         return "success"
@@ -64,6 +70,7 @@ async def test_ipv6_rate_limiting_shared_bucket():
     # The response is a Starlette Response object
     assert response2.status_code == 429
     assert response2.body == b"Too Many Requests"
+
 
 @pytest.mark.asyncio
 async def test_ipv6_rate_limiting_different_bucket():

@@ -8,21 +8,19 @@ Tests cover:
 - Graph compilation and structure
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any
-from langchain_core.runnables import RunnableConfig
-
-from agent.state import OverallState
-from agent.graphs.supervisor import compress_context, graph
-
-
 # =============================================================================
 # Fixtures
 # =============================================================================
-
 import dataclasses
+from typing import Any, Dict
+from unittest.mock import patch
+
+import pytest
+from langchain_core.runnables import RunnableConfig
+
 from agent.graphs import supervisor
+from agent.graphs.supervisor import compress_context, graph
+
 
 @pytest.fixture(autouse=True)
 def disable_compression():
@@ -33,6 +31,7 @@ def disable_compression():
 
     with patch("agent.graphs.supervisor.app_config", new_config):
         yield
+
 
 @pytest.fixture
 def base_supervisor_state() -> Dict[str, Any]:
@@ -75,10 +74,13 @@ def config() -> RunnableConfig:
 # Tests for compress_context Node
 # =============================================================================
 
+
 class TestCompressContext:
     """Test suite for compress_context node."""
 
-    def test_compress_context_merges_new_and_existing_results(self, base_supervisor_state, config):
+    def test_compress_context_merges_new_and_existing_results(
+        self, base_supervisor_state, config
+    ):
         """Test that compress_context merges new and existing results."""
         # Setup
         base_supervisor_state["web_research_result"] = [
@@ -101,7 +103,9 @@ class TestCompressContext:
         assert "new result 1" in result["web_research_result"]
         assert "new result 2" in result["web_research_result"]
 
-    def test_compress_context_with_empty_validated_results(self, base_supervisor_state, config):
+    def test_compress_context_with_empty_validated_results(
+        self, base_supervisor_state, config
+    ):
         """Test compress_context when no new validated results exist."""
         # Setup
         base_supervisor_state["web_research_result"] = ["existing result"]
@@ -115,7 +119,9 @@ class TestCompressContext:
         assert len(result["web_research_result"]) == 1
         assert result["web_research_result"][0] == "existing result"
 
-    def test_compress_context_with_empty_existing_results(self, base_supervisor_state, config):
+    def test_compress_context_with_empty_existing_results(
+        self, base_supervisor_state, config
+    ):
         """Test compress_context when no existing results."""
         # Setup
         base_supervisor_state["web_research_result"] = []
@@ -173,11 +179,17 @@ class TestCompressContext:
         # Assert
         assert result["web_research_result"] == ["first", "second", "third", "fourth"]
 
-    def test_compress_context_with_large_result_set(self, base_supervisor_state, config):
+    def test_compress_context_with_large_result_set(
+        self, base_supervisor_state, config
+    ):
         """Test compress_context handles large numbers of results."""
         # Setup
-        base_supervisor_state["web_research_result"] = [f"existing_{i}" for i in range(100)]
-        base_supervisor_state["validated_web_research_result"] = [f"new_{i}" for i in range(100)]
+        base_supervisor_state["web_research_result"] = [
+            f"existing_{i}" for i in range(100)
+        ]
+        base_supervisor_state["validated_web_research_result"] = [
+            f"new_{i}" for i in range(100)
+        ]
 
         # Execute
         result = compress_context(base_supervisor_state, config)
@@ -188,7 +200,6 @@ class TestCompressContext:
         assert "new_99" in result["web_research_result"]
 
 
-
 class TestSupervisorGraph:
     """Test suite for supervisor graph structure and compilation."""
 
@@ -196,8 +207,8 @@ class TestSupervisorGraph:
         """Test that supervisor graph compiles without errors."""
         # The graph is compiled at module level
         assert graph is not None
-        assert hasattr(graph, 'invoke')
-        assert hasattr(graph, 'stream')
+        assert hasattr(graph, "invoke")
+        assert hasattr(graph, "stream")
 
     def test_supervisor_graph_has_compress_context_node(self):
         """Test that compress_context node is registered in the graph."""

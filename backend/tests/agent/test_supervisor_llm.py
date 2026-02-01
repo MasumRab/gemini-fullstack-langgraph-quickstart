@@ -1,24 +1,25 @@
-import pytest
-from unittest.mock import patch, MagicMock
 import dataclasses
-from agent.state import OverallState
+from unittest.mock import patch
+
+import pytest
+from langchain_core.messages import AIMessage
+from langchain_core.runnables import RunnableConfig
+
 from agent.graphs import supervisor
 from agent.graphs.supervisor import compress_context
-from langchain_core.runnables import RunnableConfig
-from langchain_core.messages import AIMessage
+
 
 @pytest.fixture
 def enable_compression():
     """Enable compression for testing."""
     original_config = supervisor.app_config
     new_config = dataclasses.replace(
-        original_config,
-        compression_enabled=True,
-        compression_mode="tiered"
+        original_config, compression_enabled=True, compression_mode="tiered"
     )
 
     with patch("agent.graphs.supervisor.app_config", new_config):
         yield
+
 
 @patch("agent.graphs.supervisor.get_cached_llm")
 def test_compress_context_with_llm(mock_get_llm, enable_compression):
@@ -30,7 +31,7 @@ def test_compress_context_with_llm(mock_get_llm, enable_compression):
 
     state = {
         "web_research_result": ["Old Result"],
-        "validated_web_research_result": ["New Result"]
+        "validated_web_research_result": ["New Result"],
     }
     config = RunnableConfig()
 

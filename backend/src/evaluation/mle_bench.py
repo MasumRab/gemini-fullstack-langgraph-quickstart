@@ -26,33 +26,33 @@
 #
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 
+
 def evaluate_mle_bench():
-    """
-    Evaluates the agent on MLE-bench tasks.
+    """Evaluates the agent on MLE-bench tasks.
     """
     # TODO(priority=High, complexity=Low): [mle_bench:1] Load dataset
     dataset = []  # load_mle_dataset()
-    
+
     # TODO(priority=High, complexity=Medium): [mle_bench:2] Run agent
     results = []
     for task in dataset:
         # output = run_agent(task.prompt)
         # results.append({"task_id": task.id, "output": output})
         pass
-    
+
     # TODO(priority=Medium, complexity=Medium): [mle_bench:3] Evaluate
     scores = []
     # for result in results:
     #     score = evaluate_output(result["output"], ...)
     #     scores.append(score)
-    
+
     # TODO(priority=Medium, complexity=Low): [mle_bench:4] Aggregate
     # pass_at_1 = sum(1 for s in scores if s >= 0.5) / len(scores)
     # avg_score = sum(scores) / len(scores)
-    
+
     # TODO(priority=Low, complexity=Low): [mle_bench:5] Report
     print("MLE-bench evaluation not yet implemented")
 
+
 if __name__ == "__main__":
     evaluate_mle_bench()
-
