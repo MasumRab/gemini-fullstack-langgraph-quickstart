@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Iterable
 import os
 import difflib
 from functools import lru_cache
@@ -225,7 +225,9 @@ def get_cached_llm(model: str, temperature: float) -> ChatGoogleGenerativeAI:
     )
 
 
-def has_fuzzy_match(keyword: str, candidates: List[str], cutoff: float = 0.8) -> bool:
+def has_fuzzy_match(
+    keyword: str, candidates: Iterable[str], cutoff: float = 0.8
+) -> bool:
     """
     Checks if there is any candidate in the list that has a fuzzy match ratio >= cutoff
     with the keyword. Returns True immediately on the first match.
@@ -233,7 +235,7 @@ def has_fuzzy_match(keyword: str, candidates: List[str], cutoff: float = 0.8) ->
 
     Args:
         keyword: The word to match against.
-        candidates: List of words to search in.
+        candidates: Iterable of words to search in.
         cutoff: Minimum similarity ratio (0.0 to 1.0).
 
     Returns:
@@ -244,7 +246,11 @@ def has_fuzzy_match(keyword: str, candidates: List[str], cutoff: float = 0.8) ->
 
     for candidate in candidates:
         matcher.set_seq1(candidate)
-        # Check quick_ratio first as an upper bound
-        if matcher.quick_ratio() >= cutoff and matcher.ratio() >= cutoff:
+        # Check real_quick_ratio first as an upper bound (O(1))
+        if (
+            matcher.real_quick_ratio() >= cutoff
+            and matcher.quick_ratio() >= cutoff
+            and matcher.ratio() >= cutoff
+        ):
             return True
     return False
