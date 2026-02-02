@@ -37,7 +37,11 @@ async def test_rate_limiter_proxy_logic():
     # Create middleware instance with low limit (2 per minute)
     # We use a distinct path prefix to ensure we hit the logic
     middleware = RateLimitMiddleware(
-        mock_app, limit=2, window=60, protected_paths=["/protected"]
+        mock_app,
+        limit=2,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
     # Helper to simulate request
@@ -106,7 +110,11 @@ async def test_rate_limiter_truncation():
         await response(scope, receive, send)
 
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"]
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
     long_ip = "1.2.3.4" + "a" * 1000  # Very long string
