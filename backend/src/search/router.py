@@ -24,46 +24,36 @@ class SearchRouter:
     Routes search queries to the appropriate provider with fallback logic.
     """
 
+    _PROVIDER_CLASSES = {
+        SearchProviderType.GOOGLE.value: GoogleSearchAdapter,
+        SearchProviderType.DUCKDUCKGO.value: DuckDuckGoAdapter,
+        SearchProviderType.BRAVE.value: BraveSearchAdapter,
+        SearchProviderType.TAVILY.value: TavilyAdapter,
+        SearchProviderType.BING.value: BingAdapter,
+    }
+
     def __init__(self, app_config: AppConfig = config):
         """Initialize router with config."""
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
-        self._init_providers()
-
-    def _init_providers(self):
-        """Initialize providers based on availability and config."""
-        # Google
-        try:
-            self.providers[SearchProviderType.GOOGLE.value] = GoogleSearchAdapter()
-        except Exception as e:
-            logger.debug(f"Google adapter failed to init: {e}")
-
-        # Brave
-        try:
-            self.providers[SearchProviderType.BRAVE.value] = BraveSearchAdapter()
-        except Exception as e:
-            logger.debug(f"Brave adapter failed to init: {e}")
-
-        # DuckDuckGo
-        try:
-            self.providers[SearchProviderType.DUCKDUCKGO.value] = DuckDuckGoAdapter()
-        except Exception as e:
-            logger.debug(f"DuckDuckGo adapter failed to init: {e}")
-
-        # Tavily
-        try:
-            self.providers[SearchProviderType.TAVILY.value] = TavilyAdapter()
-        except Exception as e:
-            logger.debug(f"Tavily adapter failed to init: {e}")
-
-        # Bing
-        try:
-            self.providers[SearchProviderType.BING.value] = BingAdapter()
-        except Exception as e:
-            logger.debug(f"Bing adapter failed to init: {e}")
 
     def _get_provider(self, name: str) -> Optional[SearchProvider]:
-        return self.providers.get(name)
+        """Lazy load provider."""
+        if name in self.providers:
+            return self.providers[name]
+
+        if name not in self._PROVIDER_CLASSES:
+            return None
+
+        provider_cls = self._PROVIDER_CLASSES[name]
+        try:
+            logger.debug(f"Lazy initializing search provider: {name}")
+            instance = provider_cls()
+            self.providers[name] = instance
+            return instance
+        except Exception as e:
+            logger.warning(f"Failed to lazy load provider {name}: {e}")
+            return None
 
     def search(
         self,
