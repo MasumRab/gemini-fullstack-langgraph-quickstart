@@ -1,6 +1,11 @@
-from hypothesis import given, strategies as st, settings, HealthCheck
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
 import pytest
 from agent.utils import insert_citation_markers
+
+# Property-based tests are marked as extended because they can be slow and resource-intensive.
+# Segregating them ensures the standard test suite remains fast and deterministic.
+pytestmark = pytest.mark.extended
 
 @settings(suppress_health_check=[HealthCheck.too_slow])
 @given(
