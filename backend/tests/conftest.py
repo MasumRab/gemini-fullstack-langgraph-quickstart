@@ -3,13 +3,13 @@
 This module provides reusable fixtures that can be used across all test files.
 Fixtures are designed to be path-insensitive and robust to minor code changes.
 """
+import os
 import pathlib
 import sys
-from typing import Any, Dict, List
 from types import SimpleNamespace
+from typing import Any, Dict, List
 
 import pytest
-import os
 
 # Set dummy API key before any imports that might use it
 os.environ["GEMINI_API_KEY"] = "dummy_key_for_tests"
@@ -154,3 +154,38 @@ def make_ai_message(content: str):
     """Create a mock AIMessage-like object."""
     from langchain_core.messages import AIMessage
     return AIMessage(content=content)
+
+
+# =============================================================================
+# Extended Test Configuration
+# =============================================================================
+
+def pytest_addoption(parser):
+    """Register command line options."""
+    parser.addoption(
+        "--only-extended",
+        action="store_true",
+        default=False,
+        help="run only tests marked as extended",
+    )
+
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line("markers", "extended: mark test as extended (slow/integration)")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Filter tests based on flags and markers."""
+    if config.getoption("--only-extended"):
+        # --only-extended given in CLI: skip all tests NOT marked extended
+        skip_non_extended = pytest.mark.skip(reason="skipping non-extended tests")
+        for item in items:
+            if "extended" not in item.keywords:
+                item.add_marker(skip_non_extended)
+    else:
+        # --only-extended NOT given: skip all tests marked extended
+        skip_extended = pytest.mark.skip(reason="extended tests skipped (use --only-extended to run)")
+        for item in items:
+            if "extended" in item.keywords:
+                item.add_marker(skip_extended)
