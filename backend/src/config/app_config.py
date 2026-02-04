@@ -41,6 +41,7 @@ class AppConfig:
     log_level: str = os.getenv("LOG_LEVEL", "info")
 
     # Security
+    trust_proxy_headers: bool = os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
     cors_origins: Tuple[str, ...] = tuple(
         filter(None, os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","))
     )
