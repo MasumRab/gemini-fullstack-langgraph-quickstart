@@ -32,5 +32,7 @@ describe("WelcomeScreen", () => {
     const footer = screen.getByRole("contentinfo");
     expect(footer).toBeInTheDocument();
     expect(footer).toHaveTextContent(/Powered by Google Gemini and LangChain LangGraph/);
+    expect(footer).toHaveClass("text-sm");
+    expect(footer).toHaveClass("text-neutral-300");
   });
 });
