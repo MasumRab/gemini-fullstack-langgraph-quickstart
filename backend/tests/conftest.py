@@ -95,6 +95,51 @@ def pytest_collection_modifyitems(config, items):
 
 
 # =============================================================================
+# Pytest Hooks
+# =============================================================================
+
+def pytest_addoption(parser):
+    """Add custom command line options."""
+    parser.addoption(
+        "--only-extended",
+        action="store_true",
+        default=False,
+        help="run only extended tests",
+    )
+
+
+def pytest_configure(config):
+    """Configure custom markers."""
+    config.addinivalue_line("markers", "extended: mark test as extended test")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Filter tests based on --only-extended flag."""
+    if config.getoption("--only-extended"):
+        # --only-extended given: remove tests NOT marked extended
+        selected = []
+        deselected = []
+        for item in items:
+            if "extended" in item.keywords:
+                selected.append(item)
+            else:
+                deselected.append(item)
+        items[:] = selected
+        config.hook.pytest_deselected(items=deselected)
+    else:
+        # --only-extended NOT given: remove tests marked extended
+        selected = []
+        deselected = []
+        for item in items:
+            if "extended" not in item.keywords:
+                selected.append(item)
+            else:
+                deselected.append(item)
+        items[:] = selected
+        config.hook.pytest_deselected(items=deselected)
+
+
+# =============================================================================
 # State Fixtures
 # =============================================================================
 
