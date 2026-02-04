@@ -90,8 +90,24 @@ class TestAPISecurity:
             response = client.get("/agent/test")
             assert response.status_code == 200
 
-    def test_rate_limit_respects_x_forwarded_for(self, app):
+    def test_rate_limit_respects_x_forwarded_for(self):
         """Test that rate limiting uses the X-Forwarded-For header when present."""
+        # Create app with trust_proxy_headers=True
+        from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
+        app = FastAPI()
+        app.add_middleware(
+            RateLimitMiddleware,
+            limit=5,
+            window=1,
+            protected_paths=["/agent"],
+            trust_proxy_headers=True
+        )
+        app.add_middleware(SecurityHeadersMiddleware)
+
+        @app.get("/agent/test")
+        def agent_endpoint():
+            return {"status": "ok"}
+
         client = TestClient(app)
 
         # Simulate 5 requests from IP A (via proxy)
