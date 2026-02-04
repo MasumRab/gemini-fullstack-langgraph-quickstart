@@ -56,45 +56,50 @@ class TestSearchRouter:
                 "bing": mock_bing
             }
 
-    def test_init_providers(self, mock_config, mock_adapters):
-        """Test that providers are initialized correctly."""
+    def test_lazy_init_providers(self, mock_config, mock_adapters):
+        """Test that providers are NOT initialized eagerly."""
         router = SearchRouter(app_config=mock_config)
 
-        # Verify all adapters were attempted
-        mock_adapters["google"].assert_called()
-        mock_adapters["duckduckgo"].assert_called()
-        mock_adapters["brave"].assert_called()
-        mock_adapters["tavily"].assert_called()
-        mock_adapters["bing"].assert_called()
+        # Verify NO adapters were instantiated on init
+        mock_adapters["google"].assert_not_called()
+        mock_adapters["duckduckgo"].assert_not_called()
+        mock_adapters["brave"].assert_not_called()
+        mock_adapters["tavily"].assert_not_called()
+        mock_adapters["bing"].assert_not_called()
 
-        # Verify providers dict is populated
-        assert "google" in router.providers
-        assert "duckduckgo" in router.providers
-        assert "brave" in router.providers
-        assert "tavily" in router.providers
-        assert "bing" in router.providers
+        # Verify providers dict is empty
+        assert router.providers == {}
 
     def test_search_primary_success(self, mock_config, mock_adapters):
-        """Test search using primary provider successfully."""
+        """Test search using primary provider successfully (lazy load)."""
         router = SearchRouter(app_config=mock_config)
         mock_config.search_provider = "google"
+
+        # Initially not instantiated
+        mock_adapters["google"].assert_not_called()
 
         expected_results = [SearchResult(title="Title", content="test", url="http://test.com")]
         mock_adapters["google"].return_value.search.return_value = expected_results
 
+        # Perform search
         results = router.search("query", max_results=3)
 
-        assert results == expected_results
+        # Now it should be instantiated and called
+        mock_adapters["google"].assert_called_once()
         mock_adapters["google"].return_value.search.assert_called_with("query", max_results=3, tuned=True)
+        assert results == expected_results
+
+        # Verify it's cached in providers dict
+        assert "google" in router.providers
 
     def test_search_fallback_on_missing_provider(self, mock_config, mock_adapters):
-        """Test fallback when primary provider is not available."""
+        """Test fallback when primary provider cannot be initialized."""
         router = SearchRouter(app_config=mock_config)
-
-        # Simulate Google not being available (removed from providers dict)
-        del router.providers["google"]
         mock_config.search_provider = "google"
         mock_config.search_fallback = "duckduckgo"
+
+        # Simulate Google failing to initialize
+        mock_adapters["google"].side_effect = Exception("Init failed")
 
         expected_results = [SearchResult(title="DDG", content="ddg", url="http://ddg.com")]
         mock_adapters["duckduckgo"].return_value.search.return_value = expected_results
@@ -102,7 +107,12 @@ class TestSearchRouter:
         results = router.search("query")
 
         assert results == expected_results
-        # Should have called DDG (tuned=True by default in fallback logic implementation)
+
+        # Google should have been attempted (and failed)
+        mock_adapters["google"].assert_called_once()
+
+        # DDG should have been initialized and called
+        mock_adapters["duckduckgo"].assert_called_once()
         mock_adapters["duckduckgo"].return_value.search.assert_called_with("query", max_results=5, tuned=True)
 
     def test_search_retry_logic(self, mock_config, mock_adapters):
@@ -169,7 +179,8 @@ class TestSearchRouter:
     def test_search_no_provider_available(self, mock_config, mock_adapters):
         """Test ValueError when no providers are configured/available."""
         router = SearchRouter(app_config=mock_config)
-        router.providers.clear() # Simulate no init
+        # Clear the class mapping to simulate no providers being available for init
+        router._provider_classes = {}
 
         with pytest.raises(ValueError, match="No valid search provider available"):
             router.search("query")

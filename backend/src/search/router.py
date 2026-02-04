@@ -1,14 +1,15 @@
 import logging
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Dict, List
 
-from config.app_config import config, AppConfig
+from config.app_config import AppConfig, config
+
 from .provider import SearchProvider, SearchResult
-from .providers.google_adapter import GoogleSearchAdapter
-from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-from .providers.brave_adapter import BraveSearchAdapter
-from .providers.tavily_adapter import TavilyAdapter
 from .providers.bing_adapter import BingAdapter
+from .providers.brave_adapter import BraveSearchAdapter
+from .providers.duckduckgo_adapter import DuckDuckGoAdapter
+from .providers.google_adapter import GoogleSearchAdapter
+from .providers.tavily_adapter import TavilyAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -20,60 +21,48 @@ class SearchProviderType(Enum):
     BING = "bing"
 
 class SearchRouter:
-    """
-    Routes search queries to the appropriate provider with fallback logic.
+    """Routes search queries to the appropriate provider with fallback logic.
     """
 
     def __init__(self, app_config: AppConfig = config):
         """Initialize router with config."""
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
-        self._init_providers()
+        # ⚡ Bolt Optimization: Lazy load provider classes to reduce startup time
+        self._provider_classes = {
+            SearchProviderType.GOOGLE.value: GoogleSearchAdapter,
+            SearchProviderType.DUCKDUCKGO.value: DuckDuckGoAdapter,
+            SearchProviderType.BRAVE.value: BraveSearchAdapter,
+            SearchProviderType.TAVILY.value: TavilyAdapter,
+            SearchProviderType.BING.value: BingAdapter,
+        }
 
-    def _init_providers(self):
-        """Initialize providers based on availability and config."""
-        # Google
+    def _get_provider(self, name: str) -> SearchProvider | None:
+        """Get provider instance, initializing it if necessary."""
+        if name in self.providers:
+            return self.providers[name]
+
+        provider_cls = self._provider_classes.get(name)
+        if not provider_cls:
+            return None
+
         try:
-            self.providers[SearchProviderType.GOOGLE.value] = GoogleSearchAdapter()
+            logger.debug(f"Initializing search provider: {name}")
+            instance = provider_cls()
+            self.providers[name] = instance
+            return instance
         except Exception as e:
-            logger.debug(f"Google adapter failed to init: {e}")
-
-        # Brave
-        try:
-            self.providers[SearchProviderType.BRAVE.value] = BraveSearchAdapter()
-        except Exception as e:
-            logger.debug(f"Brave adapter failed to init: {e}")
-
-        # DuckDuckGo
-        try:
-            self.providers[SearchProviderType.DUCKDUCKGO.value] = DuckDuckGoAdapter()
-        except Exception as e:
-            logger.debug(f"DuckDuckGo adapter failed to init: {e}")
-
-        # Tavily
-        try:
-            self.providers[SearchProviderType.TAVILY.value] = TavilyAdapter()
-        except Exception as e:
-            logger.debug(f"Tavily adapter failed to init: {e}")
-
-        # Bing
-        try:
-            self.providers[SearchProviderType.BING.value] = BingAdapter()
-        except Exception as e:
-            logger.debug(f"Bing adapter failed to init: {e}")
-
-    def _get_provider(self, name: str) -> Optional[SearchProvider]:
-        return self.providers.get(name)
+            logger.debug(f"{name} adapter failed to init: {e}")
+            return None
 
     def search(
         self,
         query: str,
         max_results: int = 5,
-        provider_name: Optional[str] = None,
+        provider_name: str | None = None,
         attempt_fallback: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search with routing and fallback logic.
+        """Execute search with routing and fallback logic.
 
         Args:
             query: Search query
