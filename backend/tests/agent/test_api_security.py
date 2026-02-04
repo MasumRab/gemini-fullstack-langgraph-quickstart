@@ -93,7 +93,7 @@ class TestAPISecurity:
 
     def test_rate_limit_respects_x_forwarded_for(self):
         """Test that rate limiting uses the X-Forwarded-For header when present."""
-        from agent.security import RateLimitMiddleware
+        from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 
         # Instantiate a dedicated app with trust_proxy_headers=True
         app = FastAPI()
@@ -104,6 +104,7 @@ class TestAPISecurity:
             protected_paths=["/agent"],
             trust_proxy_headers=True
         )
+        app.add_middleware(SecurityHeadersMiddleware)
 
         @app.get("/agent/test")
         def agent_endpoint():
