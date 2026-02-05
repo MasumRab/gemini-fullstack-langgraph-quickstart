@@ -90,8 +90,24 @@ class TestAPISecurity:
             response = client.get("/agent/test")
             assert response.status_code == 200
 
-    def test_rate_limit_respects_x_forwarded_for(self, app):
+    def test_rate_limit_respects_x_forwarded_for(self):
         """Test that rate limiting uses the X-Forwarded-For header when present."""
+        from agent.security import RateLimitMiddleware
+
+        # Create a dedicated app with trust_proxy_headers=True
+        app = FastAPI()
+        app.add_middleware(
+            RateLimitMiddleware,
+            limit=5,
+            window=1,
+            protected_paths=["/agent"],
+            trust_proxy_headers=True,
+        )
+
+        @app.get("/agent/test")
+        def agent_endpoint():
+            return {"status": "ok"}
+
         client = TestClient(app)
 
         # Simulate 5 requests from IP A (via proxy)
@@ -105,7 +121,6 @@ class TestAPISecurity:
         assert response.status_code == 429
 
         # Requests from IP B should still be allowed (distinct from IP A)
-        # Even if they come from the same "client host" (mock client doesn't change)
         headers_b = {"X-Forwarded-For": "10.0.0.3"}
         response = client.get("/agent/test", headers=headers_b)
         assert response.status_code == 200
