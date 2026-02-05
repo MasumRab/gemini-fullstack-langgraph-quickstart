@@ -28,7 +28,7 @@ def test_get_client_key_ipv6():
 
 def test_get_client_key_invalid():
     mw = RateLimitMiddleware(MockApp())
-    assert mw.get_client_key("invalid_ip") == "invalid_ip"
+    assert mw.get_client_key("invalid_ip") == "unknown"
 
 @pytest.mark.asyncio
 async def test_ipv6_rate_limiting_shared_bucket():
