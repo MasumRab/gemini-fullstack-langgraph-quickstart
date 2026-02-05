@@ -132,5 +132,5 @@ async def test_rate_limiter_truncation():
     # Verify the key in requests is truncated
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
-    assert len(keys[0]) <= 100
-    assert keys[0] == long_ip[:100]
+    # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
+    assert keys[0] == "unknown"

@@ -20,7 +20,8 @@ class TestAPISecurity:
             RateLimitMiddleware,
             limit=5,
             window=1,
-            protected_paths=["/agent"]
+            protected_paths=["/agent"],
+            trust_proxy_headers=True
         )
         app.add_middleware(SecurityHeadersMiddleware)
 
@@ -129,12 +130,12 @@ class TestAPISecurity:
 
         assert len(mw.requests) == 10002
 
-        # Create a mock request from a NEW client
+        # Create a mock request from a NEW client (must be valid IP now)
         scope = {
             'type': 'http',
             'path': '/',
             'headers': [],
-            'client': ('new_client_ip', 8000),
+            'client': ('10.0.0.1', 8000),
             'method': 'GET',
             'scheme': 'http'
         }
@@ -161,7 +162,7 @@ class TestAPISecurity:
 
         assert "stale_ip_0" not in mw.requests
         assert "active_ip_0" in mw.requests
-        assert "new_client_ip" in mw.requests
+        assert "10.0.0.1" in mw.requests
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_throttled(self):
@@ -182,7 +183,7 @@ class TestAPISecurity:
             'type': 'http',
             'path': '/',
             'headers': [],
-            'client': ('new_client_ip', 8000),
+            'client': ('10.0.0.1', 8000),
             'method': 'GET',
             'scheme': 'http'
         }
@@ -205,7 +206,7 @@ class TestAPISecurity:
         # 5. Fallback: len > 10000 check.
         #    if len(active_requests) == 1: pop and 503.
 
-        # So "new_client_ip" is removed. Size remains 10001.
+        # So "10.0.0.1" is removed. Size remains 10001.
         assert len(mw.requests) == 10001
         assert "stale_ip_0" in mw.requests # Was NOT cleaned
 
@@ -217,4 +218,4 @@ class TestAPISecurity:
 
         # Should be cleaned: 10001 stale removed. 1 new added.
         assert len(mw.requests) == 1
-        assert "new_client_ip" in mw.requests
+        assert "10.0.0.1" in mw.requests

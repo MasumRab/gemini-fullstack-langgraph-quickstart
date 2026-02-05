@@ -84,8 +84,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 return str(ipaddress.IPv6Address(masked)) + "/64"
             return str(obj)
         except ValueError:
-            # If not a valid IP, just return as is (could be "unknown" or malformed)
-            return ip
+            # If not a valid IP, return "unknown" to prevent log injection/key pollution
+            return "unknown"
 
     def __init__(
         self,
@@ -141,21 +141,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
             forwarded = request.headers.get("X-Forwarded-For")
             if forwarded and self.trust_proxy_headers:
-                # 🛡️ Sentinel: Prevent spoofing by traversing from the end (trusted proxies)
-                # Proxies (like Render) append the verified client IP to the end.
-                # We traverse backwards to find the first non-private IP to avoid blocking the proxy itself.
+                # 🛡️ Sentinel: When trust_proxy_headers is True, we trust that the immediate
+                # upstream proxy (which we trust) has correctly appended the client's IP to the end.
+                # We do NOT search backwards for a public IP because legitimate clients may have
+                # private IPs (e.g. Intranet, VPN, or internal Load Balancers).
+                # Searching backwards allows attackers to spoof a public IP at the start of the header.
                 try:
                     ips = [ip.strip() for ip in forwarded.split(",")]
-                    client_ip = ips[-1]  # Default to last IP
-                    for ip in reversed(ips):
-                        try:
-                            # Check if IP is public (not private, not loopback)
-                            ip_obj = ipaddress.ip_address(ip)
-                            if not ip_obj.is_private and not ip_obj.is_loopback:
-                                client_ip = ip
-                                break
-                        except ValueError:
-                            continue  # Skip invalid IPs
+                    client_ip = ips[-1]
                 except Exception:
                     # Fallback to simple extraction if parsing fails
                     client_ip = forwarded.split(",")[-1].strip()
