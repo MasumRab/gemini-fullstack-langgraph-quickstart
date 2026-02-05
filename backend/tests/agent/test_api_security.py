@@ -20,7 +20,8 @@ class TestAPISecurity:
             RateLimitMiddleware,
             limit=5,
             window=1,
-            protected_paths=["/agent"]
+            protected_paths=["/agent"],
+            trust_proxy_headers=True
         )
         app.add_middleware(SecurityHeadersMiddleware)
 
