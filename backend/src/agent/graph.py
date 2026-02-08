@@ -23,6 +23,7 @@ from agent.nodes import (
     execution_router,
     outline_gen, # New Node
     checklist_verifier, # New Node
+    research_subgraph, # New Node
 )
 from agent.kg import kg_enrich # New Node
 from agent.mcp_config import load_mcp_settings, validate
@@ -86,6 +87,7 @@ builder.add_node("update_plan", update_plan)
 builder.add_node("select_next_task", select_next_task)
 builder.add_node("outline_gen", outline_gen) # Add STORM Outline Gen
 builder.add_node("checklist_verifier", checklist_verifier) # Add RhinoInsight Verifier
+builder.add_node("research_subgraph", research_subgraph) # Add GPT Researcher recursive research
 
 builder.add_edge(START, "load_context")
 builder.add_edge("load_context", "scoping_node")
@@ -132,6 +134,10 @@ builder.add_conditional_edges(
     "update_plan", execution_router, ["select_next_task", "denoising_refiner"]
 )
 builder.add_edge("denoising_refiner", END)
+
+# TODO(priority=High, complexity=Medium): [SOTA Deep Research] Graph Wiring
+# Add conditional edges to route from 'reflection' or 'update_plan' to 'research_subgraph'.
+# research_subgraph results should then flow back into 'update_plan' or merge into the state.
 
 # Document edges for registry/tooling
 graph_registry.document_edge(
