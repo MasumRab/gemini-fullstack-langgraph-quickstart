@@ -76,8 +76,8 @@ const TimelineItem = memo(function TimelineItem({
           {typeof eventItem.data === "string"
             ? eventItem.data
             : Array.isArray(eventItem.data)
-            ? (eventItem.data as string[]).join(", ")
-            : JSON.stringify(eventItem.data)}
+              ? (eventItem.data as string[]).join(", ")
+              : JSON.stringify(eventItem.data)}
         </p>
       </div>
     </li>
@@ -134,7 +134,7 @@ export const ActivityTimeline = memo(function ActivityTimeline({
         >
           <CardContent>
             {isLoading && processedEvents.length === 0 && (
-              <ul className="list-none m-0 p-0" role="list">
+              <ul className="space-y-0 list-none m-0 p-0" role="list">
                 <li className="relative pl-8 pb-4">
                   <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-800" />
                   <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-800 flex items-center justify-center ring-4 ring-neutral-900">
