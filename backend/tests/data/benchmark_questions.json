@@ -1,0 +1,10 @@
+[
+  {
+    "question": "What are the latest developments in rooms-temperature superconductivity as of 2025?",
+    "expected_topics": ["LK-99", "Reddmatter", "high pressure"]
+  },
+  {
+    "question": "Who won the 2024 US Presidential Election?",
+    "expected_topics": ["Trump", "Biden", "Harris", "Election Result"]
+  }
+]
