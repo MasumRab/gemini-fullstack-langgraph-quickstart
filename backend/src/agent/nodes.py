@@ -1,4 +1,10 @@
 # TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+# 
+# TODO(priority=Medium, complexity=Medium): [SOTA Deep Research] Benchmarking
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: MLE-bench Integration (Evaluate on Kaggle engineering tasks).
+# Subtask: DeepResearch-Bench Setup (Load tasks from muset-ai space).
+
 # TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: Review 'deepagents' repo for relevant nodes (e.g. hierarchical planning).
