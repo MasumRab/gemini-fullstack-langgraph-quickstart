@@ -96,7 +96,7 @@ def scoping_router(state: OverallState) -> str:
     """Route based on scoping status."""
     if state.get("scoping_status") == "active":
         return "planning_wait" # Reusing planning_wait to pause for user input
-    return "generate_plan"
+    return "outline_gen"
 
 builder.add_conditional_edges(
     "scoping_node", scoping_router, ["planning_wait", "outline_gen"]
