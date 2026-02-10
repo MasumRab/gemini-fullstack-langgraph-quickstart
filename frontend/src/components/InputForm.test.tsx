@@ -15,7 +15,7 @@ vi.mock('@/components/ui/button', () => ({
 
 vi.mock('@/components/ui/textarea', () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Textarea: ({ value, onChange, onKeyDown, placeholder, 'aria-label': ariaLabel, 'aria-required': ariaRequired, ref, autoFocus }: any) => (
+    Textarea: ({ value, onChange, onKeyDown, placeholder, 'aria-label': ariaLabel, 'aria-required': ariaRequired, ref, autoFocus, className }: any) => (
         <textarea
             ref={ref}
             value={value}
@@ -26,6 +26,7 @@ vi.mock('@/components/ui/textarea', () => ({
             aria-label={ariaLabel}
             aria-required={ariaRequired}
             autoFocus={autoFocus}
+            className={className}
         />
     ),
 }));
@@ -235,5 +236,12 @@ describe('InputForm', () => {
 
         expect(input).toHaveValue('');
         expect(input).toHaveFocus();
+    });
+
+    it('uses accessible placeholder contrast', () => {
+        render(<InputForm {...defaultProps} />);
+        const input = screen.getByRole('textbox', { name: /chat input/i });
+        // Current state check
+        expect(input).toHaveClass('placeholder-neutral-400');
     });
 });
