@@ -127,6 +127,7 @@ class FilesystemMCPServer:
     async def read_file(self, path: str) -> ToolResult:
         """Read file contents"""
         if not self._check_path_allowed(path):
+            logger.warning(f"Path traversal attempt blocked: {path}")
             return ToolResult(
                 success=False,
                 error=f"Path not allowed: {path}"
@@ -156,6 +157,7 @@ class FilesystemMCPServer:
     async def write_file(self, path: str, content: str) -> ToolResult:
         """Write content to file"""
         if not self._check_path_allowed(path):
+            logger.warning(f"Path traversal attempt blocked: {path}")
             return ToolResult(success=False, error=f"Path not allowed: {path}")
 
         # 🛡️ Sentinel: Check content size before writing to prevent Disk Fill DoS
@@ -187,6 +189,7 @@ class FilesystemMCPServer:
     async def list_directory(self, path: str) -> ToolResult:
         """List directory contents"""
         if not self._check_path_allowed(path):
+            logger.warning(f"Path traversal attempt blocked: {path}")
             return ToolResult(success=False, error=f"Path not allowed: {path}")
 
         try:
