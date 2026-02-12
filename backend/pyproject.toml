@@ -24,6 +24,7 @@ dependencies = [
     "mcp",
     "sentence-transformers",
     "faiss-cpu",
+    "chromadb>=0.4.0",
     "pandas",
     "matplotlib",
     "duckduckgo-search",
