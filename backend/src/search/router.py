@@ -4,11 +4,6 @@ from enum import Enum
 
 from config.app_config import config, AppConfig
 from .provider import SearchProvider, SearchResult
-from .providers.google_adapter import GoogleSearchAdapter
-from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-from .providers.brave_adapter import BraveSearchAdapter
-from .providers.tavily_adapter import TavilyAdapter
-from .providers.bing_adapter import BingAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -28,42 +23,32 @@ class SearchRouter:
         """Initialize router with config."""
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
-        self._init_providers()
-
-    def _init_providers(self):
-        """Initialize providers based on availability and config."""
-        # Google
-        try:
-            self.providers[SearchProviderType.GOOGLE.value] = GoogleSearchAdapter()
-        except Exception as e:
-            logger.debug(f"Google adapter failed to init: {e}")
-
-        # Brave
-        try:
-            self.providers[SearchProviderType.BRAVE.value] = BraveSearchAdapter()
-        except Exception as e:
-            logger.debug(f"Brave adapter failed to init: {e}")
-
-        # DuckDuckGo
-        try:
-            self.providers[SearchProviderType.DUCKDUCKGO.value] = DuckDuckGoAdapter()
-        except Exception as e:
-            logger.debug(f"DuckDuckGo adapter failed to init: {e}")
-
-        # Tavily
-        try:
-            self.providers[SearchProviderType.TAVILY.value] = TavilyAdapter()
-        except Exception as e:
-            logger.debug(f"Tavily adapter failed to init: {e}")
-
-        # Bing
-        try:
-            self.providers[SearchProviderType.BING.value] = BingAdapter()
-        except Exception as e:
-            logger.debug(f"Bing adapter failed to init: {e}")
 
     def _get_provider(self, name: str) -> Optional[SearchProvider]:
-        return self.providers.get(name)
+        if name in self.providers:
+            return self.providers[name]
+
+        try:
+            if name == SearchProviderType.GOOGLE.value:
+                from .providers.google_adapter import GoogleSearchAdapter
+                self.providers[name] = GoogleSearchAdapter()
+            elif name == SearchProviderType.BRAVE.value:
+                from .providers.brave_adapter import BraveSearchAdapter
+                self.providers[name] = BraveSearchAdapter()
+            elif name == SearchProviderType.DUCKDUCKGO.value:
+                from .providers.duckduckgo_adapter import DuckDuckGoAdapter
+                self.providers[name] = DuckDuckGoAdapter()
+            elif name == SearchProviderType.TAVILY.value:
+                from .providers.tavily_adapter import TavilyAdapter
+                self.providers[name] = TavilyAdapter()
+            elif name == SearchProviderType.BING.value:
+                from .providers.bing_adapter import BingAdapter
+                self.providers[name] = BingAdapter()
+
+            return self.providers.get(name)
+        except Exception as e:
+            logger.debug(f"Provider {name} failed to init: {e}")
+            return None
 
     def search(
         self,
