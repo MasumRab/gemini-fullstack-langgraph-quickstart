@@ -41,6 +41,7 @@ class AppConfig:
     log_level: str = os.getenv("LOG_LEVEL", "info")
 
     # Security
+    trust_proxy_headers: bool = os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
     cors_origins: Tuple[str, ...] = tuple(
         filter(None, os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","))
     )
@@ -52,6 +53,15 @@ class AppConfig:
     model_planning: str = os.getenv("MODEL_PLANNING", "gemma-3-27b-it")
     model_validation: str = os.getenv("MODEL_VALIDATION", "gemma-3-27b-it")
     model_compression: str = os.getenv("MODEL_COMPRESSION", "gemma-3-27b-it")
+
+    # Gemma Integration Configuration
+    gemma_provider: str = os.getenv("GEMMA_PROVIDER", "ollama")  # vertex, ollama, local
+    gemma_model_name: str = os.getenv("GEMMA_MODEL_NAME", "gemma:7b")
+    vertex_project_id: str = os.getenv("VERTEX_PROJECT_ID", "")
+    vertex_location: str = os.getenv("VERTEX_LOCATION", "us-central1")
+    vertex_endpoint_id: str = os.getenv("VERTEX_ENDPOINT_ID", "")
+    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    local_model_path: str = os.getenv("LOCAL_MODEL_PATH", "")
 
     # Security Configuration
     CORS_ORIGINS: List[str] = field(

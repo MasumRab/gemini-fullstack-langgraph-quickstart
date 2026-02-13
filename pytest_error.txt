@@ -1,0 +1,593 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: C:\Users\masum\Projects\gemini-fullstack-langgraph-quickstart\backend
+configfile: pyproject.toml
+plugins: anyio-4.12.0, langsmith-0.6.0
+collected 161 items / 16 errors
+
+<Dir backend>
+  <Package tests>
+    <Dir agent>
+      <Module test_rag.py>
+        <Function test_initialization>
+        <Function test_ingest_research_results>
+        <Function test_retrieve_empty_index>
+        <Function test_retrieve_success>
+        <Function test_audit_and_prune>
+        <Function test_get_context_for_synthesis>
+        <Function test_verify_subgoal_coverage>
+        <Function test_initialization_no_deps>
+      <Module test_rate_limiter.py>
+        <UnitTestCase TestRateLimiter>
+          <TestCaseFunction test_daily_reset_logic>
+          <TestCaseFunction test_no_reset_same_day>
+    <Module test_configuration.py>
+      <Class TestConfiguration>
+        <Function test_default_values>
+        <Function test_from_runnable_config_with_none>
+        <Function test_from_runnable_config_with_empty_dict>
+        <Function test_from_runnable_config_overrides_from_configurable>
+        <Function test_boolean_field_from_string_true>
+        <Function test_boolean_field_from_string_false>
+        <Function test_integer_field_from_string>
+        <Function test_from_runnable_config_with_env_vars>
+        <Function test_configurable_takes_precedence_over_env>
+        <Function test_partial_override>
+      <Class TestConfigurationValidation>
+        <Function test_model_field_accepts_string>
+        <Function test_max_loops_accepts_positive_int>
+        <Function test_require_planning_confirmation_boolean>
+      <Class TestConfigurationSerialization>
+        <Function test_to_dict>
+      <Class TestConfigurationDefaults>
+        <Function test_default_max_loops_is_reasonable>
+        <Function test_default_num_queries_is_reasonable>
+        <Function test_default_model_is_valid>
+        <Function test_default_planning_confirmation_is_boolean>
+    <Module test_kaggle_integration.py>
+      <Class TestKaggleModelLoader>
+        <Function test_download_success>
+        <Function test_download_import_error>
+      <Class TestKaggleHuggingFaceClient>
+        <Function test_init_download_and_load>
+        <Function test_generate>
+      <Class TestSimpleReActAgent>
+        <Function test_run_with_tool_use>
+        <Function test_run_max_steps>
+        <Function test_run_invalid_action>
+        <Function test_run_tool_exception>
+    <Module test_mcp_config.py>
+      <UnitTestCase TestMCPSettings>
+        <TestCaseFunction test_default_settings>
+        <TestCaseFunction test_enable_settings>
+        <TestCaseFunction test_validation_error>
+        <TestCaseFunction test_validation_success>
+    <Module test_memory_tools.py>
+      <UnitTestCase TestMemoryTools>
+        <TestCaseFunction test_save_and_load>
+    <Module test_notebook_logic.py>
+      <UnitTestCase TestNotebookLogic>
+        <TestCaseFunction test_agent_initialization_with_gemma>
+    <Module test_persistence.py>
+      <Class TestPersistence>
+        <Function test_save_and_load_plan_roundtrip>
+        <Function test_load_plan_nonexistent_returns_none>
+        <Function test_save_plan_with_empty_thread_id_does_nothing>
+        <Function test_load_plan_with_empty_thread_id_returns_none>
+        <Function test_thread_id_sanitization>
+        <Function test_save_plan_creates_directory_if_missing>
+        <Function test_load_plan_with_corrupted_json_returns_none>
+        <Function test_save_plan_with_complex_data>
+        <Function test_overwrite_existing_plan>
+        <Function test_unicode_content>
+    <Module test_rag_nodes.py>
+      <Function test_rag_retrieve_skips_when_rag_disabled>
+      <Function test_should_use_rag_prefers_rag_when_resources_present>
+      <Function test_should_use_rag_routes_to_web_when_disabled>
+      <Function test_rag_fallback_to_web_handles_continue_iterations>
+      <Function test_rag_fallback_to_web_respects_enable_fallback>
+      <Function test_rag_fallback_to_web_goes_to_reflection_when_no_fallback>
+    <Module test_rag_nodes_mock.py>
+      <Class TestRagNodes>
+        <Function test_rag_retrieve_success>
+        <Function test_rag_retrieve_disabled>
+        <Function test_rag_retrieve_no_results>
+    <Module test_registry.py>
+      <Class TestGraphRegistryInitialization>
+        <Function test_registry_initializes_empty>
+        <Function test_registry_has_required_attributes>
+      <Class TestDescribeDecorator>
+        <Function test_describe_registers_node_metadata>
+        <Function test_describe_preserves_function>
+        <Function test_describe_records_handler_name>
+        <Function test_describe_with_no_optional_params>
+      <Class TestEdgeDocumentation>
+        <Function test_document_edge_basic>
+        <Function test_document_edge_without_description>
+        <Function test_document_multiple_edges>
+      <Class TestNotes>
+        <Function test_add_note>
+        <Function test_add_multiple_notes>
+      <Class TestRenderOverview>
+        <Function test_render_overview_empty_registry>
+        <Function test_render_overview_with_nodes>
+        <Function test_render_overview_with_edges>
+        <Function test_render_overview_with_notes>
+      <Class TestSingletonInstance>
+        <Function test_singleton_exists>
+    <Module test_research_tools.py>
+      <Class TestUtilityFunctions>
+        <Function test_get_today_str_format>
+        <Function test_get_tavily_api_key_from_config>
+        <Function test_get_tavily_api_key_from_env>
+        <Function test_get_tavily_api_key_raises_when_missing>
+      <Class TestDeduplication>
+        <Function test_deduplicate_removes_duplicate_urls>
+        <Function test_deduplicate_handles_empty_results>
+        <Function test_deduplicate_handles_missing_results_key>
+      <Class TestProcessSearchResults>
+        <Function test_process_uses_content_when_no_raw>
+        <Function test_process_truncates_raw_content_without_model>
+        <Function test_process_handles_empty_input>
+      <Class TestFormatSearchOutput>
+        <Function test_format_produces_structured_output>
+        <Function test_format_handles_empty_results>
+      <Class TestSummarization>
+        <Function test_summarize_handles_model_exception>
+        <Function test_summarize_returns_short_content_on_error>
+        <Function test_summarize_handles_structured_output>
+      <Class TestThinkTool>
+        <Function test_think_tool_returns_reflection>
+      <Class TestTokenLimitDetection>
+        <Function test_detects_token_limit_error>
+        <Function test_returns_false_for_other_errors>
+      <Class TestModelTokenLimits>
+        <Function test_get_known_model_limit>
+        <Function test_get_unknown_model_returns_default>
+      <Class TestTavilySearchWithMock>
+        <Function test_search_returns_empty_when_tavily_unavailable>
+    <Module test_search_router.py>
+      <Class TestSearchRouter>
+        <Function test_init_providers>
+        <Function test_search_primary_success>
+        <Function test_search_fallback_on_missing_provider>
+        <Function test_search_retry_logic>
+        <Function test_search_fallback_execution>
+        <Function test_search_all_fail>
+        <Function test_search_no_provider_available>
+    <Module test_state.py>
+      <Class TestCreateRagResources>
+        <Function test_create_rag_resources_raises_not_implemented_error>
+        <Function test_create_rag_resources_with_empty_list>
+        <Function test_create_rag_resources_with_single_uri>
+        <Function test_create_rag_resources_with_multiple_uris>
+        <Function test_create_rag_resources_docstring_completeness>
+        <Function test_create_rag_resources_function_signature>
+      <Class TestOverallState>
+        <Function test_overall_state_has_required_fields>
+      <Class TestReflectionState>
+        <Function test_reflection_state_has_required_fields>
+        <Function test_reflection_state_is_sufficient_is_bool>
+      <Class TestSearchStateOutput>
+        <Function test_search_state_output_has_running_summary>
+        <Function test_search_state_output_can_set_running_summary>
+    <Module test_state_types.py>
+      <Function test_typing_smoke>
+      <Function test_serialization_roundtrip>
+      <Function test_backward_compatibility_partial>
+      <Function test_validate_scoping>
+      <Function test_consumer_integration>
+      <Function test_todo_structure>
+    <Module test_utils.py>
+      <Class TestGetResearchTopic>
+        <Function test_single_message_returns_content_directly>
+        <Function test_multiple_messages_combines_with_labels>
+        <Function test_two_messages_combines_with_labels>
+        <Function test_empty_content_message>
+        <Function test_message_with_special_characters>
+      <Class TestResolveUrls>
+        <Function test_basic_url_resolution>
+        <Function test_duplicate_urls_get_same_short_url>
+        <Function test_empty_urls_returns_empty_dict>
+        <Function test_large_id_value>
+      <Class TestInsertCitationMarkers>
+        <Function test_single_citation_at_word_end>
+        <Function test_multiple_segments_in_one_citation>
+        <Function test_multiple_citations_at_different_positions>
+        <Function test_empty_citations_list>
+        <Function test_citation_without_start_index>
+        <Function test_citation_with_empty_segments>
+        <Function test_citation_at_end_of_text>
+      <Class TestGetCitations>
+        <Function test_full_citation_extraction>
+        <Function test_empty_response_returns_empty_list>
+        <Function test_missing_grounding_metadata_returns_empty>
+        <Function test_missing_segment_skips_support>
+        <Function test_missing_end_index_skips_support>
+        <Function test_start_index_defaults_to_zero>
+        <Function test_invalid_chunk_index_gracefully_handled>
+        <Function test_url_not_in_resolved_map>
+        <Function test_multiple_supports_produce_multiple_citations>
+    <Module test_validation.py>
+      <Class TestValidation>
+        <Function test_validate_environment_success>
+        <Function test_validate_environment_missing_api_key>
+        <Function test_validate_environment_missing_package>
+        <Function test_validate_environment_missing_optional_package>
+        <Function test_check_env_strict_success>
+        <Function test_check_env_strict_failure>
+    <Module test_validation_coverage.py>
+      <Class TestValidation>
+        <Function test_validate_environment_missing_keys>
+        <Function test_validate_environment_with_gemini_key>
+        <Function test_validate_environment_with_google_key>
+        <Function test_validate_environment_missing_packages>
+        <Function test_validate_environment_optional_packages>
+        <Function test_check_env_strict_failure>
+        <Function test_check_env_strict_pkg_failure>
+        <Function test_check_env_strict_success>
+
+=================================== ERRORS ====================================
+_______________________ ERROR collecting .pytest_cache ________________________
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\_pytest\runner.py:344: in from_call
+    result: TResult | None = func()
+                             ^^^^^^
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\_pytest\runner.py:389: in collect
+    return list(collector.collect())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\_pytest\main.py:528: in collect
+    for direntry in scandir(self.path):
+                    ^^^^^^^^^^^^^^^^^^
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\_pytest\pathlib.py:963: in scandir
+    scandir_iter = os.scandir(path)
+                   ^^^^^^^^^^^^^^^^
+E   PermissionError: [WinError 5] Access is denied: 'C:\\Users\\masum\\Projects\\gemini-fullstack-langgraph-quickstart\\backend\\.pytest_cache'
+______________ ERROR collecting tests/agent/test_api_security.py ______________
+ImportError while importing test module 'C:\Users\masum\Projects\gemini-fullstack-langgraph-quickstart\backend\tests\agent\test_api_security.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\scoop\apps\anaconda3\current\App\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\tests\agent\test_api_security.py:5: in <module>
+    from fastapi import FastAPI, Response, Request
+E   ModuleNotFoundError: No module named 'fastapi'
+___________ ERROR collecting tests/agent/test_checklist_verifier.py ___________
+backend\tests\agent\test_checklist_verifier.py:4: in <module>
+    from agent.nodes import checklist_verifier
+backend\src\agent\nodes.py:17: in <module>
+    from search.router import search_router
+backend\src\search\__init__.py:2: in <module>
+    from .router import search_router, SearchRouter
+backend\src\search\router.py:7: in <module>
+    from .providers.google_adapter import GoogleSearchAdapter
+backend\src\search\providers\google_adapter.py:4: in <module>
+    from google.genai import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\__init__.py:21: in <module>
+    from .client import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\client.py:24: in <module>
+    from ._api_client import BaseApiClient
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\_api_client.py:70: in <module>
+    import aiohttp
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\__init__.py:6: in <module>
+    from .client import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\client.py:87: in <module>
+    from .connector import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\connector.py:64: in <module>
+    from .resolver import DefaultResolver
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\resolver.py:12: in <module>
+    import aiodns
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:63: in <module>
+    class DNSResolver:
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:166: in DNSResolver
+    ) -> asyncio.Future[list[pycares.ares_query_a_result]]: ...
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pycares' has no attribute 'ares_query_a_result'
+__________ ERROR collecting tests/agent/test_middleware_security.py ___________
+ImportError while importing test module 'C:\Users\masum\Projects\gemini-fullstack-langgraph-quickstart\backend\tests\agent\test_middleware_security.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\scoop\apps\anaconda3\current\App\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\tests\agent\test_middleware_security.py:2: in <module>
+    from fastapi.testclient import TestClient
+E   ModuleNotFoundError: No module named 'fastapi'
+_____________ ERROR collecting tests/agent/test_orchestration.py ______________
+backend\tests\agent\test_orchestration.py:14: in <module>
+    from agent.orchestration import (
+backend\src\agent\orchestration.py:36: in <module>
+    from langchain_google_genai import ChatGoogleGenerativeAI
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\langchain_google_genai\__init__.py:47: in <module>
+    from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\langchain_google_genai\chat_models.py:24: in <module>
+    from google.genai.client import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\__init__.py:21: in <module>
+    from .client import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\client.py:24: in <module>
+    from ._api_client import BaseApiClient
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\_api_client.py:70: in <module>
+    import aiohttp
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\__init__.py:6: in <module>
+    from .client import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\client.py:87: in <module>
+    from .connector import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\connector.py:64: in <module>
+    from .resolver import DefaultResolver
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\resolver.py:12: in <module>
+    import aiodns
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:63: in <module>
+    class DNSResolver:
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:166: in DNSResolver
+    ) -> asyncio.Future[list[pycares.ares_query_a_result]]: ...
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pycares' has no attribute 'ares_query_a_result'
+___________ ERROR collecting tests/agent/test_rate_limiter_proxy.py ___________
+ImportError while importing test module 'C:\Users\masum\Projects\gemini-fullstack-langgraph-quickstart\backend\tests\agent\test_rate_limiter_proxy.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\scoop\apps\anaconda3\current\App\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\tests\agent\test_rate_limiter_proxy.py:2: in <module>
+    from fastapi.testclient import TestClient
+E   ModuleNotFoundError: No module named 'fastapi'
+__________________ ERROR collecting tests/test_graph_mock.py __________________
+backend\tests\test_graph_mock.py:3: in <module>
+    from agent.nodes import generate_plan, web_research, reflection, finalize_answer, load_context
+backend\src\agent\nodes.py:17: in <module>
+    from search.router import search_router
+backend\src\search\__init__.py:2: in <module>
+    from .router import search_router, SearchRouter
+backend\src\search\router.py:7: in <module>
+    from .providers.google_adapter import GoogleSearchAdapter
+backend\src\search\providers\google_adapter.py:4: in <module>
+    from google.genai import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\__init__.py:21: in <module>
+    from .client import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\client.py:24: in <module>
+    from ._api_client import BaseApiClient
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\_api_client.py:70: in <module>
+    import aiohttp
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\__init__.py:6: in <module>
+    from .client import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\client.py:87: in <module>
+    from .connector import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\connector.py:64: in <module>
+    from .resolver import DefaultResolver
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\resolver.py:12: in <module>
+    import aiodns
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:63: in <module>
+    class DNSResolver:
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:166: in DNSResolver
+    ) -> asyncio.Future[list[pycares.ares_query_a_result]]: ...
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pycares' has no attribute 'ares_query_a_result'
+_____________________ ERROR collecting tests/test_mcp.py ______________________
+ImportError while importing test module 'C:\Users\masum\Projects\gemini-fullstack-langgraph-quickstart\backend\tests\test_mcp.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\scoop\apps\anaconda3\current\App\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\tests\test_mcp.py:3: in <module>
+    from agent.tools_and_schemas import get_tools_from_mcp
+backend\src\agent\tools_and_schemas.py:9: in <module>
+    from agent.mcp_server import FilesystemMCPServer
+backend\src\agent\mcp_server.py:5: in <module>
+    from mcp import Tool
+E   ModuleNotFoundError: No module named 'mcp'
+__________________ ERROR collecting tests/test_mcp_tools.py ___________________
+ImportError while importing test module 'C:\Users\masum\Projects\gemini-fullstack-langgraph-quickstart\backend\tests\test_mcp_tools.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\scoop\apps\anaconda3\current\App\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\tests\test_mcp_tools.py:4: in <module>
+    from agent.tools_and_schemas import get_tools_from_mcp
+backend\src\agent\tools_and_schemas.py:9: in <module>
+    from agent.mcp_server import FilesystemMCPServer
+backend\src\agent\mcp_server.py:5: in <module>
+    from mcp import Tool
+E   ModuleNotFoundError: No module named 'mcp'
+_________________ ERROR collecting tests/test_node_routers.py _________________
+backend\tests\test_node_routers.py:11: in <module>
+    from agent.nodes import continue_to_web_research, evaluate_research  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\src\agent\nodes.py:17: in <module>
+    from search.router import search_router
+backend\src\search\__init__.py:2: in <module>
+    from .router import search_router, SearchRouter
+backend\src\search\router.py:7: in <module>
+    from .providers.google_adapter import GoogleSearchAdapter
+backend\src\search\providers\google_adapter.py:4: in <module>
+    from google.genai import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\__init__.py:21: in <module>
+    from .client import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\client.py:24: in <module>
+    from ._api_client import BaseApiClient
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\_api_client.py:70: in <module>
+    import aiohttp
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\__init__.py:6: in <module>
+    from .client import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\client.py:87: in <module>
+    from .connector import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\connector.py:64: in <module>
+    from .resolver import DefaultResolver
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\resolver.py:12: in <module>
+    import aiodns
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:63: in <module>
+    class DNSResolver:
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:166: in DNSResolver
+    ) -> asyncio.Future[list[pycares.ares_query_a_result]]: ...
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pycares' has no attribute 'ares_query_a_result'
+____________________ ERROR collecting tests/test_nodes.py _____________________
+backend\tests\test_nodes.py:23: in <module>
+    from agent import nodes
+backend\src\agent\nodes.py:17: in <module>
+    from search.router import search_router
+backend\src\search\__init__.py:2: in <module>
+    from .router import search_router, SearchRouter
+backend\src\search\router.py:7: in <module>
+    from .providers.google_adapter import GoogleSearchAdapter
+backend\src\search\providers\google_adapter.py:4: in <module>
+    from google.genai import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\__init__.py:21: in <module>
+    from .client import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\client.py:24: in <module>
+    from ._api_client import BaseApiClient
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\_api_client.py:70: in <module>
+    import aiohttp
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\__init__.py:6: in <module>
+    from .client import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\client.py:87: in <module>
+    from .connector import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\connector.py:64: in <module>
+    from .resolver import DefaultResolver
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\resolver.py:12: in <module>
+    import aiodns
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:63: in <module>
+    class DNSResolver:
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:166: in DNSResolver
+    ) -> asyncio.Future[list[pycares.ares_query_a_result]]: ...
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pycares' has no attribute 'ares_query_a_result'
+________________ ERROR collecting tests/test_nodes_helpers.py _________________
+backend\tests\test_nodes_helpers.py:11: in <module>
+    from agent.nodes import _flatten_queries, _keywords_from_queries  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\src\agent\nodes.py:17: in <module>
+    from search.router import search_router
+backend\src\search\__init__.py:2: in <module>
+    from .router import search_router, SearchRouter
+backend\src\search\router.py:7: in <module>
+    from .providers.google_adapter import GoogleSearchAdapter
+backend\src\search\providers\google_adapter.py:4: in <module>
+    from google.genai import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\__init__.py:21: in <module>
+    from .client import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\client.py:24: in <module>
+    from ._api_client import BaseApiClient
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\_api_client.py:70: in <module>
+    import aiohttp
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\__init__.py:6: in <module>
+    from .client import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\client.py:87: in <module>
+    from .connector import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\connector.py:64: in <module>
+    from .resolver import DefaultResolver
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\resolver.py:12: in <module>
+    import aiodns
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:63: in <module>
+    class DNSResolver:
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:166: in DNSResolver
+    ) -> asyncio.Future[list[pycares.ares_query_a_result]]: ...
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pycares' has no attribute 'ares_query_a_result'
+___________________ ERROR collecting tests/test_planning.py ___________________
+backend\tests\test_planning.py:7: in <module>
+    from agent.nodes import planning_mode, planning_router, planning_wait
+backend\src\agent\nodes.py:17: in <module>
+    from search.router import search_router
+backend\src\search\__init__.py:2: in <module>
+    from .router import search_router, SearchRouter
+backend\src\search\router.py:7: in <module>
+    from .providers.google_adapter import GoogleSearchAdapter
+backend\src\search\providers\google_adapter.py:4: in <module>
+    from google.genai import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\__init__.py:21: in <module>
+    from .client import Client
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\client.py:24: in <module>
+    from ._api_client import BaseApiClient
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\google\genai\_api_client.py:70: in <module>
+    import aiohttp
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\__init__.py:6: in <module>
+    from .client import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\client.py:87: in <module>
+    from .connector import (
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\connector.py:64: in <module>
+    from .resolver import DefaultResolver
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiohttp\resolver.py:12: in <module>
+    import aiodns
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:63: in <module>
+    class DNSResolver:
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\aiodns\__init__.py:166: in DNSResolver
+    ) -> asyncio.Future[list[pycares.ares_query_a_result]]: ...
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'pycares' has no attribute 'ares_query_a_result'
+__________________ ERROR collecting tests/test_supervisor.py __________________
+ImportError while importing test module 'C:\Users\masum\Projects\gemini-fullstack-langgraph-quickstart\backend\tests\test_supervisor.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\scoop\apps\anaconda3\current\App\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\tests\test_supervisor.py:17: in <module>
+    from agent.graphs.supervisor import compress_context, graph
+backend\src\agent\graphs\supervisor.py:9: in <module>
+    from agent.nodes import (
+backend\src\agent\nodes.py:42: in <module>
+    from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS, Plan, Outline
+backend\src\agent\tools_and_schemas.py:9: in <module>
+    from agent.mcp_server import FilesystemMCPServer
+backend\src\agent\mcp_server.py:5: in <module>
+    from mcp import Tool
+E   ModuleNotFoundError: No module named 'mcp'
+_______________ ERROR collecting tests/test_utils_hypothesis.py _______________
+ImportError while importing test module 'C:\Users\masum\Projects\gemini-fullstack-langgraph-quickstart\backend\tests\test_utils_hypothesis.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\scoop\apps\anaconda3\current\App\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\tests\test_utils_hypothesis.py:1: in <module>
+    from hypothesis import given, strategies as st, settings, HealthCheck
+E   ModuleNotFoundError: No module named 'hypothesis'
+_____________ ERROR collecting tests/test_validate_web_results.py _____________
+ImportError while importing test module 'C:\Users\masum\Projects\gemini-fullstack-langgraph-quickstart\backend\tests\test_validate_web_results.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\scoop\apps\anaconda3\current\App\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\tests\test_validate_web_results.py:9: in <module>
+    from agent.nodes import validate_web_results
+backend\src\agent\nodes.py:42: in <module>
+    from agent.tools_and_schemas import SearchQueryList, Reflection, MCP_TOOLS, Plan, Outline
+backend\src\agent\tools_and_schemas.py:9: in <module>
+    from agent.mcp_server import FilesystemMCPServer
+backend\src\agent\mcp_server.py:5: in <module>
+    from mcp import Tool
+E   ModuleNotFoundError: No module named 'mcp'
+============================== warnings summary ===============================
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\_pytest\config\__init__.py:1474
+  C:\Users\masum\scoop\apps\anaconda3\current\App\Lib\site-packages\_pytest\config\__init__.py:1474: PytestConfigWarning: Unknown config option: asyncio_mode
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+..\..\scoop\apps\anaconda3\current\App\Lib\site-packages\_pytest\cacheprovider.py:429
+  C:\Users\masum\scoop\apps\anaconda3\current\App\Lib\site-packages\_pytest\cacheprovider.py:429: PytestCacheWarning: could not create cache path C:\Users\masum\Projects\gemini-fullstack-langgraph-quickstart\backend\.pytest_cache\v\cache\lastfailed: [WinError 5] Access is denied: 'C:\\Users\\masum\\Projects\\gemini-fullstack-langgraph-quickstart\\backend\\.pytest_cache\\v\\cache'
+    config.cache.set("cache/lastfailed", self.lastfailed)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR backend\.pytest_cache - PermissionError: [WinError 5] Access is denied:...
+ERROR backend\tests\agent\test_api_security.py
+ERROR backend\tests\agent\test_checklist_verifier.py - AttributeError: module...
+ERROR backend\tests\agent\test_middleware_security.py
+ERROR backend\tests\agent\test_orchestration.py - AttributeError: module 'pyc...
+ERROR backend\tests\agent\test_rate_limiter_proxy.py
+ERROR backend\tests\test_graph_mock.py - AttributeError: module 'pycares' has...
+ERROR backend\tests\test_mcp.py
+ERROR backend\tests\test_mcp_tools.py
+ERROR backend\tests\test_node_routers.py - AttributeError: module 'pycares' h...
+ERROR backend\tests\test_nodes.py - AttributeError: module 'pycares' has no a...
+ERROR backend\tests\test_nodes_helpers.py - AttributeError: module 'pycares' ...
+ERROR backend\tests\test_planning.py - AttributeError: module 'pycares' has n...
+ERROR backend\tests\test_supervisor.py
+ERROR backend\tests\test_utils_hypothesis.py
+ERROR backend\tests\test_validate_web_results.py
+!!!!!!!!!!!!!!!!!! Interrupted: 16 errors during collection !!!!!!!!!!!!!!!!!!!
+================== 161 tests collected, 16 errors in 18.43s ===================

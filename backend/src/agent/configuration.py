@@ -52,6 +52,20 @@ class Configuration(BaseModel):
         },
     )
 
+    recursion_depth: int = Field(
+        default=0,
+        json_schema_extra={
+            "description": "The current recursion depth of the research."
+        },
+    )
+
+    max_recursion_depth: int = Field(
+        default=1,
+        json_schema_extra={
+            "description": "The maximum allowed recursion depth for sub-topic research."
+        },
+    )
+
     @classmethod
     def from_runnable_config(
         cls, config: Optional[RunnableConfig] = None

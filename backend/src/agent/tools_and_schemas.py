@@ -40,6 +40,10 @@ class Reflection(BaseModel):
     follow_up_queries: List[str] = Field(
         description="A list of follow-up queries to address the knowledge gap."
     )
+    subtopics_to_explore: List[str] = Field(
+        description="Specific sub-topics that are complex and require their own deep research subgraph.",
+        default_factory=list
+    )
 
 class Subsection(BaseModel):
     title: str = Field(description="Title of the subsection.")
