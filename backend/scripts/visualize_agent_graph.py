@@ -4,7 +4,9 @@ import os
 from pathlib import Path
 
 # Add the src directory to sys.path to allow imports
-project_root = Path(__file__).parent.parent
+# backend/scripts/visualize_agent_graph.py -> backend/scripts -> backend -> root
+project_root = Path(__file__).parent.parent.parent
+
 # Updated path to reflect the move to examples/open_deep_research_example
 src_path = project_root / "examples" / "open_deep_research_example" / "src"
 sys.path.append(str(src_path))
