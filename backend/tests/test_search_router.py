@@ -12,9 +12,19 @@ from unittest.mock import MagicMock, patch
 import sys
 from unittest.mock import MagicMock
 
-# MOCK google.genai BEFORE importing search.router to avoid broken environment dependencies
-# (e.g. pycares/aiohttp issues in current env)
+# MOCK external dependencies BEFORE importing providers to isolate tests
+# (e.g. pycares/aiohttp issues in current env, or missing dependencies)
 sys.modules["google.genai"] = MagicMock()
+sys.modules["duckduckgo_search"] = MagicMock()
+sys.modules["requests"] = MagicMock()
+
+# Import providers to allow patching their classes
+# (They must be imported after the mocks)
+import search.providers.google_adapter
+import search.providers.duckduckgo_adapter
+import search.providers.brave_adapter
+import search.providers.tavily_adapter
+import search.providers.bing_adapter
 
 from search.router import SearchRouter, SearchProviderType
 from search.provider import SearchResult
@@ -33,13 +43,12 @@ class TestSearchRouter:
     @pytest.fixture
     def mock_adapters(self):
         """Mock the adapter classes used by SearchRouter."""
-        # Patch the classes where they are imported in router.py
-
-        with patch("search.router.GoogleSearchAdapter") as mock_google, \
-             patch("search.router.DuckDuckGoAdapter") as mock_ddg, \
-             patch("search.router.BraveSearchAdapter") as mock_brave, \
-             patch("search.router.TavilyAdapter") as mock_tavily, \
-             patch("search.router.BingAdapter") as mock_bing:
+        # Patch the classes at their source modules because router.py imports them dynamically
+        with patch("search.providers.google_adapter.GoogleSearchAdapter") as mock_google, \
+             patch("search.providers.duckduckgo_adapter.DuckDuckGoAdapter") as mock_ddg, \
+             patch("search.providers.brave_adapter.BraveSearchAdapter") as mock_brave, \
+             patch("search.providers.tavily_adapter.TavilyAdapter") as mock_tavily, \
+             patch("search.providers.bing_adapter.BingAdapter") as mock_bing:
 
             # Setup instances
             mock_google.return_value = MagicMock(name="google_instance")
@@ -48,17 +57,6 @@ class TestSearchRouter:
             mock_tavily.return_value = MagicMock(name="tavily_instance")
             mock_bing.return_value = MagicMock(name="bing_instance")
 
-            # Update the _PROVIDER_CLASSES dict in SearchRouter to point to these mocks
-            # because the dict was populated at import time with the real classes.
-            original_providers = SearchRouter._PROVIDER_CLASSES.copy()
-            SearchRouter._PROVIDER_CLASSES = {
-                "google": mock_google,
-                "duckduckgo": mock_ddg,
-                "brave": mock_brave,
-                "tavily": mock_tavily,
-                "bing": mock_bing
-            }
-
             yield {
                 "google": mock_google,
                 "duckduckgo": mock_ddg,
@@ -66,9 +64,6 @@ class TestSearchRouter:
                 "tavily": mock_tavily,
                 "bing": mock_bing
             }
-
-            # Restore
-            SearchRouter._PROVIDER_CLASSES = original_providers
 
     def test_lazy_init_providers(self, mock_config, mock_adapters):
         """Test that providers are NOT initialized eagerly."""
@@ -195,6 +190,9 @@ class TestSearchRouter:
         # Make all providers fail to init
         for mock in mock_adapters.values():
             mock.side_effect = Exception("Fail")
+
+        # In my new implementation, if provider lazy loading fails, it returns None.
+        # If primary and fallback return None, it raises ValueError("No valid search provider available.")
 
         with pytest.raises(ValueError, match="No valid search provider available"):
             router.search("query")

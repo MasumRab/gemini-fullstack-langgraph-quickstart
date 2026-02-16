@@ -1,18 +1,18 @@
+"""Router for search providers."""
+import importlib
 import logging
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Dict, List, Type
 
-from config.app_config import config, AppConfig
+from config.app_config import AppConfig, config
+
 from .provider import SearchProvider, SearchResult
-from .providers.google_adapter import GoogleSearchAdapter
-from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-from .providers.brave_adapter import BraveSearchAdapter
-from .providers.tavily_adapter import TavilyAdapter
-from .providers.bing_adapter import BingAdapter
 
 logger = logging.getLogger(__name__)
 
 class SearchProviderType(Enum):
+    """Supported search providers."""
+
     GOOGLE = "google"
     DUCKDUCKGO = "duckduckgo"
     BRAVE = "brave"
@@ -20,16 +20,15 @@ class SearchProviderType(Enum):
     BING = "bing"
 
 class SearchRouter:
-    """
-    Routes search queries to the appropriate provider with fallback logic.
-    """
+    """Routes search queries to the appropriate provider with fallback logic."""
 
-    _PROVIDER_CLASSES = {
-        SearchProviderType.GOOGLE.value: GoogleSearchAdapter,
-        SearchProviderType.DUCKDUCKGO.value: DuckDuckGoAdapter,
-        SearchProviderType.BRAVE.value: BraveSearchAdapter,
-        SearchProviderType.TAVILY.value: TavilyAdapter,
-        SearchProviderType.BING.value: BingAdapter,
+    # Map provider names to (module_path, class_name)
+    _PROVIDER_MAPPING = {
+        SearchProviderType.GOOGLE.value: ("search.providers.google_adapter", "GoogleSearchAdapter"),
+        SearchProviderType.DUCKDUCKGO.value: ("search.providers.duckduckgo_adapter", "DuckDuckGoAdapter"),
+        SearchProviderType.BRAVE.value: ("search.providers.brave_adapter", "BraveSearchAdapter"),
+        SearchProviderType.TAVILY.value: ("search.providers.tavily_adapter", "TavilyAdapter"),
+        SearchProviderType.BING.value: ("search.providers.bing_adapter", "BingAdapter"),
     }
 
     def __init__(self, app_config: AppConfig = config):
@@ -37,15 +36,28 @@ class SearchRouter:
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
 
-    def _get_provider(self, name: str) -> Optional[SearchProvider]:
+    def _get_provider_class(self, name: str) -> Type[SearchProvider] | None:
+        """Dynamically import and return the provider class."""
+        if name not in self._PROVIDER_MAPPING:
+            return None
+
+        module_path, class_name = self._PROVIDER_MAPPING[name]
+        try:
+            module = importlib.import_module(module_path)
+            return getattr(module, class_name)
+        except (ImportError, AttributeError) as e:
+            logger.error(f"Failed to import provider {name} from {module_path}: {e}")
+            return None
+
+    def _get_provider(self, name: str) -> SearchProvider | None:
         """Lazy load provider."""
         if name in self.providers:
             return self.providers[name]
 
-        if name not in self._PROVIDER_CLASSES:
+        provider_cls = self._get_provider_class(name)
+        if not provider_cls:
             return None
 
-        provider_cls = self._PROVIDER_CLASSES[name]
         try:
             logger.debug(f"Lazy initializing search provider: {name}")
             instance = provider_cls()
@@ -59,11 +71,10 @@ class SearchRouter:
         self,
         query: str,
         max_results: int = 5,
-        provider_name: Optional[str] = None,
+        provider_name: str | None = None,
         attempt_fallback: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search with routing and fallback logic.
+        """Execute search with routing and fallback logic.
 
         Args:
             query: Search query
