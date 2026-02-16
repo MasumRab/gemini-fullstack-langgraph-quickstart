@@ -93,7 +93,6 @@ _DEPRECATED_MODELS = {
 # Validation Functions
 # ============================================================================
 
-
 def is_valid_model(model_name: str) -> bool:
     """Check if a model name is valid and accessible.
 
@@ -104,13 +103,7 @@ def is_valid_model(model_name: str) -> bool:
         True if model is valid and accessible, False otherwise
     """
     # Check if it's a known valid model
-    valid_models = {
-        GEMINI_FLASH,
-        GEMINI_FLASH_LITE,
-        GEMINI_PRO,
-        GEMMA_2_27B_IT,
-        GEMMA_3_27B_IT,
-    }
+    valid_models = {GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT, GEMMA_3_27B_IT}
 
     if model_name in valid_models:
         return True
@@ -155,7 +148,6 @@ def get_model_or_default(model_name: str, default: str = GEMMA_3_27B_IT) -> str:
     # Check if it's deprecated
     if is_deprecated_model(model_name):
         import logging
-
         logging.warning(
             f"Model '{model_name}' is deprecated and not accessible. "
             f"Using '{default}' instead."
@@ -164,8 +156,9 @@ def get_model_or_default(model_name: str, default: str = GEMMA_3_27B_IT) -> str:
 
     # Unknown model - use default
     import logging
-
-    logging.warning(f"Unknown model '{model_name}'. Using '{default}' instead.")
+    logging.warning(
+        f"Unknown model '{model_name}'. Using '{default}' instead."
+    )
     return default
 
 
@@ -173,22 +166,14 @@ def get_model_or_default(model_name: str, default: str = GEMMA_3_27B_IT) -> str:
 # All Valid Models (for iteration/validation)
 # ============================================================================
 
-ALL_VALID_MODELS = [
-    GEMINI_FLASH,
-    GEMINI_FLASH_LITE,
-    GEMINI_PRO,
-    GEMMA_2_27B_IT,
-    GEMMA_3_27B_IT,
-]
+ALL_VALID_MODELS = [GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT, GEMMA_3_27B_IT]
 """List of all valid, accessible Gemini models."""
-
 
 def is_gemma_model(model_name: str) -> bool:
     """Check if the model is a Gemma model (requires custom tool handling)."""
     if not model_name:
         return False
     return "gemma" in model_name.lower()
-
 
 def is_gemini_model(model_name: str) -> bool:
     """Check if the model is a Gemini model (supports native tool binding)."""

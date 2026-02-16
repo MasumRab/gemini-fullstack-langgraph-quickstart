@@ -1,22 +1,20 @@
-import contextlib
 import logging
-from typing import Any, Dict
+import contextlib
+from typing import Optional, Any, Dict
 
-from observability.config import is_audit_mode, is_enabled
+from observability.config import is_enabled, is_audit_mode
 
 logger = logging.getLogger(__name__)
 
 # Try to import Langfuse
 try:
     from langfuse import observe
-
     _LANGFUSE_AVAILABLE = True
 except ImportError:
     _LANGFUSE_AVAILABLE = False
     observe = None
 
-
-def get_langfuse_handler(metadata: Dict[str, Any] | None = None) -> Any | None:
+def get_langfuse_handler(metadata: Optional[Dict[str, Any]] = None) -> Optional[Any]:
     """Factory to create a Langfuse CallbackHandler if enabled and available.
 
     Args:
@@ -36,30 +34,26 @@ def get_langfuse_handler(metadata: Dict[str, Any] | None = None) -> Any | None:
         # 1. Integration package (newer V3 structure)
         if LangfuseCallbackHandler is None:
             try:
-                from langfuse.integrations.langchain import LangfuseCallbackHandler
+                 from langfuse.integrations.langchain import LangfuseCallbackHandler
             except ImportError:
                 pass
 
         # 2. Native package (V2/V3) - Verified working path for 3.10.5
         if LangfuseCallbackHandler is None:
             try:
-                from langfuse.langchain import (
-                    CallbackHandler as LangfuseCallbackHandler,
-                )
+                from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
             except ImportError:
                 pass
 
         # 3. Callback module (Older V2)
         if LangfuseCallbackHandler is None:
-            try:
-                from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
-            except ImportError:
-                pass
+             try:
+                 from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
+             except ImportError:
+                 pass
 
         if LangfuseCallbackHandler is None:
-            logger.warning(
-                "Langfuse enabled but CallbackHandler could not be imported."
-            )
+            logger.warning("Langfuse enabled but CallbackHandler could not be imported.")
             return None
 
         # We can pass tags or session info via kwargs if needed
@@ -72,9 +66,8 @@ def get_langfuse_handler(metadata: Dict[str, Any] | None = None) -> Any | None:
         logger.error(f"Failed to initialize Langfuse handler: {e}")
         return None
 
-
 @contextlib.contextmanager
-def observe_span(name: str, config: Dict | None = None, **kwargs):
+def observe_span(name: str, config: Optional[Dict] = None, **kwargs):
     """Context manager to create a Langfuse span manually.
 
     This is useful for non-LangChain code blocks or when we want explicit control.
@@ -106,15 +99,10 @@ def observe_span(name: str, config: Dict | None = None, **kwargs):
             span = span_obj
             # Check audit mode for extra logging
             if is_audit_mode():
-                # We can update the span metadata if we have access to the span object
-                if hasattr(span, "update"):
-                    # Note: update() signature depends on SDK version, usually takes kwargs
-                    span.update(
-                        metadata={
-                            "audit": True,
-                            "config_keys": list(config.keys()) if config else [],
-                        }
-                    )
+                 # We can update the span metadata if we have access to the span object
+                 if hasattr(span, 'update'):
+                     # Note: update() signature depends on SDK version, usually takes kwargs
+                     span.update(metadata={"audit": True, "config_keys": list(config.keys()) if config else []})
 
             yield span
 

@@ -1,3 +1,4 @@
+
 import os
 import sys
 import unittest
@@ -9,7 +10,6 @@ sys.modules["google.colab.userdata"] = MagicMock()
 
 # Mock dependencies that might be missing in this env
 sys.modules["langchain_google_genai"] = MagicMock()
-
 
 class TestNotebookLogic(unittest.TestCase):
     def setUp(self):
@@ -47,7 +47,6 @@ class TestNotebookLogic(unittest.TestCase):
         mock_llm_class.assert_called_with(model="gemma-3-27b-it", temperature=0)
         self.assertEqual(model_name, "gemma-3-27b-it")
         print("✅ Notebook logic for model selection is correct.")
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,27 +12,28 @@ Tests cover:
 - Edge cases and error handling
 """
 
-import dataclasses
-from unittest.mock import MagicMock, Mock, patch
-
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+import dataclasses
+from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from langchain_core.runnables import RunnableConfig
+from langchain_core.messages import AIMessage, HumanMessage
 
-from agent.models import TEST_MODEL
+from config.app_config import AppConfig, config as real_config
+from agent.state import OverallState
+from agent import nodes
 from agent.nodes import (
-    content_reader,
-    denoising_refiner,
-    execution_router,
     generate_plan,
     planning_mode,
     planning_wait,
-    reflection,
-    select_next_task,
-    validate_web_results,
     web_research,
+    validate_web_results,
+    reflection,
+    denoising_refiner,
+    content_reader,
+    select_next_task,
+    execution_router,
 )
-from config.app_config import config as real_config
+from agent.models import TEST_MODEL
 
 
 # Fixtures
@@ -86,9 +87,7 @@ class TestGeneratePlan:
 
     @patch("agent.nodes.plan_writer_instructions")
     @patch("agent.nodes.get_context_manager")
-    def test_generate_plan_creates_plan(
-        self, mock_get_cm, mock_instructions, base_state, config
-    ):
+    def test_generate_plan_creates_plan(self, mock_get_cm, mock_instructions, base_state, config):
         """Test that generate_plan creates the correct number of tasks"""
         # Setup
         # Configure mocked context manager to avoid type errors with Mock prompt
@@ -113,17 +112,21 @@ class TestGeneratePlan:
             # It expects a JSON block with tool_calls in markdown or raw
             # PR #93 style but with PR #92 Plan data
             import json
-
             tool_call_args = {
                 "plan": [
                     {"title": "Task 1", "description": "Desc 1", "status": "pending"},
-                    {"title": "Task 2", "description": "Desc 2", "status": "pending"},
+                    {"title": "Task 2", "description": "Desc 2", "status": "pending"}
                 ],
-                "rationale": "Rationale",
+                "rationale": "Rationale"
             }
 
             tool_call_response = {
-                "tool_calls": [{"name": "Plan", "args": tool_call_args}]
+                "tool_calls": [
+                    {
+                        "name": "Plan",
+                        "args": tool_call_args
+                    }
+                ]
             }
             # Ensure proper JSON formatting for tool adapter compatibility
             json_response = f"```json\n{json.dumps(tool_call_response)}\n```"
@@ -135,9 +138,7 @@ class TestGeneratePlan:
                 result = generate_plan(base_state, config)
         else:
             # Standard Gemini
-            mock_chain.with_structured_output.return_value.invoke.return_value = (
-                mock_result
-            )
+            mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
 
             with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
                 mock_get_llm.return_value = mock_chain
@@ -169,9 +170,7 @@ class TestPlanningMode:
         assert result["planning_status"] == "auto_approved"
         assert len(result["planning_feedback"]) > 0
 
-    def test_planning_mode_with_confirmation_required(
-        self, base_state, config_with_confirmation
-    ):
+    def test_planning_mode_with_confirmation_required(self, base_state, config_with_confirmation):
         """Test planning_mode when confirmation is required"""
         # Setup
         base_state["search_query"] = ["query1", "query2"]
@@ -263,10 +262,8 @@ class TestPlanningWait:
         # Assert
         assert "planning_feedback" in result
         assert len(result["planning_feedback"]) > 0
-        assert any(
-            "awaiting" in fb.lower() or "confirmation" in fb.lower()
-            for fb in result["planning_feedback"]
-        )
+        assert any("awaiting" in fb.lower() or "confirmation" in fb.lower()
+                   for fb in result["planning_feedback"])
 
     def test_planning_wait_preserves_state(self, base_state):
         """Test that planning_wait doesn't modify other state"""
@@ -288,9 +285,7 @@ class TestWebResearch:
     """Test suite for web_research node"""
 
     @patch("agent.nodes.search_router")
-    def test_web_research_processes_queries(
-        self, mock_search_router, base_state, config
-    ):
+    def test_web_research_processes_queries(self, mock_search_router, base_state, config):
         """Test web_research processes queries"""
         # Setup
         # web_research takes WebSearchState which has search_query as str
@@ -313,9 +308,7 @@ class TestWebResearch:
         assert "Test Content" in result["web_research_result"][0]
 
     @patch("agent.nodes.search_router")
-    def test_web_research_handles_search_failure(
-        self, mock_search_router, base_state, config
-    ):
+    def test_web_research_handles_search_failure(self, mock_search_router, base_state, config):
         """Test web_research handles search API failures gracefully"""
         # Setup
         state = {"search_query": "test query", "id": 1}
@@ -340,7 +333,7 @@ class TestValidateWebResults:
         # Setup
         base_state["web_research_result"] = [
             "Good content relevant to quantum [Source](http://example.com)",
-            "Bad content relevant to cooking [Source](http://example.com)",
+            "Bad content relevant to cooking [Source](http://example.com)"
         ]
         base_state["search_query"] = ["quantum physics"]
 
@@ -363,6 +356,7 @@ class TestValidateWebResults:
         assert "validated_web_research_result" in result
         # The exact matching logic might vary, but "quantum" matches "quantum"
         assert len(result["validated_web_research_result"]) >= 1
+
 
     def test_validate_web_results_with_empty_results(self, base_state, config):
         """Test validate_web_results with no research results"""
@@ -399,20 +393,15 @@ class TestReflection:
         is_gemma = "gemma" in TEST_MODEL.lower()
         if is_gemma:
             import json
-
-            json_response = json.dumps(
-                {
-                    "is_sufficient": False,
-                    "knowledge_gap": "Gap",
-                    "follow_up_queries": ["query1"],
-                }
-            )
+            json_response = json.dumps({
+                "is_sufficient": False,
+                "knowledge_gap": "Gap",
+                "follow_up_queries": ["query1"]
+            })
             mock_message = AIMessage(content=json_response)
             mock_chain.invoke.return_value = mock_message
         else:
-            mock_chain.with_structured_output.return_value.invoke.return_value = (
-                mock_result
-            )
+            mock_chain.with_structured_output.return_value.invoke.return_value = mock_result
 
         with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
             mock_get_llm.return_value = mock_chain
@@ -433,9 +422,7 @@ class TestDenoisingRefiner:
     @patch("agent.nodes.answer_instructions")
     @patch("agent.nodes.gemma_answer_instructions")
     @patch("agent.nodes.denoising_instructions")
-    def test_denoising_refiner_generates_response(
-        self, mock_denoise, mock_gemma, mock_answer, base_state, config
-    ):
+    def test_denoising_refiner_generates_response(self, mock_denoise, mock_gemma, mock_answer, base_state, config):
         """Test that denoising_refiner generates a final response via 3-step process"""
         # Setup
         base_state["messages"] = [HumanMessage(content="What is quantum computing?")]
@@ -447,7 +434,7 @@ class TestDenoisingRefiner:
         mock_chain.invoke.side_effect = [
             AIMessage(content="Draft 1 content"),
             AIMessage(content="Draft 2 content"),
-            AIMessage(content="Final Refined Content"),
+            AIMessage(content="Final Refined Content")
         ]
 
         with patch("agent.nodes._get_rate_limited_llm") as mock_get_llm:
@@ -463,7 +450,6 @@ class TestDenoisingRefiner:
             assert "Final Refined Content" in result["messages"][0].content
             assert "artifacts" in result
             assert mock_get_llm.call_count >= 3
-
 
 # Tests for content_reader
 class TestContentReader:
@@ -481,7 +467,7 @@ class TestContentReader:
         mock_evidence_item = Mock(
             claim="Quantum computing uses qubits.",
             source_url="http://example.com/1",
-            context_snippet="Quantum computing uses qubits.",
+            context_snippet="Quantum computing uses qubits."
         )
         mock_result = Mock()
         mock_result.items = [mock_evidence_item]
@@ -492,19 +478,23 @@ class TestContentReader:
         if is_gemma:
             # Gemma path uses direct invoke and manual parsing via tool adapter
             import json
-
             tool_call_args = {
                 "items": [
                     {
                         "claim": "Quantum computing uses qubits.",
                         "source_url": "http://example.com/1",
-                        "context_snippet": "Quantum computing uses qubits.",
+                        "context_snippet": "Quantum computing uses qubits."
                     }
                 ]
             }
 
             tool_call_response = {
-                "tool_calls": [{"name": "EvidenceList", "args": tool_call_args}]
+                "tool_calls": [
+                    {
+                        "name": "EvidenceList",
+                        "args": tool_call_args
+                    }
+                ]
             }
             # Ensure proper JSON formatting for tool adapter compatibility
             json_response = f"```json\n{json.dumps(tool_call_response)}\n```"
@@ -541,7 +531,6 @@ class TestContentReader:
         assert "evidence_bank" in result
         assert result["evidence_bank"] == []
 
-
 # Tests for select_next_task and execution_router
 class TestExecutionFlow:
     """Test suite for execution flow nodes"""
@@ -552,7 +541,7 @@ class TestExecutionFlow:
         base_state["plan"] = [
             {"task": "Task 1", "status": "done"},
             {"task": "Task 2", "status": "pending", "query": "Query 2"},
-            {"task": "Task 3", "status": "pending"},
+            {"task": "Task 3", "status": "pending"}
         ]
 
         # Execute
@@ -567,7 +556,7 @@ class TestExecutionFlow:
         # Setup
         base_state["plan"] = [
             {"task": "Task 1", "status": "done"},
-            {"task": "Task 2", "status": "done"},
+            {"task": "Task 2", "status": "done"}
         ]
 
         # Execute

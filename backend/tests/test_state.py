@@ -8,20 +8,23 @@ Tests cover:
 - State validation and edge cases
 """
 
-
 import pytest
+from typing import List, Dict, Any
 
 from agent.state import (
+    create_rag_resources,
     OverallState,
     ReflectionState,
+    Query,
+    QueryGenerationState,
+    WebSearchState,
     SearchStateOutput,
-    create_rag_resources,
 )
+
 
 # =============================================================================
 # Tests for create_rag_resources Function
 # =============================================================================
-
 
 class TestCreateRagResources:
     """Test suite for create_rag_resources function."""
@@ -110,7 +113,6 @@ class TestCreateRagResources:
 # Tests for State TypedDict Structures
 # =============================================================================
 
-
 class TestOverallState:
     """Test suite for OverallState TypedDict."""
 
@@ -160,11 +162,11 @@ class TestReflectionState:
         # With string annotations, might be 'bool' or forward ref
         anno = annotations["is_sufficient"]
         if hasattr(anno, "__forward_arg__"):
-            assert anno.__forward_arg__ == "bool"
+             assert anno.__forward_arg__ == "bool"
         elif isinstance(anno, str):
-            assert anno == "bool"
+             assert anno == "bool"
         else:
-            assert anno == bool
+             assert anno == bool
 
 
 class TestSearchStateOutput:

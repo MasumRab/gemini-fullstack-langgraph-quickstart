@@ -1,29 +1,27 @@
 import logging
-from typing import Any, Dict
-
+from typing import Dict, Any, List
 from langchain_core.runnables import RunnableConfig
-from langgraph.graph import END, START, StateGraph
-
+from langgraph.graph import StateGraph, START, END
+from agent.state import OverallState
 from agent.configuration import Configuration
 from agent.nodes import (
-    evaluate_research,
-    finalize_answer,
-    generate_plan,
     load_context,
+    generate_plan,
     planning_mode,
-    planning_router,
     planning_wait,
-    reflection,
-    validate_web_results,
+    planning_router,
     web_research,
+    validate_web_results,
+    reflection,
+    finalize_answer,
+    evaluate_research
 )
 from agent.registry import graph_registry
-from agent.state import OverallState
 from agent.utils import get_cached_llm
+
 from config.app_config import config as app_config
 
 logger = logging.getLogger(__name__)
-
 
 @graph_registry.describe(
     "compress_context",
@@ -91,14 +89,11 @@ def compress_context(state: OverallState, config: RunnableConfig) -> Dict[str, A
             return {"web_research_result": [compressed_content]}
 
         except Exception as e:
-            logger.warning(
-                f"Compression failed in supervisor: {e}. Returning uncompressed history."
-            )
+            logger.warning(f"Compression failed in supervisor: {e}. Returning uncompressed history.")
             return {"web_research_result": unique_results}
 
     # Default fallback
     return {"web_research_result": unique_results}
-
 
 builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("load_context", load_context)
@@ -107,7 +102,7 @@ builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
 builder.add_node("web_research", web_research)
 builder.add_node("validate_web_results", validate_web_results)
-builder.add_node("compress_context", compress_context)  # The new node
+builder.add_node("compress_context", compress_context) # The new node
 builder.add_node("reflection", reflection)
 builder.add_node("finalize_answer", finalize_answer)
 
@@ -121,8 +116,8 @@ builder.add_conditional_edges(
     "planning_wait", planning_router, ["planning_wait", "web_research"]
 )
 builder.add_edge("web_research", "validate_web_results")
-builder.add_edge("validate_web_results", "compress_context")  # Inject compression
-builder.add_edge("compress_context", "reflection")  # Reflect on compressed context
+builder.add_edge("validate_web_results", "compress_context") # Inject compression
+builder.add_edge("compress_context", "reflection") # Reflect on compressed context
 builder.add_conditional_edges(
     "reflection", evaluate_research, ["web_research", "finalize_answer"]
 )

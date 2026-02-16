@@ -1,22 +1,15 @@
+
 """
 Unit tests for backend/examples/kaggle_integration.py
 """
 
-from unittest.mock import MagicMock, patch
-
 import pytest
-
-from examples.kaggle_integration import (
-    BaseLLMClient,
-    KaggleHuggingFaceClient,
-    KaggleModelLoader,
-    SimpleReActAgent,
-)
+from unittest.mock import patch, MagicMock
+from examples.kaggle_integration import KaggleModelLoader, KaggleHuggingFaceClient, SimpleReActAgent, BaseLLMClient
 
 # =============================================================================
 # Tests for KaggleModelLoader
 # =============================================================================
-
 
 class TestKaggleModelLoader:
     def test_download_success(self):
@@ -26,34 +19,30 @@ class TestKaggleModelLoader:
         with patch.dict("sys.modules", {"kagglehub": mock_kagglehub}):
             path = KaggleModelLoader.download("handle/model")
             assert path == "/path/to/model"
-            mock_kagglehub.model_download.assert_called_once_with(
-                "handle/model", path=None
-            )
+            mock_kagglehub.model_download.assert_called_once_with("handle/model", path=None)
 
     def test_download_import_error(self):
         """Test ImportError when kagglehub is not installed."""
         # Patch the internal import by mocking the 'builtins' __import__
         # to raise ImportError specifically when 'kagglehub' is requested.
         import builtins
-
         real_import = builtins.__import__
 
         def mock_import(name, *args, **kwargs):
-            if name == "kagglehub":
+            if name == 'kagglehub':
                 raise ImportError("Mocked error")
             return real_import(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=mock_import):
-            with pytest.raises(ImportError, match="Please install 'kagglehub'"):
-                KaggleModelLoader.download("handle/model")
-
+             with pytest.raises(ImportError, match="Please install 'kagglehub'"):
+                 KaggleModelLoader.download("handle/model")
 
 # =============================================================================
 # Tests for KaggleHuggingFaceClient
 # =============================================================================
 
-
 class TestKaggleHuggingFaceClient:
+
     @patch("examples.kaggle_integration.KaggleModelLoader")
     @patch("transformers.AutoTokenizer")
     @patch("transformers.AutoModelForCausalLM")
@@ -84,12 +73,12 @@ class TestKaggleHuggingFaceClient:
 
         # Mock tokenizer call
         inputs = MagicMock()
-        inputs.input_ids.shape = [1, 5]  # 5 input tokens
+        inputs.input_ids.shape = [1, 5] # 5 input tokens
         mock_tokenizer.return_value = inputs
         mock_tokenizer.decode.return_value = "new tokens"
 
         # Mock model generate
-        outputs = [MagicMock()]  # Fake output tensor
+        outputs = [MagicMock()] # Fake output tensor
         mock_model.generate.return_value = outputs
 
         # Execute
@@ -109,7 +98,6 @@ class TestKaggleHuggingFaceClient:
 # Tests for SimpleReActAgent
 # =============================================================================
 
-
 class MockLLM(BaseLLMClient):
     def __init__(self, responses):
         self.responses = responses
@@ -122,8 +110,8 @@ class MockLLM(BaseLLMClient):
             return resp
         return "Final Answer: Stop"
 
-
 class TestSimpleReActAgent:
+
     def test_run_with_tool_use(self):
         """Test agent executing a tool and returning final answer."""
         mock_tool = MagicMock()
@@ -134,7 +122,7 @@ class TestSimpleReActAgent:
         # LLM Responses: Thought/Action -> Observation -> Final Answer
         responses = [
             "Thought: Need tool\nAction: test_tool\nAction Input: test input",
-            "Thought: Got result\nFinal Answer: The answer is Tool Result",
+            "Thought: Got result\nFinal Answer: The answer is Tool Result"
         ]
         llm = MockLLM(responses)
 
@@ -161,7 +149,7 @@ class TestSimpleReActAgent:
         """Test agent handles invalid tool name."""
         responses = [
             "Thought: Typo\nAction: bad_tool\nAction Input: input",
-            "Thought: Fixed\nFinal Answer: Done",
+            "Thought: Fixed\nFinal Answer: Done"
         ]
         llm = MockLLM(responses)
         agent = SimpleReActAgent(llm, [])
@@ -178,7 +166,7 @@ class TestSimpleReActAgent:
 
         responses = [
             "Thought: Error\nAction: error_tool\nAction Input: input",
-            "Thought: Recovered\nFinal Answer: Handled",
+            "Thought: Recovered\nFinal Answer: Handled"
         ]
         llm = MockLLM(responses)
         agent = SimpleReActAgent(llm, [mock_tool])

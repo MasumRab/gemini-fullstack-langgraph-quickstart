@@ -3,15 +3,16 @@
 Tests cover default values, environment variable overrides, type conversions,
 and comprehensive validation.
 """
-
 import pytest
+from pydantic import ValidationError
 
 from agent.configuration import Configuration
 from agent.models import (
-    DEFAULT_ANSWER_MODEL,
+    TEST_MODEL,
+    GEMINI_PRO,
     DEFAULT_QUERY_MODEL,
     DEFAULT_REFLECTION_MODEL,
-    GEMINI_PRO,
+    DEFAULT_ANSWER_MODEL,
 )
 
 
@@ -163,7 +164,7 @@ class TestConfigurationSerialization:
             query_generator_model="test-model",
             max_research_loops=5,
             number_of_initial_queries=2,
-            require_planning_confirmation=True,
+            require_planning_confirmation=True
         )
 
         config_dict = config.model_dump()

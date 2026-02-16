@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import operator
 from dataclasses import dataclass, field
 from typing import Dict, List, TypedDict
 
@@ -8,12 +7,15 @@ from langgraph.graph import add_messages
 from typing_extensions import Annotated
 
 
+import operator
+
+
 class Evidence(TypedDict):
-    """Structured evidence extracted from web content.
+    """
+    Structured evidence extracted from web content.
     Used by ManuSearch/content_reader.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
-
     claim: str
     source_url: str
     context_snippet: str
@@ -21,10 +23,10 @@ class Evidence(TypedDict):
 
 
 class Todo(TypedDict, total=False):
-    """Represents a single unit of work in the plan.
+    """
+    Represents a single unit of work in the plan.
     Use total=False to allow for partial updates and backward compatibility.
     """
-
     id: str
     task: str
     status: str  # pending/done/in_progress
@@ -40,10 +42,10 @@ class Artifact(TypedDict):
 
 
 class ScopingState(TypedDict, total=False):
-    """Scoping fields used during the agent's initial question scoping phase.
+    """
+    Scoping fields used during the agent's initial question scoping phase.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
-
     query: str
     clarifications_needed: List[str]
     user_answers: List[str]
@@ -65,10 +67,10 @@ class Outline(TypedDict):
 
 
 class OverallState(ScopingState, TypedDict, total=False):
-    """Overall agent state. Extends ScopingState and adds plan and other fields.
+    """
+    Overall agent state. Extends ScopingState and adds plan and other fields.
     Inheritance from ScopingState ensures scoping fields are available.
     """
-
     messages: Annotated[list, add_messages]
     search_query: Annotated[list, operator.add]
     web_research_result: Annotated[list, operator.add]
@@ -79,7 +81,7 @@ class OverallState(ScopingState, TypedDict, total=False):
     # Planning & Scoping
     scoping_status: str | None  # "pending", "active", "complete"
     clarification_questions: List[str] | None
-    clarification_answers: Annotated[list, operator.add]  # Stores user replies
+    clarification_answers: Annotated[list, operator.add] # Stores user replies
 
     plan: List[Todo]
     planning_steps: List[dict] | None
@@ -93,9 +95,7 @@ class OverallState(ScopingState, TypedDict, total=False):
     max_research_loops: int
     research_loop_count: int
     reasoning_model: str
-    todo_list: (
-        List[dict] | None
-    )  # Deprecated: Migration to 'plan' in progress. See docs/tasks/02_OPEN_SWE_TASKS.md
+    todo_list: List[dict] | None  # Deprecated: Migration to 'plan' in progress. See docs/tasks/02_OPEN_SWE_TASKS.md
     artifacts: Dict[str, Artifact] | None
 
 
@@ -122,7 +122,8 @@ class WebSearchState(TypedDict):
 
 
 def validate_scoping(state: OverallState) -> bool:
-    """Runtime validation helper to check if required scoping fields are present.
+    """
+    Runtime validation helper to check if required scoping fields are present.
     Returns True if valid, False otherwise.
     """
     required_fields = ["query", "clarifications_needed", "user_answers"]
