@@ -81,13 +81,15 @@ Output Format:
    - "is_sufficient": true or false
    - "knowledge_gap": Describe what information is missing or needs clarification
    - "follow_up_queries": Write a specific question to address this gap
+   - "subtopics_to_explore": List of complex sub-topics that require separate deep research (recursive calls). Empty list if not needed.
 
 Example:
 ```json
 {{
-    "is_sufficient": true, // or false
-    "knowledge_gap": "The summary lacks information about performance metrics and benchmarks", // "" if is_sufficient is true
-    "follow_up_queries": ["What are typical performance benchmarks and metrics used to evaluate [specific technology]?"] // [] if is_sufficient is true
+    "is_sufficient": false,
+    "knowledge_gap": "The summary lacks information about performance metrics and benchmarks",
+    "follow_up_queries": ["What are typical performance benchmarks and metrics used to evaluate [specific technology]?"],
+    "subtopics_to_explore": ["Comparative Analysis of High-Pressure Synthesis vs CVD for superconductors"]
 }}
 ```
 

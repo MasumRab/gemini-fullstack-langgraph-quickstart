@@ -3,10 +3,12 @@
 import ipaddress
 import logging
 import time
+import math
 from collections import defaultdict
 from typing import List
 
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
@@ -91,6 +93,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         limit: int = 100,
         window: int = 60,
         protected_paths: List[str] | None = None,
+        trust_proxy_headers: bool = False,
     ):
         """Initialize the rate limiter.
 
@@ -100,11 +103,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             window: Time window in seconds.
             protected_paths: List of path prefixes to apply rate limiting to.
                              If None, applies to all paths.
+            trust_proxy_headers: Whether to trust X-Forwarded-For headers.
         """
         super().__init__(app)
         self.limit = limit
         self.window = window
         self.protected_paths = protected_paths if protected_paths is not None else []
+        self.trust_proxy_headers = trust_proxy_headers
         self.requests = defaultdict(list)
         # 🛡️ Sentinel: Optimize cleanup frequency to prevent DoS via Iteration attacks
         self.last_cleanup = 0
@@ -135,7 +140,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # 🛡️ Sentinel: Support X-Forwarded-For for proxies (Render/Load Balancers)
             # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
             forwarded = request.headers.get("X-Forwarded-For")
-            if forwarded:
+            if forwarded and self.trust_proxy_headers:
                 # 🛡️ Sentinel: Prevent spoofing by traversing from the end (trusted proxies)
                 # Proxies (like Render) append the verified client IP to the end.
                 # We traverse backwards to find the first non-private IP to avoid blocking the proxy itself.
@@ -173,10 +178,24 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if len(active_requests) >= self.limit:
                 # Update map with pruned list before returning
                 self.requests[client_key] = active_requests
+
+                # Calculate retry_after
+                if active_requests:
+                    oldest_request_time = active_requests[0]
+                    reset_time = oldest_request_time + self.window
+                    retry_after = max(1, int(math.ceil(reset_time - now)))
+                else:
+                    retry_after = self.window
+
                 logger.warning(
                     f"Rate limit exceeded for client {client_key} on path {path}"
                 )
-                return Response("Too Many Requests", status_code=429)
+
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Too Many Requests", "retry_after": retry_after},
+                    headers={"Retry-After": str(retry_after)},
+                )
 
             active_requests.append(now)
 
