@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Iterable
 import os
 import difflib
 from functools import lru_cache
@@ -217,7 +217,22 @@ def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\
 # Creating ChatGoogleGenerativeAI objects involves some overhead.
 # Since config (model, temp) is usually stable within a session, we can reuse instances.
 @lru_cache(maxsize=16)
-def get_cached_llm(model: str, temperature: float) -> ChatGoogleGenerativeAI:
+def get_cached_llm(model: str, temperature: float) -> Any:
+    """
+    Returns a configured LLM client. 
+    Supports Gemini (native) and Gemma (via GemmaAdapter).
+    """
+    is_gemma = "gemma" in model.lower()
+    
+    if is_gemma:
+        from agent.gemma_client import get_gemma_client
+        from agent.llm_client import GemmaAdapter
+        
+        # Instantiate the correct provider (Vertex or Ollama) from app_config
+        client = get_gemma_client()
+        # Return an adapter that mimics LangChain's invoke interface
+        return GemmaAdapter(client=client)
+    
     return ChatGoogleGenerativeAI(
         model=model,
         temperature=temperature,
@@ -225,7 +240,7 @@ def get_cached_llm(model: str, temperature: float) -> ChatGoogleGenerativeAI:
     )
 
 
-def has_fuzzy_match(keyword: str, candidates: List[str], cutoff: float = 0.8) -> bool:
+def has_fuzzy_match(keyword: str, candidates: Iterable[str], cutoff: float = 0.8) -> bool:
     """
     Checks if there is any candidate in the list that has a fuzzy match ratio >= cutoff
     with the keyword. Returns True immediately on the first match.
@@ -244,7 +259,11 @@ def has_fuzzy_match(keyword: str, candidates: List[str], cutoff: float = 0.8) ->
 
     for candidate in candidates:
         matcher.set_seq1(candidate)
-        # Check quick_ratio first as an upper bound
-        if matcher.quick_ratio() >= cutoff and matcher.ratio() >= cutoff:
+        # ⚡ Bolt Optimization: Check real_quick_ratio first as an O(1) upper bound based on length
+        if (
+            matcher.real_quick_ratio() >= cutoff
+            and matcher.quick_ratio() >= cutoff
+            and matcher.ratio() >= cutoff
+        ):
             return True
     return False

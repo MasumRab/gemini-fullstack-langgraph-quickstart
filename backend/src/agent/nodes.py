@@ -1,4 +1,10 @@
 # TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+# 
+# TODO(priority=Medium, complexity=Medium): [SOTA Deep Research] Benchmarking
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: MLE-bench Integration (Evaluate on Kaggle engineering tasks).
+# Subtask: DeepResearch-Bench Setup (Load tasks from muset-ai space).
+
 # TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: Review 'deepagents' repo for relevant nodes (e.g. hierarchical planning).
@@ -1117,41 +1123,74 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
         return {"evidence_bank": extracted_evidence}
 
 
+# TODO(priority=High, complexity=Medium): [SOTA Deep Research] Recursive Trigger
+# Implement logic in reflection or a new 'router' node to decide when to call 'research_subgraph'.
+# This should happen when a complex sub-topic is identified that requires its own full research loop.
 def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Executes a recursive research subgraph for a specific sub-topic.
-
-    Fine-grained implementation guide:
-
-    TODO(priority=High, complexity=Low): [research_subgraph:1] Extract sub-topic query
-    - Read `subtopic_query` from state (passed via Send)
-    - Validate query is non-empty string
-
-    TODO(priority=High, complexity=Medium): [research_subgraph:2] Create child graph config
-    - Clone parent config with new thread_id suffix (e.g., `{parent_id}_sub_{idx}`)
-    - Set recursion_depth = parent_depth + 1
-    - Set max_recursion_depth limit (default: 2)
-
-    TODO(priority=High, complexity=Medium): [research_subgraph:3] Guard against infinite recursion
-    - Check recursion_depth against max_recursion_depth
-    - If exceeded: Return early with partial results and warning
-
-    TODO(priority=High, complexity=High): [research_subgraph:4] Invoke child graph
-    - Import graph from agent.graph
-    - Call graph.invoke({"messages": [subtopic_query]}, child_config)
-    - Handle exceptions gracefully
-
-    TODO(priority=Medium, complexity=Medium): [research_subgraph:5] Merge child results
-    - Extract `web_research_result` and `evidence_bank` from child output
-    - Append to parent state's lists
-    - Deduplicate sources
-
-    TODO(priority=Low, complexity=Low): [research_subgraph:6] Return merged state
-    - Return dict with updated `web_research_result`, `evidence_bank`, `sources_gathered`
-
-    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Implements GPT Researcher pattern for recursive depth.
     """
-    raise NotImplementedError("research_subgraph not implemented")
+    with observe_span("research_subgraph", config):
+        # 1. Extract sub-topic query
+        # This is expected to be passed via Send or set in state before routing here
+        subtopic_query = state.get("subtopic_query")
+        if not subtopic_query:
+            logger.warning("research_subgraph called without subtopic_query. Skipping.")
+            return {}
+
+        # 2. Create child graph config
+        parent_config = config.get("configurable", {})
+        parent_id = parent_config.get("thread_id", "root")
+        recursion_depth = parent_config.get("recursion_depth", 0)
+        max_recursion_depth = parent_config.get("max_recursion_depth", 1) # Default to 1 level deep
+
+        # 3. Guard against infinite recursion
+        if recursion_depth >= max_recursion_depth:
+            logger.info(f"Max recursion depth reached ({recursion_depth}). Skipping subgraph for: {subtopic_query}")
+            return {
+                "validation_notes": [f"Depth limit reached. Sub-topic skipped: {subtopic_query}"]
+            }
+
+        # 4. Invoke child graph
+        # Local import to prevent circular dependency
+        from agent.graph import graph
+        
+        child_config = config.copy()
+        child_config["configurable"] = parent_config.copy()
+        child_config["configurable"]["thread_id"] = f"{parent_id}_sub_{recursion_depth + 1}"
+        child_config["configurable"]["recursion_depth"] = recursion_depth + 1
+        
+        logger.info(f"Recursive Call (Depth {recursion_depth + 1}): {subtopic_query}")
+        
+        try:
+            # We run the graph with the sub-topic as the initial message
+            # We also set planning_status to auto_approved to avoid child pausing for UI
+            child_input = {
+                "messages": [HumanMessage(content=subtopic_query)],
+                "planning_status": "auto_approved",
+                "scoping_status": "complete" # Skip scoping in subqueries
+            }
+            
+            child_output = graph.invoke(child_input, child_config)
+            
+            # 5. Merge child results
+            child_results = child_output.get("web_research_result", [])
+            child_evidence = child_output.get("evidence_bank", [])
+            child_sources = child_output.get("sources_gathered", [])
+
+            return {
+                "web_research_result": child_results,
+                "evidence_bank": child_evidence,
+                "sources_gathered": child_sources,
+                "validation_notes": [f"Successfully researched sub-topic: {subtopic_query}"]
+            }
+            
+        except Exception as e:
+            logger.error(f"Recursive research failed for {subtopic_query}: {e}")
+            return {
+                "validation_notes": [f"Recursive research failed for {subtopic_query}: {e}"]
+            }
 
 
 @graph_registry.describe(
@@ -1379,20 +1418,6 @@ TOKEN_SPLIT_PATTERN = re.compile(r"[^\w]+")
 CITATION_PATTERN = re.compile(r"\[[^\]]+\]\(https?://[^\)]+\)")
 
 
-# ⚡ Bolt Optimization: Lazy fuzzy match helper
-# Returns True as soon as a match is found, avoiding full sort/scan of get_close_matches.
-def has_fuzzy_match(word: str, possibilities: set[str], cutoff: float = 0.8) -> bool:
-    s = difflib.SequenceMatcher()
-    s.set_seq2(word)
-    for x in possibilities:
-        s.set_seq1(x)
-        if (
-            s.real_quick_ratio() >= cutoff
-            and s.quick_ratio() >= cutoff
-            and s.ratio() >= cutoff
-        ):
-            return True
-    return False
 
 
 def _keywords_from_queries(queries: List[str]) -> List[str]:
@@ -1681,6 +1706,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
             "is_sufficient": result.is_sufficient,
             "knowledge_gap": result.knowledge_gap,
             "follow_up_queries": result.follow_up_queries,
+            "subtopics_to_explore": getattr(result, "subtopics_to_explore", []),
             "research_loop_count": state["research_loop_count"],
             "number_of_ran_queries": len(state["search_query"]),
         }
