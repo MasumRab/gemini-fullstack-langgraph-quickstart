@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import StateGraph, START, END, Send
 
 from agent.state import OverallState
 from agent.configuration import Configuration
@@ -126,8 +126,25 @@ builder.add_edge("compression_node", "kg_enrich")
 builder.add_edge("kg_enrich", "checklist_verifier")
 builder.add_edge("checklist_verifier", "reflection")
 
+def reflection_router(state: OverallState) -> list[Send] | str:
+    """Route to recursive subgraphs if subtopics were identified."""
+    subtopics = state.get("subtopics_to_explore", [])
+    if subtopics:
+        return [Send("research_subgraph", {"subtopic_query": s}) for s in subtopics]
+    return "update_plan"
+
+builder.add_conditional_edges(
+    "reflection",
+    reflection_router,
+    ["research_subgraph", "update_plan"]
+)
+
+# research_subgraph results are merged automatically via state reducers
+# We need to route it back to update_plan to synchronize everything
+builder.add_edge("research_subgraph", "update_plan")
+
 # Reflection now goes to update_plan instead of evaluate_research
-builder.add_edge("reflection", "update_plan")
+# builder.add_edge("reflection", "update_plan") # Replaced by conditional edge above
 
 # Update plan goes to execution_router to decide next step
 builder.add_conditional_edges(
