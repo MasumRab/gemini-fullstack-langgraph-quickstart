@@ -1,11 +1,13 @@
-import pytest
 import logging
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from agent.security import RateLimitMiddleware
+
 from agent.app import ContentSizeLimitMiddleware
 from agent.mcp_server import FilesystemMCPServer
-from pathlib import Path
+from agent.security import RateLimitMiddleware
+
 
 # Setup simple app for middleware testing
 def create_rate_limit_app():

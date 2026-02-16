@@ -1,9 +1,9 @@
 """Security middleware for the agent application."""
 
 import ipaddress
-import time
 import logging
 import math
+import time
 from collections import defaultdict
 from typing import List
 
