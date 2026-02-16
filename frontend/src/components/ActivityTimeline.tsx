@@ -76,8 +76,8 @@ const TimelineItem = memo(function TimelineItem({
           {typeof eventItem.data === "string"
             ? eventItem.data
             : Array.isArray(eventItem.data)
-            ? (eventItem.data as string[]).join(", ")
-            : JSON.stringify(eventItem.data)}
+              ? (eventItem.data as string[]).join(", ")
+              : JSON.stringify(eventItem.data)}
         </p>
       </div>
     </li>
@@ -134,20 +134,22 @@ export const ActivityTimeline = memo(function ActivityTimeline({
         >
           <CardContent>
             {isLoading && processedEvents.length === 0 && (
-              <div className="relative pl-8 pb-4">
-                <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-800" />
-                <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-800 flex items-center justify-center ring-4 ring-neutral-900">
-                  <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-sm text-neutral-300 font-medium">
-                    Searching...
-                  </p>
-                </div>
-              </div>
+              <ul className="space-y-0 list-none m-0 p-0" role="list">
+                <li className="relative pl-8 pb-4">
+                  <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-800" />
+                  <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-800 flex items-center justify-center ring-4 ring-neutral-900">
+                    <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-neutral-300 font-medium">
+                      Searching...
+                    </p>
+                  </div>
+                </li>
+              </ul>
             )}
             {processedEvents.length > 0 ? (
-              <ul className="space-y-0 list-none p-0 m-0">
+              <ul className="space-y-0 list-none m-0 p-0" role="list">
                 {processedEvents.map((eventItem, index) => (
                   <TimelineItem
                     key={index}
