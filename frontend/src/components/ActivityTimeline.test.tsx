@@ -64,23 +64,23 @@ describe('ActivityTimeline', () => {
 
     // It should be expanded.
     if (screen.queryByTestId('chevron-up')) {
-       expect(screen.getByText('No activity to display.')).toBeInTheDocument();
-       expect(button).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByText('No activity to display.')).toBeInTheDocument();
+      expect(button).toHaveAttribute('aria-expanded', 'true');
 
-       fireEvent.click(button);
+      fireEvent.click(button);
 
-       expect(screen.getByTestId('chevron-down')).toBeInTheDocument();
-       expect(screen.queryByText('No activity to display.')).not.toBeInTheDocument();
-       expect(button).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByTestId('chevron-down')).toBeInTheDocument();
+      expect(screen.queryByText('No activity to display.')).not.toBeInTheDocument();
+      expect(button).toHaveAttribute('aria-expanded', 'false');
     } else {
-       // If it starts collapsed (which it shouldn't per logic above, but handling robustness)
-       expect(screen.getByTestId('chevron-down')).toBeInTheDocument();
-       expect(button).toHaveAttribute('aria-expanded', 'false');
+      // If it starts collapsed (which it shouldn't per logic above, but handling robustness)
+      expect(screen.getByTestId('chevron-down')).toBeInTheDocument();
+      expect(button).toHaveAttribute('aria-expanded', 'false');
 
-       fireEvent.click(button);
+      fireEvent.click(button);
 
-       expect(screen.getByTestId('chevron-up')).toBeInTheDocument();
-       expect(button).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByTestId('chevron-up')).toBeInTheDocument();
+      expect(button).toHaveAttribute('aria-expanded', 'true');
     }
   });
 
@@ -110,5 +110,36 @@ describe('ActivityTimeline', () => {
     const infoIcon = screen.getByTestId('info-icon');
     expect(infoIcon).toBeInTheDocument();
     expect(infoIcon).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('renders events as a list for accessibility', () => {
+    const events = [
+      { title: 'Event 1', data: 'Data 1' },
+      { title: 'Event 2', data: 'Data 2' },
+    ];
+    render(<ActivityTimeline processedEvents={events} isLoading={false} />);
+
+    // Expand the timeline
+    const button = screen.getByRole('button', { name: /Research Activity/i });
+    fireEvent.click(button);
+
+    // Check for list role
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+
+    // Check for listitem roles
+    const listItems = screen.getAllByRole('listitem');
+    expect(listItems).toHaveLength(2);
+    expect(listItems[0]).toHaveTextContent('Event 1');
+    expect(listItems[1]).toHaveTextContent('Event 2');
+  });
+
+  it('renders loading state as a list item', () => {
+    // Test initial loading
+    render(<ActivityTimeline processedEvents={[]} isLoading={true} />);
+    const list = screen.getByRole('list');
+    expect(list).toBeInTheDocument();
+    const listItem = screen.getByRole('listitem');
+    expect(listItem).toHaveTextContent('Searching...');
   });
 });
