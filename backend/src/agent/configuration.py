@@ -1,13 +1,13 @@
 import os
-from pydantic import BaseModel, Field
-from typing import Any, Optional
+from typing import Any
 
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
 
 from agent.models import (
+    DEFAULT_ANSWER_MODEL,
     DEFAULT_QUERY_MODEL,
     DEFAULT_REFLECTION_MODEL,
-    DEFAULT_ANSWER_MODEL,
 )
 
 
@@ -52,9 +52,23 @@ class Configuration(BaseModel):
         },
     )
 
+    recursion_depth: int = Field(
+        default=0,
+        json_schema_extra={
+            "description": "The current recursion depth of the research."
+        },
+    )
+
+    max_recursion_depth: int = Field(
+        default=1,
+        json_schema_extra={
+            "description": "The maximum allowed recursion depth for sub-topic research."
+        },
+    )
+
     @classmethod
     def from_runnable_config(
-        cls, config: Optional[RunnableConfig] = None
+        cls, config: RunnableConfig | None = None
     ) -> "Configuration":
         """Create a Configuration instance from a RunnableConfig."""
         configurable = (

@@ -1,9 +1,9 @@
 """Adapter for handling tool calling with models that do not support native API tool binding (e.g. Gemma)."""
 
 import json
-import re
 import logging
-from typing import Any, Dict, List, Optional
+import re
+from typing import Any, Dict, List
 
 from langchain_core.tools import BaseTool
 
@@ -40,8 +40,7 @@ If no tool is needed, just respond with the text answer.
 """
 
 def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
-    """
-    Converts a list of LangChain tools into a readable JSON schema string for the prompt.
+    """Converts a list of LangChain tools into a readable JSON schema string for the prompt.
     """
     tool_schemas = []
     for tool in tools:
@@ -67,9 +66,8 @@ def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
     return json.dumps(tool_schemas, indent=2)
 
 
-def parse_tool_calls(content: str, allowed_tools: Optional[List[str]] = None) -> List[Dict[str, Any]]:
-    """
-    Parses the LLM output for JSON tool calls.
+def parse_tool_calls(content: str, allowed_tools: List[str] | None = None) -> List[Dict[str, Any]]:
+    """Parses the LLM output for JSON tool calls.
     Robustly handles markdown blocks and fallback JSON extraction.
     """
     # Debug logging to see what the model actually output

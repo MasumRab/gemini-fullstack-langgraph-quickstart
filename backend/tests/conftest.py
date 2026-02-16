@@ -3,13 +3,13 @@
 This module provides reusable fixtures that can be used across all test files.
 Fixtures are designed to be path-insensitive and robust to minor code changes.
 """
+import os
 import pathlib
 import sys
-from typing import Any, Dict, List
 from types import SimpleNamespace
+from typing import Any, Dict, List
 
 import pytest
-import os
 
 # Set dummy API key before any imports that might use it
 os.environ["GEMINI_API_KEY"] = "dummy_key_for_tests"
@@ -166,7 +166,7 @@ def pytest_addoption(parser):
         "--only-extended",
         action="store_true",
         default=False,
-        help="run only tests marked as extended",
+        help="run only tests marked as extended/slow",
     )
 
 
@@ -185,7 +185,7 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_non_extended)
     else:
         # --only-extended NOT given: skip tests marked as extended
-        skip_extended = pytest.mark.skip(reason="skipping extended tests")
+        skip_extended = pytest.mark.skip(reason="skipping extended tests (use --only-extended to run)")
         for item in items:
             if "extended" in item.keywords:
                 item.add_marker(skip_extended)

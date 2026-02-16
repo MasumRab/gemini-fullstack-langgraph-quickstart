@@ -1,58 +1,49 @@
 # TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+#
+# TODO(priority=Medium, complexity=Medium): [SOTA Deep Research] Benchmarking
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: MLE-bench Integration (Evaluate on Kaggle engineering tasks).
+# Subtask: DeepResearch-Bench Setup (Load tasks from muset-ai space).
+
 # TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: Review 'deepagents' repo for relevant nodes (e.g. hierarchical planning).
 # Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
 
 import concurrent.futures
-import difflib
 import json
 import logging
 import os
 import re
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from config.app_config import config as app_config
-from search.router import search_router
 from google.genai import Client
 from langchain_core.messages import AIMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.types import Send
+from pydantic import BaseModel, Field
 
 from agent.configuration import Configuration
+from agent.models import is_gemini_model, is_gemma_model
 from agent.persistence import load_plan, save_plan
 from agent.prompts import (
     answer_instructions,
+    checklist_instructions,
+    denoising_instructions,
     gemma_answer_instructions,
     get_current_date,
-    plan_writer_instructions,
-    plan_updater_instructions,
-    reflection_instructions,
-    checklist_instructions,
     outline_instructions,
-    denoising_instructions,
+    plan_updater_instructions,
+    plan_writer_instructions,
+    reflection_instructions,
 )
 from agent.rate_limiter import get_context_manager, get_rate_limiter
 from agent.registry import graph_registry
 from agent.scoping_prompts import scoping_instructions
 from agent.scoping_schema import ScopingAssessment
-from agent.tools_and_schemas import (
-    SearchQueryList,
-    Reflection,
-    MCP_TOOLS,
-    Plan,
-    Outline,
-)
-from agent.models import is_gemma_model, is_gemini_model
-from agent.tool_adapter import (
-    format_tools_to_json_schema,
-    GEMMA_TOOL_INSTRUCTION,
-    parse_tool_calls,
-)
-from pydantic import BaseModel, Field
 from agent.state import (
     Evidence,
     OverallState,
@@ -60,13 +51,26 @@ from agent.state import (
     ReflectionState,
     WebSearchState,
 )
-from agent.utils import (
-    get_research_topic,
-    join_and_truncate,
-    get_cached_llm,
-    has_fuzzy_match,
+from agent.tool_adapter import (
+    GEMMA_TOOL_INSTRUCTION,
+    format_tools_to_json_schema,
+    parse_tool_calls,
 )
+from agent.tools_and_schemas import (
+    MCP_TOOLS,
+    Outline,
+    Plan,
+    Reflection,
+)
+from agent.utils import (
+    get_cached_llm,
+    get_research_topic,
+    has_fuzzy_match,
+    join_and_truncate,
+)
+from config.app_config import config as app_config
 from observability.langfuse import observe_span
+from search.router import search_router
 
 logger = logging.getLogger(__name__)
 
@@ -738,8 +742,7 @@ def planning_wait(state: OverallState) -> OverallState:
     outputs=["plan"],
 )
 def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Updates the research plan based on latest findings.
+    """Updates the research plan based on latest findings.
     Implements FlowSearch/Open SWE logic to dynamically adjust tasks.
     """
     with observe_span("update_plan", config):
@@ -905,8 +908,7 @@ def execution_router(state: OverallState) -> str:
     outputs=["outline"],
 )
 def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Generates a hierarchical outline (Sections -> Subsections) for the research.
+    """Generates a hierarchical outline (Sections -> Subsections) for the research.
     Implements STORM pattern for structured long-form content generation.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
@@ -989,8 +991,7 @@ def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
 
 
 def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Dynamically expands the research DAG based on findings.
+    """Dynamically expands the research DAG based on findings.
 
     Fine-grained implementation guide:
 
@@ -1027,8 +1028,7 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     outputs=["evidence_bank"],
 )
 def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Extracts structured evidence from raw web content.
+    """Extracts structured evidence from raw web content.
     Implements ManuSearch logic to convert raw search results into `Evidence` objects.
     """
     with observe_span("content_reader", config):
@@ -1117,41 +1117,73 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
         return {"evidence_bank": extracted_evidence}
 
 
+# TODO(priority=High, complexity=Medium): [SOTA Deep Research] Recursive Trigger
+# Implement logic in reflection or a new 'router' node to decide when to call 'research_subgraph'.
+# This should happen when a complex sub-topic is identified that requires its own full research loop.
 def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
+    """Executes a recursive research subgraph for a specific sub-topic.
+    Implements GPT Researcher pattern for recursive depth.
     """
-    Executes a recursive research subgraph for a specific sub-topic.
+    with observe_span("research_subgraph", config):
+        # 1. Extract sub-topic query
+        # This is expected to be passed via Send or set in state before routing here
+        subtopic_query = state.get("subtopic_query")
+        if not subtopic_query:
+            logger.warning("research_subgraph called without subtopic_query. Skipping.")
+            return {}
 
-    Fine-grained implementation guide:
+        # 2. Create child graph config
+        parent_config = config.get("configurable", {})
+        parent_id = parent_config.get("thread_id", "root")
+        recursion_depth = parent_config.get("recursion_depth", 0)
+        max_recursion_depth = parent_config.get("max_recursion_depth", 1) # Default to 1 level deep
 
-    TODO(priority=High, complexity=Low): [research_subgraph:1] Extract sub-topic query
-    - Read `subtopic_query` from state (passed via Send)
-    - Validate query is non-empty string
+        # 3. Guard against infinite recursion
+        if recursion_depth >= max_recursion_depth:
+            logger.info(f"Max recursion depth reached ({recursion_depth}). Skipping subgraph for: {subtopic_query}")
+            return {
+                "validation_notes": [f"Depth limit reached. Sub-topic skipped: {subtopic_query}"]
+            }
 
-    TODO(priority=High, complexity=Medium): [research_subgraph:2] Create child graph config
-    - Clone parent config with new thread_id suffix (e.g., `{parent_id}_sub_{idx}`)
-    - Set recursion_depth = parent_depth + 1
-    - Set max_recursion_depth limit (default: 2)
+        # 4. Invoke child graph
+        # Local import to prevent circular dependency
+        from agent.graph import graph
 
-    TODO(priority=High, complexity=Medium): [research_subgraph:3] Guard against infinite recursion
-    - Check recursion_depth against max_recursion_depth
-    - If exceeded: Return early with partial results and warning
+        child_config = config.copy()
+        child_config["configurable"] = parent_config.copy()
+        child_config["configurable"]["thread_id"] = f"{parent_id}_sub_{recursion_depth + 1}"
+        child_config["configurable"]["recursion_depth"] = recursion_depth + 1
 
-    TODO(priority=High, complexity=High): [research_subgraph:4] Invoke child graph
-    - Import graph from agent.graph
-    - Call graph.invoke({"messages": [subtopic_query]}, child_config)
-    - Handle exceptions gracefully
+        logger.info(f"Recursive Call (Depth {recursion_depth + 1}): {subtopic_query}")
 
-    TODO(priority=Medium, complexity=Medium): [research_subgraph:5] Merge child results
-    - Extract `web_research_result` and `evidence_bank` from child output
-    - Append to parent state's lists
-    - Deduplicate sources
+        try:
+            # We run the graph with the sub-topic as the initial message
+            # We also set planning_status to auto_approved to avoid child pausing for UI
+            child_input = {
+                "messages": [HumanMessage(content=subtopic_query)],
+                "planning_status": "auto_approved",
+                "scoping_status": "complete" # Skip scoping in subqueries
+            }
 
-    TODO(priority=Low, complexity=Low): [research_subgraph:6] Return merged state
-    - Return dict with updated `web_research_result`, `evidence_bank`, `sources_gathered`
+            child_output = graph.invoke(child_input, child_config)
 
-    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
-    """
-    raise NotImplementedError("research_subgraph not implemented")
+            # 5. Merge child results
+            child_results = child_output.get("web_research_result", [])
+            child_evidence = child_output.get("evidence_bank", [])
+            child_sources = child_output.get("sources_gathered", [])
+
+            return {
+                "web_research_result": child_results,
+                "evidence_bank": child_evidence,
+                "sources_gathered": child_sources,
+                "validation_notes": [f"Successfully researched sub-topic: {subtopic_query}"]
+            }
+
+        except Exception as e:
+            logger.error(f"Recursive research failed for {subtopic_query}: {e}")
+            return {
+                "validation_notes": [f"Recursive research failed for {subtopic_query}: {e}"]
+            }
 
 
 @graph_registry.describe(
@@ -1161,8 +1193,7 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
     outputs=["validation_notes"],
 )
 def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Audits gathered evidence against the outline requirements.
+    """Audits gathered evidence against the outline requirements.
 
     Generates a markdown report flagging missing citations or insufficient evidence
     for each section of the outline.
@@ -1229,8 +1260,7 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
     outputs=["messages", "artifacts"],
 )
 def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Refines the final answer by synthesizing multiple drafts.
+    """Refines the final answer by synthesizing multiple drafts.
     Implements TTD-DR pattern for high-fidelity report synthesis.
     Ensures URL restoration for citations.
     """
@@ -1315,8 +1345,7 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
 
 
 def update_artifact(id: str, content: str, type: str) -> str:
-    """
-    Updates a collaborative artifact.
+    """Updates a collaborative artifact.
     Returns a JSON string representation of the updated artifact.
     """
     artifact = {
@@ -1379,20 +1408,6 @@ TOKEN_SPLIT_PATTERN = re.compile(r"[^\w]+")
 CITATION_PATTERN = re.compile(r"\[[^\]]+\]\(https?://[^\)]+\)")
 
 
-# ⚡ Bolt Optimization: Lazy fuzzy match helper
-# Returns True as soon as a match is found, avoiding full sort/scan of get_close_matches.
-def has_fuzzy_match(word: str, possibilities: set[str], cutoff: float = 0.8) -> bool:
-    s = difflib.SequenceMatcher()
-    s.set_seq2(word)
-    for x in possibilities:
-        s.set_seq1(x)
-        if (
-            s.real_quick_ratio() >= cutoff
-            and s.quick_ratio() >= cutoff
-            and s.ratio() >= cutoff
-        ):
-            return True
-    return False
 
 
 def _keywords_from_queries(queries: List[str]) -> List[str]:
@@ -1681,6 +1696,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
             "is_sufficient": result.is_sufficient,
             "knowledge_gap": result.knowledge_gap,
             "follow_up_queries": result.follow_up_queries,
+            "subtopics_to_explore": getattr(result, "subtopics_to_explore", []),
             "research_loop_count": state["research_loop_count"],
             "number_of_ran_queries": len(state["search_query"]),
         }

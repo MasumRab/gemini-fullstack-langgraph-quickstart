@@ -3,25 +3,33 @@
 Tests cover edge cases, error handling, and typical usage patterns.
 All tests are designed to be path-insensitive and robust to minor changes.
 """
-import pytest
-from typing import List
+
+from langchain_core.messages import AIMessage, HumanMessage
 
 from tests.helpers import (
-    MockSegment, MockChunk, MockSupport, MockCandidate, MockResponse, MockSite
+    MockCandidate,
+    MockChunk,
+    MockResponse,
+    MockSegment,
+    MockSite,
+    MockSupport,
 )
-from langchain_core.messages import HumanMessage, AIMessage
+
+from agent.utils import (
+    get_citations,
+    get_research_topic,
+    insert_citation_markers,
+    resolve_urls,
+    join_and_truncate,
+    has_fuzzy_match,
+)
+
 
 def make_human_message(content):
     return HumanMessage(content=content)
 
 def make_ai_message(content):
     return AIMessage(content=content)
-from agent.utils import (
-    get_research_topic,
-    resolve_urls,
-    insert_citation_markers,
-    get_citations,
-)
 
 
 # =============================================================================
@@ -309,8 +317,6 @@ class TestGetCitations:
 # Tests for join_and_truncate
 # =============================================================================
 
-from agent.utils import join_and_truncate
-
 class TestJoinAndTruncate:
     """Tests for the join_and_truncate function."""
 
@@ -382,8 +388,6 @@ class TestJoinAndTruncate:
 # =============================================================================
 # Tests for has_fuzzy_match
 # =============================================================================
-
-from agent.utils import has_fuzzy_match
 
 class TestHasFuzzyMatch:
     """Tests for the has_fuzzy_match function."""

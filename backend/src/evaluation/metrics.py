@@ -1,13 +1,14 @@
-from typing import List, Dict, Set
+import json
 import re
 from collections import Counter
 from difflib import SequenceMatcher
+from typing import Dict, List
+
 import numpy as np
-import json
+
 
 class DeepResearchMetrics:
-    """
-    Implementation of DeepResearch-Bench evaluation metrics.
+    """Implementation of DeepResearch-Bench evaluation metrics.
     Based on SOTA frameworks: RhinoInsight, FlowSearch, TTD-DR
     """
 
@@ -18,8 +19,7 @@ class DeepResearchMetrics:
         key_facts: List[Dict],
         threshold: float = 0.7
     ) -> Dict:
-        """
-        Measure if the generated answer is correct on first attempt.
+        """Measure if the generated answer is correct on first attempt.
         """
         # Extract facts from generated answer
         generated_facts = DeepResearchMetrics._extract_facts(generated_answer)
@@ -62,8 +62,7 @@ class DeepResearchMetrics:
         required_sources: List[str],
         min_evidence_count: int
     ) -> Dict:
-        """
-        Evaluate quality of retrieved evidence.
+        """Evaluate quality of retrieved evidence.
         """
         # Extract domains from retrieved docs
         retrieved_domains = set()
@@ -111,8 +110,7 @@ class DeepResearchMetrics:
         llm_client,
         confidence_threshold: float = 0.7
     ) -> Dict:
-        """
-        Measure how well each subgoal was addressed.
+        """Measure how well each subgoal was addressed.
         """
         completed = 0
         subgoal_results = []
@@ -150,8 +148,7 @@ class DeepResearchMetrics:
         retrieved_docs: List[Dict],
         llm_client
     ) -> Dict:
-        """
-        Detect factual claims not supported by evidence.
+        """Detect factual claims not supported by evidence.
         """
         # Extract claims using LLM
         claims_prompt = f"""
@@ -161,7 +158,6 @@ Answer: {generated_answer}
 
 Format: {{"claims": ["claim1", "claim2", ...]}}
 """
-        import json
         try:
             if hasattr(llm_client, "invoke"):
                  response = llm_client.invoke(claims_prompt)
@@ -228,8 +224,7 @@ Answer:
         total_context_length: int,
         answer_quality_score: float
     ) -> Dict:
-        """
-        Measure token efficiency: quality per unit of context used.
+        """Measure token efficiency: quality per unit of context used.
         """
         # Approximate token counts (4 chars ≈ 1 token)
         answer_tokens = final_answer_length / 4

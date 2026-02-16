@@ -6,20 +6,21 @@ import pathlib
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Response, Request
+from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from agent.mcp_config import load_mcp_settings
-from agent.security import SecurityHeadersMiddleware, RateLimitMiddleware
+from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 from agent.tools_and_schemas import MCP_TOOLS, get_tools_from_mcp
 from config.app_config import config as app_config
 from config.validation import check_env_strict
+
 
 # Define Middleware for Content Size Limit (Defense against DoS)
 class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
@@ -85,8 +86,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """
-    Overridden handler to prevent RecursionError when serializing deeply nested invalid inputs.
+    """Overridden handler to prevent RecursionError when serializing deeply nested invalid inputs.
     Standard FastAPI handler crashes on deep JSON because it tries to echo the input.
     """
     # We construct a simplified error list that doesn't include the full 'input' if it's huge
@@ -133,7 +133,8 @@ app.add_middleware(
     RateLimitMiddleware,
     limit=100,
     window=60,
-    protected_paths=["/agent", "/threads"]
+    protected_paths=["/agent", "/threads"],
+    trust_proxy_headers=app_config.trust_proxy_headers
 )
 
 # Add Security Headers (OUTERMOST - added last)
@@ -174,8 +175,7 @@ class InvokeRequest(BaseModel):
 
     @field_validator("input")
     def validate_input_complexity(cls, v):
-        """
-        🛡️ Sentinel: Validate input complexity to prevent Denial of Service (DoS).
+        """🛡️ Sentinel: Validate input complexity to prevent Denial of Service (DoS).
         Checks:
         1. Max String Length: 50,000 chars (prevents huge blobs)
         2. Max Total Size: 200,000 chars (prevents memory exhaustion)

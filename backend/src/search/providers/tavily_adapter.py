@@ -1,6 +1,7 @@
-from typing import List, Optional
-import os
 import logging
+import os
+from typing import List
+
 from ..provider import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ except ImportError:
 class TavilyAdapter(SearchProvider):
     """Adapter for Tavily Search API."""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """Initialize with API key."""
         # Avoid circular import by using os.getenv directly or checking config later
         # We will follow the pattern of checking env var in init
@@ -31,13 +32,12 @@ class TavilyAdapter(SearchProvider):
         self,
         query: str,
         max_results: int = 5,
-        region: Optional[str] = None,
-        time_range: Optional[str] = None,
+        region: str | None = None,
+        time_range: str | None = None,
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search.
+        """Execute search.
         """
         if not self.client:
             if not TavilyClient:

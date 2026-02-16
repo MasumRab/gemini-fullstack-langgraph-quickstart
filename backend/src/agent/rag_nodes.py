@@ -6,8 +6,12 @@ from typing import Any, Dict
 from langchain_core.runnables import RunnableConfig
 
 try:  # Local imports to avoid circular references when optional modules exist
-    from agent.rag import create_rag_tool, is_rag_enabled, rag_config  # type: ignore
-    from agent.rag import Resource  # noqa: F401  # exported for type checkers
+    from agent.rag import (  # type: ignore
+        Resource,  # noqa: F401  # exported for type checkers
+        create_rag_tool,
+        is_rag_enabled,
+        rag_config,
+    )
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
 
     class _MissingRAGConfig:  # type: ignore
@@ -31,7 +35,6 @@ logger = logging.getLogger(__name__)
 
 def _lazy_import_state_utils():
     """Lazy import helpers to avoid circular dependencies."""
-
     from agent.state import OverallState, create_rag_resources  # type: ignore
     from agent.utils import get_research_topic  # type: ignore
 
@@ -40,7 +43,6 @@ def _lazy_import_state_utils():
 
 def rag_retrieve(state: Dict[str, Any], config: RunnableConfig) -> Dict[str, Any]:
     """Retrieve documents from configured RAG sources."""
-
     _, create_rag_resources, get_research_topic = _lazy_import_state_utils()
 
     logger.info("Starting RAG retrieval")
@@ -93,13 +95,11 @@ def rag_retrieve(state: Dict[str, Any], config: RunnableConfig) -> Dict[str, Any
 
 def has_rag_resources(state: Dict[str, Any]) -> bool:
     """Check if explicit RAG resources are configured in state."""
-
     return bool(state.get("rag_resources", []))
 
 
 def should_use_rag(state: Dict[str, Any]) -> str:
     """Routing function deciding whether to call RAG or fallback to web search."""
-
     if not is_rag_enabled():
         logger.info("RAG is not enabled, routing to web research")
         return "web_research"
@@ -118,7 +118,6 @@ def should_use_rag(state: Dict[str, Any]) -> str:
 
 def rag_fallback_to_web(state: Dict[str, Any]) -> str:
     """Determine whether to fall back to web search after a RAG attempt."""
-
     rag_documents = state.get("rag_documents", [])
     research_loop_count = state.get("research_loop_count", 0) or 0
     is_continue_research = research_loop_count > 0
@@ -144,6 +143,5 @@ def rag_fallback_to_web(state: Dict[str, Any]) -> str:
 
 def continue_research_rag_to_web(_state: Dict[str, Any]) -> str:
     """Routing helper for continue_research iterations that always does web search."""
-
     logger.info("Continue research: performing web search after RAG for comprehensive coverage")
     return "web_research"

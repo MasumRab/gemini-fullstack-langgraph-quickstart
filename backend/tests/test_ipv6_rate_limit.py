@@ -1,7 +1,10 @@
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+
 from agent.security import RateLimitMiddleware
+
 
 class MockApp:
     pass
@@ -63,7 +66,11 @@ async def test_ipv6_rate_limiting_shared_bucket():
     # Should be rate limited (429 response object)
     # The response is a Starlette Response object
     assert response2.status_code == 429
-    assert response2.body == b"Too Many Requests"
+    import json
+    body = json.loads(response2.body)
+    assert body["detail"] == "Too Many Requests"
+    assert "retry_after" in body
+    assert "retry-after" in response2.headers or "Retry-After" in response2.headers
 
 @pytest.mark.asyncio
 async def test_ipv6_rate_limiting_different_bucket():

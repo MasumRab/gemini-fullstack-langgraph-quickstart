@@ -1,10 +1,8 @@
-import asyncio
-import json
-from pathlib import Path
-from typing import Dict, List, Optional, Any
-from mcp import Tool
-from mcp.server.fastmcp import FastMCP # Attempting to use High Level API if available, or fallback to manual server
 import logging
+from pathlib import Path
+from typing import Dict, List
+
+from mcp import Tool
 
 # We will use the standard MCPServer class from mcp (low level) as per spec, or FastMCP if it's easier.
 # The spec uses MCPServer but imports seem slightly different in latest mcp.
@@ -13,9 +11,9 @@ import logging
 # Based on "from mcp import MCPServer, Tool, ToolResult", this looks like a specific version.
 
 try:
-    from mcp.server import Server
-    from mcp.types import Tool, TextContent, EmbeddedResource, ImageContent
     import mcp.types as types
+    from mcp.server import Server
+    from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool
 except ImportError:
     # Fallback or different import structure
     pass
@@ -30,14 +28,13 @@ MAX_DIR_ITEMS = 1000
 
 class ToolResult:
     """Helper to match the spec's ToolResult expectation if not in mcp.types directly as that name"""
-    def __init__(self, success: bool, data: Optional[Dict] = None, error: Optional[str] = None):
+    def __init__(self, success: bool, data: Dict | None = None, error: str | None = None):
         self.success = success
         self.data = data
         self.error = error
 
 class FilesystemMCPServer:
-    """
-    MCP Server for filesystem operations.
+    """MCP Server for filesystem operations.
     Enables agent to read/write research artifacts.
     """
 
@@ -49,7 +46,6 @@ class FilesystemMCPServer:
 
     def _register_tools(self):
         """Register available filesystem tools"""
-
         # We store tools in a list of wrappers that include the handler
         self.tools.append(self._create_tool(
             name="read_file",

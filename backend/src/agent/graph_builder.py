@@ -14,28 +14,25 @@ Usage in notebooks:
     result = await graph.ainvoke(state, config)
 """
 
-import os
-from typing import Optional
 from dotenv import load_dotenv
+from langgraph.graph import END, START, StateGraph
 
-from langgraph.graph import StateGraph, START, END
-
-from agent.state import OverallState
 from agent.configuration import Configuration
 from agent.nodes import (
-    load_context,
-    generate_plan,
-    continue_to_web_research,
-    planning_mode,
-    planning_wait,
-    planning_router,
-    web_research,
-    validate_web_results,
     compression_node,
-    reflection,
-    finalize_answer,
+    continue_to_web_research,
     evaluate_research,
+    finalize_answer,
+    generate_plan,
+    load_context,
+    planning_mode,
+    planning_router,
+    planning_wait,
+    reflection,
+    validate_web_results,
+    web_research,
 )
+from agent.state import OverallState
 
 # Optional imports with graceful fallback
 try:
@@ -46,7 +43,7 @@ except ImportError:
     kg_enrich = None
 
 try:
-    from agent.rag_nodes import rag_retrieve, should_use_rag, rag_fallback_to_web
+    from agent.rag_nodes import rag_fallback_to_web, rag_retrieve, should_use_rag
     RAG_AVAILABLE = True
 except ImportError:
     RAG_AVAILABLE = False

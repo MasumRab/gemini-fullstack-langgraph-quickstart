@@ -1,8 +1,16 @@
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from agent.nodes import generate_plan, web_research, reflection, denoising_refiner, load_context
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
+
 from agent.models import TEST_MODEL
+from agent.nodes import (
+    denoising_refiner,
+    generate_plan,
+    load_context,
+    reflection,
+    web_research,
+)
 
 TEST_MODEL = "gemma-3-27b-it"
 

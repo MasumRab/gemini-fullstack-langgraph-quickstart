@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import operator
 from dataclasses import dataclass, field
 from typing import Dict, List, TypedDict
 
@@ -7,12 +8,8 @@ from langgraph.graph import add_messages
 from typing_extensions import Annotated
 
 
-import operator
-
-
 class Evidence(TypedDict):
-    """
-    Structured evidence extracted from web content.
+    """Structured evidence extracted from web content.
     Used by ManuSearch/content_reader.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
@@ -23,8 +20,7 @@ class Evidence(TypedDict):
 
 
 class Todo(TypedDict, total=False):
-    """
-    Represents a single unit of work in the plan.
+    """Represents a single unit of work in the plan.
     Use total=False to allow for partial updates and backward compatibility.
     """
     id: str
@@ -42,8 +38,7 @@ class Artifact(TypedDict):
 
 
 class ScopingState(TypedDict, total=False):
-    """
-    Scoping fields used during the agent's initial question scoping phase.
+    """Scoping fields used during the agent's initial question scoping phase.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
     query: str
@@ -67,8 +62,7 @@ class Outline(TypedDict):
 
 
 class OverallState(ScopingState, TypedDict, total=False):
-    """
-    Overall agent state. Extends ScopingState and adds plan and other fields.
+    """Overall agent state. Extends ScopingState and adds plan and other fields.
     Inheritance from ScopingState ensures scoping fields are available.
     """
     messages: Annotated[list, add_messages]
@@ -103,6 +97,7 @@ class ReflectionState(TypedDict):
     is_sufficient: bool
     knowledge_gap: str
     follow_up_queries: Annotated[list, operator.add]
+    subtopics_to_explore: List[str] # New field for recursive research
     research_loop_count: int
     number_of_ran_queries: int
 
@@ -122,8 +117,7 @@ class WebSearchState(TypedDict):
 
 
 def validate_scoping(state: OverallState) -> bool:
-    """
-    Runtime validation helper to check if required scoping fields are present.
+    """Runtime validation helper to check if required scoping fields are present.
     Returns True if valid, False otherwise.
     """
     required_fields = ["query", "clarifications_needed", "user_answers"]

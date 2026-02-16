@@ -1,6 +1,7 @@
-from typing import List, Optional
-import os
 import logging
+import os
+from typing import List
+
 from google.genai import Client
 
 from ..provider import SearchProvider, SearchResult
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 class GoogleSearchAdapter(SearchProvider):
     """Adapter for Google Search using the GenAI SDK."""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """Initialize with API key."""
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         if not self.api_key:
@@ -21,13 +22,12 @@ class GoogleSearchAdapter(SearchProvider):
         self,
         query: str,
         max_results: int = 5,
-        region: Optional[str] = None,
-        time_range: Optional[str] = None,
+        region: str | None = None,
+        time_range: str | None = None,
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search.
+        """Execute search.
         Note: region, time_range, safe_search, tuned are not currently supported by the GenAI SDK tool wrapper.
         """
         from agent.models import GEMINI_FLASH

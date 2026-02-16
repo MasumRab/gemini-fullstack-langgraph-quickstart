@@ -1,13 +1,14 @@
-from dataclasses import dataclass, field
-from typing import Optional, List, Tuple
 import os
+from dataclasses import dataclass, field
+from typing import List, Tuple
+
 
 @dataclass(frozen=True)
 class MCPSettings:
     """Configuration settings for Model Context Protocol (MCP)."""
     enabled: bool
-    endpoint: Optional[str] = None
-    api_key: Optional[str] = None
+    endpoint: str | None = None
+    api_key: str | None = None
     timeout_seconds: int = 30
     tool_whitelist: Tuple[str, ...] = field(default_factory=tuple)
 
@@ -65,15 +66,15 @@ def validate(settings: MCPSettings) -> None:
 # - Track connection latency, success/failure rates
 # - Integrate with Langfuse spans
 class McpConnectionManager:
-    def __init__(self, settings: Optional[MCPSettings] = None):
+    def __init__(self, settings: MCPSettings | None = None):
         self.settings = settings or load_mcp_settings()
         self.clients = []
 
     def get_persistence_tools(self) -> List:
-        """
-        Returns persistence tools wrapped for LangChain.
+        """Returns persistence tools wrapped for LangChain.
         """
         from langchain_core.tools import StructuredTool
+
         from agent.mcp_persistence import load_thread_plan, save_thread_plan
         
         return [

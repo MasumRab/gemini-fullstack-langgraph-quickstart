@@ -1,13 +1,13 @@
-from typing import List, Dict, Any, Optional
 import json
 import logging
+from typing import Dict, List
+
 from agent.llm_client import call_llm_robust
 
 logger = logging.getLogger(__name__)
 
 class MCPToolUser:
-    """
-    Enables agent to use MCP tools for planned operations.
+    """Enables agent to use MCP tools for planned operations.
     Implements tool selection and execution logic.
     """
 
@@ -73,8 +73,7 @@ class MCPToolUser:
         task_description: str,
         llm_client
     ) -> List[Dict]:
-        """
-        Use LLM to plan sequence of tool calls for a task.
+        """Use LLM to plan sequence of tool calls for a task.
         This is the "planned tool use" capability.
         """
         # Build tool descriptions

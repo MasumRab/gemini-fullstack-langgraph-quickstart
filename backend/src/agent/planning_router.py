@@ -1,5 +1,7 @@
-from typing import Dict, Any
+from typing import Any, Dict
+
 from agent.state import OverallState
+
 
 def handle_end_plan(state: OverallState) -> Dict[str, Any]:
     return {
@@ -21,8 +23,7 @@ def handle_start_plan(state: OverallState) -> Dict[str, Any]:
     }
 
 def planning_router_logic(user_input: str, state: OverallState) -> str:
-    """
-    Routes planning-related commands to appropriate handlers.
+    """Routes planning-related commands to appropriate handlers.
     Returns the name of the next node.
     """
     user_input = user_input.strip().lower()

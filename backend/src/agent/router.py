@@ -1,7 +1,6 @@
-from langgraph.graph import StateGraph, START, END
 from langchain_core.runnables import RunnableConfig
+from langgraph.graph import END, START, StateGraph
 
-from agent.state import OverallState
 from agent.configuration import Configuration
 
 # Import the variant graphs
@@ -10,6 +9,7 @@ from agent.graph import graph as parallel_graph
 from agent.graphs.linear import graph as linear_graph
 from agent.graphs.supervisor import graph as supervisor_graph
 from agent.registry import graph_registry
+from agent.state import OverallState
 
 # Meta-Router Graph
 # This graph acts as a facade, routing the initial request to the configured agent variant.

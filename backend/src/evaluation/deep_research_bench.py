@@ -32,8 +32,7 @@
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 
 def evaluate_deep_research():
-    """
-    Evaluates the agent on DeepResearch-Bench (muset-ai).
+    """Evaluates the agent on DeepResearch-Bench (muset-ai).
     """
     # TODO(priority=High, complexity=Low): [deep_bench:1] Load dataset
     dataset = []  # load_deep_research_dataset()

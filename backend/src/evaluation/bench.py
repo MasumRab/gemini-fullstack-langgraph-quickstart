@@ -1,9 +1,10 @@
 import json
-from pathlib import Path
-from typing import Dict, List, Any
-from tqdm import tqdm
-import numpy as np
 import logging
+from pathlib import Path
+from typing import Dict, List
+
+import numpy as np
+from tqdm import tqdm
 
 # We assume 'agent' and 'evaluation' are in python path
 from agent.deep_search_agent import DeepSearchAgent
@@ -12,8 +13,7 @@ from evaluation.metrics import DeepResearchMetrics
 logger = logging.getLogger(__name__)
 
 class BenchmarkEvaluator:
-    """
-    Complete evaluation pipeline for DeepResearch-Bench.
+    """Complete evaluation pipeline for DeepResearch-Bench.
     Matches the leaderboard evaluation protocol.
     """
 
@@ -39,7 +39,7 @@ class BenchmarkEvaluator:
         if not file_path.exists():
             logger.warning(f"File not found: {file_path}")
             return []
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             for line in f:
                 if line.strip():
                     data.append(json.loads(line))
@@ -50,8 +50,7 @@ class BenchmarkEvaluator:
         output_file: str = "results/benchmark_results.json",
         save_detailed: bool = True
     ) -> Dict:
-        """
-        Run complete benchmark evaluation.
+        """Run complete benchmark evaluation.
 
         Returns aggregate scores matching leaderboard format.
         """
@@ -191,8 +190,7 @@ class BenchmarkEvaluator:
         return results
 
     def _calculate_overall_score(self, aggregate_scores: Dict) -> float:
-        """
-        Calculate overall benchmark score matching leaderboard formula.
+        """Calculate overall benchmark score matching leaderboard formula.
         """
         weights = {
             "pass_at_1": 0.40,
@@ -217,7 +215,7 @@ class BenchmarkEvaluator:
         print("DEEPRESEARCH-BENCH EVALUATION RESULTS")
         print("="*60)
         print(f"Overall Score: {scores['overall_score']:.2f}%")
-        print(f"\nDetailed Metrics:")
+        print("\nDetailed Metrics:")
         print(f"  Pass@1 Accuracy:      {scores['pass_at_1_accuracy']:.2f}%")
         print(f"  Evidence Quality:     {scores['evidence_quality']:.2f}%")
         print(f"  Subgoal Completion:   {scores['subgoal_completion']:.2f}%")

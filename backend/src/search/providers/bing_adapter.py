@@ -1,7 +1,9 @@
-from typing import List, Optional
-import os
 import logging
+import os
+from typing import List
+
 import requests
+
 from ..provider import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
@@ -9,7 +11,7 @@ logger = logging.getLogger(__name__)
 class BingAdapter(SearchProvider):
     """Adapter for Bing Web Search API."""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """Initialize with API key."""
         self.api_key = api_key or os.getenv("BING_API_KEY")
         self.endpoint = os.getenv("BING_ENDPOINT", "https://api.bing.microsoft.com/v7.0/search")
@@ -21,13 +23,12 @@ class BingAdapter(SearchProvider):
         self,
         query: str,
         max_results: int = 5,
-        region: Optional[str] = None,
-        time_range: Optional[str] = None,
+        region: str | None = None,
+        time_range: str | None = None,
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search using Bing API.
+        """Execute search using Bing API.
         """
         if not self.api_key:
             return []

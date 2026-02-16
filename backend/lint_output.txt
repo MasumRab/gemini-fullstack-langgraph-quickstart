@@ -1,0 +1,3829 @@
+D100 Missing docstring in public module
+--> examples/cli_research.py:1:1
+
+T201 `print` found
+  --> examples/cli_research.py:41:9
+   |
+39 |     messages = result.get("messages", [])
+40 |     if messages:
+41 |         print(messages[-1].content)
+   |         ^^^^^
+   |
+help: Remove `print`
+
+D200 One-line docstring should fit on one line
+  --> examples/gemma_providers.py:50:9
+   |
+49 |       def predict(self, prompt: str, max_tokens: int = 256, **kwargs) -> str:
+50 | /         """Send prediction request to Vertex AI Endpoint.
+51 | |         """
+   | |___________^
+52 |           instance_dict = {"inputs": prompt, "max_tokens": max_tokens, **kwargs}
+   |
+help: Reformat to one line
+
+D200 One-line docstring should fit on one line
+   --> examples/gemma_providers.py:97:9
+    |
+ 96 |       def generate(self, prompt: str, system: str | None = None, **kwargs) -> str:
+ 97 | /         """Generate text completion.
+ 98 | |         """
+    | |___________^
+ 99 |           payload = {
+100 |               "model": self.model_name,
+    |
+help: Reformat to one line
+
+D200 One-line docstring should fit on one line
+   --> examples/gemma_providers.py:161:9
+    |
+160 |       def generate(self, prompt: str, max_tokens: int = 256, **kwargs) -> str:
+161 | /         """Generate text.
+162 | |         """
+    | |___________^
+163 |           output = self.llm(
+164 |               prompt,
+    |
+help: Reformat to one line
+
+D200 One-line docstring should fit on one line
+   --> examples/gemma_providers.py:171:9
+    |
+170 |       def create_chat_completion(self, messages: List[Dict[str, str]], **kwargs) -> str:
+171 | /         """Chat completion using built-in chat formatting.
+172 | |         """
+    | |___________^
+173 |           output = self.llm.create_chat_completion(
+174 |               messages=messages,
+    |
+help: Reformat to one line
+
+D101 Missing docstring in public class
+  --> examples/kaggle_integration.py:21:7
+   |
+20 | # Define a base LLM interface compatible with the project
+21 | class BaseLLMClient:
+   |       ^^^^^^^^^^^^^
+22 |     def generate(self, prompt: str, **kwargs) -> str:
+23 |         raise NotImplementedError
+   |
+
+D102 Missing docstring in public method
+  --> examples/kaggle_integration.py:22:9
+   |
+20 | # Define a base LLM interface compatible with the project
+21 | class BaseLLMClient:
+22 |     def generate(self, prompt: str, **kwargs) -> str:
+   |         ^^^^^^^^
+23 |         raise NotImplementedError
+   |
+
+T201 `print` found
+  --> examples/kaggle_integration.py:44:9
+   |
+42 |             raise ImportError("Please install 'kagglehub': pip install kagglehub")
+43 |
+44 |         print(f"Downloading model: {handle}...")
+   |         ^^^^^
+45 |         model_path = kagglehub.model_download(handle, path=path)
+46 |         print(f"Model downloaded to: {model_path}")
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> examples/kaggle_integration.py:46:9
+   |
+44 |         print(f"Downloading model: {handle}...")
+45 |         model_path = kagglehub.model_download(handle, path=path)
+46 |         print(f"Model downloaded to: {model_path}")
+   |         ^^^^^
+47 |         return model_path
+   |
+help: Remove `print`
+
+F401 `torch` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> examples/kaggle_integration.py:64:20
+   |
+62 |         """
+63 |         try:
+64 |             import torch
+   |                    ^^^^^
+65 |             from transformers import AutoModelForCausalLM, AutoTokenizer
+66 |         except ImportError:
+   |
+help: Remove unused import: `torch`
+
+T201 `print` found
+  --> examples/kaggle_integration.py:75:9
+   |
+73 |             self.model_path = model_handle
+74 |
+75 |         print(f"Loading model from {self.model_path}...")
+   |         ^^^^^
+76 |
+77 |         # 2. Load Tokenizer & Model
+   |
+help: Remove `print`
+
+D205 1 blank line required between summary line and description
+   --> examples/kaggle_integration.py:101:5
+    |
+100 |   class SimpleReActAgent:
+101 | /     """A simple ReAct (Reason+Act) wrapper to enable tool use for
+102 | |     plain text-generation models downloaded from Kaggle.
+103 | |
+104 | |     This replaces the native function calling capabilities of API-based models.
+105 | |     """
+    | |_______^
+106 |
+107 |       REACT_PROMPT_TEMPLATE = """
+    |
+help: Insert single blank line
+
+D107 Missing docstring in `__init__`
+   --> examples/kaggle_integration.py:129:9
+    |
+127 | """
+128 |
+129 |     def __init__(self, llm: BaseLLMClient, tools: List[Any]):
+    |         ^^^^^^^^
+130 |         self.llm = llm
+131 |         self.tools = {t.name: t for t in tools}
+    |
+
+D101 Missing docstring in public class
+   --> examples/kaggle_integration.py:180:15
+    |
+178 |     try:
+179 |         # Mock Tool
+180 |         class MockTool:
+    |               ^^^^^^^^
+181 |             name = "calculator"
+182 |             description = "Calculates math expressions"
+    |
+
+D102 Missing docstring in public method
+   --> examples/kaggle_integration.py:183:17
+    |
+181 |             name = "calculator"
+182 |             description = "Calculates math expressions"
+183 |             def invoke(self, input_str):
+    |                 ^^^^^^
+184 |                 # Use a safe math expression evaluator instead of eval()
+185 |                 import ast
+    |
+
+T201 `print` found
+   --> examples/kaggle_integration.py:209:9
+    |
+207 |                     return f"Error evaluating expression: {str(e)}"
+208 |
+209 |         print("This module provides scaffolding. To run a real test, install kagglehub and transformers.")
+    |         ^^^^^
+210 |         # client = KaggleHuggingFaceClient("google/gemma/pyTorch/2b-it")
+211 |         # agent = SimpleReActAgent(client, [MockTool()])
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> examples/kaggle_integration.py:215:9
+    |
+214 |     except ImportError:
+215 |         print("Dependencies missing. Run: pip install kagglehub transformers torch")
+    |         ^^^^^
+    |
+help: Remove `print`
+
+D415 First line should end with a period, question mark, or exclamation point
+ --> scripts/benchmark.py:1:1
+  |
+1 | / """Benchmark Orchestration Script
+2 | |
+3 | | This script runs the agent against a dataset of questions and evaluates performance
+4 | | using the evaluators defined in backend/tests/evaluators.py.
+5 | | """
+  | |___^
+6 |
+7 |   import asyncio
+  |
+help: Add closing punctuation
+
+F841 Local variable `results` is assigned to but never used
+  --> scripts/benchmark.py:22:5
+   |
+20 | async def run_benchmark():
+21 |     """Run evaluation for all questions."""
+22 |     results = []
+   |     ^^^^^^^
+23 |
+24 |     for item in QUESTIONS:
+   |
+help: Remove assignment to unused variable `results`
+
+D100 Missing docstring in public module
+--> scripts/check_path.py:1:1
+
+T201 `print` found
+ --> scripts/check_path.py:4:1
+  |
+2 | import sys
+3 |
+4 | print(sys.path)
+  | ^^^^^
+5 | try:
+6 |     import agent
+  |
+help: Remove `print`
+
+T201 `print` found
+ --> scripts/check_path.py:7:5
+  |
+5 | try:
+6 |     import agent
+7 |     print(f"Agent: {agent}")
+  |     ^^^^^
+8 | except ImportError as e:
+9 |     print(f"ImportError: {e}")
+  |
+help: Remove `print`
+
+T201 `print` found
+ --> scripts/check_path.py:9:5
+  |
+7 |     print(f"Agent: {agent}")
+8 | except ImportError as e:
+9 |     print(f"ImportError: {e}")
+  |     ^^^^^
+  |
+help: Remove `print`
+
+D100 Missing docstring in public module
+--> scripts/verify_imports.py:1:1
+
+T201 `print` found
+  --> scripts/verify_imports.py:9:5
+   |
+ 8 | try:
+ 9 |     print("Successfully imported Configuration")
+   |     ^^^^^
+10 | except Exception as e:
+11 |     print(f"Failed to import Configuration: {e}")
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/verify_imports.py:11:5
+   |
+ 9 |     print("Successfully imported Configuration")
+10 | except Exception as e:
+11 |     print(f"Failed to import Configuration: {e}")
+   |     ^^^^^
+12 |
+13 | try:
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/verify_imports.py:14:5
+   |
+13 | try:
+14 |     print("Successfully imported nodes")
+   |     ^^^^^
+15 | except Exception as e:
+16 |     print(f"Failed to import nodes: {e}")
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/verify_imports.py:16:5
+   |
+14 |     print("Successfully imported nodes")
+15 | except Exception as e:
+16 |     print(f"Failed to import nodes: {e}")
+   |     ^^^^^
+   |
+help: Remove `print`
+
+D100 Missing docstring in public module
+--> scripts/visualize_agent_graph.py:1:1
+
+D103 Missing docstring in public function
+  --> scripts/visualize_agent_graph.py:14:5
+   |
+12 | sys.path.append(str(src_path))
+13 |
+14 | def visualize_graph(graph, name):
+   |     ^^^^^^^^^^^^^^^
+15 |     if graph is None:
+16 |         print(f"Skipping {name} as it was not imported.")
+   |
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:16:9
+   |
+14 | def visualize_graph(graph, name):
+15 |     if graph is None:
+16 |         print(f"Skipping {name} as it was not imported.")
+   |         ^^^^^
+17 |         return
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:19:5
+   |
+17 |         return
+18 |
+19 |     print(f"\n{'='*20} {name} {'='*20}\n")
+   |     ^^^^^
+20 |
+21 |     # Mermaid
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:24:9
+   |
+22 |     try:
+23 |         mermaid_code = graph.get_graph().draw_mermaid()
+24 |         print(f"\n--- Mermaid Diagram for {name} ---")
+   |         ^^^^^
+25 |         print(mermaid_code)
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:25:9
+   |
+23 |         mermaid_code = graph.get_graph().draw_mermaid()
+24 |         print(f"\n--- Mermaid Diagram for {name} ---")
+25 |         print(mermaid_code)
+   |         ^^^^^
+26 |
+27 |         filename = name.lower().replace(' ', '_')
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:30:9
+   |
+28 |         with open(f"{filename}.mermaid", "w", encoding="utf-8") as f:
+29 |             f.write(mermaid_code)
+30 |         print(f"Saved mermaid code to {filename}.mermaid")
+   |         ^^^^^
+31 |
+32 |         # Try PNG
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:37:13
+   |
+35 |             with open(f"{filename}.png", "wb") as f:
+36 |                 f.write(png_data)
+37 |             print(f"Saved PNG to {filename}.png")
+   |             ^^^^^
+38 |         except Exception as e:
+39 |             print(f"Could not save PNG for {name} (likely missing mermaid-cli): {e}")
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:39:13
+   |
+37 |             print(f"Saved PNG to {filename}.png")
+38 |         except Exception as e:
+39 |             print(f"Could not save PNG for {name} (likely missing mermaid-cli): {e}")
+   |             ^^^^^
+40 |
+41 |     except Exception as e:
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:42:9
+   |
+41 |     except Exception as e:
+42 |         print(f"Error drawing mermaid for {name}: {e}")
+   |         ^^^^^
+43 |
+44 |     # ASCII (fallback/quick view)
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:46:9
+   |
+44 |     # ASCII (fallback/quick view)
+45 |     try:
+46 |         print(f"\n--- ASCII Representation of {name} ---")
+   |         ^^^^^
+47 |         graph.get_graph().print_ascii()
+48 |     except Exception as e:
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:49:9
+   |
+47 |         graph.get_graph().print_ascii()
+48 |     except Exception as e:
+49 |         print(f"Error printing ASCII for {name}: {e}")
+   |         ^^^^^
+50 |
+51 |     sys.stdout.flush()
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> scripts/visualize_agent_graph.py:53:1
+   |
+51 |     sys.stdout.flush()
+52 |
+53 | print("Starting visualization script...", flush=True)
+   | ^^^^^
+54 |
+55 | # 1. Current Deep Research Graph & Subgraphs
+   |
+help: Remove `print`
+
+T201 `print` found
+   --> scripts/visualize_agent_graph.py:99:5
+    |
+ 97 | # 4. Proposed Improved Graph (Planning Agent)
+ 98 | try:
+ 99 |     print("Importing Proposed Improved Graph (Planning Agent)...", flush=True)
+    |     ^^^^^
+100 |
+101 |     # Add backend/src to sys.path
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> scripts/visualize_agent_graph.py:110:5
+    |
+109 |     from agent.graph import graph as proposed_graph
+110 |     print("Successfully imported Proposed Improved Graph", flush=True)
+    |     ^^^^^
+111 |     visualize_graph(proposed_graph, "Proposed Improved Graph")
+112 | except ImportError as e:
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> scripts/visualize_agent_graph.py:113:5
+    |
+111 |     visualize_graph(proposed_graph, "Proposed Improved Graph")
+112 | except ImportError as e:
+113 |     print(f"Error importing Proposed Improved Graph: {e}", flush=True)
+    |     ^^^^^
+114 | except Exception as e:
+115 |     print(f"Unexpected error importing Proposed Improved Graph: {e}", flush=True)
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> scripts/visualize_agent_graph.py:115:5
+    |
+113 |     print(f"Error importing Proposed Improved Graph: {e}", flush=True)
+114 | except Exception as e:
+115 |     print(f"Unexpected error importing Proposed Improved Graph: {e}", flush=True)
+    |     ^^^^^
+116 |
+117 | print("Visualization script finished.", flush=True)
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> scripts/visualize_agent_graph.py:117:1
+    |
+115 |     print(f"Unexpected error importing Proposed Improved Graph: {e}", flush=True)
+116 |
+117 | print("Visualization script finished.", flush=True)
+    | ^^^^^
+    |
+help: Remove `print`
+
+D100 Missing docstring in public module
+--> scripts/visualize_dependencies.py:1:1
+
+D401 First line of docstring should be in imperative mood: "Parses a python file and returns a set of third-party base modules imported."
+  --> scripts/visualize_dependencies.py:36:5
+   |
+35 | def get_third_party_imports(file_path):
+36 |     """Parses a python file and returns a set of third-party base modules imported."""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+37 |     try:
+38 |         with open(file_path, encoding="utf-8") as f:
+   |
+
+T201 `print` found
+  --> scripts/visualize_dependencies.py:41:9
+   |
+39 |             tree = ast.parse(f.read())
+40 |     except Exception as e:
+41 |         print(f"Skipping {file_path}: {e}")
+   |         ^^^^^
+42 |         return set()
+   |
+help: Remove `print`
+
+D401 First line of docstring should be in imperative mood: "Scans all .py files in root_dir and maps files to their 3rd party deps."
+  --> scripts/visualize_dependencies.py:70:5
+   |
+69 | def scan_codebase(root_dir):
+70 |     """Scans all .py files in root_dir and maps files to their 3rd party deps."""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+71 |     file_deps = {}
+72 |     all_deps = set()
+   |
+
+D401 First line of docstring should be in imperative mood: "Generates a hierarchical clustering dendrogram."
+  --> scripts/visualize_dependencies.py:95:5
+   |
+94 | def visualize_clusters(module_deps, all_deps):
+95 |     """Generates a hierarchical clustering dendrogram."""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+96 |     if not module_deps:
+97 |         print("No dependencies found to visualize.")
+   |
+
+T201 `print` found
+  --> scripts/visualize_dependencies.py:97:9
+   |
+95 |     """Generates a hierarchical clustering dendrogram."""
+96 |     if not module_deps:
+97 |         print("No dependencies found to visualize.")
+   |         ^^^^^
+98 |         return
+   |
+help: Remove `print`
+
+T201 `print` found
+   --> scripts/visualize_dependencies.py:116:9
+    |
+114 |         Z = sch.linkage(matrix, method='ward')
+115 |     except Exception as e:
+116 |         print(f"Clustering failed (likely too few samples): {e}")
+    |         ^^^^^
+117 |         return
+    |
+help: Remove `print`
+
+F841 Local variable `dendrogram` is assigned to but never used
+   --> scripts/visualize_dependencies.py:126:5
+    |
+125 |     # Create dendrogram
+126 |     dendrogram = sch.dendrogram(
+    |     ^^^^^^^^^^
+127 |         Z,
+128 |         labels=modules,
+    |
+help: Remove assignment to unused variable `dendrogram`
+
+T201 `print` found
+   --> scripts/visualize_dependencies.py:136:5
+    |
+134 |     output_path = BACKEND_ROOT.parent / "docs" / "dependency_structure.png"
+135 |     plt.savefig(output_path)
+136 |     print(f"Visualization saved to {output_path}")
+    |     ^^^^^
+137 |
+138 | def main():
+    |
+help: Remove `print`
+
+D103 Missing docstring in public function
+   --> scripts/visualize_dependencies.py:138:5
+    |
+136 |     print(f"Visualization saved to {output_path}")
+137 |
+138 | def main():
+    |     ^^^^
+139 |     print(f"Scanning {SRC_ROOT}...")
+140 |     module_deps, all_deps = scan_codebase(SRC_ROOT)
+    |
+
+T201 `print` found
+   --> scripts/visualize_dependencies.py:139:5
+    |
+138 | def main():
+139 |     print(f"Scanning {SRC_ROOT}...")
+    |     ^^^^^
+140 |     module_deps, all_deps = scan_codebase(SRC_ROOT)
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> scripts/visualize_dependencies.py:142:5
+    |
+140 |     module_deps, all_deps = scan_codebase(SRC_ROOT)
+141 |
+142 |     print(f"Found {len(module_deps)} modules and {len(all_deps)} unique dependencies.")
+    |     ^^^^^
+143 |     print("Dependencies:", ", ".join(all_deps))
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> scripts/visualize_dependencies.py:143:5
+    |
+142 |     print(f"Found {len(module_deps)} modules and {len(all_deps)} unique dependencies.")
+143 |     print("Dependencies:", ", ".join(all_deps))
+    |     ^^^^^
+144 |
+145 |     visualize_clusters(module_deps, all_deps)
+    |
+help: Remove `print`
+
+F841 Local variable `configurable` is assigned to but never used
+   --> src/agent/_graph.py:106:5
+    |
+104 | def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
+105 |     """Perform web research using available search providers."""
+106 |     configurable = Configuration.from_runnable_config(config)
+    |     ^^^^^^^^^^^^
+107 |
+108 |     search_query = state.get("search_query", [])
+    |
+help: Remove assignment to unused variable `configurable`
+
+D107 Missing docstring in `__init__`
+  --> src/agent/app.py:29:9
+   |
+27 |     """Middleware to limit the size of the request body."""
+28 |
+29 |     def __init__(self, app, max_upload_size: int = 10 * 1024 * 1024): # 10MB
+   |         ^^^^^^^^
+30 |         super().__init__(app)
+31 |         self.max_upload_size = max_upload_size
+   |
+
+D102 Missing docstring in public method
+  --> src/agent/app.py:33:15
+   |
+31 |         self.max_upload_size = max_upload_size
+32 |
+33 |     async def dispatch(self, request: Request, call_next):
+   |               ^^^^^^^^
+34 |         if request.method in ("POST", "PUT", "PATCH"):
+35 |             # 🛡️ Sentinel: Reject 'Transfer-Encoding: chunked' to prevent Content-Length bypass (Request Smuggling/DoS)
+   |
+
+T201 `print` found
+  --> src/agent/app.py:62:9
+   |
+60 |     # Startup validation
+61 |     if not check_env_strict():
+62 |         print("WARNING: Environment validation failed. Check logs for details.")
+   |         ^^^^^
+63 |
+64 |     # Load MCP Tools on startup
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> src/agent/app.py:67:9
+   |
+65 |     mcp_settings = load_mcp_settings()
+66 |     if mcp_settings.enabled:
+67 |         print(f"INFO: Initializing MCP tools from {mcp_settings.endpoint}...")
+   |         ^^^^^
+68 |         try:
+69 |             tools = await get_tools_from_mcp(mcp_settings)
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> src/agent/app.py:71:13
+   |
+69 |             tools = await get_tools_from_mcp(mcp_settings)
+70 |             MCP_TOOLS.extend(tools)
+71 |             print(f"INFO: Successfully loaded {len(tools)} MCP tools.")
+   |             ^^^^^
+72 |         except Exception as e:
+73 |             print(f"ERROR: Failed to load MCP tools during startup: {e}")
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> src/agent/app.py:73:13
+   |
+71 |             print(f"INFO: Successfully loaded {len(tools)} MCP tools.")
+72 |         except Exception as e:
+73 |             print(f"ERROR: Failed to load MCP tools during startup: {e}")
+   |             ^^^^^
+74 |
+75 |     yield
+   |
+help: Remove `print`
+
+D205 1 blank line required between summary line and description
+  --> src/agent/app.py:89:5
+   |
+87 |   @app.exception_handler(RequestValidationError)
+88 |   async def validation_exception_handler(request: Request, exc: RequestValidationError):
+89 | /     """Overridden handler to prevent RecursionError when serializing deeply nested invalid inputs.
+90 | |     Standard FastAPI handler crashes on deep JSON because it tries to echo the input.
+91 | |     """
+   | |_______^
+92 |       # We construct a simplified error list that doesn't include the full 'input' if it's huge
+93 |       errors = []
+   |
+help: Insert single blank line
+
+T201 `print` found
+   --> src/agent/app.py:166:5
+    |
+164 |     from agent.graph import graph
+165 | except ImportError as e:
+166 |     print(f"ERROR: Failed to import graph. Agent endpoints will fail. {e}")
+    |     ^^^^^
+167 |     graph = None
+    |
+help: Remove `print`
+
+D205 1 blank line required between summary line and description
+   --> src/agent/app.py:178:9
+    |
+176 |       @field_validator("input")
+177 |       def validate_input_complexity(cls, v):
+178 | /         """🛡️ Sentinel: Validate input complexity to prevent Denial of Service (DoS).
+179 | |         Checks:
+180 | |         1. Max String Length: 50,000 chars (prevents huge blobs)
+181 | |         2. Max Total Size: 200,000 chars (prevents memory exhaustion)
+182 | |         3. Max Nesting Depth: 50 (prevents RecursionError crashes)
+183 | |         4. Max Item Count: 1000 (prevents CPU exhaustion in iteration)
+184 | |         """
+    | |___________^
+185 |           MAX_INPUT_LENGTH = 50000
+186 |           MAX_TOTAL_CHARS = 200000
+    |
+help: Insert single blank line
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/agent/app.py:178:9
+    |
+176 |       @field_validator("input")
+177 |       def validate_input_complexity(cls, v):
+178 | /         """🛡️ Sentinel: Validate input complexity to prevent Denial of Service (DoS).
+179 | |         Checks:
+180 | |         1. Max String Length: 50,000 chars (prevents huge blobs)
+181 | |         2. Max Total Size: 200,000 chars (prevents memory exhaustion)
+182 | |         3. Max Nesting Depth: 50 (prevents RecursionError crashes)
+183 | |         4. Max Item Count: 1000 (prevents CPU exhaustion in iteration)
+184 | |         """
+    | |___________^
+185 |           MAX_INPUT_LENGTH = 50000
+186 |           MAX_TOTAL_CHARS = 200000
+    |
+help: Add closing punctuation
+
+D401 First line of docstring should be in imperative mood: "Creates a router to serve the React frontend."
+   --> src/agent/app.py:328:5
+    |
+327 |   def create_frontend_router(build_dir="../frontend/dist"):
+328 | /     """Creates a router to serve the React frontend.
+329 | |
+330 | |     Args:
+331 | |         build_dir: Path to the React build directory relative to this file.
+332 | |
+333 | |     Returns:
+334 | |         A Starlette application serving the frontend.
+335 | |     """
+    | |_______^
+336 |       build_path = pathlib.Path(__file__).parent.parent.parent / build_dir
+    |
+
+T201 `print` found
+   --> src/agent/app.py:339:9
+    |
+338 |     if not build_path.is_dir() or not (build_path / "index.html").is_file():
+339 |         print(
+    |         ^^^^^
+340 |             f"WARN: Frontend build directory not found or incomplete at {build_path}. "
+341 |             "Serving frontend will likely fail."
+    |
+help: Remove `print`
+
+D100 Missing docstring in public module
+--> src/agent/configuration.py:1:1
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+  --> src/agent/configuration.py:89:20
+   |
+88 |                 # Handle boolean fields
+89 |                 if field_type == bool or (hasattr(field_type, '__origin__') and field_type.__origin__ == bool):
+   |                    ^^^^^^^^^^^^^^^^^^
+90 |                     if isinstance(value, str):
+91 |                         value = value.lower() in ('true', '1', 'yes', 'on')
+   |
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+  --> src/agent/configuration.py:89:81
+   |
+88 |                 # Handle boolean fields
+89 |                 if field_type == bool or (hasattr(field_type, '__origin__') and field_type.__origin__ == bool):
+   |                                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+90 |                     if isinstance(value, str):
+91 |                         value = value.lower() in ('true', '1', 'yes', 'on')
+   |
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+  --> src/agent/configuration.py:96:22
+   |
+95 |                 # Handle integer fields
+96 |                 elif field_type == int or (hasattr(field_type, '__origin__') and field_type.__origin__ == int):
+   |                      ^^^^^^^^^^^^^^^^^
+97 |                     if isinstance(value, str):
+98 |                         value = int(value)
+   |
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+  --> src/agent/configuration.py:96:82
+   |
+95 |                 # Handle integer fields
+96 |                 elif field_type == int or (hasattr(field_type, '__origin__') and field_type.__origin__ == int):
+   |                                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+97 |                     if isinstance(value, str):
+98 |                         value = int(value)
+   |
+
+D100 Missing docstring in public module
+--> src/agent/deep_search_agent.py:1:1
+
+D101 Missing docstring in public class
+  --> src/agent/deep_search_agent.py:14:7
+   |
+12 | logger = logging.getLogger(__name__)
+13 |
+14 | class QueryPlanner:
+   |       ^^^^^^^^^^^^
+15 |     def __init__(self, llm):
+16 |         self.llm = llm
+   |
+
+D107 Missing docstring in `__init__`
+  --> src/agent/deep_search_agent.py:15:9
+   |
+14 | class QueryPlanner:
+15 |     def __init__(self, llm):
+   |         ^^^^^^^^
+16 |         self.llm = llm
+   |
+
+D102 Missing docstring in public method
+  --> src/agent/deep_search_agent.py:18:9
+   |
+16 |         self.llm = llm
+17 |
+18 |     def decompose(self, query: str) -> List[Any]:
+   |         ^^^^^^^^^
+19 |         prompt = f"""Decompose the following research query into 3-5 distinct sub-questions (sub-goals) for a research agent.
+20 |         Query: {query}
+   |
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/agent/deep_search_agent.py:41:5
+   |
+40 | class WebSearcher:
+41 |     """Mock Web Searcher using DuckDuckGo or Tavily if available, else Mock"""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+42 |     def __init__(self):
+43 |         try:
+   |
+help: Add closing punctuation
+
+D107 Missing docstring in `__init__`
+  --> src/agent/deep_search_agent.py:42:9
+   |
+40 | class WebSearcher:
+41 |     """Mock Web Searcher using DuckDuckGo or Tavily if available, else Mock"""
+42 |     def __init__(self):
+   |         ^^^^^^^^
+43 |         try:
+44 |             from langchain_community.tools import TavilySearchResults
+   |
+
+D102 Missing docstring in public method
+  --> src/agent/deep_search_agent.py:51:9
+   |
+49 |              self.tool = None
+50 |
+51 |     def search(self, query: str) -> List[Dict]:
+   |         ^^^^^^
+52 |         if self.tool:
+53 |             try:
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/deep_search_agent.py:73:7
+   |
+71 |         ]
+72 |
+73 | class AnswerRefiner:
+   |       ^^^^^^^^^^^^^
+74 |     def __init__(self, llm):
+75 |         self.llm = llm
+   |
+
+D107 Missing docstring in `__init__`
+  --> src/agent/deep_search_agent.py:74:9
+   |
+73 | class AnswerRefiner:
+74 |     def __init__(self, llm):
+   |         ^^^^^^^^
+75 |         self.llm = llm
+   |
+
+D102 Missing docstring in public method
+  --> src/agent/deep_search_agent.py:77:9
+   |
+75 |         self.llm = llm
+76 |
+77 |     def synthesize(self, query: str, context: str) -> str:
+   |         ^^^^^^^^^^
+78 |         prompt = f"""Answer the following query based on the provided context.
+79 |         Query: {query}
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/deep_search_agent.py:94:7
+   |
+92 |             return str(self.llm(prompt))
+93 |
+94 | class DeepSearchAgent:
+   |       ^^^^^^^^^^^^^^^
+95 |     def __init__(self, llm_client, mcp_servers: List = None):
+96 |         self.llm = llm_client
+   |
+
+D107 Missing docstring in `__init__`
+  --> src/agent/deep_search_agent.py:95:9
+   |
+94 | class DeepSearchAgent:
+95 |     def __init__(self, llm_client, mcp_servers: List = None):
+   |         ^^^^^^^^
+96 |         self.llm = llm_client
+97 |         self.rag = DeepSearchRAG()
+   |
+
+D102 Missing docstring in public method
+   --> src/agent/deep_search_agent.py:107:9
+    |
+105 |             self.mcp = None
+106 |
+107 |     def research(self, query: str) -> str:
+    |         ^^^^^^^^
+108 |         logger.info(f"Starting research on: {query}")
+    |
+
+D401 First line of docstring should be in imperative mood: "Helper for evaluation to see what's in RAG"
+   --> src/agent/deep_search_agent.py:162:9
+    |
+161 |     def get_retrieved_documents(self) -> List[Dict]:
+162 |         """Helper for evaluation to see what's in RAG"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+163 |         docs = []
+164 |         for idx, chunk in self.rag.doc_store.items():
+    |
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/agent/deep_search_agent.py:162:9
+    |
+161 |     def get_retrieved_documents(self) -> List[Dict]:
+162 |         """Helper for evaluation to see what's in RAG"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+163 |         docs = []
+164 |         for idx, chunk in self.rag.doc_store.items():
+    |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/agent/deep_search_agent.py:173:9
+    |
+172 |     async def research_with_artifacts(self, query: str, save_path: str):
+173 |         """Research and save artifacts using MCP tools"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+174 |         if not self.mcp:
+175 |             raise ValueError("No MCP servers configured")
+    |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+ --> src/agent/gemma_client.py:1:1
+  |
+1 | / """Gemma Client Integration
+2 | |
+3 | | This module contains the client implementations for Google's Gemma models,
+4 | | supporting various providers like Vertex AI, Ollama, and local execution.
+5 | | """
+  | |___^
+6 |
+7 |   import logging
+  |
+help: Add closing punctuation
+
+D401 First line of docstring should be in imperative mood: "Standard invoke method for compatibility with LangChain-like calls."
+  --> src/agent/gemma_client.py:17:9
+   |
+16 |     def invoke(self, prompt: str, **kwargs) -> str:
+17 |         """Standard invoke method for compatibility with LangChain-like calls."""
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 |         raise NotImplementedError("Subclasses must implement invoke")
+   |
+
+D200 One-line docstring should fit on one line
+  --> src/agent/gemma_client.py:24:9
+   |
+23 |       def __init__(self):
+24 | /         """Initialize Vertex AI client using configuration from app_config.
+25 | |         """
+   | |___________^
+26 |           try:
+27 |               from google.cloud import aiplatform
+   |
+help: Reformat to one line
+
+D200 One-line docstring should fit on one line
+  --> src/agent/gemma_client.py:49:9
+   |
+48 |       def invoke(self, prompt: str, **kwargs) -> str:
+49 | /         """Send prediction request to Vertex AI Endpoint.
+50 | |         """
+   | |___________^
+51 |           max_tokens = kwargs.get("max_tokens", 512)
+52 |           instance = {"inputs": prompt, "max_tokens": max_tokens}
+   |
+help: Reformat to one line
+
+D200 One-line docstring should fit on one line
+  --> src/agent/gemma_client.py:68:9
+   |
+67 |       def __init__(self):
+68 | /         """Initialize Ollama client.
+69 | |         """
+   | |___________^
+70 |           import requests
+71 |           self.requests = requests
+   |
+help: Reformat to one line
+
+D200 One-line docstring should fit on one line
+  --> src/agent/gemma_client.py:77:9
+   |
+76 |       def invoke(self, prompt: str, **kwargs) -> str:
+77 | /         """Generate text completion.
+78 | |         """
+   | |___________^
+79 |           payload = {
+80 |               "model": self.model_name,
+   |
+help: Reformat to one line
+
+D401 First line of docstring should be in imperative mood: "Factory function to get the configured Gemma client."
+  --> src/agent/gemma_client.py:95:5
+   |
+94 | def get_gemma_client() -> GemmaClient:
+95 |     """Factory function to get the configured Gemma client."""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+96 |     provider = app_config.gemma_provider.lower()
+97 |     if provider == "vertex":
+   |
+
+D100 Missing docstring in public module
+--> src/agent/graph.py:1:1
+
+T201 `print` found
+  --> src/agent/graph.py:43:5
+   |
+41 |     # We log but do not crash the module load unless critical
+42 |     # For now, we print to stderr as a warning
+43 |     print(f"WARN: MCP Configuration invalid: {e}")
+   |     ^^^^^
+44 |
+45 | if os.getenv("GEMINI_API_KEY") is None:
+   |
+help: Remove `print`
+
+T201 `print` found
+  --> src/agent/graph.py:67:5
+   |
+65 | # If MCP is enabled, we log it. Tools are loaded via lifespan in app.py to ensure event loop safety.
+66 | if mcp_settings.enabled:
+67 |     print(f"INFO: MCP Enabled with endpoint {mcp_settings.endpoint}")
+   |     ^^^^^
+68 |     # Note: Tools are loaded into agent.tools_and_schemas.MCP_TOOLS during app startup.
+69 |     # Nodes (like 'web_research') access them dynamically from there at runtime.
+   |
+help: Remove `print`
+
+D401 First line of docstring should be in imperative mood: "Helper to draw the graph as a PNG (for notebooks)."
+   --> src/agent/graph.py:222:5
+    |
+221 | def draw_graph_png():
+222 |     """Helper to draw the graph as a PNG (for notebooks)."""
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+223 |     return graph.get_graph().draw_mermaid_png()
+    |
+
+F401 `agent.rag_nodes.rag_fallback_to_web` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/agent/graph_builder.py:46:33
+   |
+45 | try:
+46 |     from agent.rag_nodes import rag_fallback_to_web, rag_retrieve, should_use_rag
+   |                                 ^^^^^^^^^^^^^^^^^^^
+47 |     RAG_AVAILABLE = True
+48 | except ImportError:
+   |
+help: Remove unused import
+
+F401 `agent.rag_nodes.should_use_rag` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/agent/graph_builder.py:46:68
+   |
+45 | try:
+46 |     from agent.rag_nodes import rag_fallback_to_web, rag_retrieve, should_use_rag
+   |                                                                    ^^^^^^^^^^^^^^
+47 |     RAG_AVAILABLE = True
+48 | except ImportError:
+   |
+help: Remove unused import
+
+D401 First line of docstring should be in imperative mood: "Standard graph: + Planning + Reflection."
+   --> src/agent/graph_builder.py:203:5
+    |
+202 | def planning_graph():
+203 |     """Standard graph: + Planning + Reflection."""
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+204 |     return build_graph(
+205 |         enable_planning=True,
+    |
+
+D100 Missing docstring in public module
+--> src/agent/graphs/linear.py:1:1
+
+D401 First line of docstring should be in imperative mood: "Prepares the next query for the single-threaded web_research node."
+  --> src/agent/graphs/linear.py:48:5
+   |
+46 |   )
+47 |   def queue_manager(state: OverallState) -> Dict[str, Any]:
+48 | /     """Prepares the next query for the single-threaded web_research node.
+49 | |
+50 | |     In parallel mode, 'Send' distributes all queries.
+51 | |     In linear mode, we need to pick one.
+52 | |     """
+   | |_______^
+53 |       # Logic:
+54 |       # 1. If we have 'follow_up_queries' from reflection, use the first one.
+   |
+
+D100 Missing docstring in public module
+--> src/agent/graphs/parallel.py:1:1
+
+D100 Missing docstring in public module
+--> src/agent/graphs/planning.py:1:1
+
+D100 Missing docstring in public module
+--> src/agent/graphs/supervisor.py:1:1
+
+D100 Missing docstring in public module
+--> src/agent/graphs/upstream.py:1:1
+
+D100 Missing docstring in public module
+--> src/agent/kg.py:1:1
+
+E402 Module level import not at top of file
+  --> src/agent/kg.py:14:1
+   |
+12 |     logger.warning("Cognee not installed. Knowledge Graph enrichment will be skipped.")
+13 |
+14 | from langchain_core.runnables import RunnableConfig
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+15 |
+16 | from agent.registry import graph_registry
+   |
+
+E402 Module level import not at top of file
+  --> src/agent/kg.py:16:1
+   |
+14 | from langchain_core.runnables import RunnableConfig
+15 |
+16 | from agent.registry import graph_registry
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 | from agent.state import OverallState
+   |
+
+E402 Module level import not at top of file
+  --> src/agent/kg.py:17:1
+   |
+16 | from agent.registry import graph_registry
+17 | from agent.state import OverallState
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+D103 Missing docstring in public function
+  --> src/agent/kg.py:26:11
+   |
+24 |     outputs=["artifacts"],
+25 | )
+26 | async def kg_enrich(state: OverallState, config: RunnableConfig) -> OverallState:
+   |           ^^^^^^^^^
+27 |     from config.app_config import config as app_config
+   |
+
+D100 Missing docstring in public module
+--> src/agent/llm_client.py:1:1
+
+D205 1 blank line required between summary line and description
+  --> src/agent/llm_client.py:24:5
+   |
+22 |   )
+23 |   def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
+24 | /     """Robustly calls an LLM client, handling different interfaces (invoke vs generate)
+25 | |     and applying retries.
+26 | |
+27 | |     Args:
+28 | |         llm_client: The LLM client object (LangChain, Gemini SDK, etc.).
+29 | |         prompt: The prompt string.
+30 | |         **kwargs: Additional arguments to pass to the client.
+31 | |
+32 | |     Returns:
+33 | |         str: The generated text content.
+34 | |     """
+   | |_______^
+35 |       try:
+36 |           # 1. Try LangChain 'invoke' interface
+   |
+help: Insert single blank line
+
+D205 1 blank line required between summary line and description
+  --> src/agent/llm_client.py:66:5
+   |
+65 |   class GemmaAdapter:
+66 | /     """Adapter for Gemma models to provide a LangChain-like 'invoke' interface
+67 | |     with tool-calling support via manual prompting and parsing.
+68 | |     """
+   | |_______^
+69 |       def __init__(self, client: Any, tools: List[Any] | None = None):
+70 |           self.client = client
+   |
+help: Insert single blank line
+
+D107 Missing docstring in `__init__`
+  --> src/agent/llm_client.py:69:9
+   |
+67 |     with tool-calling support via manual prompting and parsing.
+68 |     """
+69 |     def __init__(self, client: Any, tools: List[Any] | None = None):
+   |         ^^^^^^^^
+70 |         self.client = client
+71 |         self.tools = tools or []
+   |
+
+D102 Missing docstring in public method
+  --> src/agent/llm_client.py:79:9
+   |
+77 |         self.tools_schema = format_tools_to_json_schema(self.tools) if self.tools else ""
+78 |
+79 |     def invoke(self, input_data: Union[str, Any], **kwargs) -> Any:
+   |         ^^^^^^
+80 |         # Extract prompt from input (could be string or list of messages)
+81 |         if isinstance(input_data, str):
+   |
+
+D100 Missing docstring in public module
+--> src/agent/mcp_client.py:1:1
+
+D205 1 blank line required between summary line and description
+  --> src/agent/mcp_client.py:10:5
+   |
+ 9 |   class MCPToolUser:
+10 | /     """Enables agent to use MCP tools for planned operations.
+11 | |     Implements tool selection and execution logic.
+12 | |     """
+   | |_______^
+13 |
+14 |       def __init__(self, mcp_servers: List):
+   |
+help: Insert single blank line
+
+D107 Missing docstring in `__init__`
+  --> src/agent/mcp_client.py:14:9
+   |
+12 |     """
+13 |
+14 |     def __init__(self, mcp_servers: List):
+   |         ^^^^^^^^
+15 |         self.servers = {server.name: server for server in mcp_servers}
+16 |         self.tool_registry = self._build_tool_registry()
+   |
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/agent/mcp_client.py:19:9
+   |
+18 |     def _build_tool_registry(self) -> Dict:
+19 |         """Build registry of all available tools"""
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20 |         registry = {}
+21 |         for server_name, server in self.servers.items():
+   |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/agent/mcp_client.py:33:9
+   |
+32 |     async def execute_tool(self, tool_name: str, **kwargs) -> Dict:
+33 |         """Execute a tool by name"""
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+34 |         # Handle cases where tool_name might be just "read_file" or "filesystem.read_file"
+35 |         if tool_name not in self.tool_registry:
+   |
+help: Add closing punctuation
+
+D205 1 blank line required between summary line and description
+  --> src/agent/mcp_client.py:76:9
+   |
+74 |           llm_client
+75 |       ) -> List[Dict]:
+76 | /         """Use LLM to plan sequence of tool calls for a task.
+77 | |         This is the "planned tool use" capability.
+78 | |         """
+   | |___________^
+79 |           # Build tool descriptions
+80 |           tool_descriptions = "\n".join([
+   |
+help: Insert single blank line
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/agent/mcp_client.py:128:9
+    |
+127 |     async def execute_plan(self, plan: List[Dict]) -> List[Dict]:
+128 |         """Execute a planned sequence of tool calls"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+129 |         results = []
+    |
+help: Add closing punctuation
+
+D100 Missing docstring in public module
+--> src/agent/mcp_config.py:1:1
+
+D401 First line of docstring should be in imperative mood: "Loads MCP settings from environment variables."
+  --> src/agent/mcp_config.py:16:5
+   |
+15 | def load_mcp_settings() -> MCPSettings:
+16 |     """Loads MCP settings from environment variables."""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 |     enabled_str = os.getenv("MCP_ENABLED", "false").lower()
+18 |     enabled = enabled_str == "true"
+   |
+
+D401 First line of docstring should be in imperative mood: "Validates the MCP settings."
+  --> src/agent/mcp_config.py:40:5
+   |
+39 | def validate(settings: MCPSettings) -> None:
+40 |     """Validates the MCP settings."""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+41 |     if settings.enabled and not settings.endpoint:
+42 |         raise ValueError("MCP enabled but MCP_ENDPOINT missing")
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/mcp_config.py:68:7
+   |
+66 | # - Track connection latency, success/failure rates
+67 | # - Integrate with Langfuse spans
+68 | class McpConnectionManager:
+   |       ^^^^^^^^^^^^^^^^^^^^
+69 |     def __init__(self, settings: MCPSettings | None = None):
+70 |         self.settings = settings or load_mcp_settings()
+   |
+
+D107 Missing docstring in `__init__`
+  --> src/agent/mcp_config.py:69:9
+   |
+67 | # - Integrate with Langfuse spans
+68 | class McpConnectionManager:
+69 |     def __init__(self, settings: MCPSettings | None = None):
+   |         ^^^^^^^^
+70 |         self.settings = settings or load_mcp_settings()
+71 |         self.clients = []
+   |
+
+D200 One-line docstring should fit on one line
+  --> src/agent/mcp_config.py:74:9
+   |
+73 |       def get_persistence_tools(self) -> List:
+74 | /         """Returns persistence tools wrapped for LangChain.
+75 | |         """
+   | |___________^
+76 |           from langchain_core.tools import StructuredTool
+   |
+help: Reformat to one line
+
+D401 First line of docstring should be in imperative mood: "Returns persistence tools wrapped for LangChain."
+  --> src/agent/mcp_config.py:74:9
+   |
+73 |       def get_persistence_tools(self) -> List:
+74 | /         """Returns persistence tools wrapped for LangChain.
+75 | |         """
+   | |___________^
+76 |           from langchain_core.tools import StructuredTool
+   |
+
+D102 Missing docstring in public method
+  --> src/agent/mcp_config.py:93:15
+   |
+91 |         ]
+92 |
+93 |     async def get_tools(self):
+   |               ^^^^^^^^^
+94 |         # TODO(priority=High, complexity=Medium): [MCP:6] Implement actual SSE tool discovery
+95 |         # - Connect to MCP endpoint from settings
+   |
+
+D100 Missing docstring in public module
+--> src/agent/mcp_persistence.py:1:1
+
+D401 First line of docstring should be in imperative mood: "Loads the plan and artifacts for a specific thread from the local file system."
+  --> src/agent/mcp_persistence.py:16:5
+   |
+14 |   @mcp.tool()
+15 |   def load_thread_plan(thread_id: str) -> Dict[str, Any] | None:
+16 | /     """Loads the plan and artifacts for a specific thread from the local file system.
+17 | |
+18 | |     Args:
+19 | |         thread_id: The unique identifier for the thread/conversation.
+20 | |
+21 | |     Returns:
+22 | |         The plan data (todo_list, artifacts) or None if not found.
+23 | |     """
+   | |_______^
+24 |       try:
+25 |           return load_plan(thread_id)
+   |
+
+D401 First line of docstring should be in imperative mood: "Saves the plan and artifacts for a specific thread to the local file system."
+  --> src/agent/mcp_persistence.py:32:5
+   |
+30 |   @mcp.tool()
+31 |   def save_thread_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, Any]) -> str:
+32 | /     """Saves the plan and artifacts for a specific thread to the local file system.
+33 | |
+34 | |     Args:
+35 | |         thread_id: The unique identifier for the thread/conversation.
+36 | |         todo_list: The list of tasks/todos.
+37 | |         artifacts: A dictionary of artifacts (documents, code, etc.).
+38 | |
+39 | |     Returns:
+40 | |         A success message.
+41 | |     """
+   | |_______^
+42 |       try:
+43 |           save_plan(thread_id, todo_list, artifacts)
+   |
+
+D100 Missing docstring in public module
+--> src/agent/mcp_server.py:1:1
+
+F401 `mcp.types` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/agent/mcp_server.py:14:25
+   |
+13 | try:
+14 |     import mcp.types as types
+   |                         ^^^^^
+15 |     from mcp.server import Server
+16 |     from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool
+   |
+help: Remove unused import: `mcp.types`
+
+F401 `mcp.server.Server` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/agent/mcp_server.py:15:28
+   |
+13 | try:
+14 |     import mcp.types as types
+15 |     from mcp.server import Server
+   |                            ^^^^^^
+16 |     from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool
+17 | except ImportError:
+   |
+help: Remove unused import: `mcp.server.Server`
+
+F401 `mcp.types.EmbeddedResource` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/agent/mcp_server.py:16:27
+   |
+14 |     import mcp.types as types
+15 |     from mcp.server import Server
+16 |     from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool
+   |                           ^^^^^^^^^^^^^^^^
+17 | except ImportError:
+18 |     # Fallback or different import structure
+   |
+help: Remove unused import
+
+F401 `mcp.types.ImageContent` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/agent/mcp_server.py:16:45
+   |
+14 |     import mcp.types as types
+15 |     from mcp.server import Server
+16 |     from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool
+   |                                             ^^^^^^^^^^^^
+17 | except ImportError:
+18 |     # Fallback or different import structure
+   |
+help: Remove unused import
+
+F401 `mcp.types.TextContent` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/agent/mcp_server.py:16:59
+   |
+14 |     import mcp.types as types
+15 |     from mcp.server import Server
+16 |     from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool
+   |                                                           ^^^^^^^^^^^
+17 | except ImportError:
+18 |     # Fallback or different import structure
+   |
+help: Remove unused import
+
+F401 `mcp.types.Tool` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/agent/mcp_server.py:16:72
+   |
+14 |     import mcp.types as types
+15 |     from mcp.server import Server
+16 |     from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool
+   |                                                                        ^^^^
+17 | except ImportError:
+18 |     # Fallback or different import structure
+   |
+help: Remove unused import
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/agent/mcp_server.py:30:5
+   |
+29 | class ToolResult:
+30 |     """Helper to match the spec's ToolResult expectation if not in mcp.types directly as that name"""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+31 |     def __init__(self, success: bool, data: Dict | None = None, error: str | None = None):
+32 |         self.success = success
+   |
+help: Add closing punctuation
+
+D107 Missing docstring in `__init__`
+  --> src/agent/mcp_server.py:31:9
+   |
+29 | class ToolResult:
+30 |     """Helper to match the spec's ToolResult expectation if not in mcp.types directly as that name"""
+31 |     def __init__(self, success: bool, data: Dict | None = None, error: str | None = None):
+   |         ^^^^^^^^
+32 |         self.success = success
+33 |         self.data = data
+   |
+
+D205 1 blank line required between summary line and description
+  --> src/agent/mcp_server.py:37:5
+   |
+36 |   class FilesystemMCPServer:
+37 | /     """MCP Server for filesystem operations.
+38 | |     Enables agent to read/write research artifacts.
+39 | |     """
+   | |_______^
+40 |
+41 |       def __init__(self, allowed_paths: List[str]):
+   |
+help: Insert single blank line
+
+D107 Missing docstring in `__init__`
+  --> src/agent/mcp_server.py:41:9
+   |
+39 |     """
+40 |
+41 |     def __init__(self, allowed_paths: List[str]):
+   |         ^^^^^^^^
+42 |         self.name = "filesystem"
+43 |         self.allowed_paths = [Path(p).resolve() for p in allowed_paths]
+   |
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/agent/mcp_server.py:48:9
+   |
+47 |     def _register_tools(self):
+48 |         """Register available filesystem tools"""
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+49 |         # We store tools in a list of wrappers that include the handler
+50 |         self.tools.append(self._create_tool(
+   |
+help: Add closing punctuation
+
+D401 First line of docstring should be in imperative mood: "Helper to create a tool object with a handler attached"
+  --> src/agent/mcp_server.py:91:9
+   |
+90 |     def _create_tool(self, name, description, parameters, handler):
+91 |         """Helper to create a tool object with a handler attached"""
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+92 |         # In a real MCP server, we would use the SDK's Tool class.
+93 |         # Here we create a simple object that holds the metadata and handler
+   |
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/agent/mcp_server.py:91:9
+   |
+90 |     def _create_tool(self, name, description, parameters, handler):
+91 |         """Helper to create a tool object with a handler attached"""
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+92 |         # In a real MCP server, we would use the SDK's Tool class.
+93 |         # Here we create a simple object that holds the metadata and handler
+   |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/agent/mcp_server.py:109:9
+    |
+108 |     def _check_path_allowed(self, path: str) -> bool:
+109 |         """Security: ensure path is within allowed directories"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+110 |         try:
+111 |             resolved = Path(path).resolve()
+    |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/agent/mcp_server.py:124:9
+    |
+123 |     async def read_file(self, path: str) -> ToolResult:
+124 |         """Read file contents"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+125 |         if not self._check_path_allowed(path):
+126 |             return ToolResult(
+    |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/agent/mcp_server.py:153:9
+    |
+152 |     async def write_file(self, path: str, content: str) -> ToolResult:
+153 |         """Write content to file"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+154 |         if not self._check_path_allowed(path):
+155 |             return ToolResult(success=False, error=f"Path not allowed: {path}")
+    |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/agent/mcp_server.py:184:9
+    |
+183 |     async def list_directory(self, path: str) -> ToolResult:
+184 |         """List directory contents"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+185 |         if not self._check_path_allowed(path):
+186 |             return ToolResult(success=False, error=f"Path not allowed: {path}")
+    |
+help: Add closing punctuation
+
+D102 Missing docstring in public method
+   --> src/agent/mcp_server.py:213:15
+    |
+211 |             return ToolResult(success=False, error=str(e))
+212 |
+213 |     async def start(self):
+    |               ^^^^^
+214 |         # In a real MCP server, this would start stdio/sse transport.
+215 |         # For this implementation (in-process usage in notebooks), it's a no-op
+    |
+
+D100 Missing docstring in public module
+--> src/agent/memory_tools.py:1:1
+
+D401 First line of docstring should be in imperative mood: "Saves the current plan and artifacts to a local file."
+  --> src/agent/memory_tools.py:9:5
+   |
+ 7 |   @tool
+ 8 |   def save_plan_tool(thread_id: str, todo_list: list, artifacts: dict) -> str:
+ 9 | /     """Saves the current plan and artifacts to a local file.
+10 | |
+11 | |     Args:
+12 | |         thread_id: The unique ID of the conversation thread.
+13 | |         todo_list: The list of tasks/todos.
+14 | |         artifacts: A dictionary of artifacts (documents, code).
+15 | |     """
+   | |_______^
+16 |       try:
+17 |           persist_save(thread_id, todo_list, artifacts)
+   |
+
+D401 First line of docstring should be in imperative mood: "Loads the plan and artifacts from a local file."
+  --> src/agent/memory_tools.py:24:5
+   |
+22 |   @tool
+23 |   def load_plan_tool(thread_id: str) -> str:
+24 | /     """Loads the plan and artifacts from a local file.
+25 | |
+26 | |     Args:
+27 | |         thread_id: The unique ID of the conversation thread.
+28 | |     """
+   | |_______^
+29 |       try:
+30 |           data = persist_load(thread_id)
+   |
+
+D100 Missing docstring in public module
+--> src/agent/nodes.py:1:1
+
+D101 Missing docstring in public class
+   --> src/agent/nodes.py:125:7
+    |
+125 | class SearchInput(BaseModel):
+    |       ^^^^^^^^^^^
+126 |     query: str = Field(description="The query to search for.")
+    |
+
+D101 Missing docstring in public class
+   --> src/agent/nodes.py:129:7
+    |
+129 | class EvidenceItem(BaseModel):
+    |       ^^^^^^^^^^^^
+130 |     claim: str = Field(description="A distinct factual claim found in the text.")
+131 |     source_url: str = Field(description="The source URL associated with the claim.")
+    |
+
+D101 Missing docstring in public class
+   --> src/agent/nodes.py:137:7
+    |
+137 | class EvidenceList(BaseModel):
+    |       ^^^^^^^^^^^^
+138 |     items: List[EvidenceItem]
+    |
+
+D205 1 blank line required between summary line and description
+   --> src/agent/nodes.py:148:5
+    |
+146 |   )
+147 |   def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
+148 | /     """Scoping Phase:
+149 | |     Checks if the user's request is ambiguous.
+150 | |     If yes -> Generates questions and sets status to 'active' (interrupt).
+151 | |     If no -> Sets status to 'complete' (proceed).
+152 | |
+153 | |     TODO(priority=High, complexity=High): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
+154 | |     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+155 | |     Subtask: Implement `scoping_node` logic: Analyze input query. If ambiguous, generate clarifying questions and interrupt graph.
+156 | |     """
+    | |_______^
+157 |       with observe_span("scoping_node", config):
+158 |           # 1. Check if we are processing a clarification answer
+    |
+help: Insert single blank line
+
+D205 1 blank line required between summary line and description
+   --> src/agent/nodes.py:459:5
+    |
+457 |   )
+458 |   def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
+459 | /     """LangGraph node that performs web research or executes MCP tools.
+460 | |     Updated to use the unified SearchRouter and AppConfig.
+461 | |     If MCP tools are available, uses an LLM to decide whether to search or use a tool.
+462 | |     """
+    | |_______^
+463 |       with observe_span("web_research", config):
+464 |           # Handle both list (from OverallState) and str (from Send)
+    |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Processes plan steps or routes based on user commands."
+   --> src/agent/nodes.py:630:5
+    |
+628 | )
+629 | def planning_mode(state: OverallState, config: RunnableConfig) -> OverallState:
+630 |     """Processes plan steps or routes based on user commands."""
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+631 |     with observe_span("planning_mode", config):
+632 |         configurable = Configuration.from_runnable_config(config)
+    |
+
+D205 1 blank line required between summary line and description
+   --> src/agent/nodes.py:745:5
+    |
+743 |   )
+744 |   def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
+745 | /     """Updates the research plan based on latest findings.
+746 | |     Implements FlowSearch/Open SWE logic to dynamically adjust tasks.
+747 | |     """
+    | |_______^
+748 |       with observe_span("update_plan", config):
+749 |           configurable = Configuration.from_runnable_config(config)
+    |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Updates the research plan based on latest findings."
+   --> src/agent/nodes.py:745:5
+    |
+743 |   )
+744 |   def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
+745 | /     """Updates the research plan based on latest findings.
+746 | |     Implements FlowSearch/Open SWE logic to dynamically adjust tasks.
+747 | |     """
+    | |_______^
+748 |       with observe_span("update_plan", config):
+749 |           configurable = Configuration.from_runnable_config(config)
+    |
+
+D401 First line of docstring should be in imperative mood: "Selects the next pending task from the plan."
+   --> src/agent/nodes.py:883:5
+    |
+881 | )
+882 | def select_next_task(state: OverallState, config: RunnableConfig) -> OverallState:
+883 |     """Selects the next pending task from the plan."""
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+884 |     plan = state.get("plan", [])
+885 |     for idx, task in enumerate(plan):
+    |
+
+D205 1 blank line required between summary line and description
+   --> src/agent/nodes.py:911:5
+    |
+909 |   )
+910 |   def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
+911 | /     """Generates a hierarchical outline (Sections -> Subsections) for the research.
+912 | |     Implements STORM pattern for structured long-form content generation.
+913 | |     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+914 | |     """
+    | |_______^
+915 |       with observe_span("outline_gen", config):
+916 |           messages = state.get("messages", [])
+    |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Generates a hierarchical outline (Sections -> Subsections) for the research."
+   --> src/agent/nodes.py:911:5
+    |
+909 |   )
+910 |   def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
+911 | /     """Generates a hierarchical outline (Sections -> Subsections) for the research.
+912 | |     Implements STORM pattern for structured long-form content generation.
+913 | |     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+914 | |     """
+    | |_______^
+915 |       with observe_span("outline_gen", config):
+916 |           messages = state.get("messages", [])
+    |
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/agent/nodes.py:911:5
+    |
+909 |   )
+910 |   def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
+911 | /     """Generates a hierarchical outline (Sections -> Subsections) for the research.
+912 | |     Implements STORM pattern for structured long-form content generation.
+913 | |     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+914 | |     """
+    | |_______^
+915 |       with observe_span("outline_gen", config):
+916 |           messages = state.get("messages", [])
+    |
+help: Add closing punctuation
+
+D205 1 blank line required between summary line and description
+    --> src/agent/nodes.py:1031:5
+     |
+1029 |   )
+1030 |   def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
+1031 | /     """Extracts structured evidence from raw web content.
+1032 | |     Implements ManuSearch logic to convert raw search results into `Evidence` objects.
+1033 | |     """
+     | |_______^
+1034 |       with observe_span("content_reader", config):
+1035 |           # Prefer validated results, fallback to raw
+     |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Extracts structured evidence from raw web content."
+    --> src/agent/nodes.py:1031:5
+     |
+1029 |   )
+1030 |   def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
+1031 | /     """Extracts structured evidence from raw web content.
+1032 | |     Implements ManuSearch logic to convert raw search results into `Evidence` objects.
+1033 | |     """
+     | |_______^
+1034 |       with observe_span("content_reader", config):
+1035 |           # Prefer validated results, fallback to raw
+     |
+
+D205 1 blank line required between summary line and description
+    --> src/agent/nodes.py:1124:5
+     |
+1122 |   # This should happen when a complex sub-topic is identified that requires its own full research loop.
+1123 |   def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
+1124 | /     """Executes a recursive research subgraph for a specific sub-topic.
+1125 | |     Implements GPT Researcher pattern for recursive depth.
+1126 | |     """
+     | |_______^
+1127 |       with observe_span("research_subgraph", config):
+1128 |           # 1. Extract sub-topic query
+     |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Executes a recursive research subgraph for a specific sub-topic."
+    --> src/agent/nodes.py:1124:5
+     |
+1122 |   # This should happen when a complex sub-topic is identified that requires its own full research loop.
+1123 |   def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
+1124 | /     """Executes a recursive research subgraph for a specific sub-topic.
+1125 | |     Implements GPT Researcher pattern for recursive depth.
+1126 | |     """
+     | |_______^
+1127 |       with observe_span("research_subgraph", config):
+1128 |           # 1. Extract sub-topic query
+     |
+
+F821 Undefined name `HumanMessage`
+    --> src/agent/nodes.py:1163:30
+     |
+1161 |             # We also set planning_status to auto_approved to avoid child pausing for UI
+1162 |             child_input = {
+1163 |                 "messages": [HumanMessage(content=subtopic_query)],
+     |                              ^^^^^^^^^^^^
+1164 |                 "planning_status": "auto_approved",
+1165 |                 "scoping_status": "complete" # Skip scoping in subqueries
+     |
+
+D205 1 blank line required between summary line and description
+    --> src/agent/nodes.py:1263:5
+     |
+1261 |   )
+1262 |   def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
+1263 | /     """Refines the final answer by synthesizing multiple drafts.
+1264 | |     Implements TTD-DR pattern for high-fidelity report synthesis.
+1265 | |     Ensures URL restoration for citations.
+1266 | |     """
+     | |_______^
+1267 |       with observe_span("denoising_refiner", config):
+1268 |           configurable = Configuration.from_runnable_config(config)
+     |
+help: Insert single blank line
+
+D205 1 blank line required between summary line and description
+    --> src/agent/nodes.py:1348:5
+     |
+1347 |   def update_artifact(id: str, content: str, type: str) -> str:
+1348 | /     """Updates a collaborative artifact.
+1349 | |     Returns a JSON string representation of the updated artifact.
+1350 | |     """
+     | |_______^
+1351 |       artifact = {
+1352 |           "id": id,
+     |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Updates a collaborative artifact."
+    --> src/agent/nodes.py:1348:5
+     |
+1347 |   def update_artifact(id: str, content: str, type: str) -> str:
+1348 | /     """Updates a collaborative artifact.
+1349 | |     Returns a JSON string representation of the updated artifact.
+1350 | |     """
+     | |_______^
+1351 |       artifact = {
+1352 |           "id": id,
+     |
+
+D401 First line of docstring should be in imperative mood: "Helper to validate a single candidate using LLM."
+    --> src/agent/nodes.py:1427:5
+     |
+1425 |     candidate: str, flattened_queries: List[str]
+1426 | ) -> tuple[str, bool, str | None]:
+1427 |     """Helper to validate a single candidate using LLM."""
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1428 |     prompt = f"""
+1429 |     Verify if the following snippet actually contains relevant information for the query: "{flattened_queries[0] if flattened_querie…
+     |
+
+D205 1 blank line required between summary line and description
+    --> src/agent/nodes.py:1464:5
+     |
+1462 |   )
+1463 |   def validate_web_results(state: OverallState, config: RunnableConfig) -> OverallState:
+1464 | /     """Hybrid validation logic:
+1465 | |     1. Heuristic filtering (fuzzy match against query intent).
+1466 | |     2. LLM Claim-Check (if Validation Mode is hybrid).
+1467 | |     3. Citation Hard-Fail (if REQUIRE_CITATIONS is true).
+1468 | |     """
+     | |_______^
+1469 |       with observe_span("validate_web_results", config):
+1470 |           summaries = state.get("web_research_result", [])
+     |
+help: Insert single blank line
+
+D205 1 blank line required between summary line and description
+    --> src/agent/nodes.py:1577:5
+     |
+1575 |   )
+1576 |   def compression_node(state: OverallState, config: RunnableConfig) -> OverallState:
+1577 | /     """Tiered Compression:
+1578 | |     1. Extractive: Deduplicate and remove redundant phrases.
+1579 | |     2. Abstractive: Summarize while keeping citations (if enabled).
+1580 | |     """
+     | |_______^
+1581 |       if not app_config.compression_enabled:
+1582 |           return {}  # No change
+     |
+help: Insert single blank line
+
+D107 Missing docstring in `__init__`
+  --> src/agent/orchestration.py:81:9
+   |
+79 |     """
+80 |
+81 |     def __init__(self):
+   |         ^^^^^^^^
+82 |         self._tools: Dict[str, ToolSpec] = {}
+83 |         self._load_default_tools()
+   |
+
+D107 Missing docstring in `__init__`
+   --> src/agent/orchestration.py:205:9
+    |
+203 |     """
+204 |
+205 |     def __init__(self):
+    |         ^^^^^^^^
+206 |         self._agents: Dict[str, AgentSpec] = {}
+207 |         self._load_default_agents()
+    |
+
+D100 Missing docstring in public module
+--> src/agent/persistence.py:1:1
+
+D401 First line of docstring should be in imperative mood: "Gets the file path for a specific thread's plan."
+  --> src/agent/persistence.py:8:5
+   |
+ 7 | def _get_plan_path(thread_id: str) -> str:
+ 8 |     """Gets the file path for a specific thread's plan."""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 9 |     # Ensure the plans directory exists
+10 |     os.makedirs(PLAN_DIR, exist_ok=True)
+   |
+
+D401 First line of docstring should be in imperative mood: "Saves the current plan and artifacts to a JSON file."
+  --> src/agent/persistence.py:16:5
+   |
+15 | def save_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, Any]) -> None:
+16 |     """Saves the current plan and artifacts to a JSON file."""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 |     if not thread_id:
+18 |         return
+   |
+
+T201 `print` found
+  --> src/agent/persistence.py:31:9
+   |
+29 |             json.dump(data, f, indent=2)
+30 |     except Exception as e:
+31 |         print(f"Error saving plan for thread {thread_id}: {e}")
+   |         ^^^^^
+32 |
+33 | def load_plan(thread_id: str) -> Dict[str, Any] | None:
+   |
+help: Remove `print`
+
+D401 First line of docstring should be in imperative mood: "Loads the plan and artifacts from a JSON file."
+  --> src/agent/persistence.py:34:5
+   |
+33 | def load_plan(thread_id: str) -> Dict[str, Any] | None:
+34 |     """Loads the plan and artifacts from a JSON file."""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |     if not thread_id:
+36 |         return None
+   |
+
+T201 `print` found
+  --> src/agent/persistence.py:46:9
+   |
+44 |             return json.load(f)
+45 |     except Exception as e:
+46 |         print(f"Error loading plan for thread {thread_id}: {e}")
+   |         ^^^^^
+47 |         return None
+   |
+help: Remove `print`
+
+D100 Missing docstring in public module
+--> src/agent/planning_router.py:1:1
+
+D103 Missing docstring in public function
+ --> src/agent/planning_router.py:6:5
+  |
+6 | def handle_end_plan(state: OverallState) -> Dict[str, Any]:
+  |     ^^^^^^^^^^^^^^^
+7 |     return {
+8 |         "planning_status": "auto_approved",
+  |
+
+D103 Missing docstring in public function
+  --> src/agent/planning_router.py:13:5
+   |
+11 |     }
+12 |
+13 | def handle_confirm_plan(state: OverallState) -> Dict[str, Any]:
+   |     ^^^^^^^^^^^^^^^^^^^
+14 |     return {
+15 |         "planning_status": "confirmed",
+   |
+
+D103 Missing docstring in public function
+  --> src/agent/planning_router.py:19:5
+   |
+17 |     }
+18 |
+19 | def handle_start_plan(state: OverallState) -> Dict[str, Any]:
+   |     ^^^^^^^^^^^^^^^^^
+20 |     return {
+21 |         "planning_status": "awaiting_confirmation",
+   |
+
+D205 1 blank line required between summary line and description
+  --> src/agent/planning_router.py:26:5
+   |
+25 |   def planning_router_logic(user_input: str, state: OverallState) -> str:
+26 | /     """Routes planning-related commands to appropriate handlers.
+27 | |     Returns the name of the next node.
+28 | |     """
+   | |_______^
+29 |       user_input = user_input.strip().lower()
+   |
+help: Insert single blank line
+
+D100 Missing docstring in public module
+--> src/agent/prompts.py:1:1
+
+D103 Missing docstring in public function
+ --> src/agent/prompts.py:5:5
+  |
+4 | # Get current date in a readable format
+5 | def get_current_date():
+  |     ^^^^^^^^^^^^^^^^
+6 |     return datetime.now().strftime("%B %d, %Y")
+  |
+
+D100 Missing docstring in public module
+--> src/agent/rag.py:1:1
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/agent/rag.py:34:5
+   |
+32 | @dataclass
+33 | class EvidenceChunk:
+34 |     """Individual evidence unit with metadata"""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |     content: str
+36 |     source_url: str
+   |
+help: Add closing punctuation
+
+D205 1 blank line required between summary line and description
+  --> src/agent/rag.py:44:5
+   |
+43 |   class DeepSearchRAG:
+44 | /     """RAG system optimized for deep research workflows.
+45 | |     Implements continuous evidence auditing and context pruning.
+46 | |     Now supports hybrid store (FAISS + Chroma) with dual-write.
+47 | |     """
+   | |_______^
+48 |
+49 |       def __init__(
+   |
+help: Insert single blank line
+
+D107 Missing docstring in `__init__`
+  --> src/agent/rag.py:49:9
+   |
+47 |     """
+48 |
+49 |     def __init__(
+   |         ^^^^^^^^
+50 |         self,
+51 |         config=None, # Allow injecting config
+   |
+
+D205 1 blank line required between summary line and description
+   --> src/agent/rag.py:164:9
+    |
+162 |           metadata: Dict | None = None
+163 |       ) -> List[int]:
+164 | /         """Ingest web search results into the RAG system.
+165 | |         Supports dual-write.
+166 | |         """
+    | |___________^
+167 |           ingested_ids = []
+168 |           chroma_chunks = []
+    |
+help: Insert single blank line
+
+D205 1 blank line required between summary line and description
+   --> src/agent/rag.py:266:9
+    |
+264 |           query_embedding: List[float] | None = None
+265 |       ) -> List[Tuple[EvidenceChunk, float]]:
+266 | /         """Retrieve relevant evidence.
+267 | |         If dual-write is on, respects RAG_STORE preference for retrieval.
+268 | |         """
+    | |___________^
+269 |           # Decide which store to read from
+270 |           read_source = self.config.rag_store
+    |
+help: Insert single blank line
+
+D102 Missing docstring in public method
+   --> src/agent/rag.py:367:9
+    |
+366 |     # ... keep existing methods (verify_subgoal_coverage, get_context_for_synthesis, export_state) ...
+367 |     def verify_subgoal_coverage(self, subgoal: str, subgoal_id: str, llm_client, confidence_threshold: float = 0.7) -> Dict:
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+368 |         evidence_list = self.retrieve(query=subgoal, subgoal_filter=subgoal_id, top_k=5)
+369 |         if not evidence_list:
+    |
+
+D102 Missing docstring in public method
+   --> src/agent/rag.py:405:9
+    |
+403 |             return {"verified": False, "confidence": 0.0, "reason": f"verification_error: {str(e)}"}
+404 |
+405 |     def get_context_for_synthesis(self, query: str, max_tokens: int = 4000, subgoal_ids: List[str] | None = None) -> str:
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+406 |         all_chunks = []
+    |
+
+D102 Missing docstring in public method
+   --> src/agent/rag.py:463:9
+    |
+461 |         return "\n---\n".join(context_parts)
+462 |
+463 |     def export_state(self) -> Dict:
+    |         ^^^^^^^^^^^^
+464 |         count = 0
+465 |         if self.use_faiss:
+    |
+
+D103 Missing docstring in public function
+   --> src/agent/rag.py:484:5
+    |
+482 | rag_config = _RAGConfig()
+483 |
+484 | def is_rag_enabled() -> bool:
+    |     ^^^^^^^^^^^^^^
+485 |     return True
+    |
+
+D101 Missing docstring in public class
+   --> src/agent/rag.py:487:7
+    |
+485 |     return True
+486 |
+487 | class Resource:
+    |       ^^^^^^^^
+488 |     pass
+    |
+
+D103 Missing docstring in public function
+  --> src/agent/rag_nodes.py:22:9
+   |
+20 |         max_documents = 3
+21 |
+22 |     def create_rag_tool(_resources):  # type: ignore
+   |         ^^^^^^^^^^^^^^^
+23 |         raise ImportError(
+24 |             "agent.rag module is required for rag_nodes. Provide create_rag_tool,"
+   |
+
+D103 Missing docstring in public function
+  --> src/agent/rag_nodes.py:28:9
+   |
+26 |         )
+27 |
+28 |     def is_rag_enabled() -> bool:  # type: ignore
+   |         ^^^^^^^^^^^^^^
+29 |         return False
+   |
+
+E402 Module level import not at top of file
+  --> src/agent/rate_limiter.py:21:1
+   |
+19 | logger = logging.getLogger(__name__)
+20 |
+21 | from agent.models import GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22 |
+23 | # Timezone for daily reset
+   |
+
+D100 Missing docstring in public module
+--> src/agent/registry.py:1:1
+
+D107 Missing docstring in `__init__`
+  --> src/agent/registry.py:16:9
+   |
+14 |     """
+15 |
+16 |     def __init__(self):
+   |         ^^^^^^^^
+17 |         self.node_docs: Dict[str, Dict[str, object]] = {}
+18 |         self.edge_docs: List[Dict[str, str]] = []
+   |
+
+D401 First line of docstring should be in imperative mood: "Decorator that records metadata for a node without altering wiring."
+  --> src/agent/registry.py:29:9
+   |
+27 |         outputs: List[str] | None = None,
+28 |     ):
+29 |         """Decorator that records metadata for a node without altering wiring."""
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30 |
+31 |         def decorator(func: Callable):
+   |
+
+D102 Missing docstring in public method
+  --> src/agent/registry.py:42:9
+   |
+40 |         return decorator
+41 |
+42 |     def document_edge(self, source: str, target: str, *, description: str = ""):
+   |         ^^^^^^^^^^^^^
+43 |         self.edge_docs.append(
+44 |             {
+   |
+
+D102 Missing docstring in public method
+  --> src/agent/registry.py:51:9
+   |
+49 |         )
+50 |
+51 |     def add_note(self, note: str):
+   |         ^^^^^^^^
+52 |         self.notes.append(note)
+   |
+
+D102 Missing docstring in public method
+  --> src/agent/registry.py:54:9
+   |
+52 |         self.notes.append(note)
+53 |
+54 |     def render_overview(self) -> str:
+   |         ^^^^^^^^^^^^^^^
+55 |         lines = ["Registered Nodes:"]
+56 |         for name, meta in self.node_docs.items():
+   |
+
+D100 Missing docstring in public module
+--> src/agent/router.py:1:1
+
+D100 Missing docstring in public module
+--> src/agent/scoping_prompts.py:1:1
+
+D100 Missing docstring in public module
+--> src/agent/scoping_schema.py:1:1
+
+D200 One-line docstring should fit on one line
+  --> src/agent/scoping_schema.py:7:5
+   |
+ 6 |   class ScopingAssessment(BaseModel):
+ 7 | /     """Assessment of whether the user's query requires clarification.
+ 8 | |     """
+   | |_______^
+ 9 |       is_ambiguous: bool = Field(
+10 |           description="True if the query is too vague to form a solid research plan."
+   |
+help: Reformat to one line
+
+D100 Missing docstring in public module
+--> src/agent/state.py:1:1
+
+D205 1 blank line required between summary line and description
+  --> src/agent/state.py:12:5
+   |
+11 |   class Evidence(TypedDict):
+12 | /     """Structured evidence extracted from web content.
+13 | |     Used by ManuSearch/content_reader.
+14 | |     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+15 | |     """
+   | |_______^
+16 |       claim: str
+17 |       source_url: str
+   |
+help: Insert single blank line
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/agent/state.py:12:5
+   |
+11 |   class Evidence(TypedDict):
+12 | /     """Structured evidence extracted from web content.
+13 | |     Used by ManuSearch/content_reader.
+14 | |     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+15 | |     """
+   | |_______^
+16 |       claim: str
+17 |       source_url: str
+   |
+help: Add closing punctuation
+
+D205 1 blank line required between summary line and description
+  --> src/agent/state.py:23:5
+   |
+22 |   class Todo(TypedDict, total=False):
+23 | /     """Represents a single unit of work in the plan.
+24 | |     Use total=False to allow for partial updates and backward compatibility.
+25 | |     """
+   | |_______^
+26 |       id: str
+27 |       task: str
+   |
+help: Insert single blank line
+
+D101 Missing docstring in public class
+  --> src/agent/state.py:32:7
+   |
+32 | class Artifact(TypedDict):
+   |       ^^^^^^^^
+33 |     id: str
+34 |     content: str
+   |
+
+D205 1 blank line required between summary line and description
+  --> src/agent/state.py:41:5
+   |
+40 |   class ScopingState(TypedDict, total=False):
+41 | /     """Scoping fields used during the agent's initial question scoping phase.
+42 | |     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+43 | |     """
+   | |_______^
+44 |       query: str
+45 |       clarifications_needed: List[str]
+   |
+help: Insert single blank line
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/agent/state.py:41:5
+   |
+40 |   class ScopingState(TypedDict, total=False):
+41 | /     """Scoping fields used during the agent's initial question scoping phase.
+42 | |     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+43 | |     """
+   | |_______^
+44 |       query: str
+45 |       clarifications_needed: List[str]
+   |
+help: Add closing punctuation
+
+D101 Missing docstring in public class
+  --> src/agent/state.py:49:7
+   |
+49 | class Subsection(TypedDict):
+   |       ^^^^^^^^^^
+50 |     title: str
+51 |     description: str | None  # Optional description of what to cover
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/state.py:54:7
+   |
+54 | class Section(TypedDict):
+   |       ^^^^^^^
+55 |     title: str
+56 |     subsections: List[Subsection]
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/state.py:59:7
+   |
+59 | class Outline(TypedDict):
+   |       ^^^^^^^
+60 |     title: str  # Overall title of the report/outline
+61 |     sections: List[Section]
+   |
+
+D205 1 blank line required between summary line and description
+  --> src/agent/state.py:65:5
+   |
+64 |   class OverallState(ScopingState, TypedDict, total=False):
+65 | /     """Overall agent state. Extends ScopingState and adds plan and other fields.
+66 | |     Inheritance from ScopingState ensures scoping fields are available.
+67 | |     """
+   | |_______^
+68 |       messages: Annotated[list, add_messages]
+69 |       search_query: Annotated[list, operator.add]
+   |
+help: Insert single blank line
+
+D101 Missing docstring in public class
+  --> src/agent/state.py:96:7
+   |
+96 | class ReflectionState(TypedDict):
+   |       ^^^^^^^^^^^^^^^
+97 |     is_sufficient: bool
+98 |     knowledge_gap: str
+   |
+
+D101 Missing docstring in public class
+   --> src/agent/state.py:105:7
+    |
+105 | class Query(TypedDict):
+    |       ^^^^^
+106 |     query: str
+107 |     rationale: str
+    |
+
+D101 Missing docstring in public class
+   --> src/agent/state.py:110:7
+    |
+110 | class QueryGenerationState(TypedDict):
+    |       ^^^^^^^^^^^^^^^^^^^^
+111 |     search_query: list[Query]
+    |
+
+D101 Missing docstring in public class
+   --> src/agent/state.py:114:7
+    |
+114 | class WebSearchState(TypedDict):
+    |       ^^^^^^^^^^^^^^
+115 |     search_query: str
+116 |     id: str
+    |
+
+D205 1 blank line required between summary line and description
+   --> src/agent/state.py:120:5
+    |
+119 |   def validate_scoping(state: OverallState) -> bool:
+120 | /     """Runtime validation helper to check if required scoping fields are present.
+121 | |     Returns True if valid, False otherwise.
+122 | |     """
+    | |_______^
+123 |       required_fields = ["query", "clarifications_needed", "user_answers"]
+124 |       return all(field in state for field in required_fields)
+    |
+help: Insert single blank line
+
+D101 Missing docstring in public class
+   --> src/agent/state.py:128:7
+    |
+127 | @dataclass(kw_only=True)
+128 | class SearchStateOutput:
+    |       ^^^^^^^^^^^^^^^^^
+129 |     running_summary: str | None = field(default=None)  # Final report
+    |
+
+D401 First line of docstring should be in imperative mood: "Placeholder factory for RAG resources until a concrete implementation exists."
+   --> src/agent/state.py:133:5
+    |
+132 |   def create_rag_resources(resource_uris: list[str]):
+133 | /     """Placeholder factory for RAG resources until a concrete implementation exists.
+134 | |
+135 | |     This is an intentional extension point. Users should override this function
+136 | |     to convert resource URIs into Resource objects for their specific RAG backend.
+137 | |
+138 | |     Example implementation:
+139 | |         def create_rag_resources(resource_uris: list[str]) -> list[Resource]:
+140 | |             return [Resource(uri=uri, metadata={}) for uri in resource_uris]
+141 | |
+142 | |     Raises:
+143 | |         NotImplementedError: Always raised - this must be implemented by the user.
+144 | |     """
+    | |_______^
+145 |       raise NotImplementedError(
+146 |           "create_rag_resources is not implemented. Provide agent.state.create_rag_resources"
+    |
+
+D200 One-line docstring should fit on one line
+  --> src/agent/tool_adapter.py:43:5
+   |
+42 |   def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
+43 | /     """Converts a list of LangChain tools into a readable JSON schema string for the prompt.
+44 | |     """
+   | |_______^
+45 |       tool_schemas = []
+46 |       for tool in tools:
+   |
+help: Reformat to one line
+
+D401 First line of docstring should be in imperative mood: "Converts a list of LangChain tools into a readable JSON schema string for the prompt."
+  --> src/agent/tool_adapter.py:43:5
+   |
+42 |   def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
+43 | /     """Converts a list of LangChain tools into a readable JSON schema string for the prompt.
+44 | |     """
+   | |_______^
+45 |       tool_schemas = []
+46 |       for tool in tools:
+   |
+
+D205 1 blank line required between summary line and description
+  --> src/agent/tool_adapter.py:70:5
+   |
+69 |   def parse_tool_calls(content: str, allowed_tools: List[str] | None = None) -> List[Dict[str, Any]]:
+70 | /     """Parses the LLM output for JSON tool calls.
+71 | |     Robustly handles markdown blocks and fallback JSON extraction.
+72 | |     """
+   | |_______^
+73 |       # Debug logging to see what the model actually output
+74 |       logger.debug(f"Raw LLM Output for Tool Parsing:\n{content}\n" + "-"*20)
+   |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Parses the LLM output for JSON tool calls."
+  --> src/agent/tool_adapter.py:70:5
+   |
+69 |   def parse_tool_calls(content: str, allowed_tools: List[str] | None = None) -> List[Dict[str, Any]]:
+70 | /     """Parses the LLM output for JSON tool calls.
+71 | |     Robustly handles markdown blocks and fallback JSON extraction.
+72 | |     """
+   | |_______^
+73 |       # Debug logging to see what the model actually output
+74 |       logger.debug(f"Raw LLM Output for Tool Parsing:\n{content}\n" + "-"*20)
+   |
+
+D100 Missing docstring in public module
+--> src/agent/tools_and_schemas.py:1:1
+
+D101 Missing docstring in public class
+  --> src/agent/tools_and_schemas.py:13:7
+   |
+11 | MCP_TOOLS: List[Any] = []
+12 |
+13 | class SearchQueryList(BaseModel):
+   |       ^^^^^^^^^^^^^^^
+14 |     query: List[str] = Field(
+15 |         description="A list of search queries to be used for web research."
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/tools_and_schemas.py:22:7
+   |
+22 | class Todo(BaseModel):
+   |       ^^^^
+23 |     title: str = Field(description="A concise title for the task (acting as the search query).")
+24 |     description: str | None = Field(description="A brief description of what to look for.")
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/tools_and_schemas.py:27:7
+   |
+25 |     status: str = Field(description="Set to 'pending' by default.", default="pending")
+26 |
+27 | class Plan(BaseModel):
+   |       ^^^^
+28 |     plan: List[Todo] = Field(description="A list of tasks (Todos) to execute.")
+29 |     rationale: str = Field(description="Brief explanation of the research strategy.")
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/tools_and_schemas.py:32:7
+   |
+32 | class Reflection(BaseModel):
+   |       ^^^^^^^^^^
+33 |     is_sufficient: bool = Field(
+34 |         description="Whether the provided summaries are sufficient to answer the user's question."
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/tools_and_schemas.py:47:7
+   |
+45 |     )
+46 |
+47 | class Subsection(BaseModel):
+   |       ^^^^^^^^^^
+48 |     title: str = Field(description="Title of the subsection.")
+49 |     description: str = Field(description="Content to cover in this subsection.")
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/tools_and_schemas.py:51:7
+   |
+49 |     description: str = Field(description="Content to cover in this subsection.")
+50 |
+51 | class Section(BaseModel):
+   |       ^^^^^^^
+52 |     title: str = Field(description="Title of the main section.")
+53 |     subsections: List[Subsection] = Field(description="List of subsections.")
+   |
+
+D101 Missing docstring in public class
+  --> src/agent/tools_and_schemas.py:55:7
+   |
+53 |     subsections: List[Subsection] = Field(description="List of subsections.")
+54 |
+55 | class Outline(BaseModel):
+   |       ^^^^^^^
+56 |     title: str = Field(description="Title of the research report.")
+57 |     sections: List[Section] = Field(description="List of main sections.")
+   |
+
+D205 1 blank line required between summary line and description
+  --> src/agent/tools_and_schemas.py:61:5
+   |
+60 |   def get_mcp_tools() -> List:
+61 | /     """Retrieves MCP-based tools.
+62 | |     Currently returns the Persistence tools (load_thread_plan, save_thread_plan).
+63 | |     """
+   | |_______^
+64 |       manager = McpConnectionManager()
+65 |       # In a sync context, we might need to be careful with async tools,
+   |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Retrieves MCP-based tools."
+  --> src/agent/tools_and_schemas.py:61:5
+   |
+60 |   def get_mcp_tools() -> List:
+61 | /     """Retrieves MCP-based tools.
+62 | |     Currently returns the Persistence tools (load_thread_plan, save_thread_plan).
+63 | |     """
+   | |_______^
+64 |       manager = McpConnectionManager()
+65 |       # In a sync context, we might need to be careful with async tools,
+   |
+
+D200 One-line docstring should fit on one line
+  --> src/agent/tools_and_schemas.py:70:5
+   |
+69 |   async def get_tools_from_mcp(mcp_config=None):
+70 | /     """Connects to an MCP server and loads available tools.
+71 | |     """
+   | |_______^
+72 |       if not mcp_config or not mcp_config.enabled or not mcp_config.endpoint:
+73 |           return []
+   |
+help: Reformat to one line
+
+D401 First line of docstring should be in imperative mood: "Connects to an MCP server and loads available tools."
+  --> src/agent/tools_and_schemas.py:70:5
+   |
+69 |   async def get_tools_from_mcp(mcp_config=None):
+70 | /     """Connects to an MCP server and loads available tools.
+71 | |     """
+   | |_______^
+72 |       if not mcp_config or not mcp_config.enabled or not mcp_config.endpoint:
+73 |           return []
+   |
+
+T201 `print` found
+  --> src/agent/tools_and_schemas.py:94:9
+   |
+92 |     except Exception as e:
+93 |         # Log error or return empty list so app startup doesn't crash on optional tool load
+94 |         print(f"Error loading MCP tools: {e}")
+   |         ^^^^^
+95 |         return []
+   |
+help: Remove `print`
+
+D200 One-line docstring should fit on one line
+   --> src/agent/tools_and_schemas.py:98:5
+    |
+ 97 |   async def get_global_tools() -> List[Any]:
+ 98 | /     """Aggregates MCP tools (Persistence) and Custom tools (Filesystem).
+ 99 | |     """
+    | |_______^
+100 |       tools = []
+    |
+help: Reformat to one line
+
+D401 First line of docstring should be in imperative mood: "Aggregates MCP tools (Persistence) and Custom tools (Filesystem)."
+   --> src/agent/tools_and_schemas.py:98:5
+    |
+ 97 |   async def get_global_tools() -> List[Any]:
+ 98 | /     """Aggregates MCP tools (Persistence) and Custom tools (Filesystem).
+ 99 | |     """
+    | |_______^
+100 |       tools = []
+    |
+
+D100 Missing docstring in public module
+--> src/agent/utils.py:1:1
+
+D200 One-line docstring should fit on one line
+  --> src/agent/utils.py:11:5
+   |
+10 |   def get_research_topic(messages: List[AnyMessage]) -> str:
+11 | /     """Get the research topic from the messages.
+12 | |     """
+   | |_______^
+13 |       # check if request has a history and combine the messages into a single string
+14 |       if len(messages) == 1:
+   |
+help: Reformat to one line
+
+D205 1 blank line required between summary line and description
+  --> src/agent/utils.py:27:5
+   |
+26 |   def resolve_urls(urls_to_resolve: List[Any], id: int) -> Dict[str, str]:
+27 | /     """Create a map of the vertex ai search urls (very long) to a short url with a unique id for each url.
+28 | |     Ensures each original URL gets a consistent shortened form while maintaining uniqueness.
+29 | |     """
+   | |_______^
+30 |       prefix = "https://vertexaisearch.cloud.google.com/id/"
+31 |       urls = [site.web.uri for site in urls_to_resolve]
+   |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Inserts citation markers into a text string based on start and end indices."
+  --> src/agent/utils.py:43:5
+   |
+42 |   def insert_citation_markers(text, citations_list):
+43 | /     """Inserts citation markers into a text string based on start and end indices.
+44 | |
+45 | |     Args:
+46 | |         text (str): The original text string.
+47 | |         citations_list (list): A list of dictionaries, where each dictionary
+48 | |                                contains 'start_index', 'end_index', and
+49 | |                                'segment_string' (the marker to insert).
+50 | |                                Indices are assumed to be for the original text.
+51 | |
+52 | |     Returns:
+53 | |         str: The text with citation markers inserted.
+54 | |     """
+   | |_______^
+55 |       # ⚡ Bolt Optimization: Sort by end_index ascending for linear O(N) pass.
+56 |       # This replaces O(N^2) string concatenation loop with O(N) list construction.
+   |
+
+D401 First line of docstring should be in imperative mood: "Extracts and formats citation information from a Gemini model's response."
+   --> src/agent/utils.py:88:5
+    |
+ 87 |   def get_citations(response, resolved_urls_map):
+ 88 | /     """Extracts and formats citation information from a Gemini model's response.
+ 89 | |
+ 90 | |     This function processes the grounding metadata provided in the response to
+ 91 | |     construct a list of citation objects. Each citation object includes the
+ 92 | |     start and end indices of the text segment it refers to, and a string
+ 93 | |     containing formatted markdown links to the supporting web chunks.
+ 94 | |
+ 95 | |     Args:
+ 96 | |         response: The response object from the Gemini model, expected to have
+ 97 | |                   a structure including `candidates[0].grounding_metadata`.
+ 98 | |                   It also relies on a `resolved_map` being available in its
+ 99 | |                   scope to map chunk URIs to resolved URLs.
+100 | |
+101 | |     Returns:
+102 | |         list: A list of dictionaries, where each dictionary represents a citation
+103 | |               and has the following keys:
+104 | |               - "start_index" (int): The starting character index of the cited
+105 | |                                      segment in the original text. Defaults to 0
+106 | |                                      if not specified.
+107 | |               - "end_index" (int): The character index immediately after the
+108 | |                                    end of the cited segment (exclusive).
+109 | |               - "segments" (list[str]): A list of individual markdown-formatted
+110 | |                                         links for each grounding chunk.
+111 | |               - "segment_string" (str): A concatenated string of all markdown-
+112 | |                                         formatted links for the citation.
+113 | |               Returns an empty list if no valid candidates or grounding supports
+114 | |               are found, or if essential data is missing.
+115 | |     """
+    | |_______^
+116 |       citations = []
+    |
+
+D205 1 blank line required between summary line and description
+   --> src/agent/utils.py:184:5
+    |
+183 |   def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\n") -> str:
+184 | /     """Efficiently joins a list of strings up to a maximum length.
+185 | |     Avoids creating the full joined string in memory if it exceeds the limit.
+186 | |     """
+    | |_______^
+187 |       if not strings:
+188 |           return ""
+    |
+help: Insert single blank line
+
+D205 1 blank line required between summary line and description
+   --> src/agent/utils.py:217:5
+    |
+215 |   @lru_cache(maxsize=16)
+216 |   def get_cached_llm(model: str, temperature: float) -> Any:
+217 | /     """Returns a configured LLM client.
+218 | |     Supports Gemini (native) and Gemma (via GemmaAdapter).
+219 | |     """
+    | |_______^
+220 |       is_gemma = "gemma" in model.lower()
+    |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Returns a configured LLM client."
+   --> src/agent/utils.py:217:5
+    |
+215 |   @lru_cache(maxsize=16)
+216 |   def get_cached_llm(model: str, temperature: float) -> Any:
+217 | /     """Returns a configured LLM client.
+218 | |     Supports Gemini (native) and Gemma (via GemmaAdapter).
+219 | |     """
+    | |_______^
+220 |       is_gemma = "gemma" in model.lower()
+    |
+
+D205 1 blank line required between summary line and description
+   --> src/agent/utils.py:239:5
+    |
+238 |   def has_fuzzy_match(keyword: str, candidates: Iterable[str], cutoff: float = 0.8) -> bool:
+239 | /     """Checks if there is any candidate in the list that has a fuzzy match ratio >= cutoff
+240 | |     with the keyword. Returns True immediately on the first match.
+241 | |     Avoids sorting overhead of get_close_matches.
+242 | |
+243 | |     Args:
+244 | |         keyword: The word to match against.
+245 | |         candidates: List of words to search in.
+246 | |         cutoff: Minimum similarity ratio (0.0 to 1.0).
+247 | |
+248 | |     Returns:
+249 | |         True if a match is found, False otherwise.
+250 | |     """
+    | |_______^
+251 |       # Reuse SequenceMatcher instance for efficiency
+252 |       matcher = difflib.SequenceMatcher(b=keyword)
+    |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Checks if there is any candidate in the list that has a fuzzy match ratio >= cutoff"
+   --> src/agent/utils.py:239:5
+    |
+238 |   def has_fuzzy_match(keyword: str, candidates: Iterable[str], cutoff: float = 0.8) -> bool:
+239 | /     """Checks if there is any candidate in the list that has a fuzzy match ratio >= cutoff
+240 | |     with the keyword. Returns True immediately on the first match.
+241 | |     Avoids sorting overhead of get_close_matches.
+242 | |
+243 | |     Args:
+244 | |         keyword: The word to match against.
+245 | |         candidates: List of words to search in.
+246 | |         cutoff: Minimum similarity ratio (0.0 to 1.0).
+247 | |
+248 | |     Returns:
+249 | |         True if a match is found, False otherwise.
+250 | |     """
+    | |_______^
+251 |       # Reuse SequenceMatcher instance for efficiency
+252 |       matcher = difflib.SequenceMatcher(b=keyword)
+    |
+
+D100 Missing docstring in public module
+--> src/config/app_config.py:1:1
+
+D100 Missing docstring in public module
+--> src/config/validation.py:1:1
+
+D205 1 blank line required between summary line and description
+  --> src/config/validation.py:9:5
+   |
+ 8 |   def validate_environment() -> Dict[str, bool]:
+ 9 | /     """Validates the runtime environment for critical dependencies and variables.
+10 | |     Returns a dict of check statuses.
+11 | |     """
+   | |_______^
+12 |       checks = {}
+   |
+help: Insert single blank line
+
+D401 First line of docstring should be in imperative mood: "Validates the runtime environment for critical dependencies and variables."
+  --> src/config/validation.py:9:5
+   |
+ 8 |   def validate_environment() -> Dict[str, bool]:
+ 9 | /     """Validates the runtime environment for critical dependencies and variables.
+10 | |     Returns a dict of check statuses.
+11 | |     """
+   | |_______^
+12 |       checks = {}
+   |
+
+D205 1 blank line required between summary line and description
+  --> src/config/validation.py:49:5
+   |
+48 |   def check_env_strict():
+49 | /     """Strict check that raises an error if critical components are missing.
+50 | |     Call this on app startup if you want to fail fast.
+51 | |     """
+   | |_______^
+52 |       results = validate_environment()
+   |
+help: Insert single blank line
+
+D100 Missing docstring in public module
+--> src/evaluation/bench.py:1:1
+
+D205 1 blank line required between summary line and description
+  --> src/evaluation/bench.py:16:5
+   |
+15 |   class BenchmarkEvaluator:
+16 | /     """Complete evaluation pipeline for DeepResearch-Bench.
+17 | |     Matches the leaderboard evaluation protocol.
+18 | |     """
+   | |_______^
+19 |
+20 |       def __init__(
+   |
+help: Insert single blank line
+
+D107 Missing docstring in `__init__`
+  --> src/evaluation/bench.py:20:9
+   |
+18 |     """
+19 |
+20 |     def __init__(
+   |         ^^^^^^^^
+21 |         self,
+22 |         agent: DeepSearchAgent,
+   |
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/evaluation/bench.py:37:9
+   |
+36 |     def _load_jsonl(self, file_path: Path) -> List[Dict]:
+37 |         """Load JSONL file"""
+   |         ^^^^^^^^^^^^^^^^^^^^^
+38 |         data = []
+39 |         if not file_path.exists():
+   |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/evaluation/bench.py:134:9
+    |
+132 |         reference: Dict
+133 |     ) -> Dict:
+134 |         """Evaluate single query with all metrics"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+135 |         query = criterion["query"]
+136 |         query_id = criterion["query_id"]
+    |
+help: Add closing punctuation
+
+D200 One-line docstring should fit on one line
+   --> src/evaluation/bench.py:193:9
+    |
+192 |       def _calculate_overall_score(self, aggregate_scores: Dict) -> float:
+193 | /         """Calculate overall benchmark score matching leaderboard formula.
+194 | |         """
+    | |___________^
+195 |           weights = {
+196 |               "pass_at_1": 0.40,
+    |
+help: Reformat to one line
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/evaluation/bench.py:213:9
+    |
+212 |     def _print_summary(self, scores: Dict):
+213 |         """Print formatted results"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+214 |         print("\n" + "="*60)
+215 |         print("DEEPRESEARCH-BENCH EVALUATION RESULTS")
+    |
+help: Add closing punctuation
+
+T201 `print` found
+   --> src/evaluation/bench.py:214:9
+    |
+212 |     def _print_summary(self, scores: Dict):
+213 |         """Print formatted results"""
+214 |         print("\n" + "="*60)
+    |         ^^^^^
+215 |         print("DEEPRESEARCH-BENCH EVALUATION RESULTS")
+216 |         print("="*60)
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:215:9
+    |
+213 |         """Print formatted results"""
+214 |         print("\n" + "="*60)
+215 |         print("DEEPRESEARCH-BENCH EVALUATION RESULTS")
+    |         ^^^^^
+216 |         print("="*60)
+217 |         print(f"Overall Score: {scores['overall_score']:.2f}%")
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:216:9
+    |
+214 |         print("\n" + "="*60)
+215 |         print("DEEPRESEARCH-BENCH EVALUATION RESULTS")
+216 |         print("="*60)
+    |         ^^^^^
+217 |         print(f"Overall Score: {scores['overall_score']:.2f}%")
+218 |         print("\nDetailed Metrics:")
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:217:9
+    |
+215 |         print("DEEPRESEARCH-BENCH EVALUATION RESULTS")
+216 |         print("="*60)
+217 |         print(f"Overall Score: {scores['overall_score']:.2f}%")
+    |         ^^^^^
+218 |         print("\nDetailed Metrics:")
+219 |         print(f"  Pass@1 Accuracy:      {scores['pass_at_1_accuracy']:.2f}%")
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:218:9
+    |
+216 |         print("="*60)
+217 |         print(f"Overall Score: {scores['overall_score']:.2f}%")
+218 |         print("\nDetailed Metrics:")
+    |         ^^^^^
+219 |         print(f"  Pass@1 Accuracy:      {scores['pass_at_1_accuracy']:.2f}%")
+220 |         print(f"  Evidence Quality:     {scores['evidence_quality']:.2f}%")
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:219:9
+    |
+217 |         print(f"Overall Score: {scores['overall_score']:.2f}%")
+218 |         print("\nDetailed Metrics:")
+219 |         print(f"  Pass@1 Accuracy:      {scores['pass_at_1_accuracy']:.2f}%")
+    |         ^^^^^
+220 |         print(f"  Evidence Quality:     {scores['evidence_quality']:.2f}%")
+221 |         print(f"  Subgoal Completion:   {scores['subgoal_completion']:.2f}%")
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:220:9
+    |
+218 |         print("\nDetailed Metrics:")
+219 |         print(f"  Pass@1 Accuracy:      {scores['pass_at_1_accuracy']:.2f}%")
+220 |         print(f"  Evidence Quality:     {scores['evidence_quality']:.2f}%")
+    |         ^^^^^
+221 |         print(f"  Subgoal Completion:   {scores['subgoal_completion']:.2f}%")
+222 |         print(f"  Hallucination Rate:   {scores['hallucination_rate']:.2f}%")
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:221:9
+    |
+219 |         print(f"  Pass@1 Accuracy:      {scores['pass_at_1_accuracy']:.2f}%")
+220 |         print(f"  Evidence Quality:     {scores['evidence_quality']:.2f}%")
+221 |         print(f"  Subgoal Completion:   {scores['subgoal_completion']:.2f}%")
+    |         ^^^^^
+222 |         print(f"  Hallucination Rate:   {scores['hallucination_rate']:.2f}%")
+223 |         print(f"  Context Efficiency:   {scores['context_efficiency']:.2f}")
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:222:9
+    |
+220 |         print(f"  Evidence Quality:     {scores['evidence_quality']:.2f}%")
+221 |         print(f"  Subgoal Completion:   {scores['subgoal_completion']:.2f}%")
+222 |         print(f"  Hallucination Rate:   {scores['hallucination_rate']:.2f}%")
+    |         ^^^^^
+223 |         print(f"  Context Efficiency:   {scores['context_efficiency']:.2f}")
+224 |         print(f"\nQueries Evaluated: {scores['num_queries_evaluated']}")
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:223:9
+    |
+221 |         print(f"  Subgoal Completion:   {scores['subgoal_completion']:.2f}%")
+222 |         print(f"  Hallucination Rate:   {scores['hallucination_rate']:.2f}%")
+223 |         print(f"  Context Efficiency:   {scores['context_efficiency']:.2f}")
+    |         ^^^^^
+224 |         print(f"\nQueries Evaluated: {scores['num_queries_evaluated']}")
+225 |         print("="*60)
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:224:9
+    |
+222 |         print(f"  Hallucination Rate:   {scores['hallucination_rate']:.2f}%")
+223 |         print(f"  Context Efficiency:   {scores['context_efficiency']:.2f}")
+224 |         print(f"\nQueries Evaluated: {scores['num_queries_evaluated']}")
+    |         ^^^^^
+225 |         print("="*60)
+    |
+help: Remove `print`
+
+T201 `print` found
+   --> src/evaluation/bench.py:225:9
+    |
+223 |         print(f"  Context Efficiency:   {scores['context_efficiency']:.2f}")
+224 |         print(f"\nQueries Evaluated: {scores['num_queries_evaluated']}")
+225 |         print("="*60)
+    |         ^^^^^
+    |
+help: Remove `print`
+
+D100 Missing docstring in public module
+--> src/evaluation/data.py:1:1
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/evaluation/data.py:14:5
+   |
+13 | def download_benchmark_data(output_dir: str = "data/benchmark"):
+14 |     """Download DeepResearch-Bench evaluation data, fallback to mock"""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+15 |     output_path = Path(output_dir)
+16 |     output_path.mkdir(parents=True, exist_ok=True)
+   |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/evaluation/data.py:51:5
+   |
+50 | def create_mock_data(dataset_name: str, output_path: Path):
+51 |     """Create small mock dataset for testing"""
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+52 |     if dataset_name == "criteria":
+53 |         mock_data = [
+   |
+help: Add closing punctuation
+
+D100 Missing docstring in public module
+--> src/evaluation/deep_research_bench.py:1:1
+
+D200 One-line docstring should fit on one line
+  --> src/evaluation/deep_research_bench.py:35:5
+   |
+34 |   def evaluate_deep_research():
+35 | /     """Evaluates the agent on DeepResearch-Bench (muset-ai).
+36 | |     """
+   | |_______^
+37 |       # TODO(priority=High, complexity=Low): [deep_bench:1] Load dataset
+38 |       dataset = []  # load_deep_research_dataset()
+   |
+help: Reformat to one line
+
+D401 First line of docstring should be in imperative mood: "Evaluates the agent on DeepResearch-Bench (muset-ai)."
+  --> src/evaluation/deep_research_bench.py:35:5
+   |
+34 |   def evaluate_deep_research():
+35 | /     """Evaluates the agent on DeepResearch-Bench (muset-ai).
+36 | |     """
+   | |_______^
+37 |       # TODO(priority=High, complexity=Low): [deep_bench:1] Load dataset
+38 |       dataset = []  # load_deep_research_dataset()
+   |
+
+F841 Local variable `results` is assigned to but never used
+  --> src/evaluation/deep_research_bench.py:41:5
+   |
+40 |     # TODO(priority=High, complexity=Medium): [deep_bench:2] Run agent
+41 |     results = []
+   |     ^^^^^^^
+42 |     for task in dataset:
+43 |         # report = run_full_research(task.query)
+   |
+help: Remove assignment to unused variable `results`
+
+F841 Local variable `scores` is assigned to but never used
+  --> src/evaluation/deep_research_bench.py:48:5
+   |
+47 |     # TODO(priority=Medium, complexity=High): [deep_bench:3] Score reports
+48 |     scores = []
+   |     ^^^^^^
+49 |     # for result in results:
+50 |     #     score = score_report(result["report"], gold_report)
+   |
+help: Remove assignment to unused variable `scores`
+
+T201 `print` found
+  --> src/evaluation/deep_research_bench.py:61:5
+   |
+60 |     # TODO(priority=Low, complexity=Low): [deep_bench:6] Report
+61 |     print("DeepResearch-Bench evaluation not yet implemented")
+   |     ^^^^^
+62 |
+63 | if __name__ == "__main__":
+   |
+help: Remove `print`
+
+D100 Missing docstring in public module
+--> src/evaluation/metrics.py:1:1
+
+D205 1 blank line required between summary line and description
+  --> src/evaluation/metrics.py:11:5
+   |
+10 |   class DeepResearchMetrics:
+11 | /     """Implementation of DeepResearch-Bench evaluation metrics.
+12 | |     Based on SOTA frameworks: RhinoInsight, FlowSearch, TTD-DR
+13 | |     """
+   | |_______^
+14 |
+15 |       @staticmethod
+   |
+help: Insert single blank line
+
+D415 First line should end with a period, question mark, or exclamation point
+  --> src/evaluation/metrics.py:11:5
+   |
+10 |   class DeepResearchMetrics:
+11 | /     """Implementation of DeepResearch-Bench evaluation metrics.
+12 | |     Based on SOTA frameworks: RhinoInsight, FlowSearch, TTD-DR
+13 | |     """
+   | |_______^
+14 |
+15 |       @staticmethod
+   |
+help: Add closing punctuation
+
+D200 One-line docstring should fit on one line
+  --> src/evaluation/metrics.py:22:9
+   |
+20 |           threshold: float = 0.7
+21 |       ) -> Dict:
+22 | /         """Measure if the generated answer is correct on first attempt.
+23 | |         """
+   | |___________^
+24 |           # Extract facts from generated answer
+25 |           generated_facts = DeepResearchMetrics._extract_facts(generated_answer)
+   |
+help: Reformat to one line
+
+F841 Local variable `generated_facts` is assigned to but never used
+  --> src/evaluation/metrics.py:25:9
+   |
+23 |         """
+24 |         # Extract facts from generated answer
+25 |         generated_facts = DeepResearchMetrics._extract_facts(generated_answer)
+   |         ^^^^^^^^^^^^^^^
+26 |
+27 |         # Check key fact coverage
+   |
+help: Remove assignment to unused variable `generated_facts`
+
+D200 One-line docstring should fit on one line
+  --> src/evaluation/metrics.py:65:9
+   |
+63 |           min_evidence_count: int
+64 |       ) -> Dict:
+65 | /         """Evaluate quality of retrieved evidence.
+66 | |         """
+   | |___________^
+67 |           # Extract domains from retrieved docs
+68 |           retrieved_domains = set()
+   |
+help: Reformat to one line
+
+D200 One-line docstring should fit on one line
+   --> src/evaluation/metrics.py:113:9
+    |
+111 |           confidence_threshold: float = 0.7
+112 |       ) -> Dict:
+113 | /         """Measure how well each subgoal was addressed.
+114 | |         """
+    | |___________^
+115 |           completed = 0
+116 |           subgoal_results = []
+    |
+help: Reformat to one line
+
+D200 One-line docstring should fit on one line
+   --> src/evaluation/metrics.py:151:9
+    |
+149 |           llm_client
+150 |       ) -> Dict:
+151 | /         """Detect factual claims not supported by evidence.
+152 | |         """
+    | |___________^
+153 |           # Extract claims using LLM
+154 |           claims_prompt = f"""
+    |
+help: Reformat to one line
+
+D200 One-line docstring should fit on one line
+   --> src/evaluation/metrics.py:227:9
+    |
+225 |           answer_quality_score: float
+226 |       ) -> Dict:
+227 | /         """Measure token efficiency: quality per unit of context used.
+228 | |         """
+    | |___________^
+229 |           # Approximate token counts (4 chars ≈ 1 token)
+230 |           answer_tokens = final_answer_length / 4
+    |
+help: Reformat to one line
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/evaluation/metrics.py:254:9
+    |
+252 |     @staticmethod
+253 |     def _extract_facts(text: str) -> List[str]:
+254 |         """Extract fact-like sentences from text"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+255 |         sentences = re.split(r'[.!?]+', text)
+256 |         facts = []
+    |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/evaluation/metrics.py:266:9
+    |
+264 |     @staticmethod
+265 |     def _fact_mentioned(fact: str, text: str) -> bool:
+266 |         """Check if fact is mentioned in text (fuzzy match)"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+267 |         fact_words = set(fact.lower().split())
+268 |         text_words = set(text.lower().split())
+    |
+help: Add closing punctuation
+
+E701 Multiple statements on one line (colon)
+   --> src/evaluation/metrics.py:269:26
+    |
+267 |         fact_words = set(fact.lower().split())
+268 |         text_words = set(text.lower().split())
+269 |         if not fact_words: return False
+    |                          ^
+270 |         overlap = len(fact_words.intersection(text_words))
+271 |         return overlap / len(fact_words) > 0.6
+    |
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/evaluation/metrics.py:275:9
+    |
+273 |     @staticmethod
+274 |     def _extract_domain(url: str) -> str:
+275 |         """Extract domain from URL"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+276 |         match = re.search(r'(?:https?://)?(?:www\.)?([^/]+)', url)
+277 |         return match.group(1) if match else ""
+    |
+help: Add closing punctuation
+
+D415 First line should end with a period, question mark, or exclamation point
+   --> src/evaluation/metrics.py:281:9
+    |
+279 |     @staticmethod
+280 |     def _shannon_entropy(counts: List[int]) -> float:
+281 |         """Calculate Shannon entropy for diversity measurement"""
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+282 |         if not counts or sum(counts) == 0:
+283 |             return 0.0
+    |
+help: Add closing punctuation
+
+D100 Missing docstring in public module
+--> src/evaluation/mle_bench.py:1:1
+
+D200 One-line docstring should fit on one line
+  --> src/evaluation/mle_bench.py:30:5
+   |
+29 |   def evaluate_mle_bench():
+30 | /     """Evaluates the agent on MLE-bench tasks.
+31 | |     """
+   | |_______^
+32 |       # TODO(priority=High, complexity=Low): [mle_bench:1] Load dataset
+33 |       dataset = []  # load_mle_dataset()
+   |
+help: Reformat to one line
+
+D401 First line of docstring should be in imperative mood: "Evaluates the agent on MLE-bench tasks."
+  --> src/evaluation/mle_bench.py:30:5
+   |
+29 |   def evaluate_mle_bench():
+30 | /     """Evaluates the agent on MLE-bench tasks.
+31 | |     """
+   | |_______^
+32 |       # TODO(priority=High, complexity=Low): [mle_bench:1] Load dataset
+33 |       dataset = []  # load_mle_dataset()
+   |
+
+F841 Local variable `results` is assigned to but never used
+  --> src/evaluation/mle_bench.py:36:5
+   |
+35 |     # TODO(priority=High, complexity=Medium): [mle_bench:2] Run agent
+36 |     results = []
+   |     ^^^^^^^
+37 |     for task in dataset:
+38 |         # output = run_agent(task.prompt)
+   |
+help: Remove assignment to unused variable `results`
+
+F841 Local variable `scores` is assigned to but never used
+  --> src/evaluation/mle_bench.py:43:5
+   |
+42 |     # TODO(priority=Medium, complexity=Medium): [mle_bench:3] Evaluate
+43 |     scores = []
+   |     ^^^^^^
+44 |     # for result in results:
+45 |     #     score = evaluate_output(result["output"], ...)
+   |
+help: Remove assignment to unused variable `scores`
+
+T201 `print` found
+  --> src/evaluation/mle_bench.py:53:5
+   |
+52 |     # TODO(priority=Low, complexity=Low): [mle_bench:5] Report
+53 |     print("MLE-bench evaluation not yet implemented")
+   |     ^^^^^
+54 |
+55 | if __name__ == "__main__":
+   |
+help: Remove `print`
+
+D104 Missing docstring in public package
+--> src/observability/__init__.py:1:1
+
+D100 Missing docstring in public module
+--> src/observability/config.py:1:1
+
+D100 Missing docstring in public module
+--> src/observability/langfuse.py:1:1
+
+D401 First line of docstring should be in imperative mood: "Factory to create a Langfuse CallbackHandler if enabled and available."
+  --> src/observability/langfuse.py:18:5
+   |
+17 |   def get_langfuse_handler(metadata: Dict[str, Any] | None = None) -> Any | None:
+18 | /     """Factory to create a Langfuse CallbackHandler if enabled and available.
+19 | |
+20 | |     Args:
+21 | |         metadata: Optional dictionary of metadata to attach to the trace.
+22 | |
+23 | |     Returns:
+24 | |         A Langfuse CallbackHandler instance or None.
+25 | |     """
+   | |_______^
+26 |       if not is_enabled() or not _LANGFUSE_AVAILABLE:
+27 |           return None
+   |
+
+D100 Missing docstring in public module
+--> src/rag/chroma_store.py:1:1
+
+D200 One-line docstring should fit on one line
+  --> src/rag/chroma_store.py:26:5
+   |
+25 |   class ChromaStore:
+26 | /     """ChromaDB implementation of the RAG store.
+27 | |     """
+   | |_______^
+28 |
+29 |       def __init__(
+   |
+help: Reformat to one line
+
+D205 1 blank line required between summary line and description
+  --> src/rag/chroma_store.py:36:9
+   |
+34 |           allow_reset: bool = False
+35 |       ):
+36 | /         """Args:
+37 | |         collection_name: Name of the Chroma collection.
+38 | |         persist_path: Path to persist the DB.
+39 | |         embedding_function: Optional embedding function. If None, uses default (all-MiniLM-L6-v2 compatible).
+40 | |         allow_reset: Whether to allow resetting the database (destructive).
+41 | |         """
+   | |___________^
+42 |           self.client = chromadb.PersistentClient(path=persist_path, settings=Settings(allow_reset=allow_reset))
+   |
+help: Insert single blank line
+
+D102 Missing docstring in public method
+   --> src/rag/chroma_store.py:155:9
+    |
+153 |         return parsed_results
+154 |
+155 |     def count(self) -> int:
+    |         ^^^^^
+156 |         return self.collection.count()
+    |
+
+D102 Missing docstring in public method
+   --> src/rag/chroma_store.py:158:9
+    |
+156 |         return self.collection.count()
+157 |
+158 |     def reset(self):
+    |         ^^^^^
+159 |         self.client.reset()
+    |
+
+D100 Missing docstring in public module
+--> src/search/provider.py:1:1
+
+D104 Missing docstring in public package
+--> src/search/providers/__init__.py:1:1
+
+D100 Missing docstring in public module
+--> src/search/providers/bing_adapter.py:1:1
+
+D200 One-line docstring should fit on one line
+  --> src/search/providers/bing_adapter.py:31:9
+   |
+29 |           tuned: bool = True,
+30 |       ) -> List[SearchResult]:
+31 | /         """Execute search using Bing API.
+32 | |         """
+   | |___________^
+33 |           if not self.api_key:
+34 |               return []
+   |
+help: Reformat to one line
+
+D100 Missing docstring in public module
+--> src/search/providers/brave_adapter.py:1:1
+
+D100 Missing docstring in public module
+--> src/search/providers/duckduckgo_adapter.py:1:1
+
+D100 Missing docstring in public module
+--> src/search/providers/google_adapter.py:1:1
+
+D205 1 blank line required between summary line and description
+  --> src/search/providers/google_adapter.py:30:9
+   |
+28 |           tuned: bool = True,
+29 |       ) -> List[SearchResult]:
+30 | /         """Execute search.
+31 | |         Note: region, time_range, safe_search, tuned are not currently supported by the GenAI SDK tool wrapper.
+32 | |         """
+   | |___________^
+33 |           from agent.models import GEMINI_FLASH
+   |
+help: Insert single blank line
+
+D100 Missing docstring in public module
+--> src/search/providers/tavily_adapter.py:1:1
+
+D200 One-line docstring should fit on one line
+  --> src/search/providers/tavily_adapter.py:40:9
+   |
+38 |           tuned: bool = True,
+39 |       ) -> List[SearchResult]:
+40 | /         """Execute search.
+41 | |         """
+   | |___________^
+42 |           if not self.client:
+43 |               if not TavilyClient:
+   |
+help: Reformat to one line
+
+D100 Missing docstring in public module
+--> src/search/router.py:1:1
+
+D101 Missing docstring in public class
+  --> src/search/router.py:11:7
+   |
+ 9 | logger = logging.getLogger(__name__)
+10 |
+11 | class SearchProviderType(Enum):
+   |       ^^^^^^^^^^^^^^^^^^
+12 |     GOOGLE = "google"
+13 |     DUCKDUCKGO = "duckduckgo"
+   |
+
+D200 One-line docstring should fit on one line
+  --> src/search/router.py:19:5
+   |
+18 |   class SearchRouter:
+19 | /     """Routes search queries to the appropriate provider with fallback logic.
+20 | |     """
+   | |_______^
+21 |
+22 |       def __init__(self, app_config: AppConfig = config):
+   |
+help: Reformat to one line
+
+E731 Do not assign a `lambda` expression, use a `def`
+  --> tests/agent/test_orchestration.py:33:9
+   |
+31 |         """Test registering a tool and retrieving it."""
+32 |         registry = ToolRegistry()
+33 |         func = lambda x: x
+   |         ^^^^^^^^^^^^^^^^^^
+34 |         registry.register("test_tool", func, "Test description", "test_cat")
+   |
+help: Rewrite `func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+  --> tests/agent/test_orchestration.py:50:9
+   |
+48 |         """Test retrieving tools as LangChain BaseTool objects."""
+49 |         registry = ToolRegistry()
+50 |         func = lambda x: x
+   |         ^^^^^^^^^^^^^^^^^^
+51 |         registry.register("tool1", func, "Desc 1")
+52 |         registry.register("tool2", func, "Desc 2", category="special")
+   |
+help: Rewrite `func` as a `def`
+
+T201 `print` found
+  --> tests/agent/test_rate_limiter_proxy.py:90:5
+   |
+88 |     # and ignores the direct connection IP (10.0.0.1 - the proxy).
+89 |
+90 |     print(f"\nMiddleware State: {middleware.requests}")
+   |     ^^^^^
+91 |
+92 |     assert "1.2.3.4" in middleware.requests
+   |
+help: Remove `print`
+
+F811 Redefinition of unused `TEST_MODEL` from line 6
+  --> tests/test_graph_mock.py:15:1
+   |
+13 | )
+14 |
+15 | TEST_MODEL = "gemma-3-27b-it"
+   | ^^^^^^^^^^ `TEST_MODEL` redefined here
+16 |
+17 | @pytest.fixture
+   |
+  ::: tests/test_graph_mock.py:6:26
+   |
+ 4 | from langchain_core.messages import AIMessage, HumanMessage
+ 5 |
+ 6 | from agent.models import TEST_MODEL
+   |                          ---------- previous definition of `TEST_MODEL` here
+ 7 | from agent.nodes import (
+ 8 |     denoising_refiner,
+   |
+help: Remove definition: `TEST_MODEL`
+
+F841 Local variable `llm` is assigned to but never used
+  --> tests/test_notebook_logic.py:44:9
+   |
+43 |         # Instantiate LLM
+44 |         llm = mock_llm_class(model=model_name, temperature=0)
+   |         ^^^
+45 |
+46 |         # Assertions
+   |
+help: Remove assignment to unused variable `llm`
+
+T201 `print` found
+  --> tests/test_notebook_logic.py:49:9
+   |
+47 |         mock_llm_class.assert_called_with(model="gemma-3-27b-it", temperature=0)
+48 |         self.assertEqual(model_name, "gemma-3-27b-it")
+49 |         print("✅ Notebook logic for model selection is correct.")
+   |         ^^^^^
+50 |
+51 | if __name__ == "__main__":
+   |
+help: Remove `print`
+
+E402 Module level import not at top of file
+  --> tests/test_search_router.py:18:1
+   |
+16 | sys.modules["google.genai"] = MagicMock()
+17 |
+18 | from search.provider import SearchResult
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+19 | from search.router import SearchRouter
+   |
+
+E402 Module level import not at top of file
+  --> tests/test_search_router.py:19:1
+   |
+18 | from search.provider import SearchResult
+19 | from search.router import SearchRouter
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+   --> tests/test_state.py:165:21
+    |
+163 |              assert anno == "bool"
+164 |         else:
+165 |              assert anno == bool
+    |                     ^^^^^^^^^^^^
+    |
+
+E402 Module level import not at top of file
+  --> tests/test_utils.py:24:1
+   |
+22 |   def make_ai_message(content):
+23 |       return AIMessage(content=content)
+24 | / from agent.utils import (
+25 | |     get_citations,
+26 | |     get_research_topic,
+27 | |     insert_citation_markers,
+28 | |     resolve_urls,
+29 | | )
+   | |_^
+30 |
+31 |   # =============================================================================
+   |
+
+E402 Module level import not at top of file
+   --> tests/test_utils.py:316:1
+    |
+314 | # =============================================================================
+315 |
+316 | from agent.utils import join_and_truncate
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+E402 Module level import not at top of file
+   --> tests/test_utils.py:391:1
+    |
+389 | # =============================================================================
+390 |
+391 | from agent.utils import has_fuzzy_match
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+Found 361 errors.
+No fixes available (130 hidden fixes can be enabled with the `--unsafe-fixes` option).

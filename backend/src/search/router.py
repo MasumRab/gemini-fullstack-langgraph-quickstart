@@ -1,14 +1,10 @@
 import logging
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Dict, List
 
-from config.app_config import config, AppConfig
+from config.app_config import AppConfig, config
+
 from .provider import SearchProvider, SearchResult
-from .providers.google_adapter import GoogleSearchAdapter
-from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-from .providers.brave_adapter import BraveSearchAdapter
-from .providers.tavily_adapter import TavilyAdapter
-from .providers.bing_adapter import BingAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -20,60 +16,48 @@ class SearchProviderType(Enum):
     BING = "bing"
 
 class SearchRouter:
-    """
-    Routes search queries to the appropriate provider with fallback logic.
+    """Routes search queries to the appropriate provider with fallback logic.
     """
 
     def __init__(self, app_config: AppConfig = config):
         """Initialize router with config."""
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
-        self._init_providers()
 
-    def _init_providers(self):
-        """Initialize providers based on availability and config."""
-        # Google
+    def _get_provider(self, name: str) -> SearchProvider | None:
+        if name in self.providers:
+            return self.providers[name]
+
         try:
-            self.providers[SearchProviderType.GOOGLE.value] = GoogleSearchAdapter()
-        except Exception as e:
-            logger.debug(f"Google adapter failed to init: {e}")
+            if name == SearchProviderType.GOOGLE.value:
+                from .providers.google_adapter import GoogleSearchAdapter
+                self.providers[name] = GoogleSearchAdapter()
+            elif name == SearchProviderType.BRAVE.value:
+                from .providers.brave_adapter import BraveSearchAdapter
+                self.providers[name] = BraveSearchAdapter()
+            elif name == SearchProviderType.DUCKDUCKGO.value:
+                from .providers.duckduckgo_adapter import DuckDuckGoAdapter
+                self.providers[name] = DuckDuckGoAdapter()
+            elif name == SearchProviderType.TAVILY.value:
+                from .providers.tavily_adapter import TavilyAdapter
+                self.providers[name] = TavilyAdapter()
+            elif name == SearchProviderType.BING.value:
+                from .providers.bing_adapter import BingAdapter
+                self.providers[name] = BingAdapter()
 
-        # Brave
-        try:
-            self.providers[SearchProviderType.BRAVE.value] = BraveSearchAdapter()
+            return self.providers.get(name)
         except Exception as e:
-            logger.debug(f"Brave adapter failed to init: {e}")
-
-        # DuckDuckGo
-        try:
-            self.providers[SearchProviderType.DUCKDUCKGO.value] = DuckDuckGoAdapter()
-        except Exception as e:
-            logger.debug(f"DuckDuckGo adapter failed to init: {e}")
-
-        # Tavily
-        try:
-            self.providers[SearchProviderType.TAVILY.value] = TavilyAdapter()
-        except Exception as e:
-            logger.debug(f"Tavily adapter failed to init: {e}")
-
-        # Bing
-        try:
-            self.providers[SearchProviderType.BING.value] = BingAdapter()
-        except Exception as e:
-            logger.debug(f"Bing adapter failed to init: {e}")
-
-    def _get_provider(self, name: str) -> Optional[SearchProvider]:
-        return self.providers.get(name)
+            logger.debug(f"Provider {name} failed to init: {e}")
+            return None
 
     def search(
         self,
         query: str,
         max_results: int = 5,
-        provider_name: Optional[str] = None,
+        provider_name: str | None = None,
         attempt_fallback: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search with routing and fallback logic.
+        """Execute search with routing and fallback logic.
 
         Args:
             query: Search query

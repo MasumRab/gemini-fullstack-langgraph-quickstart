@@ -1,13 +1,12 @@
-import os
-import logging
 import importlib.util
-from typing import List, Dict
+import logging
+import os
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 
 def validate_environment() -> Dict[str, bool]:
-    """
-    Validates the runtime environment for critical dependencies and variables.
+    """Validates the runtime environment for critical dependencies and variables.
     Returns a dict of check statuses.
     """
     checks = {}
@@ -47,8 +46,7 @@ def validate_environment() -> Dict[str, bool]:
     return checks
 
 def check_env_strict():
-    """
-    Strict check that raises an error if critical components are missing.
+    """Strict check that raises an error if critical components are missing.
     Call this on app startup if you want to fail fast.
     """
     results = validate_environment()
