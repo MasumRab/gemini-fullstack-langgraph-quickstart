@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import time
+import math
 from collections import defaultdict
 from typing import List, Set
 
@@ -266,6 +267,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # 🛡️ Sentinel: Support X-Forwarded-For for proxies (Render/Load Balancers)
             # Use trust-bound extraction to prevent IP spoofing attacks.
             forwarded = request.headers.get("X-Forwarded-For")
+<<<<<<< HEAD
             fallback_ip = request.client.host if request.client else "unknown"
 
             if forwarded and self.trust_proxy_headers:
@@ -276,6 +278,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 )
                 if client_ip is None:
                     client_ip = fallback_ip
+=======
+            if forwarded and self.trust_proxy_headers:
+                # 🛡️ Sentinel: Prevent spoofing by traversing from the end (trusted proxies)
+                # Proxies (like Render) append the verified client IP to the end.
+                # We traverse backwards to find the first non-private IP to avoid blocking the proxy itself.
+                try:
+                    ips = [ip.strip() for ip in forwarded.split(",")]
+                    client_ip = ips[-1]  # Default to last IP
+                    for ip in reversed(ips):
+                        try:
+                            # Check if IP is public (not private, not loopback)
+                            ip_obj = ipaddress.ip_address(ip)
+                            if not ip_obj.is_private and not ip_obj.is_loopback:
+                                client_ip = ip
+                                break
+                        except ValueError:
+                            continue  # Skip invalid IPs
+                except Exception:
+                    # Fallback to simple extraction if parsing fails
+                    client_ip = forwarded.split(",")[-1].strip()
+>>>>>>> dc0cbcc (feat(security): add logging for rejected requests in middleware)
 
                 # Truncate to 100 chars to prevent memory exhaustion attacks
                 client_ip = client_ip[:100]
@@ -297,6 +320,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 self.requests[client_key] = active_requests
 
                 # Calculate retry_after
+<<<<<<< HEAD
                 oldest_request_time = active_requests[0]
                 reset_time = oldest_request_time + self.window
                 retry_after = max(1, int(math.ceil(reset_time - now)))
@@ -308,6 +332,24 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     content={"detail": "Too Many Requests", "retry_after": retry_after},
                     headers={"Retry-After": str(retry_after)},
                 )
+=======
+                if active_requests:
+                    oldest_request_time = active_requests[0]
+                    reset_time = oldest_request_time + self.window
+                    retry_after = max(1, int(math.ceil(reset_time - now)))
+                else:
+                    retry_after = self.window
+
+                logger.warning(
+                    f"Rate limit exceeded for client {client_key} on path {path}"
+                )
+
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Too Many Requests", "retry_after": retry_after},
+                    headers={"Retry-After": str(retry_after)},
+                )
+>>>>>>> dc0cbcc (feat(security): add logging for rejected requests in middleware)
 
             active_requests.append(now)
 

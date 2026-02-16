@@ -151,7 +151,11 @@ app.add_middleware(
     limit=100,
     window=60,
     protected_paths=["/agent", "/threads"],
+<<<<<<< HEAD
     trust_proxy_headers=app_config.trust_proxy_headers,
+=======
+    trust_proxy_headers=app_config.trust_proxy_headers
+>>>>>>> dc0cbcc (feat(security): add logging for rejected requests in middleware)
 )
 
 # Add Security Headers (OUTERMOST - added last)
