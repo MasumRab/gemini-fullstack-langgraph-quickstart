@@ -1,9 +1,9 @@
 """Security middleware for the agent application."""
 
 import ipaddress
-import time
 import logging
 import math
+import time
 from collections import defaultdict
 from typing import List
 
@@ -177,7 +177,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 reset_time = oldest_request_time + self.window
                 retry_after = max(1, int(math.ceil(reset_time - now)))
 
-                logger.warning(f"Rate limit exceeded for {client_key}")
+                logger.warning(f"Rate limit exceeded for {client_key} on {path}")
 
                 return JSONResponse(
                     status_code=429,
