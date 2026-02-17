@@ -1,11 +1,11 @@
 
+import unittest
+from unittest.mock import MagicMock, patch
 import time
-from unittest.mock import patch
-
-import pytest
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Response, Request
 from fastapi.testclient import TestClient
-
+from starlette.middleware.base import BaseHTTPMiddleware
+import pytest
 
 class TestAPISecurity:
 
@@ -90,24 +90,8 @@ class TestAPISecurity:
             response = client.get("/agent/test")
             assert response.status_code == 200
 
-    def test_rate_limit_respects_x_forwarded_for(self):
+    def test_rate_limit_respects_x_forwarded_for(self, app):
         """Test that rate limiting uses the X-Forwarded-For header when present."""
-        from agent.security import RateLimitMiddleware
-
-        # Instantiate a dedicated app with trust_proxy_headers=True
-        app = FastAPI()
-        app.add_middleware(
-            RateLimitMiddleware,
-            limit=5,
-            window=1,
-            protected_paths=["/agent"],
-            trust_proxy_headers=True
-        )
-
-        @app.get("/agent/test")
-        def agent_endpoint():
-            return {"status": "ok"}
-
         client = TestClient(app)
 
         # Simulate 5 requests from IP A (via proxy)

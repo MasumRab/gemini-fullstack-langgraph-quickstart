@@ -76,8 +76,8 @@ const TimelineItem = memo(function TimelineItem({
           {typeof eventItem.data === "string"
             ? eventItem.data
             : Array.isArray(eventItem.data)
-              ? (eventItem.data as string[]).join(", ")
-              : JSON.stringify(eventItem.data)}
+            ? (eventItem.data as string[]).join(", ")
+            : JSON.stringify(eventItem.data)}
         </p>
       </div>
     </li>

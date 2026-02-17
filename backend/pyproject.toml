@@ -24,7 +24,6 @@ dependencies = [
     "mcp",
     "sentence-transformers",
     "faiss-cpu",
-    "chromadb>=0.4.0",
     "pandas",
     "matplotlib",
     "duckduckgo-search",
@@ -88,9 +87,6 @@ filterwarnings = [
     "ignore::FutureWarning:langchain_google_genai.chat_models",
     "ignore:.*SwigPy.*:DeprecationWarning",
     "ignore:.*swigvarlink.*:DeprecationWarning",
-]
-markers = [
-    "extended: mark test as extended/slow",
 ]
 
 [dependency-groups]
