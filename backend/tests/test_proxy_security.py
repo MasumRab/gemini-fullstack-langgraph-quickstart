@@ -77,3 +77,49 @@ async def test_proxy_security_trusted_enabled():
     # Expectation: The request should be tracked under the Client IP (5.6.7.8)
     assert "5.6.7.8" in middleware.requests
     assert "10.0.0.1" not in middleware.requests
+
+@pytest.mark.asyncio
+async def test_spoofing_vulnerability():
+    """
+    Verify that the middleware correctly identifies the client IP even if it's private,
+    when it is the last IP in the trusted proxy chain.
+    Prevents spoofing by injecting a public IP at the start of X-Forwarded-For.
+    """
+
+    # Mock App
+    async def mock_app(scope, receive, send):
+        response = PlainTextResponse("OK")
+        await response(scope, receive, send)
+
+    # Initialize middleware with trust_proxy_headers=True
+    middleware = RateLimitMiddleware(
+        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+    )
+
+    # Scenario:
+    # Attacker Real IP (seen by proxy): 10.0.0.5 (Private)
+    # Attacker Spoofs Header: "8.8.8.8" (Public)
+    # Trusted Proxy appends Real IP.
+    # Header: "8.8.8.8, 10.0.0.5"
+
+    headers = [
+        (b"host", b"localhost"),
+        (b"x-forwarded-for", b"8.8.8.8, 10.0.0.5")
+    ]
+
+    scope = {
+        "type": "http",
+        "path": "/protected",
+        "client": ("10.0.0.1", 1234), # Connection from Proxy
+        "headers": headers,
+    }
+
+    async def mock_send(message): pass
+    async def mock_receive(): return {"type": "http.request"}
+
+    await middleware(scope, mock_receive, mock_send)
+
+    # Expectation: The request should be tracked under the Real IP (10.0.0.5)
+    # If vulnerable, it would be under 8.8.8.8
+    assert "10.0.0.5" in middleware.requests
+    assert "8.8.8.8" not in middleware.requests
