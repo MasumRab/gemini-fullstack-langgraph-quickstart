@@ -133,8 +133,7 @@ app.add_middleware(
     RateLimitMiddleware,
     limit=100,
     window=60,
-    protected_paths=["/agent", "/threads"],
-    trust_proxy_headers=app_config.trust_proxy_headers
+    protected_paths=["/agent", "/threads"]
 )
 
 # Add Security Headers (OUTERMOST - added last)
