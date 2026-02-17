@@ -89,13 +89,43 @@ class McpConnectionManager:
             )
         ]
 
-    async def get_tools(self):
+    async def get_filesystem_tools(self, mount_dir: str = "./workspace") -> List:
+        """
+        Returns filesystem tools.
+        For now, this is a wrapper around the persistence tools which access the local filesystem.
+        In the future, this could connect to a remote `filesystem` MCP server.
+        """
+        # Re-use persistence tools as they are effectively filesystem tools for this agent's brain
+        return self.get_persistence_tools()
+
+    async def get_tools(self) -> List:
+        """
+        Discover and return all available MCP tools.
+        """
         # TODO(priority=High, complexity=Medium): [MCP:6] Implement actual SSE tool discovery
         # - Connect to MCP endpoint from settings
         # - Fetch tool list via SSE stream
         # - Convert to LangChain StructuredTool format
+        
+        tools = []
+        
+        # Always include persistence tools if not explicitly disabled or if we want them by default
+        # (The original analysis implied these should be part of the toolset)
+        tools.extend(self.get_persistence_tools())
+        
         if not self.settings.enabled:
-            return []
-        # Return stubs or connect to real MCP server
-        return []
+            return tools
+
+        try:
+            # Placeholder for actual MCP connection logic
+            # if self.settings.endpoint:
+            #     # connect and fetch
+            #     pass
+            pass
+        except Exception as e:
+            # Log error but don't crash
+            print(f"Failed to fetch MCP tools: {e}")
+            
+        return tools
+
 
