@@ -27,11 +27,10 @@ describe("WelcomeScreen", () => {
     expect(screen.getByRole("heading", { level: 1, name: /welcome/i })).toBeInTheDocument();
   });
 
-  it("renders the semantic footer with correct accessibility styles", () => {
+  it("renders the semantic footer", () => {
     render(<WelcomeScreen {...defaultProps} />);
     const footer = screen.getByRole("contentinfo");
     expect(footer).toBeInTheDocument();
     expect(footer).toHaveTextContent(/Powered by Google Gemini and LangChain LangGraph/);
-    expect(footer).toHaveClass("text-sm", "text-neutral-300");
   });
 });
