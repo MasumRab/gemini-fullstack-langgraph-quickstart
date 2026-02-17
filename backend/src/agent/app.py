@@ -216,6 +216,35 @@ class InvokeRequest(BaseModel):
                  raise ValueError(f"Too many items in input ({stats['items']}). Max allowed: {MAX_ITEMS}")
 
         check_complexity(v, 0)
+
+        # 🛡️ Sentinel: Validate specific semantic configuration fields to prevent DoS
+        if isinstance(v, dict):
+            # Limit initial search query count
+            if "initial_search_query_count" in v:
+                try:
+                    count = int(v["initial_search_query_count"])
+                    if count > 10:
+                        raise ValueError("initial_search_query_count cannot exceed 10")
+                    if count < 1:
+                        raise ValueError("initial_search_query_count must be at least 1")
+                except ValueError as e:
+                    if "cannot exceed" in str(e) or "must be at least" in str(e):
+                        raise e
+                    raise ValueError("initial_search_query_count must be an integer")
+
+            # Limit max research loops
+            if "max_research_loops" in v:
+                try:
+                    loops = int(v["max_research_loops"])
+                    if loops > 10:
+                        raise ValueError("max_research_loops cannot exceed 10")
+                    if loops < 1:
+                        raise ValueError("max_research_loops must be at least 1")
+                except ValueError as e:
+                     if "cannot exceed" in str(e) or "must be at least" in str(e):
+                        raise e
+                     raise ValueError("max_research_loops must be an integer")
+
         return v
 
 
