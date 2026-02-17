@@ -1,11 +1,11 @@
 
-import unittest
-from unittest.mock import MagicMock, patch
 import time
-from fastapi import FastAPI, Response, Request
-from fastapi.testclient import TestClient
-from starlette.middleware.base import BaseHTTPMiddleware
+from unittest.mock import patch
+
 import pytest
+from fastapi import FastAPI, Request, Response
+from fastapi.testclient import TestClient
+
 
 class TestAPISecurity:
 
@@ -20,8 +20,7 @@ class TestAPISecurity:
             RateLimitMiddleware,
             limit=5,
             window=1,
-            protected_paths=["/agent"],
-            trust_proxy_headers=True
+            protected_paths=["/agent"]
         )
         app.add_middleware(SecurityHeadersMiddleware)
 
@@ -146,12 +145,12 @@ class TestAPISecurity:
 
         assert len(mw.requests) == 10002
 
-        # Create a mock request from a NEW client (must be valid IP now)
+        # Create a mock request from a NEW client
         scope = {
             'type': 'http',
             'path': '/',
             'headers': [],
-            'client': ('10.0.0.1', 8000),
+            'client': ('new_client_ip', 8000),
             'method': 'GET',
             'scheme': 'http'
         }
@@ -178,7 +177,7 @@ class TestAPISecurity:
 
         assert "stale_ip_0" not in mw.requests
         assert "active_ip_0" in mw.requests
-        assert "10.0.0.1" in mw.requests
+        assert "new_client_ip" in mw.requests
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_throttled(self):
@@ -199,7 +198,7 @@ class TestAPISecurity:
             'type': 'http',
             'path': '/',
             'headers': [],
-            'client': ('10.0.0.1', 8000),
+            'client': ('new_client_ip', 8000),
             'method': 'GET',
             'scheme': 'http'
         }
@@ -222,7 +221,7 @@ class TestAPISecurity:
         # 5. Fallback: len > 10000 check.
         #    if len(active_requests) == 1: pop and 503.
 
-        # So "10.0.0.1" is removed. Size remains 10001.
+        # So "new_client_ip" is removed. Size remains 10001.
         assert len(mw.requests) == 10001
         assert "stale_ip_0" in mw.requests # Was NOT cleaned
 
@@ -234,4 +233,4 @@ class TestAPISecurity:
 
         # Should be cleaned: 10001 stale removed. 1 new added.
         assert len(mw.requests) == 1
-        assert "10.0.0.1" in mw.requests
+        assert "new_client_ip" in mw.requests
