@@ -839,7 +839,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
             except Exception as e:
                 logger.error(f"Gemma plan update failed: {e}")
                 # Fallback: keep existing plan to avoid data loss
-                return {"plan": current_plan}
+                plan_todos = [dict(t) for t in current_plan]
 
         else:
             # Standard Gemini Path
@@ -856,7 +856,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                     plan_todos.append(todo)
             except Exception as e:
                 logger.error(f"Failed to update plan (Gemini): {e}")
-                return {"plan": current_plan}
+                plan_todos = [dict(t) for t in current_plan]
 
         # Safety Fallback: Ensure the executed task is actually marked as done in the new plan
         # This overrides the LLM if it fails to update the status, preventing infinite loops.
