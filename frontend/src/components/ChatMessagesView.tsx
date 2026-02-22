@@ -587,6 +587,7 @@ export function ChatMessagesView({
         isLoading={isLoading}
         onCancel={onCancel}
         hasHistory={messages.length > 0}
+        autoFocus={true}
       />
       <PlanningFooter onSendCommand={onSendCommand} />
     </div>

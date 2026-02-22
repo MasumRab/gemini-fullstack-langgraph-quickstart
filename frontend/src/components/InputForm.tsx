@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, memo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { SquarePen, Brain, Send, StopCircle, Zap, Cpu, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,7 @@ interface InputFormProps {
   onCancel: () => void;
   isLoading: boolean;
   hasHistory: boolean;
+  autoFocus?: boolean;
 }
 
 // ⚡ Bolt Optimization: Extracted Controls component to decouple it from
@@ -147,8 +148,10 @@ export const InputForm: React.FC<InputFormProps> = memo(({
   onCancel,
   isLoading,
   hasHistory,
+  autoFocus = false,
 }) => {
   const [internalInputValue, setInternalInputValue] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [effort, setEffort] = useState("medium");
   // Default to gemma-3-27b-it
   const [model, setModel] = useState("gemma-3-27b-it");
@@ -181,12 +184,15 @@ export const InputForm: React.FC<InputFormProps> = memo(({
           } break-words min-h-7 bg-neutral-700 px-4 pt-3 `}
       >
         <Textarea
+          ref={textareaRef}
+          autoFocus={autoFocus}
           aria-label="Chat input"
+          aria-required="true"
           value={internalInputValue}
           onChange={(e) => setInternalInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Who won the Euro 2024 and scored the most goals?"
-          className={`w-full text-neutral-100 placeholder-neutral-500 resize-none border-0 focus:outline-none focus:ring-0 outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 shadow-none
+          className={`w-full text-neutral-100 placeholder-neutral-400 resize-none border-0 focus:outline-none focus:ring-0 outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 shadow-none
                         md:text-base  min-h-[56px] max-h-[200px]`}
           rows={1}
         />
@@ -201,6 +207,7 @@ export const InputForm: React.FC<InputFormProps> = memo(({
               className="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-600/50 p-2 cursor-pointer rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
               onClick={() => {
                 setInternalInputValue("");
+                textareaRef.current?.focus();
               }}
             >
               <X className="h-5 w-5" aria-hidden="true" />

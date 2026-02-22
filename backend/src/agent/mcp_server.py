@@ -1,10 +1,6 @@
-import asyncio
-import json
-from pathlib import Path
-from typing import Dict, List, Optional, Any
-from mcp import Tool
-from mcp.server.fastmcp import FastMCP # Attempting to use High Level API if available, or fallback to manual server
 import logging
+from pathlib import Path
+from typing import Dict, List
 
 # We will use the standard MCPServer class from mcp (low level) as per spec, or FastMCP if it's easier.
 # The spec uses MCPServer but imports seem slightly different in latest mcp.
@@ -13,9 +9,14 @@ import logging
 # Based on "from mcp import MCPServer, Tool, ToolResult", this looks like a specific version.
 
 try:
-    from mcp.server import Server
-    from mcp.types import Tool, TextContent, EmbeddedResource, ImageContent
-    import mcp.types as types
+    import mcp.types as types  # noqa: F401
+    from mcp.server import Server  # noqa: F401
+    from mcp.types import (  # noqa: F401
+        EmbeddedResource,
+        ImageContent,
+        TextContent,
+        Tool,
+    )
 except ImportError:
     # Fallback or different import structure
     pass
@@ -28,16 +29,19 @@ MAX_FILE_SIZE = 1 * 1024 * 1024  # 1 MB
 # 🛡️ Sentinel: Limit directory listing count to prevent Output Flooding
 MAX_DIR_ITEMS = 1000
 
+
 class ToolResult:
-    """Helper to match the spec's ToolResult expectation if not in mcp.types directly as that name"""
-    def __init__(self, success: bool, data: Optional[Dict] = None, error: Optional[str] = None):
+    """Helper to match the spec's ToolResult expectation if not in mcp.types directly as that name."""
+
+    def __init__(self, success: bool, data: Dict | None = None, error: str | None = None):
         self.success = success
         self.data = data
         self.error = error
 
+
 class FilesystemMCPServer:
-    """
-    MCP Server for filesystem operations.
+    """MCP Server for filesystem operations.
+
     Enables agent to read/write research artifacts.
     """
 
@@ -48,8 +52,7 @@ class FilesystemMCPServer:
         self._register_tools()
 
     def _register_tools(self):
-        """Register available filesystem tools"""
-
+        """Register available filesystem tools."""
         # We store tools in a list of wrappers that include the handler
         self.tools.append(self._create_tool(
             name="read_file",
@@ -92,7 +95,7 @@ class FilesystemMCPServer:
         ))
 
     def _create_tool(self, name, description, parameters, handler):
-        """Helper to create a tool object with a handler attached"""
+        """Helper to create a tool object with a handler attached."""
         # In a real MCP server, we would use the SDK's Tool class.
         # Here we create a simple object that holds the metadata and handler
         # so our MCPToolUser can consume it directly (in-process)
@@ -104,13 +107,13 @@ class FilesystemMCPServer:
             def __init__(self, name, description, parameters, handler):
                 self.name = name
                 self.description = description
-                self.inputSchema = parameters # using inputSchema to match MCP spec
+                self.inputSchema = parameters  # using inputSchema to match MCP spec
                 self.handler = handler
 
         return SimpleTool(name, description, parameters, handler)
 
     def _check_path_allowed(self, path: str) -> bool:
-        """Security: ensure path is within allowed directories"""
+        """Security: ensure path is within allowed directories."""
         try:
             resolved = Path(path).resolve()
             # If path doesn't exist yet (for write), check parent
@@ -125,8 +128,9 @@ class FilesystemMCPServer:
             return False
 
     async def read_file(self, path: str) -> ToolResult:
-        """Read file contents"""
+        """Read file contents."""
         if not self._check_path_allowed(path):
+            logger.warning(f"Path traversal attempt blocked: {path}")
             return ToolResult(
                 success=False,
                 error=f"Path not allowed: {path}"
@@ -135,7 +139,7 @@ class FilesystemMCPServer:
         try:
             p = Path(path)
             if not p.exists():
-                 return ToolResult(success=False, error=f"File not found: {path}")
+                return ToolResult(success=False, error=f"File not found: {path}")
 
             # 🛡️ Sentinel: Check file size before reading
             file_size = p.stat().st_size
@@ -154,8 +158,9 @@ class FilesystemMCPServer:
             return ToolResult(success=False, error=str(e))
 
     async def write_file(self, path: str, content: str) -> ToolResult:
-        """Write content to file"""
+        """Write content to file."""
         if not self._check_path_allowed(path):
+            logger.warning(f"Path traversal attempt blocked: {path}")
             return ToolResult(success=False, error=f"Path not allowed: {path}")
 
         # 🛡️ Sentinel: Check content size before writing to prevent Disk Fill DoS
@@ -185,14 +190,15 @@ class FilesystemMCPServer:
             return ToolResult(success=False, error=str(e))
 
     async def list_directory(self, path: str) -> ToolResult:
-        """List directory contents"""
+        """List directory contents."""
         if not self._check_path_allowed(path):
+            logger.warning(f"Path traversal attempt blocked: {path}")
             return ToolResult(success=False, error=f"Path not allowed: {path}")
 
         try:
             dir_path = Path(path)
             if not dir_path.exists():
-                 return ToolResult(success=False, error=f"Directory not found: {path}")
+                return ToolResult(success=False, error=f"Directory not found: {path}")
 
             items = []
             count = 0

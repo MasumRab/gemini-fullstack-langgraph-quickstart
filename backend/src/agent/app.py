@@ -2,47 +2,63 @@
 """FastAPI application for the agent."""
 
 import json
+import logging
 import pathlib
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Response, Request
+from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from agent.mcp_config import load_mcp_settings
-from agent.security import SecurityHeadersMiddleware, RateLimitMiddleware
+from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 from agent.tools_and_schemas import MCP_TOOLS, get_tools_from_mcp
 from config.app_config import config as app_config
 from config.validation import check_env_strict
+
+logger = logging.getLogger(__name__)
+
 
 # Define Middleware for Content Size Limit (Defense against DoS)
 class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
     """Middleware to limit the size of the request body."""
 
-    def __init__(self, app, max_upload_size: int = 10 * 1024 * 1024): # 10MB
+    def __init__(self, app, max_upload_size: int = 10 * 1024 * 1024):  # 10MB
+        """Initialize the middleware."""
         super().__init__(app)
         self.max_upload_size = max_upload_size
 
     async def dispatch(self, request: Request, call_next):
+        """Process the request and enforce size limits."""
         if request.method in ("POST", "PUT", "PATCH"):
             # 🛡️ Sentinel: Reject 'Transfer-Encoding: chunked' to prevent Content-Length bypass (Request Smuggling/DoS)
             transfer_encoding = request.headers.get("transfer-encoding", "").lower()
             if "chunked" in transfer_encoding:
+                logger.warning("Request blocked: Chunked encoding not allowed")
                 return Response("Chunked encoding not allowed", status_code=411)
 
             content_length = request.headers.get("content-length")
             if not content_length:
                 # 🛡️ Sentinel: Enforce Content-Length for state-changing methods to prevent streaming DoS
+                logger.warning("Request blocked: Content-Length required")
                 return Response("Content-Length required", status_code=411)
 
-            if int(content_length) > self.max_upload_size:
-                return Response("Request entity too large", status_code=413)
+            try:
+                # 🛡️ Sentinel: Prevent 500 crashes from malformed Content-Length headers
+                if int(content_length) > self.max_upload_size:
+                    logger.warning(
+                        f"Request blocked: Request entity too large ({content_length} > {self.max_upload_size})"
+                    )
+                    return Response("Request entity too large", status_code=413)
+            except ValueError:
+                logger.warning("Request blocked: Invalid Content-Length")
+                return Response("Invalid Content-Length", status_code=400)
         return await call_next(request)
 
 
@@ -54,18 +70,18 @@ async def lifespan(app: FastAPI):
     """
     # Startup validation
     if not check_env_strict():
-        print("WARNING: Environment validation failed. Check logs for details.")
+        logger.warning("WARNING: Environment validation failed. Check logs for details.")
 
     # Load MCP Tools on startup
     mcp_settings = load_mcp_settings()
     if mcp_settings.enabled:
-        print(f"INFO: Initializing MCP tools from {mcp_settings.endpoint}...")
+        logger.info(f"INFO: Initializing MCP tools from {mcp_settings.endpoint}...")
         try:
             tools = await get_tools_from_mcp(mcp_settings)
             MCP_TOOLS.extend(tools)
-            print(f"INFO: Successfully loaded {len(tools)} MCP tools.")
+            logger.info(f"INFO: Successfully loaded {len(tools)} MCP tools.")
         except Exception as e:
-            print(f"ERROR: Failed to load MCP tools during startup: {e}")
+            logger.error(f"ERROR: Failed to load MCP tools during startup: {e}")
 
     yield
 
@@ -79,10 +95,11 @@ async def lifespan(app: FastAPI):
 # Define the FastAPI app
 app = FastAPI(lifespan=lifespan)
 
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """
-    Overridden handler to prevent RecursionError when serializing deeply nested invalid inputs.
+    """Overridden handler to prevent RecursionError when serializing deeply nested invalid inputs.
+
     Standard FastAPI handler crashes on deep JSON because it tries to echo the input.
     """
     # We construct a simplified error list that doesn't include the full 'input' if it's huge
@@ -105,6 +122,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         status_code=422,
         content={"detail": errors},
     )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -129,7 +147,8 @@ app.add_middleware(
     RateLimitMiddleware,
     limit=100,
     window=60,
-    protected_paths=["/agent", "/threads"]
+    protected_paths=["/agent", "/threads"],
+    trust_proxy_headers=app_config.trust_proxy_headers
 )
 
 # Add Security Headers (OUTERMOST - added last)
@@ -158,7 +177,7 @@ async def create_thread():
 try:
     from agent.graph import graph
 except ImportError as e:
-    print(f"ERROR: Failed to import graph. Agent endpoints will fail. {e}")
+    logger.error(f"ERROR: Failed to import graph. Agent endpoints will fail. {e}")
     graph = None
 
 
@@ -170,8 +189,8 @@ class InvokeRequest(BaseModel):
 
     @field_validator("input")
     def validate_input_complexity(cls, v):
-        """
-        🛡️ Sentinel: Validate input complexity to prevent Denial of Service (DoS).
+        """🛡️ Sentinel: Validate input complexity to prevent Denial of Service (DoS).
+
         Checks:
         1. Max String Length: 50,000 chars (prevents huge blobs)
         2. Max Total Size: 200,000 chars (prevents memory exhaustion)
@@ -208,9 +227,38 @@ class InvokeRequest(BaseModel):
             if stats["chars"] > MAX_TOTAL_CHARS:
                 raise ValueError(f"Total input size too large ({stats['chars']} chars). Max allowed: {MAX_TOTAL_CHARS}")
             if stats["items"] > MAX_ITEMS:
-                 raise ValueError(f"Too many items in input ({stats['items']}). Max allowed: {MAX_ITEMS}")
+                raise ValueError(f"Too many items in input ({stats['items']}). Max allowed: {MAX_ITEMS}")
 
         check_complexity(v, 0)
+
+        # 🛡️ Sentinel: Validate specific semantic configuration fields to prevent DoS
+        if isinstance(v, dict):
+            # Limit initial search query count
+            if "initial_search_query_count" in v:
+                try:
+                    count = int(v["initial_search_query_count"])
+                    if count > 10:
+                        raise ValueError("initial_search_query_count cannot exceed 10")
+                    if count < 1:
+                        raise ValueError("initial_search_query_count must be at least 1")
+                except ValueError as e:
+                    if "cannot exceed" in str(e) or "must be at least" in str(e):
+                        raise e
+                    raise ValueError("initial_search_query_count must be an integer")
+
+            # Limit max research loops
+            if "max_research_loops" in v:
+                try:
+                    loops = int(v["max_research_loops"])
+                    if loops > 10:
+                        raise ValueError("max_research_loops cannot exceed 10")
+                    if loops < 1:
+                        raise ValueError("max_research_loops must be at least 1")
+                except ValueError as e:
+                    if "cannot exceed" in str(e) or "must be at least" in str(e):
+                        raise e
+                    raise ValueError("max_research_loops must be an integer")
+
         return v
 
 
@@ -321,7 +369,7 @@ async def stream_agent(request: InvokeRequest):
 
 
 def create_frontend_router(build_dir="../frontend/dist"):
-    """Creates a router to serve the React frontend.
+    """Create a router to serve the React frontend.
 
     Args:
         build_dir: Path to the React build directory relative to this file.
@@ -332,7 +380,7 @@ def create_frontend_router(build_dir="../frontend/dist"):
     build_path = pathlib.Path(__file__).parent.parent.parent / build_dir
 
     if not build_path.is_dir() or not (build_path / "index.html").is_file():
-        print(
+        logger.warning(
             f"WARN: Frontend build directory not found or incomplete at {build_path}. "
             "Serving frontend will likely fail."
         )

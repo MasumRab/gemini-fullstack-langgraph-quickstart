@@ -377,3 +377,36 @@ class TestJoinAndTruncate:
         Break. parts=["a"]. Result "a". Correct.
         """
         assert join_and_truncate(["a", "b"], 1, separator=",") == "a"
+
+
+# =============================================================================
+# Tests for has_fuzzy_match
+# =============================================================================
+
+from agent.utils import has_fuzzy_match
+
+class TestHasFuzzyMatch:
+    """Tests for the has_fuzzy_match function."""
+
+    def test_exact_match(self):
+        """Exact match should return True."""
+        assert has_fuzzy_match("apple", ["apple", "banana"]) is True
+
+    def test_fuzzy_match_above_cutoff(self):
+        """Fuzzy match above cutoff should return True."""
+        # "aple" vs "apple" is very similar
+        assert has_fuzzy_match("aple", ["apple", "banana"], cutoff=0.8) is True
+
+    def test_no_match(self):
+        """No match should return False."""
+        assert has_fuzzy_match("xyz", ["apple", "banana"], cutoff=0.8) is False
+
+    def test_empty_candidates(self):
+        """Empty candidates list should return False."""
+        assert has_fuzzy_match("apple", []) is False
+
+    def test_custom_cutoff(self):
+        """Custom cutoff should be respected."""
+        # "apple" vs "apply" -> ratio is 0.8.
+        assert has_fuzzy_match("apple", ["apply"], cutoff=0.9) is False
+        assert has_fuzzy_match("apple", ["apply"], cutoff=0.7) is True

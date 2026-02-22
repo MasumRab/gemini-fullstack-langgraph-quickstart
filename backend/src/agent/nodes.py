@@ -1,4 +1,10 @@
 # TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+#
+# TODO(priority=Medium, complexity=Medium): [SOTA Deep Research] Benchmarking
+# See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+# Subtask: MLE-bench Integration (Evaluate on Kaggle engineering tasks).
+# Subtask: DeepResearch-Bench Setup (Load tasks from muset-ai space).
+
 # TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: Review 'deepagents' repo for relevant nodes (e.g. hierarchical planning).
@@ -11,13 +17,12 @@ import logging
 import os
 import re
 from datetime import datetime
-from functools import lru_cache
 from typing import List, Dict, Any
 
 from config.app_config import config as app_config
 from search.router import search_router
 from google.genai import Client
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -64,6 +69,8 @@ from agent.state import (
 from agent.utils import (
     get_research_topic,
     join_and_truncate,
+    get_cached_llm,
+    has_fuzzy_match,
 )
 from observability.langfuse import observe_span
 
@@ -74,18 +81,6 @@ genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # ⚡ Bolt Optimization: Pre-compile regex for keyword extraction to avoid re-compilation in loops.
 KEYWORD_SPLIT_PATTERN = re.compile(r"[^\w]+")
-
-
-# ⚡ Bolt Optimization: Cache LLM instance creation
-# Creating ChatGoogleGenerativeAI objects involves some overhead.
-# Since config (model, temp) is usually stable within a session, we can reuse instances.
-@lru_cache(maxsize=16)
-def _get_cached_llm_instance(model: str, temperature: float) -> ChatGoogleGenerativeAI:
-    return ChatGoogleGenerativeAI(
-        model=model,
-        temperature=temperature,
-        api_key=os.getenv("GEMINI_API_KEY"),
-    )
 
 
 def _get_rate_limited_llm(
@@ -121,8 +116,8 @@ def _get_rate_limited_llm(
             f"Rate limit usage for {model}: RPM={usage['rpm']}/{usage['rpm_limit']}, TPM={usage['tpm']}/{usage['tpm_limit']}, RPD={usage['rpd']}/{usage['rpd_limit']}"
         )
 
-    # ⚡ Bolt Optimization: Use cached factory
-    return _get_cached_llm_instance(model, temperature)
+    # ⚡ Bolt Optimization: Use centralized cached factory
+    return get_cached_llm(model, temperature)
 
 
 # ⚡ Bolt Optimization: Define Pydantic models at module level to avoid
@@ -742,6 +737,19 @@ def planning_wait(state: OverallState) -> OverallState:
     }
 
 
+def _normalize_task(task: dict) -> dict:
+    """
+    Normalize a task dict to have consistent keys.
+    Handles tasks that may have 'task' instead of 'title' key.
+    """
+    return {
+        "title": task.get("title") or task.get("task", ""),
+        "description": task.get("description", ""),
+        "status": task.get("status", "pending"),
+        "query": task.get("query") or task.get("title") or task.get("task", ""),
+    }
+
+
 @graph_registry.describe(
     "update_plan",
     summary="Updates the plan by marking the current task as done and adding follow-up tasks.",
@@ -843,8 +851,8 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                         break
             except Exception as e:
                 logger.error(f"Gemma plan update failed: {e}")
-                # Fallback: keep existing plan to avoid data loss
-                return {"plan": current_plan}
+                # Fallback: keep existing plan to avoid data loss, with normalized structure
+                plan_todos = [_normalize_task(t) for t in current_plan]
 
         else:
             # Standard Gemini Path
@@ -861,7 +869,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                     plan_todos.append(todo)
             except Exception as e:
                 logger.error(f"Failed to update plan (Gemini): {e}")
-                return {"plan": current_plan}
+                plan_todos = [_normalize_task(t) for t in current_plan]
 
         # Safety Fallback: Ensure the executed task is actually marked as done in the new plan
         # This overrides the LLM if it fails to update the status, preventing infinite loops.
@@ -1128,41 +1136,74 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
         return {"evidence_bank": extracted_evidence}
 
 
+# TODO(priority=High, complexity=Medium): [SOTA Deep Research] Recursive Trigger
+# Implement logic in reflection or a new 'router' node to decide when to call 'research_subgraph'.
+# This should happen when a complex sub-topic is identified that requires its own full research loop.
 def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
     """
     Executes a recursive research subgraph for a specific sub-topic.
-
-    Fine-grained implementation guide:
-
-    TODO(priority=High, complexity=Low): [research_subgraph:1] Extract sub-topic query
-    - Read `subtopic_query` from state (passed via Send)
-    - Validate query is non-empty string
-
-    TODO(priority=High, complexity=Medium): [research_subgraph:2] Create child graph config
-    - Clone parent config with new thread_id suffix (e.g., `{parent_id}_sub_{idx}`)
-    - Set recursion_depth = parent_depth + 1
-    - Set max_recursion_depth limit (default: 2)
-
-    TODO(priority=High, complexity=Medium): [research_subgraph:3] Guard against infinite recursion
-    - Check recursion_depth against max_recursion_depth
-    - If exceeded: Return early with partial results and warning
-
-    TODO(priority=High, complexity=High): [research_subgraph:4] Invoke child graph
-    - Import graph from agent.graph
-    - Call graph.invoke({"messages": [subtopic_query]}, child_config)
-    - Handle exceptions gracefully
-
-    TODO(priority=Medium, complexity=Medium): [research_subgraph:5] Merge child results
-    - Extract `web_research_result` and `evidence_bank` from child output
-    - Append to parent state's lists
-    - Deduplicate sources
-
-    TODO(priority=Low, complexity=Low): [research_subgraph:6] Return merged state
-    - Return dict with updated `web_research_result`, `evidence_bank`, `sources_gathered`
-
-    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
+    Implements GPT Researcher pattern for recursive depth.
     """
-    raise NotImplementedError("research_subgraph not implemented")
+    with observe_span("research_subgraph", config):
+        # 1. Extract sub-topic query
+        # This is expected to be passed via Send or set in state before routing here
+        subtopic_query = state.get("subtopic_query")
+        if not subtopic_query:
+            logger.warning("research_subgraph called without subtopic_query. Skipping.")
+            return {}
+
+        # 2. Create child graph config
+        parent_config = config.get("configurable", {})
+        parent_id = parent_config.get("thread_id", "root")
+        recursion_depth = parent_config.get("recursion_depth", 0)
+        max_recursion_depth = parent_config.get("max_recursion_depth", 1) # Default to 1 level deep
+
+        # 3. Guard against infinite recursion
+        if recursion_depth >= max_recursion_depth:
+            logger.info(f"Max recursion depth reached ({recursion_depth}). Skipping subgraph for: {subtopic_query}")
+            return {
+                "validation_notes": [f"Depth limit reached. Sub-topic skipped: {subtopic_query}"]
+            }
+
+        # 4. Invoke child graph
+        # Local import to prevent circular dependency
+        from agent.graph import graph
+
+        child_config = config.copy()
+        child_config["configurable"] = parent_config.copy()
+        child_config["configurable"]["thread_id"] = f"{parent_id}_sub_{recursion_depth + 1}"
+        child_config["configurable"]["recursion_depth"] = recursion_depth + 1
+
+        logger.info(f"Recursive Call (Depth {recursion_depth + 1}): {subtopic_query}")
+
+        try:
+            # We run the graph with the sub-topic as the initial message
+            # We also set planning_status to auto_approved to avoid child pausing for UI
+            child_input = {
+                "messages": [HumanMessage(content=subtopic_query)],
+                "planning_status": "auto_approved",
+                "scoping_status": "complete" # Skip scoping in subqueries
+            }
+
+            child_output = graph.invoke(child_input, child_config)
+
+            # 5. Merge child results
+            child_results = child_output.get("web_research_result", [])
+            child_evidence = child_output.get("evidence_bank", [])
+            child_sources = child_output.get("sources_gathered", [])
+
+            return {
+                "web_research_result": child_results,
+                "evidence_bank": child_evidence,
+                "sources_gathered": child_sources,
+                "validation_notes": [f"Successfully researched sub-topic: {subtopic_query}"]
+            }
+
+        except Exception as e:
+            logger.error(f"Recursive research failed for {subtopic_query}: {e}")
+            return {
+                "validation_notes": [f"Recursive research failed for {subtopic_query}: {e}"]
+            }
 
 
 @graph_registry.describe(
@@ -1474,10 +1515,8 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
         heuristic_passed = []
 
         for idx, summary in enumerate(summaries):
-            normalized_summary = summary.lower()
-            match_found = False
-
             # ⚡ Bolt Optimization: Use pre-compiled regex
+            # Check citations BEFORE lowercasing/tokenizing to save memory/cpu on rejected items.
             has_citation = bool(CITATION_PATTERN.search(summary))
 
             if app_config.require_citations and not has_citation:
@@ -1486,6 +1525,9 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                 )
                 continue
 
+            normalized_summary = summary.lower()
+            match_found = False
+
             if keywords:
                 if any(keyword in normalized_summary for keyword in keywords):
                     match_found = True
@@ -1493,12 +1535,11 @@ def validate_web_results(state: OverallState, config: RunnableConfig) -> Overall
                     # ⚡ Bolt Optimization: Deduplicate words before fuzzy matching.
                     # Reduces Search Space: For a 5000-word summary with ~150 unique words,
                     # this speeds up get_close_matches by ~97%.
-                    summary_words = list(set(normalized_summary.split()))
+                    # ⚡ Bolt Optimization: Avoid list() cast, iterate set directly.
+                    summary_words = set(normalized_summary.split())
                     for keyword in keywords:
-                        matches = difflib.get_close_matches(
-                            keyword, summary_words, n=1, cutoff=0.8
-                        )
-                        if matches:
+                        # ⚡ Bolt Optimization: Use lazy fuzzy match that returns early
+                        if has_fuzzy_match(keyword, summary_words, cutoff=0.8):
                             match_found = True
                             break
 
@@ -1676,6 +1717,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
             "is_sufficient": result.is_sufficient,
             "knowledge_gap": result.knowledge_gap,
             "follow_up_queries": result.follow_up_queries,
+            "subtopics_to_explore": getattr(result, "subtopics_to_explore", []),
             "research_loop_count": state["research_loop_count"],
             "number_of_ran_queries": len(state["search_query"]),
         }

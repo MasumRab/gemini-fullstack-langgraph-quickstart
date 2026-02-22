@@ -82,3 +82,27 @@ class TestMcpIntegration:
 
         assert result == "file content"
         mock_tool.assert_called_with(filepath="test.txt")
+
+    @pytest.mark.asyncio
+    async def test_disabled_mcp_returns_empty_list(self):
+        """Test disabled MCP returns empty list."""
+        mock_settings = MagicMock()
+        mock_settings.enabled = False
+
+        tools = await get_tools_from_mcp(mock_settings)
+        assert tools == []
+
+    @pytest.mark.asyncio
+    async def test_connection_error_handling(self):
+        """Test connection error handling."""
+        mock_settings = MagicMock()
+        mock_settings.enabled = True
+        mock_settings.endpoint = "http://localhost:8000/sse"
+        mock_settings.api_key = "test-key"
+
+        with patch("langchain_mcp_adapters.sessions.SSEConnection") as MockSSE:
+            MockSSE.side_effect = ConnectionError("Connection failed")
+
+            # Should not raise, but return empty list and log warning
+            tools = await get_tools_from_mcp(mock_settings)
+            assert tools == []

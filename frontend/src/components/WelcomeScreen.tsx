@@ -30,9 +30,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         isLoading={isLoading}
         onCancel={onCancel}
         hasHistory={false}
+        autoFocus={true}
       />
     </div>
-    <footer className="text-xs text-neutral-400">
+    <footer className="text-sm text-neutral-300" role="contentinfo">
       Powered by Google Gemini and LangChain LangGraph.
     </footer>
   </div>

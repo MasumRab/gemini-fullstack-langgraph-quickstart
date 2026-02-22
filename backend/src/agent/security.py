@@ -1,11 +1,17 @@
 """Security middleware for the agent application."""
 
-import time
 import ipaddress
+import logging
+import math
+import time
 from collections import defaultdict
-from typing import List, Optional
+from typing import List
+
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -62,12 +68,32 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Simple in-memory rate limiting middleware."""
 
+    def get_client_key(self, ip: str) -> str:
+        """Normalize IP address to a rate limit key.
+
+        For IPv4, returns the IP.
+        For IPv6, returns the /64 prefix to prevent subnet rotation attacks.
+        """
+        try:
+            obj = ipaddress.ip_address(ip)
+            if isinstance(obj, ipaddress.IPv6Address):
+                # Mask to /64
+                val = int(obj)
+                mask = (1 << 128) - (1 << 64)
+                masked = val & mask
+                return str(ipaddress.IPv6Address(masked)) + "/64"
+            return str(obj)
+        except ValueError:
+            # If not a valid IP, return "unknown" to prevent log injection/key pollution
+            return "unknown"
+
     def __init__(
         self,
         app,
         limit: int = 100,
         window: int = 60,
-        protected_paths: Optional[List[str]] = None,
+        protected_paths: List[str] | None = None,
+        trust_proxy_headers: bool = False,
     ):
         """Initialize the rate limiter.
 
@@ -77,11 +103,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             window: Time window in seconds.
             protected_paths: List of path prefixes to apply rate limiting to.
                              If None, applies to all paths.
+            trust_proxy_headers: Whether to trust X-Forwarded-For headers.
         """
         super().__init__(app)
         self.limit = limit
         self.window = window
         self.protected_paths = protected_paths if protected_paths is not None else []
+        self.trust_proxy_headers = trust_proxy_headers
         self.requests = defaultdict(list)
         # 🛡️ Sentinel: Optimize cleanup frequency to prevent DoS via Iteration attacks
         self.last_cleanup = 0
@@ -112,42 +140,48 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # 🛡️ Sentinel: Support X-Forwarded-For for proxies (Render/Load Balancers)
             # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
             forwarded = request.headers.get("X-Forwarded-For")
-            if forwarded:
-                # 🛡️ Sentinel: Prevent spoofing by traversing from the end (trusted proxies)
-                # Proxies (like Render) append the verified client IP to the end.
-                # We traverse backwards to find the first non-private IP to avoid blocking the proxy itself.
+            if forwarded and self.trust_proxy_headers:
+                # 🛡️ Sentinel: The leftmost IP (ips[0]) is the original client IP.
+                # Each proxy appends its IP to the right, so ips[-1] would be the nearest proxy.
+                # We use ips[0] to get the original client address for rate limiting.
                 try:
                     ips = [ip.strip() for ip in forwarded.split(",")]
-                    client_ip = ips[-1]  # Default to last IP
-                    for ip in reversed(ips):
-                        try:
-                            # Check if IP is public (not private, not loopback)
-                            ip_obj = ipaddress.ip_address(ip)
-                            if not ip_obj.is_private and not ip_obj.is_loopback:
-                                client_ip = ip
-                                break
-                        except ValueError:
-                            continue  # Skip invalid IPs
+                    client_ip = ips[0]  # Original client IP (leftmost)
                 except Exception:
                     # Fallback to simple extraction if parsing fails
-                    client_ip = forwarded.split(",")[-1].strip()
+                    client_ip = forwarded.split(",")[0].strip()
 
                 # Truncate to 100 chars to prevent memory exhaustion attacks
                 client_ip = client_ip[:100]
             else:
                 client_ip = request.client.host if request.client else "unknown"
 
+            # 🛡️ Sentinel: Group IPv6 addresses by /64 prefix to prevent subnet rotation attacks
+            client_key = self.get_client_key(client_ip)
+
             now = time.time()
 
             # Clean old requests (simple sliding window)
-            current_requests = self.requests[client_ip]
+            current_requests = self.requests[client_key]
             # Prune old timestamps
             active_requests = [t for t in current_requests if now - t < self.window]
 
             if len(active_requests) >= self.limit:
                 # Update map with pruned list before returning
-                self.requests[client_ip] = active_requests
-                return Response("Too Many Requests", status_code=429)
+                self.requests[client_key] = active_requests
+
+                # Calculate retry_after
+                oldest_request_time = active_requests[0]
+                reset_time = oldest_request_time + self.window
+                retry_after = max(1, int(math.ceil(reset_time - now)))
+
+                logger.warning(f"Rate limit exceeded for {client_key} on {path}")
+
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Too Many Requests", "retry_after": retry_after},
+                    headers={"Retry-After": str(retry_after)},
+                )
 
             active_requests.append(now)
 
@@ -194,9 +228,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     len(active_requests) == 1
                 ):  # This was a new entry (or re-entry after expiry)
                     # Safe delete using pop to avoid KeyErrors in race conditions
-                    self.requests.pop(client_ip, None)
+                    self.requests.pop(client_key, None)
                     return Response("Server Busy", status_code=503)
 
-            self.requests[client_ip] = active_requests
+            self.requests[client_key] = active_requests
 
         return await call_next(request)

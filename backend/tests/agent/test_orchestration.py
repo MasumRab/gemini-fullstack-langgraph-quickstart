@@ -138,11 +138,11 @@ class TestAgentPool:
 class TestCoordinatorNode:
     """Tests for the coordinator node logic."""
 
-    @patch("agent.orchestration.ChatGoogleGenerativeAI")
-    def test_coordinator_routing_decision(self, mock_llm_class):
+    @patch("agent.orchestration.get_cached_llm")
+    def test_coordinator_routing_decision(self, mock_get_llm):
         """Test parsing of LLM JSON response."""
         # Setup mocks
-        mock_llm = mock_llm_class.return_value
+        mock_llm = mock_get_llm.return_value
         mock_llm.invoke.return_value = AIMessage(content='```json\n{"action": "delegate_agent", "target": "researcher", "reason": "complex query"}\n```')
 
         registry = ToolRegistry()
@@ -159,10 +159,10 @@ class TestCoordinatorNode:
         assert result["coordinator_decision"] == "delegate_agent"
         assert result["coordinator_target"] == "researcher"
 
-    @patch("agent.orchestration.ChatGoogleGenerativeAI")
-    def test_coordinator_fallback_on_error(self, mock_llm_class):
+    @patch("agent.orchestration.get_cached_llm")
+    def test_coordinator_fallback_on_error(self, mock_get_llm):
         """Test fallback when LLM fails or returns invalid JSON."""
-        mock_llm = mock_llm_class.return_value
+        mock_llm = mock_get_llm.return_value
         mock_llm.invoke.side_effect = Exception("API Error")
 
         registry = ToolRegistry()

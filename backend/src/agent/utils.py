@@ -1,5 +1,9 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Iterable
+import os
+import difflib
+from functools import lru_cache
 from langchain_core.messages import AnyMessage, AIMessage, HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 def get_research_topic(messages: List[AnyMessage]) -> str:
@@ -207,3 +211,59 @@ def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\
             break
 
     return separator.join(result_parts)
+
+
+# ⚡ Bolt Optimization: Cache LLM instance creation
+# Creating ChatGoogleGenerativeAI objects involves some overhead.
+# Since config (model, temp) is usually stable within a session, we can reuse instances.
+@lru_cache(maxsize=16)
+def get_cached_llm(model: str, temperature: float) -> Any:
+    """
+    Returns a configured LLM client.
+    Supports Gemini (native) and Gemma (via GemmaAdapter).
+    """
+    is_gemma = "gemma" in model.lower()
+
+    if is_gemma:
+        from agent.gemma_client import get_gemma_client
+        from agent.llm_client import GemmaAdapter
+
+        # Instantiate the correct provider (Vertex or Ollama) from app_config
+        client = get_gemma_client()
+        # Return an adapter that mimics LangChain's invoke interface
+        return GemmaAdapter(client=client, temperature=temperature)
+
+    return ChatGoogleGenerativeAI(
+        model=model,
+        temperature=temperature,
+        api_key=os.getenv("GEMINI_API_KEY"),
+    )
+
+
+def has_fuzzy_match(keyword: str, candidates: Iterable[str], cutoff: float = 0.8) -> bool:
+    """
+    Checks if there is any candidate in the list that has a fuzzy match ratio >= cutoff
+    with the keyword. Returns True immediately on the first match.
+    Avoids sorting overhead of get_close_matches.
+
+    Args:
+        keyword: The word to match against.
+        candidates: Iterable of words to search in.
+        cutoff: Minimum similarity ratio (0.0 to 1.0).
+
+    Returns:
+        True if a match is found, False otherwise.
+    """
+    # Reuse SequenceMatcher instance for efficiency
+    matcher = difflib.SequenceMatcher(b=keyword)
+
+    for candidate in candidates:
+        matcher.set_seq1(candidate)
+        # ⚡ Bolt Optimization: Check real_quick_ratio first as an O(1) upper bound based on length
+        if (
+            matcher.real_quick_ratio() >= cutoff
+            and matcher.quick_ratio() >= cutoff
+            and matcher.ratio() >= cutoff
+        ):
+            return True
+    return False
