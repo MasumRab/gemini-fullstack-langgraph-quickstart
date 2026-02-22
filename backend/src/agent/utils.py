@@ -228,10 +228,11 @@ def get_cached_llm(model: str, temperature: float) -> Any:
         from agent.gemma_client import get_gemma_client
         from agent.llm_client import GemmaAdapter
         
-        # Instantiate the correct provider (Vertex or Ollama) from app_config
-        client = get_gemma_client()
+        # Instantiate the correct provider (Google GenAI, Vertex or Ollama) from app_config
+        # Pass the specific model name to allow overriding the default
+        client = get_gemma_client(model_name=model)
         # Return an adapter that mimics LangChain's invoke interface
-        return GemmaAdapter(client=client, temperature=temperature)
+        return GemmaAdapter(client=client)
     
     return ChatGoogleGenerativeAI(
         model=model,
@@ -248,7 +249,7 @@ def has_fuzzy_match(keyword: str, candidates: Iterable[str], cutoff: float = 0.8
 
     Args:
         keyword: The word to match against.
-        candidates: Iterable of words to search in.
+        candidates: List of words to search in.
         cutoff: Minimum similarity ratio (0.0 to 1.0).
 
     Returns:

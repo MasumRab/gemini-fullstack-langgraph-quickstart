@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -162,6 +162,11 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "ok"}
 
+@app.get("/")
+async def root_redirect():
+    """Redirect root path to the frontend app."""
+    return RedirectResponse(url="/app/", status_code=302)
+
 
 @app.post("/threads")
 async def create_thread():
@@ -255,9 +260,9 @@ class InvokeRequest(BaseModel):
                     if loops < 1:
                         raise ValueError("max_research_loops must be at least 1")
                 except ValueError as e:
-                    if "cannot exceed" in str(e) or "must be at least" in str(e):
+                     if "cannot exceed" in str(e) or "must be at least" in str(e):
                         raise e
-                    raise ValueError("max_research_loops must be an integer")
+                     raise ValueError("max_research_loops must be an integer")
 
         return v
 
