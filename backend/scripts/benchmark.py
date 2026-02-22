@@ -50,9 +50,14 @@ async def run_single_benchmark(item: Dict[str, Any], config: Dict[str, Any]) -> 
         result = await graph.ainvoke(inputs, config=config)
 
         # Extract answer (assuming standard graph output structure)
-        # Adjust based on your actual graph output
         messages = result.get("messages", [])
-        final_answer = messages[-1].content if messages else "No answer produced"
+        final_answer = "No answer produced"
+        if messages:
+            last_msg = messages[-1]
+            if isinstance(last_msg, dict):
+                final_answer = last_msg.get("content", str(last_msg))
+            else:
+                final_answer = getattr(last_msg, "content", str(last_msg))
 
         duration = time.time() - start_time
 
@@ -107,7 +112,7 @@ def generate_report(results: List[Dict[str, Any]], output_path: str):
     avg_time = total_time / len(results) if results else 0
 
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(f"# Benchmark Report\n\n")
+        f.write("# Benchmark Report\n\n")
         f.write(f"- **Total Questions**: {len(results)}\n")
         f.write(f"- **Success Rate**: {success_count}/{len(results)}\n")
         f.write(f"- **Average Time**: {avg_time:.2f}s\n\n")

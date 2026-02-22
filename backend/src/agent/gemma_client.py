@@ -126,7 +126,7 @@ class OllamaGemmaClient(GemmaClient):
         import requests
         self.requests = requests
         self.base_url = app_config.ollama_base_url
-        self.model_name = model_name or app_config.gemma_model_name
+        self.model_name = model_name or app_config.gemma_model_name or "gemma:7b"
         self.generate_url = f"{self.base_url}/api/generate"
 
     def invoke(self, prompt: str, **kwargs) -> str:

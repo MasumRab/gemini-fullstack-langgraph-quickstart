@@ -24,7 +24,24 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains"
         )
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
+
+        # CSP: Allow scripts/styles from self, plus standard strict policy
+        # Ideally, we would use a nonce, but for this static serve setup, 'self' is the baseline.
+        # Adding nonce support would require injecting it into index.html which is pre-built.
+        # So we use a reasonably strict policy for now.
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "  # unsafe-inline often needed for some React setups/Vite dev, can be tightened
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self' https:;"
+        )
+
+        # Permissions Policy
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+        )
+
         return response
 
 
@@ -66,22 +83,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if self.trust_proxy_headers:
             forwarded = request.headers.get("X-Forwarded-For")
             if forwarded:
-                # Direct split and strip, no try/except needed as split never raises
                 ips = [ip.strip() for ip in forwarded.split(",")]
-                # Use the last IP in the list as it's the most trusted (closest to our server)
-                # or the first if we want the original client (but that's spoofable).
-                # Standard practice for identifying the *connecting* client in a trusted chain is often the last one added by the trusted proxy.
-                # However, for rate limiting user origin, usually the *first* is used if we trust the chain.
-                # If trust_proxy_headers is True, we assume we are behind a trusted proxy (like Render/Cloudflare)
-                # which appends the real client IP to the end or beginning depending on config.
-                # Let's use the last one as it is the one that connected to the proxy.
-                # Actually, X-Forwarded-For: <client>, <proxy1>, <proxy2>
-                # If we trust the proxy, the *last* IP is the one that connected to *us* (the proxy),
-                # but we want the *original* client.
-                # If we trust the proxy, we can trust the *first* non-private IP, or just the first one if strict.
-                # Let's stick to the previous logic but simplified: last IP is safer against spoofing if we only trust the immediate upstream.
+                # Use first X-Forwarded-For entry as originating client when trust_proxy_headers is True
                 if ips:
-                    client_ip = ips[-1]
+                    client_ip = ips[0]
 
         if client_ip == "unknown" and request.client and request.client.host:
             client_ip = request.client.host

@@ -222,6 +222,8 @@ def _get_cached_gemma_adapter(model: str) -> Any:
     # Instantiate the correct provider (Google GenAI, Vertex or Ollama) from app_config
     client = get_gemma_client(model_name=model)
     # Return an adapter that mimics LangChain's invoke interface
+    # Note: Tools are not cached here as they are typically bound at runtime via .bind_tools().
+    # GemmaAdapter now supports .bind_tools() to create new instances with tools.
     return GemmaAdapter(client=client)
 
 

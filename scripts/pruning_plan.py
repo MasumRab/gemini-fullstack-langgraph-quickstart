@@ -4,14 +4,18 @@ import subprocess
 import re
 import argparse
 
-def get_remote_branches():
-    # Get all remote branches except HEAD and main
+def get_remote_branches(base="main"):
+    # Get all remote branches except HEAD and base
     cmd = ["git", "branch", "-r"]
     result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"git branch -r failed: {result.stderr.strip()}")
+
     branches = []
     for line in result.stdout.splitlines():
         branch = line.strip()
-        if "->" in branch or "origin/main" in branch or "upstream" in branch:
+        if "->" in branch or f"origin/{base}" in branch or "upstream" in branch:
             continue
         branches.append(branch)
     return branches
@@ -52,7 +56,7 @@ def main():
     parser.add_argument("--base", default="main", help="Base branch to compare against")
     args = parser.parse_args()
 
-    branches = get_remote_branches()
+    branches = get_remote_branches(base=args.base)
     plans = []
     
     print(f"Analyzing {len(branches)} remote branches against '{args.base}'...")
@@ -65,7 +69,7 @@ def main():
         elif stats == "NO_DIFF":
             plans.append({"branch": branch, "action": "DELETE (No Diff)", "size": 0})
         elif stats == "ERROR":
-             plans.append({"branch": branch, "action": "SKIP (Error)", "size": 0, "details": "Git command failed"})
+            plans.append({"branch": branch, "action": "SKIP (Error)", "size": 0, "details": "Git command failed"})
         elif total < 50:
             plans.append({"branch": branch, "action": "DELETE (Small Change)", "size": total, "details": stats})
         else:

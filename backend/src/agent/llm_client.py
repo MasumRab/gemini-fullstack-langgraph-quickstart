@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Union, List, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from langchain_core.messages import AIMessage
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
 
     except Exception as e:
         logger.warning(f"LLM call failed (attempting retry): {e}")
-        raise e
+        raise
 
 
 class GemmaAdapter:
@@ -69,8 +70,15 @@ class GemmaAdapter:
         self.instruction_template = GEMMA_TOOL_INSTRUCTION
         self.tools_schema = format_tools_to_json_schema(self.tools) if self.tools else ""
 
+    def bind_tools(self, tools: List[Any], **kwargs) -> "GemmaAdapter":
+        """
+        Create a new GemmaAdapter instance with bound tools.
+        Compatible with LangChain's bind_tools interface.
+        """
+        # Create a new instance sharing the same client but with new tools
+        return GemmaAdapter(client=self.client, tools=tools)
+
     def invoke(self, input_data: Union[str, Any], **kwargs) -> Any:
-        from langchain_core.messages import AIMessage
 
         # Extract prompt from input (could be string or list of messages)
         if isinstance(input_data, str):
