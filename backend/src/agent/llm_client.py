@@ -70,6 +70,8 @@ class GemmaAdapter:
         self.tools_schema = format_tools_to_json_schema(self.tools) if self.tools else ""
 
     def invoke(self, input_data: Union[str, Any], **kwargs) -> Any:
+        from langchain_core.messages import AIMessage
+
         # Extract prompt from input (could be string or list of messages)
         if isinstance(input_data, str):
             prompt = input_data
@@ -96,13 +98,12 @@ class GemmaAdapter:
         # If tools are present, parse for tool calls
         if self.tools:
             from agent.tool_adapter import parse_tool_calls
-            from langchain_core.messages import AIMessage
             
-            tool_names = [t.name for t in self.tools]
+            # Defensive tool name extraction
+            tool_names = [getattr(t, "name", str(t)) for t in self.tools]
             tool_calls = parse_tool_calls(response_text, allowed_tools=tool_names)
             
             if tool_calls:
                 return AIMessage(content=response_text, tool_calls=tool_calls)
         
-        from langchain_core.messages import AIMessage
         return AIMessage(content=response_text)

@@ -1,8 +1,11 @@
+"""Script to analyze remote branches and suggest pruning actions."""
+
 import subprocess
 import re
+import argparse
 
 def get_remote_branches():
-    # Get all remote branches excluding HEAD and main
+    # Get all remote branches except HEAD and main
     cmd = ["git", "branch", "-r"]
     result = subprocess.run(cmd, capture_output=True, text=True)
     branches = []
@@ -13,16 +16,20 @@ def get_remote_branches():
         branches.append(branch)
     return branches
 
-def get_diff_stats(branch):
+def get_diff_stats(branch, base_branch="main"):
     # Check if merged first
-    cmd_merged = ["git", "rev-list", "--count", f"main..{branch}"]
+    cmd_merged = ["git", "rev-list", "--count", f"{base_branch}..{branch}"]
     res_merged = subprocess.run(cmd_merged, capture_output=True, text=True)
     if res_merged.returncode == 0 and res_merged.stdout.strip() == "0":
         return "MERGED", 0
         
     # Get diff stats
-    cmd = ["git", "diff", "--shortstat", f"main...{branch}"]
+    cmd = ["git", "diff", "--shortstat", f"{base_branch}...{branch}"]
     result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        return "ERROR", 0
+
     output = result.stdout.strip()
     
     if not output:
@@ -41,15 +48,24 @@ def get_diff_stats(branch):
     return output, insertions + deletions
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--base", default="main", help="Base branch to compare against")
+    args = parser.parse_args()
+
     branches = get_remote_branches()
     plans = []
     
-    print(f"Analyzing {len(branches)} remote branches...")
+    print(f"Analyzing {len(branches)} remote branches against '{args.base}'...")
     
     for branch in branches:
-        stats, total = get_diff_stats(branch)
+        stats, total = get_diff_stats(branch, args.base)
+
         if stats == "MERGED":
             plans.append({"branch": branch, "action": "DELETE (Merged)", "size": 0})
+        elif stats == "NO_DIFF":
+            plans.append({"branch": branch, "action": "DELETE (No Diff)", "size": 0})
+        elif stats == "ERROR":
+             plans.append({"branch": branch, "action": "SKIP (Error)", "size": 0, "details": "Git command failed"})
         elif total < 50:
             plans.append({"branch": branch, "action": "DELETE (Small Change)", "size": total, "details": stats})
         else:

@@ -24,6 +24,8 @@ from config.validation import check_env_strict
 
 logger = logging.getLogger(__name__)
 
+# Constants
+FRONTEND_MOUNT = "/app"
 
 # Define Middleware for Content Size Limit (Defense against DoS)
 class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
@@ -165,7 +167,9 @@ async def health_check():
 @app.get("/")
 async def root_redirect():
     """Redirect root path to the frontend app."""
-    return RedirectResponse(url="/app/", status_code=302)
+    # Ensure trailing slash for directory compatibility
+    target = FRONTEND_MOUNT if FRONTEND_MOUNT.endswith("/") else f"{FRONTEND_MOUNT}/"
+    return RedirectResponse(url=target, status_code=302)
 
 
 @app.post("/threads")
@@ -260,9 +264,9 @@ class InvokeRequest(BaseModel):
                     if loops < 1:
                         raise ValueError("max_research_loops must be at least 1")
                 except ValueError as e:
-                     if "cannot exceed" in str(e) or "must be at least" in str(e):
+                    if "cannot exceed" in str(e) or "must be at least" in str(e):
                         raise e
-                     raise ValueError("max_research_loops must be an integer")
+                    raise ValueError("max_research_loops must be an integer")
 
         return v
 
@@ -406,7 +410,7 @@ def create_frontend_router(build_dir="../frontend/dist"):
 
 # Mount the frontend under /app to not conflict with the LangGraph API routes
 app.mount(
-    "/app",
+    FRONTEND_MOUNT,
     create_frontend_router(),
     name="frontend",
 )

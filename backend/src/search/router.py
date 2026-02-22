@@ -44,6 +44,9 @@ class SearchRouter:
             elif name == SearchProviderType.BING.value:
                 from .providers.bing_adapter import BingAdapter
                 self.providers[name] = BingAdapter()
+            else:
+                logger.warning(f"Unknown search provider requested: {name}")
+                return None
 
             return self.providers.get(name)
         except Exception as e:

@@ -213,6 +213,18 @@ def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\
     return separator.join(result_parts)
 
 
+@lru_cache(maxsize=16)
+def _get_cached_gemma_adapter(model: str) -> Any:
+    """Cache Gemma adapter by model only (ignoring temperature)."""
+    from agent.gemma_client import get_gemma_client
+    from agent.llm_client import GemmaAdapter
+
+    # Instantiate the correct provider (Google GenAI, Vertex or Ollama) from app_config
+    client = get_gemma_client(model_name=model)
+    # Return an adapter that mimics LangChain's invoke interface
+    return GemmaAdapter(client=client)
+
+
 # ⚡ Bolt Optimization: Cache LLM instance creation
 # Creating ChatGoogleGenerativeAI objects involves some overhead.
 # Since config (model, temp) is usually stable within a session, we can reuse instances.
@@ -225,14 +237,8 @@ def get_cached_llm(model: str, temperature: float) -> Any:
     is_gemma = "gemma" in model.lower()
     
     if is_gemma:
-        from agent.gemma_client import get_gemma_client
-        from agent.llm_client import GemmaAdapter
-        
-        # Instantiate the correct provider (Google GenAI, Vertex or Ollama) from app_config
-        # Pass the specific model name to allow overriding the default
-        client = get_gemma_client(model_name=model)
-        # Return an adapter that mimics LangChain's invoke interface
-        return GemmaAdapter(client=client)
+        # Delegate to specialized cache that ignores temperature
+        return _get_cached_gemma_adapter(model)
     
     return ChatGoogleGenerativeAI(
         model=model,

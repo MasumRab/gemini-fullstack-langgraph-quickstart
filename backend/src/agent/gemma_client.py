@@ -55,16 +55,20 @@ class GoogleGenAIGemmaClient(GemmaClient):
                 config=config
             )
 
-            return response.text if response.text else ""
+            # Safe access to response text
+            try:
+                return response.text if response.text else ""
+            except (ValueError, AttributeError):
+                return ""
 
         except Exception:
-            logger.error(f"Google GenAI (Gemma) call failed", exc_info=True)
+            logger.error("Google GenAI (Gemma) call failed", exc_info=True)
             raise
 
 class VertexAIGemmaClient(GemmaClient):
     """Client for Gemma models deployed on Google Vertex AI."""
 
-    def __init__(self):
+    def __init__(self, model_name: Optional[str] = None):
         """
         Initialize Vertex AI client using configuration from app_config.
         """
@@ -79,6 +83,11 @@ class VertexAIGemmaClient(GemmaClient):
         self.project_id = app_config.vertex_project_id
         self.location = app_config.vertex_location
         self.endpoint_id = app_config.vertex_endpoint_id
+
+        # TODO: Implement model_name to endpoint_id mapping if needed.
+        # Currently defaults to configured vertex_endpoint_id.
+        if model_name:
+            logger.info(f"VertexAIGemmaClient initialized with model_name='{model_name}', but using configured endpoint_id='{self.endpoint_id}'. Mapping logic may be needed.")
 
         if not all([self.project_id, self.location, self.endpoint_id]):
             logger.error("Vertex AI configuration missing: project_id, location, or endpoint_id.")
@@ -104,7 +113,7 @@ class VertexAIGemmaClient(GemmaClient):
                 return str(response.predictions[0])
             return ""
         except Exception:
-            logger.error(f"Vertex AI prediction failed", exc_info=True)
+            logger.error("Vertex AI prediction failed", exc_info=True)
             raise
 
 class OllamaGemmaClient(GemmaClient):
@@ -124,19 +133,30 @@ class OllamaGemmaClient(GemmaClient):
         """
         Generate text completion.
         """
+        # Separate top-level parameters from options
+        options = {}
+        for key in ["temperature", "top_p", "top_k", "num_predict", "stop", "repeat_penalty"]:
+            if key in kwargs:
+                options[key] = kwargs[key]
+
+        # Map common keys
+        if "max_tokens" in kwargs and "num_predict" not in options:
+            options["num_predict"] = kwargs["max_tokens"]
+
         payload = {
             "model": self.model_name,
             "prompt": prompt,
             "stream": False,
-            **kwargs
+            "options": options
         }
 
         try:
-            response = self.requests.post(self.generate_url, json=payload)
+            # Add timeout to prevent hanging
+            response = self.requests.post(self.generate_url, json=payload, timeout=120)
             response.raise_for_status()
             return response.json().get("response", "")
         except Exception:
-            logger.error(f"Ollama call failed", exc_info=True)
+            logger.error("Ollama call failed", exc_info=True)
             raise
 
 def get_gemma_client(model_name: Optional[str] = None) -> GemmaClient:
@@ -145,15 +165,16 @@ def get_gemma_client(model_name: Optional[str] = None) -> GemmaClient:
     Args:
         model_name: Optional specific model name to use (e.g., passed from app_config model_* settings).
     """
-    provider = app_config.gemma_provider.lower()
+    # Guard against None provider
+    provider = (app_config.gemma_provider or "ollama").lower()
 
     # Priority 1: Google GenAI (explicit config)
-    if provider == "google_genai" or provider == "google":
+    if provider in ("google_genai", "google"):
         return GoogleGenAIGemmaClient(model_name=model_name)
 
     # Priority 2: Vertex AI
     elif provider == "vertex":
-        return VertexAIGemmaClient()
+        return VertexAIGemmaClient(model_name=model_name)
 
     # Priority 3: Ollama
     elif provider == "ollama":

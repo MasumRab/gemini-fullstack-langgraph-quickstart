@@ -76,6 +76,16 @@ from observability.langfuse import observe_span
 
 logger = logging.getLogger(__name__)
 
+def _normalize_task(task_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize task data structure."""
+    return {
+        "title": task_data.get("title", ""),
+        "description": task_data.get("description", ""),
+        "status": task_data.get("status", "pending"),
+        "query": task_data.get("query", ""),
+    }
+
+
 # Initialize Google Search Client
 genai_client = Client(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -761,7 +771,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
         # specific_task_done = False # Unused variable
 
         # Create a working copy for the prompt to avoid modifying state directly yet
-        prompt_plan = [dict(t) for t in current_plan]
+        prompt_plan = [_normalize_task(t) for t in current_plan]
 
         if current_idx is not None and 0 <= current_idx < len(prompt_plan):
             prompt_plan[current_idx]["status"] = "done"
@@ -839,7 +849,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
             except Exception as e:
                 logger.error(f"Gemma plan update failed: {e}")
                 # Fallback: keep existing plan to avoid data loss
-                plan_todos = [dict(t) for t in current_plan]
+                plan_todos = [_normalize_task(t) for t in current_plan]
 
         else:
             # Standard Gemini Path
@@ -856,7 +866,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                     plan_todos.append(todo)
             except Exception as e:
                 logger.error(f"Failed to update plan (Gemini): {e}")
-                plan_todos = [dict(t) for t in current_plan]
+                plan_todos = [_normalize_task(t) for t in current_plan]
 
         # Safety Fallback: Ensure the executed task is actually marked as done in the new plan
         # This overrides the LLM if it fails to update the status, preventing infinite loops.

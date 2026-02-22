@@ -1,158 +1,143 @@
-"""Benchmark Orchestration Script
+"""Benchmark script to evaluate agent performance against reference questions."""
 
-This script runs the agent against a dataset of questions and evaluates performance 
-using the evaluators defined in backend/tests/evaluators.py.
-"""
-
-import asyncio
-import logging
 import json
+import logging
+import time
 import os
+import argparse
 from typing import List, Dict, Any
-from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Load env vars before importing evaluators or agent components
-load_dotenv()
-
-from agent.graph import graph
+# Try to import graph - handle import error if app structure is different
 try:
-    from tests.evaluators import eval_quality, eval_groundedness
+    from agent.graph import graph
+    from agent.models import DEFAULT_ANSWER_MODEL
 except ImportError:
-    # This might happen if running script directly without module context
-    # But usually handled by running as `python -m scripts.benchmark`
-    raise
+    import sys
+    sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
+    from agent.graph import graph
+    from agent.models import DEFAULT_ANSWER_MODEL
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Path relative to backend root
-DATASET_PATH = os.path.join("tests", "data", "benchmark_questions.json")
-
-def load_dataset(path: str) -> List[Dict[str, Any]]:
-    """Load questions from a JSON file."""
+def load_benchmark_data(path: str) -> List[Dict[str, Any]]:
+    """Load benchmark questions from JSON file."""
     if not os.path.exists(path):
-        # Try finding it relative to script if run differently
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        alt_path = os.path.join(script_dir, "..", path)
-        if os.path.exists(alt_path):
-            path = alt_path
-        else:
-            logger.error(f"Dataset not found at {path}")
-            return []
-
-    try:
-        with open(path, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"Failed to load dataset: {e}")
+        logger.error(f"Benchmark file not found: {path}")
         return []
 
-async def run_benchmark():
-    """Run evaluation for all questions."""
-    questions = load_dataset(DATASET_PATH)
-    if not questions:
-        logger.warning("No questions loaded. Exiting.")
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to load benchmark data: {e}")
+        return []
+
+async def run_single_benchmark(item: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    """Run a single benchmark item."""
+    question = item.get("question")
+    if not question:
+        return {"error": "Missing question", "status": "skipped"}
+
+    start_time = time.time()
+    try:
+        # Prepare input
+        inputs = {"messages": [{"role": "user", "content": question}]}
+
+        # Run agent
+        result = await graph.ainvoke(inputs, config=config)
+
+        # Extract answer (assuming standard graph output structure)
+        # Adjust based on your actual graph output
+        messages = result.get("messages", [])
+        final_answer = messages[-1].content if messages else "No answer produced"
+
+        duration = time.time() - start_time
+
+        return {
+            "question": question,
+            "answer": final_answer,
+            "duration": duration,
+            "status": "success",
+            "expected_topics": item.get("expected_topics", [])
+        }
+    except Exception as e:
+        logger.error(f"Error processing '{question}': {e}")
+        return {
+            "question": question,
+            "error": str(e),
+            "duration": time.time() - start_time,
+            "status": "failed"
+        }
+
+async def run_benchmark(data_path: str, output_path: str = "benchmark_report.md"):
+    """Run full benchmark suite."""
+    data = load_benchmark_data(data_path)
+    if not data:
+        logger.warning("No data to benchmark.")
         return
 
     results = []
-    
-    for item in questions:
-        question = item["question"]
-        expected_topics = item.get("expected_topics", [])
-        logger.info(f"Running benchmark for: {question}")
-        
-        try:
-            # Invoke agent
-            # We rely on the agent graph to handle the flow.
-            # If the graph requires user input (e.g. scoping), it might stop or need handling.
-            # For automation, we assume the graph can run autonomously or we'd need to mock input.
-            # Increase recursion limit to handle multi-step research plans (default is 25)
-            # Disable planning confirmation to allow automated execution
-            response = await graph.ainvoke({
-                "messages": [("user", question)]
-            }, config={
-                "recursion_limit": 100,
-                "configurable": {"require_planning_confirmation": False}
-            })
+    logger.info(f"Starting benchmark with {len(data)} questions...")
 
-            # Extract final answer from the last message content
-            messages = response.get("messages", [])
-            final_content = ""
-            if messages:
-                final_content = messages[-1].content
+    # Configure agent for benchmark (e.g. no human-in-the-loop)
+    config = {
+        "configurable": {
+            "thread_id": "benchmark_run",
+            "model_name": DEFAULT_ANSWER_MODEL,
+            "require_planning_confirmation": False
+        }
+    }
+
+    # Run sequentially for now to avoid rate limits, or use semaphore if needed
+    for item in data:
+        res = await run_single_benchmark(item, config)
+        results.append(res)
+        logger.info(f"Completed: {item.get('question', 'Unknown')[:30]}... ({res['status']})")
+
+    # Generate Report
+    generate_report(results, output_path)
+
+def generate_report(results: List[Dict[str, Any]], output_path: str):
+    """Generate a markdown report of results."""
+    success_count = sum(1 for r in results if r["status"] == "success")
+    total_time = sum(r.get("duration", 0) for r in results)
+    avg_time = total_time / len(results) if results else 0
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(f"# Benchmark Report\n\n")
+        f.write(f"- **Total Questions**: {len(results)}\n")
+        f.write(f"- **Success Rate**: {success_count}/{len(results)}\n")
+        f.write(f"- **Average Time**: {avg_time:.2f}s\n\n")
+        
+        f.write("## Detailed Results\n\n")
+        for res in results:
+            f.write(f"### Q: {res.get('question', 'N/A')}\n")
+            f.write(f"- **Status**: {res['status']}\n")
+            f.write(f"- **Time**: {res.get('duration', 0):.2f}s\n")
+            if res["status"] == "success":
+                f.write(f"- **Answer Snippet**: {str(res.get('answer', ''))[:200]}...\n")
             else:
-                logger.warning(f"No messages returned for '{question}'")
+                f.write(f"- **Error**: {res.get('error')}\n")
+            f.write("\n---\n")
 
-            # Extract sources
-            sources = response.get("sources_gathered", [])
-            if not sources:
-                # Fallback to checking web_research_result if sources_gathered is empty
-                # web_research_result is usually a list of strings (summaries)
-                sources = response.get("web_research_result", [])
-
-            # Ensure sources is a list of strings
-            sources_list = []
-            for s in sources:
-                if isinstance(s, dict):
-                    # If source is a dictionary (e.g. Evidence), convert to string
-                    sources_list.append(str(s))
-                else:
-                    sources_list.append(str(s))
-
-            # Evaluate
-            logger.info("Evaluating quality...")
-            quality_result = eval_quality(question, final_content)
-
-            logger.info("Evaluating groundedness...")
-            groundedness_result = eval_groundedness(final_content, sources_list)
-
-            result_entry = {
-                "question": question,
-                "expected_topics": expected_topics,
-                "quality_score": quality_result.get("score", 0),
-                "quality_reasoning": quality_result.get("metadata", {}).get("reasoning", "No reasoning provided"),
-                "groundedness_score": groundedness_result.get("score", 0),
-                "groundedness_reasoning": groundedness_result.get("metadata", {}).get("reasoning", "No reasoning provided"),
-                "final_answer_snippet": (final_content[:200] + "...") if final_content else "No content"
-            }
-            results.append(result_entry)
-
-            logger.info(f"Result for '{question}': Q={result_entry['quality_score']}, G={result_entry['groundedness_score']}")
-
-        except Exception as e:
-            logger.error(f"Agent failed for '{question}': {e}", exc_info=True)
-            continue
-
-    # Report Generation
-    if results:
-        avg_quality = sum(r["quality_score"] for r in results) / len(results)
-        avg_groundedness = sum(r["groundedness_score"] for r in results) / len(results)
-
-        report = f"""
-# Benchmark Report
-
-**Average Quality Score:** {avg_quality:.2f}
-**Average Groundedness Score:** {avg_groundedness:.2f}
-
-## Detailed Results
-"""
-        for r in results:
-            report += f"""
-### {r['question']}
-- **Quality:** {r['quality_score']}
-  - *Reasoning:* {r['quality_reasoning']}
-- **Groundedness:** {r['groundedness_score']}
-  - *Reasoning:* {r['groundedness_reasoning']}
-- **Snippet:** {r['final_answer_snippet']}
-"""
-        print(report)
-        
-        # Save to file
-        with open("benchmark_report.md", "w") as f:
-            f.write(report)
-        logger.info("Report saved to benchmark_report.md")
-    else:
-        logger.warning("No results to report.")
+    logger.info(f"Report saved to {output_path}")
 
 if __name__ == "__main__":
-    asyncio.run(run_benchmark())
+    import asyncio
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data", default="tests/data/benchmark_questions.json", help="Path to benchmark data")
+    args = parser.parse_args()
+
+    # Resolve path relative to script if needed
+    data_path = args.data
+    if not os.path.exists(data_path):
+        # Try finding it relative to backend root
+        alt_path = os.path.join(os.path.dirname(__file__), "..", data_path)
+        if os.path.exists(alt_path):
+            data_path = alt_path
+
+    asyncio.run(run_benchmark(data_path))

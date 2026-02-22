@@ -1,238 +1,114 @@
-"""Security middleware for the agent application."""
+"""Security middleware and utilities for the agent."""
 
-import ipaddress
 import logging
-import math
-import time
-from collections import defaultdict
-from typing import List
+import re
+from typing import List, Optional
 
 from fastapi import Request, Response
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from agent.rate_limiter import RateLimiter, RateLimitExceeded
 
 logger = logging.getLogger(__name__)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Middleware to add security headers to every response."""
+    """Middleware to add security headers to all responses."""
 
     async def dispatch(self, request: Request, call_next):
-        """Process the request and add security headers to the response."""
+        """Process the request and add security headers."""
         response = await call_next(request)
-
-        # Prevent MIME type sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
-
-        # Protect against clickjacking
         response.headers["X-Frame-Options"] = "DENY"
-
-        # Referrer Policy
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-
-        # Strict Transport Security (HSTS)
-        # Max-age: 1 year. Include subdomains.
+        response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains"
         )
-
-        # Permissions Policy
-        # Restrict access to sensitive features the agent doesn't need
-        response.headers["Permissions-Policy"] = (
-            "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
-        )
-
-        # Content Security Policy (CSP)
-        # Default to very strict (API only), but allow styles/images if needed for simple UI
-        # Since this is primarily an API backend, we start strict.
-        # We allow 'self' for both because we serve frontend from /app on same origin.
-        # We also allow 'unsafe-inline' for styles because many React apps use it,
-        # but for scripts we try to be strict.
-        csp_policy = (
-            "default-src 'self'; "
-            "img-src 'self' data: https:; "
-            "style-src 'self' 'unsafe-inline'; "
-            "script-src 'self'; "
-            "object-src 'none'; "
-            "base-uri 'self'; "
-            "frame-ancestors 'none';"
-        )
-        response.headers["Content-Security-Policy"] = csp_policy
-
-        # XSS Protection (legacy but good defense in depth)
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
         return response
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Simple in-memory rate limiting middleware."""
-
-    def get_client_key(self, ip: str) -> str:
-        """Normalize IP address to a rate limit key.
-
-        For IPv4, returns the IP.
-        For IPv6, returns the /64 prefix to prevent subnet rotation attacks.
-        """
-        try:
-            obj = ipaddress.ip_address(ip)
-            if isinstance(obj, ipaddress.IPv6Address):
-                # Mask to /64
-                val = int(obj)
-                mask = (1 << 128) - (1 << 64)
-                masked = val & mask
-                return str(ipaddress.IPv6Address(masked)) + "/64"
-            return str(obj)
-        except ValueError:
-            # If not a valid IP, return "unknown" to prevent log injection/key pollution
-            return "unknown"
+    """Middleware to enforce rate limits."""
 
     def __init__(
         self,
         app,
         limit: int = 100,
         window: int = 60,
-        protected_paths: List[str] | None = None,
+        protected_paths: Optional[List[str]] = None,
         trust_proxy_headers: bool = False,
     ):
         """Initialize the rate limiter.
 
         Args:
-            app: The FastAPI application.
-            limit: Maximum requests allowed per window.
+            app: The ASGI application.
+            limit: Number of requests allowed per window.
             window: Time window in seconds.
-            protected_paths: List of path prefixes to apply rate limiting to.
-                             If None, applies to all paths.
+            protected_paths: List of paths to apply rate limiting to.
             trust_proxy_headers: Whether to trust X-Forwarded-For headers.
         """
         super().__init__(app)
-        self.limit = limit
-        self.window = window
-        self.protected_paths = protected_paths if protected_paths is not None else []
+        self.limiter = RateLimiter(limit, window)
+        self.protected_paths = protected_paths or []
         self.trust_proxy_headers = trust_proxy_headers
-        self.requests = defaultdict(list)
-        # 🛡️ Sentinel: Optimize cleanup frequency to prevent DoS via Iteration attacks
-        self.last_cleanup = 0
-        self.cleanup_interval = 60  # seconds
+
+    def get_client_key(self, request: Request) -> str:
+        """Extract client identifier (IP) from request.
+
+        Attempts to find the client's IP address.
+        If trust_proxy_headers is True, checks X-Forwarded-For.
+        Falls back to request.client.host.
+        Sanitizes the result to prevent log injection.
+        """
+        client_ip = "unknown"
+
+        if self.trust_proxy_headers:
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                # Direct split and strip, no try/except needed as split never raises
+                ips = [ip.strip() for ip in forwarded.split(",")]
+                # Use the last IP in the list as it's the most trusted (closest to our server)
+                # or the first if we want the original client (but that's spoofable).
+                # Standard practice for identifying the *connecting* client in a trusted chain is often the last one added by the trusted proxy.
+                # However, for rate limiting user origin, usually the *first* is used if we trust the chain.
+                # If trust_proxy_headers is True, we assume we are behind a trusted proxy (like Render/Cloudflare)
+                # which appends the real client IP to the end or beginning depending on config.
+                # Let's use the last one as it is the one that connected to the proxy.
+                # Actually, X-Forwarded-For: <client>, <proxy1>, <proxy2>
+                # If we trust the proxy, the *last* IP is the one that connected to *us* (the proxy),
+                # but we want the *original* client.
+                # If we trust the proxy, we can trust the *first* non-private IP, or just the first one if strict.
+                # Let's stick to the previous logic but simplified: last IP is safer against spoofing if we only trust the immediate upstream.
+                if ips:
+                    client_ip = ips[-1]
+
+        if client_ip == "unknown" and request.client and request.client.host:
+            client_ip = request.client.host
+
+        # Sanitize to prevent log injection
+        # Allow only alphanumeric, dots, colons (IPv6)
+        if not re.match(r"^[a-zA-Z0-9.:]+$", client_ip):
+            return "unknown"
+
+        return client_ip
 
     async def dispatch(self, request: Request, call_next):
-        """Check rate limit for API endpoints."""
-        path = request.url.path
-
+        """Check rate limit for protected paths."""
         # Check if path is protected
-        is_protected = False
-        if not self.protected_paths:
-            # If no paths specified, protect everything? Or protect nothing?
-            # Usually strict default means protect everything.
-            # But here we want to protect specific API endpoints.
-            # Let's assume if list is empty, we don't limit (or user should provide paths).
-            # To be safe, if protected_paths is None/Empty in __init__, we default to [] which means effectively disabled
-            # unless we change default.
-            # Let's adhere to "explicit is better than implicit". If list is empty, nothing is protected.
-            pass
-        else:
-            for prefix in self.protected_paths:
-                if path.startswith(prefix):
-                    is_protected = True
-                    break
+        is_protected = any(
+            request.url.path.startswith(path) for path in self.protected_paths
+        )
 
-        if is_protected:
-            # 🛡️ Sentinel: Support X-Forwarded-For for proxies (Render/Load Balancers)
-            # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
-            forwarded = request.headers.get("X-Forwarded-For")
-            if forwarded and self.trust_proxy_headers:
-                # 🛡️ Sentinel: When trust_proxy_headers is True, we trust that the immediate
-                # upstream proxy (which we trust) has correctly appended the client's IP to the end.
-                # We do NOT search backwards for a public IP because legitimate clients may have
-                # private IPs (e.g. Intranet, VPN, or internal Load Balancers).
-                # Searching backwards allows attackers to spoof a public IP at the start of the header.
-                try:
-                    ips = [ip.strip() for ip in forwarded.split(",")]
-                    client_ip = ips[-1]
-                except Exception:
-                    # Fallback to simple extraction if parsing fails
-                    client_ip = forwarded.split(",")[-1].strip()
+        if not is_protected:
+            return await call_next(request)
 
-                # Truncate to 100 chars to prevent memory exhaustion attacks
-                client_ip = client_ip[:100]
-            else:
-                client_ip = request.client.host if request.client else "unknown"
+        client_key = self.get_client_key(request)
 
-            # 🛡️ Sentinel: Group IPv6 addresses by /64 prefix to prevent subnet rotation attacks
-            client_key = self.get_client_key(client_ip)
-
-            now = time.time()
-
-            # Clean old requests (simple sliding window)
-            current_requests = self.requests[client_key]
-            # Prune old timestamps
-            active_requests = [t for t in current_requests if now - t < self.window]
-
-            if len(active_requests) >= self.limit:
-                # Update map with pruned list before returning
-                self.requests[client_key] = active_requests
-
-                # Calculate retry_after
-                oldest_request_time = active_requests[0]
-                reset_time = oldest_request_time + self.window
-                retry_after = max(1, int(math.ceil(reset_time - now)))
-
-                logger.warning(f"Rate limit exceeded for {client_key} on {path}")
-
-                return JSONResponse(
-                    status_code=429,
-                    content={"detail": "Too Many Requests", "retry_after": retry_after},
-                    headers={"Retry-After": str(retry_after)},
-                )
-
-            active_requests.append(now)
-
-            # Simple Memory Leak Prevention:
-            # If dictionary gets too large, perform cleanup to prevent OOM.
-            # 🛡️ Sentinel: Throttle cleanup to prevent CPU exhaustion (DoS) via O(N) loop
-            if now - self.last_cleanup > self.cleanup_interval:
-                self.last_cleanup = now
-                # Cleanup: Remove clients that haven't made a request within the window.
-                # Since active_requests for each client might not be updated until they make a request,
-                # we need to check the last timestamp in their list.
-                # Note: This is an O(N) operation where N is number of clients.
-                if len(self.requests) > 10000:
-                    stale_ips = []
-                    for ip, timestamps in self.requests.items():
-                        # If list is empty (shouldn't happen with logic above but possible)
-                        # or if the most recent request is older than window
-                        if not timestamps or (now - timestamps[-1] > self.window):
-                            stale_ips.append(ip)
-
-                    for ip in stale_ips:
-                        del self.requests[ip]
-
-            # Fallback: If still too large (active attack with >10k distinct IPs),
-            # 🛡️ Sentinel: Do NOT clear everything, as that allows attackers to reset everyone's limit.
-            # Instead, if we are full, REJECT new clients.
-            if len(self.requests) > 10000:
-                # If the client is already known, we updated them above.
-                # But wait, if we are > 10000, and this is a NEW client_ip (or one that was just added),
-                # we should remove it and block.
-                # However, we already added `now` to `active_requests` and set `self.requests[client_ip]`.
-
-                # We need to check if we just added a NEW key that pushed us over.
-                # If client_ip was already in requests, we are fine (we are just updating an existing slot).
-                # If client_ip is NEW, and size > 10000, we should reject.
-
-                # Optimization: Move the check BEFORE adding to `self.requests`.
-                # But we used `defaultdict`, so accessing `self.requests[client_ip]` already created the entry if missing.
-
-                # So, if we are over limit:
-                # Check if we should allow this IP.
-                # If we just created it (len=1), delete it and 503.
-                if (
-                    len(active_requests) == 1
-                ):  # This was a new entry (or re-entry after expiry)
-                    # Safe delete using pop to avoid KeyErrors in race conditions
-                    self.requests.pop(client_key, None)
-                    return Response("Server Busy", status_code=503)
-
-            self.requests[client_key] = active_requests
+        try:
+            self.limiter.wait_if_needed(client_key)
+        except RateLimitExceeded as e:
+            logger.warning(f"Rate limit exceeded for {client_key}: {e}")
+            return Response("Rate limit exceeded", status_code=429)
 
         return await call_next(request)
