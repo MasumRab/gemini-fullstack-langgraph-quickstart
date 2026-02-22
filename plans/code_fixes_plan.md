@@ -50,11 +50,6 @@ plan_todos = [_normalize_task(t) for t in current_plan]
 **Status:** ✅ Verified
 **Current Code:**
 ```python
-<<<<<<< HEAD
-=======
-
-
->>>>>>>>>>> 3ac5fe47e49a179793506095489dac66fb3173ae
 def _keywords_from_queries(queries: List[str]) -> List[str]:
 ```
 **Problem:** Leftover git merge conflict markers.
@@ -94,21 +89,13 @@ Note: This also requires updating `GemmaAdapter.__init__` to accept and store te
 **Status:** ✅ Verified
 **Current Code:**
 ```python
-<<<<<<< HEAD
 def has_fuzzy_match(
     keyword: str, candidates: Iterable[str], cutoff: float = 0.8
 ) -> bool:
-=======
-def has_fuzzy_match(keyword: str, candidates: Iterable[str], cutoff: float = 0.8) -> bool:
->>>>>>> 3ac5fe47e49a179793506095489dac66fb3173ae
 ```
 And later:
 ```python
-<<<<<<< HEAD
         # Check real_quick_ratio first as an upper bound (O(1))
-=======
-        # ⚡ Bolt Optimization: Check real_quick_ratio first as an O(1) upper bound based on length
->>>>>>> 3ac5fe47e49a179793506095489dac66fb3173ae
 ```
 **Problem:** Multiple git merge conflict markers.
 **Fix:** Resolve by keeping the cleaner formatting and the Bolt optimization comment:
