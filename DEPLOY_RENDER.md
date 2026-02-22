@@ -45,6 +45,7 @@ Scroll down to the **Environment Variables** section and add the following key-v
 | `GEMMA_MODEL_NAME` | `gemma-2-27b-it` | Or `gemini-2.5-flash` for faster responses. |
 | `GEMINI_API_KEY` | *(Paste your API Key)* | From Google AI Studio. |
 | `TAVILY_API_KEY` | *(Paste your API Key)* | From Tavily. |
+| `ALLOWED_HOSTS` | `*` | **Required**: Allows Render's domain to access the API. |
 
 ### Advanced Settings (Optional)
 
@@ -64,5 +65,7 @@ To fit within the Free Tier limits:
 ## Troubleshooting
 
 *   **Build Failures**: Check the logs. If you see memory errors, ensure `RENDER=true` is set.
-*   **502 Bad Gateway**: The server might be taking too long to start. The Free Tier spins down after inactivity. Give it a minute to wake up.
+*   **502 Bad Gateway / 400 Bad Request**:
+    *   **502**: The server might be taking too long to start. The Free Tier spins down after inactivity. Give it a minute to wake up.
+    *   **400**: Check your `ALLOWED_HOSTS` variable. It must be set (e.g., to `*` or your specific Render URL) because the application uses `TrustedHostMiddleware` which blocks unknown hosts by default.
 *   **"Model not found"**: Ensure your `GEMINI_API_KEY` has access to the requested model.

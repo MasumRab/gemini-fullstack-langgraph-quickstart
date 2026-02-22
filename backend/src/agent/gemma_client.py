@@ -22,22 +22,22 @@ class GemmaClient:
 class GoogleGenAIGemmaClient(GemmaClient):
     """Client for Gemma models via Google GenAI API (GEMINI_API_KEY)."""
 
-    def __init__(self):
+    def __init__(self, model_name: Optional[str] = None):
         """Initialize Google GenAI client."""
         try:
             from google import genai
-            from google.genai import types
         except ImportError:
             logger.error("google-genai not installed.")
             raise ImportError("Please install 'google-genai' to use GoogleGenAIGemmaClient")
 
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            logger.warning("GEMINI_API_KEY not found. Google GenAI calls may fail.")
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        if not self.api_key:
+            logger.error("GEMINI_API_KEY not found in environment.")
+            raise ValueError("GEMINI_API_KEY is required for GoogleGenAIGemmaClient")
 
-        self.client = genai.Client(api_key=api_key)
-        # Use the configured Gemma model name, or default to a safe Gemma 2 variant
-        self.model_name = app_config.gemma_model_name or "gemma-2-27b-it"
+        self.client = genai.Client(api_key=self.api_key)
+        # Prefer passed model_name, fallback to config
+        self.model_name = model_name or app_config.gemma_model_name or "gemma-2-27b-it"
 
     def invoke(self, prompt: str, **kwargs) -> str:
         """Generate text completion using Google GenAI SDK."""
@@ -57,9 +57,9 @@ class GoogleGenAIGemmaClient(GemmaClient):
 
             return response.text if response.text else ""
 
-        except Exception as e:
-            logger.error(f"Google GenAI (Gemma) call failed: {e}")
-            raise e
+        except Exception:
+            logger.error(f"Google GenAI (Gemma) call failed", exc_info=True)
+            raise
 
 class VertexAIGemmaClient(GemmaClient):
     """Client for Gemma models deployed on Google Vertex AI."""
@@ -103,71 +103,68 @@ class VertexAIGemmaClient(GemmaClient):
             if response.predictions:
                 return str(response.predictions[0])
             return ""
-        except Exception as e:
-            logger.error(f"Vertex AI prediction failed: {e}")
-            raise e
+        except Exception:
+            logger.error(f"Vertex AI prediction failed", exc_info=True)
+            raise
 
 class OllamaGemmaClient(GemmaClient):
     """Client for local Gemma models via Ollama API."""
 
-    def __init__(self, timeout: int = 120):
+    def __init__(self, model_name: Optional[str] = None):
         """
         Initialize Ollama client.
-        
-        Args:
-            timeout: Request timeout in seconds (default: 120).
         """
         import requests
         self.requests = requests
         self.base_url = app_config.ollama_base_url
-        self.model_name = app_config.gemma_model_name
+        self.model_name = model_name or app_config.gemma_model_name
         self.generate_url = f"{self.base_url}/api/generate"
-        self.timeout = timeout
 
     def invoke(self, prompt: str, **kwargs) -> str:
         """
         Generate text completion.
         """
-        # Protect critical payload fields from kwargs override
-        PROTECTED_KEYS = {"model", "prompt", "stream"}
-        filtered_kwargs = {k: v for k, v in kwargs.items() if k not in PROTECTED_KEYS}
-        
         payload = {
             "model": self.model_name,
             "prompt": prompt,
             "stream": False,
-            **filtered_kwargs
+            **kwargs
         }
 
         try:
-            response = self.requests.post(self.generate_url, json=payload, timeout=self.timeout)
+            response = self.requests.post(self.generate_url, json=payload)
             response.raise_for_status()
             return response.json().get("response", "")
-        except self.requests.exceptions.Timeout:
-            logger.error(f"Ollama request timed out after {self.timeout}s")
-            raise TimeoutError(f"Ollama request timed out after {self.timeout}s")
-        except self.requests.exceptions.RequestException as e:
-            logger.error(f"Ollama request failed: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Ollama call failed: {e}")
+        except Exception:
+            logger.error(f"Ollama call failed", exc_info=True)
             raise
 
-def get_gemma_client() -> GemmaClient:
-    """Factory function to get the configured Gemma client."""
+def get_gemma_client(model_name: Optional[str] = None) -> GemmaClient:
+    """Factory function to get the configured Gemma client.
+
+    Args:
+        model_name: Optional specific model name to use (e.g., passed from app_config model_* settings).
+    """
     provider = app_config.gemma_provider.lower()
 
+    # Priority 1: Google GenAI (explicit config)
     if provider == "google_genai" or provider == "google":
-        return GoogleGenAIGemmaClient()
+        return GoogleGenAIGemmaClient(model_name=model_name)
+
+    # Priority 2: Vertex AI
     elif provider == "vertex":
         return VertexAIGemmaClient()
+
+    # Priority 3: Ollama
     elif provider == "ollama":
-        return OllamaGemmaClient()
+        return OllamaGemmaClient(model_name=model_name)
+
     else:
-        # Default to Google GenAI if API Key is present, otherwise fallback to Ollama
+        # Fallback Logic - Strict check for API Key before assuming Google GenAI
         if os.getenv("GEMINI_API_KEY"):
              logger.info(f"Gemma provider '{provider}' unknown. Defaulting to Google GenAI (API Key found).")
-             return GoogleGenAIGemmaClient()
+             return GoogleGenAIGemmaClient(model_name=model_name)
 
-        logger.warning(f"Unknown or unsupported Gemma provider: {provider}. Defaulting to Ollama.")
-        return OllamaGemmaClient()
+        # Default to Ollama if no API Key found
+        logger.warning(f"Unknown provider: {provider} and no GEMINI_API_KEY. Defaulting to Ollama.")
+        return OllamaGemmaClient(model_name=model_name)

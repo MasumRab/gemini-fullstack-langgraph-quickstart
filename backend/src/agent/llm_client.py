@@ -62,10 +62,9 @@ class GemmaAdapter:
     Adapter for Gemma models to provide a LangChain-like 'invoke' interface
     with tool-calling support via manual prompting and parsing.
     """
-    def __init__(self, client: Any, tools: Optional[List[Any]] = None, temperature: float = 0.7):
+    def __init__(self, client: Any, tools: Optional[List[Any]] = None):
         self.client = client
         self.tools = tools or []
-        self.temperature = temperature
         from agent.tool_adapter import GEMMA_TOOL_INSTRUCTION, format_tools_to_json_schema
         self.instruction_template = GEMMA_TOOL_INSTRUCTION
         self.tools_schema = format_tools_to_json_schema(self.tools) if self.tools else ""
@@ -91,28 +90,19 @@ class GemmaAdapter:
         else:
             full_prompt = prompt
 
-        # Pass temperature to the underlying client if it supports it
-        if "temperature" not in kwargs:
-            kwargs["temperature"] = self.temperature
-
         # Call the underlying client
         response_text = call_llm_robust(self.client, full_prompt, **kwargs)
-
-        # Import AIMessage once at the top level
-        from langchain_core.messages import AIMessage
 
         # If tools are present, parse for tool calls
         if self.tools:
             from agent.tool_adapter import parse_tool_calls
+            from langchain_core.messages import AIMessage
             
-            # Defensive extraction of tool names
-            tool_names = [name for t in self.tools if (name := getattr(t, "name", None))]
-            if len(tool_names) != len(self.tools):
-                logger.warning("Some tools lack a 'name' attribute and were skipped")
-            
+            tool_names = [t.name for t in self.tools]
             tool_calls = parse_tool_calls(response_text, allowed_tools=tool_names)
             
             if tool_calls:
                 return AIMessage(content=response_text, tool_calls=tool_calls)
         
+        from langchain_core.messages import AIMessage
         return AIMessage(content=response_text)

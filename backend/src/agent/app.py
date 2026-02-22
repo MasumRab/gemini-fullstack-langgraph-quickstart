@@ -165,7 +165,7 @@ async def health_check():
 @app.get("/")
 async def root_redirect():
     """Redirect root path to the frontend app."""
-    return RedirectResponse(url="/app/")
+    return RedirectResponse(url="/app/", status_code=301)
 
 
 @app.post("/threads")
@@ -260,9 +260,9 @@ class InvokeRequest(BaseModel):
                     if loops < 1:
                         raise ValueError("max_research_loops must be at least 1")
                 except ValueError as e:
-                    if "cannot exceed" in str(e) or "must be at least" in str(e):
+                     if "cannot exceed" in str(e) or "must be at least" in str(e):
                         raise e
-                    raise ValueError("max_research_loops must be an integer")
+                     raise ValueError("max_research_loops must be an integer")
 
         return v
 

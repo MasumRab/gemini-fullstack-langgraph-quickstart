@@ -50,12 +50,12 @@ class AppConfig:
     )
 
     # Model Selection
-    model_planning: str = os.getenv("MODEL_PLANNING", "gemma-3-27b-it")
-    model_validation: str = os.getenv("MODEL_VALIDATION", "gemma-3-27b-it")
-    model_compression: str = os.getenv("MODEL_COMPRESSION", "gemma-3-27b-it")
+    model_planning: str = os.getenv("MODEL_PLANNING", "gemma-2-27b-it")  # Matched to gemma_model_name
+    model_validation: str = os.getenv("MODEL_VALIDATION", "gemma-2-27b-it")
+    model_compression: str = os.getenv("MODEL_COMPRESSION", "gemma-2-27b-it")
 
     # Gemma Integration Configuration
-    gemma_provider: str = os.getenv("GEMMA_PROVIDER", "google_genai")  # google_genai (default), vertex, ollama
+    gemma_provider: str = os.getenv("GEMMA_PROVIDER", "ollama")  # Reverted default to ollama
     gemma_model_name: str = os.getenv("GEMMA_MODEL_NAME", "gemma-2-27b-it")
     vertex_project_id: str = os.getenv("VERTEX_PROJECT_ID", "")
     vertex_location: str = os.getenv("VERTEX_LOCATION", "us-central1")

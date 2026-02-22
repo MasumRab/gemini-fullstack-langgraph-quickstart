@@ -11,17 +11,12 @@ from langchain_core.prompts import ChatPromptTemplate
 from agent.models import GEMINI_PRO
 import os
 
-# Validate API key before use
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY environment variable is required for evaluators")
-
 # Initialize Judge Model
 # We use Gemini 2.5 Pro for high-quality evaluation
 judge_model = ChatGoogleGenerativeAI(
     model=GEMINI_PRO,
     temperature=0,
-    api_key=GEMINI_API_KEY
+    api_key=os.getenv("GEMINI_API_KEY")
 )
 
 class QualityScore(BaseModel):

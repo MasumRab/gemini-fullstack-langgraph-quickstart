@@ -25,3 +25,5 @@ services:
         value: "gemma-2-27b-it"
       - key: MODEL_COMPRESSION
         value: "gemma-2-27b-it"
+      - key: ALLOWED_HOSTS
+        value: "*"

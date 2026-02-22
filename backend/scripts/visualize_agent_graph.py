@@ -102,11 +102,9 @@ try:
     backend_src_path = project_root / "backend" / "src"
     sys.path.append(str(backend_src_path))
 
-    # Check for required API key before importing
+    # Set dummy API key to avoid ValueError during import if not set
     if "GEMINI_API_KEY" not in os.environ:
-        print("Error: GEMINI_API_KEY environment variable is required for visualization.")
-        print("Please set GEMINI_API_KEY before running this script.")
-        sys.exit(1)
+        os.environ["GEMINI_API_KEY"] = "dummy_key_for_visualization"
 
     from agent.graph import graph as proposed_graph
     print("Successfully imported Proposed Improved Graph", flush=True)
