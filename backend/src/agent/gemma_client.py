@@ -5,6 +5,7 @@ supporting various providers like Vertex AI, Ollama, and local execution.
 """
 
 import logging
+import os
 from typing import Any, Dict, List, Optional
 from agent.configuration import Configuration
 from config.app_config import config as app_config
@@ -17,6 +18,48 @@ class GemmaClient:
     def invoke(self, prompt: str, **kwargs) -> str:
         """Standard invoke method for compatibility with LangChain-like calls."""
         raise NotImplementedError("Subclasses must implement invoke")
+
+class GoogleGenAIGemmaClient(GemmaClient):
+    """Client for Gemma models via Google GenAI API (GEMINI_API_KEY)."""
+
+    def __init__(self):
+        """Initialize Google GenAI client."""
+        try:
+            from google import genai
+            from google.genai import types
+        except ImportError:
+            logger.error("google-genai not installed.")
+            raise ImportError("Please install 'google-genai' to use GoogleGenAIGemmaClient")
+
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            logger.warning("GEMINI_API_KEY not found. Google GenAI calls may fail.")
+
+        self.client = genai.Client(api_key=api_key)
+        # Use the configured Gemma model name, or default to a safe Gemma 2 variant
+        self.model_name = app_config.gemma_model_name or "gemma-2-27b-it"
+
+    def invoke(self, prompt: str, **kwargs) -> str:
+        """Generate text completion using Google GenAI SDK."""
+        try:
+            # Map common kwargs to GenAI config if needed
+            config = {}
+            if "max_tokens" in kwargs:
+                config["max_output_tokens"] = kwargs["max_tokens"]
+            if "temperature" in kwargs:
+                config["temperature"] = kwargs["temperature"]
+
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=config
+            )
+
+            return response.text if response.text else ""
+
+        except Exception as e:
+            logger.error(f"Google GenAI (Gemma) call failed: {e}")
+            raise e
 
 class VertexAIGemmaClient(GemmaClient):
     """Client for Gemma models deployed on Google Vertex AI."""
@@ -99,10 +142,18 @@ class OllamaGemmaClient(GemmaClient):
 def get_gemma_client() -> GemmaClient:
     """Factory function to get the configured Gemma client."""
     provider = app_config.gemma_provider.lower()
-    if provider == "vertex":
+
+    if provider == "google_genai" or provider == "google":
+        return GoogleGenAIGemmaClient()
+    elif provider == "vertex":
         return VertexAIGemmaClient()
     elif provider == "ollama":
         return OllamaGemmaClient()
     else:
+        # Default to Google GenAI if API Key is present, otherwise fallback to Ollama
+        if os.getenv("GEMINI_API_KEY"):
+             logger.info(f"Gemma provider '{provider}' unknown. Defaulting to Google GenAI (API Key found).")
+             return GoogleGenAIGemmaClient()
+
         logger.warning(f"Unknown or unsupported Gemma provider: {provider}. Defaulting to Ollama.")
         return OllamaGemmaClient()

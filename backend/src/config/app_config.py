@@ -55,8 +55,8 @@ class AppConfig:
     model_compression: str = os.getenv("MODEL_COMPRESSION", "gemma-3-27b-it")
 
     # Gemma Integration Configuration
-    gemma_provider: str = os.getenv("GEMMA_PROVIDER", "ollama")  # vertex, ollama, local
-    gemma_model_name: str = os.getenv("GEMMA_MODEL_NAME", "gemma:7b")
+    gemma_provider: str = os.getenv("GEMMA_PROVIDER", "google_genai")  # google_genai (default), vertex, ollama
+    gemma_model_name: str = os.getenv("GEMMA_MODEL_NAME", "gemma-2-27b-it")
     vertex_project_id: str = os.getenv("VERTEX_PROJECT_ID", "")
     vertex_location: str = os.getenv("VERTEX_LOCATION", "us-central1")
     vertex_endpoint_id: str = os.getenv("VERTEX_ENDPOINT_ID", "")

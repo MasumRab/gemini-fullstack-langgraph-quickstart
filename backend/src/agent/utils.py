@@ -228,7 +228,7 @@ def get_cached_llm(model: str, temperature: float) -> Any:
         from agent.gemma_client import get_gemma_client
         from agent.llm_client import GemmaAdapter
         
-        # Instantiate the correct provider (Vertex or Ollama) from app_config
+        # Instantiate the correct provider (Google GenAI, Vertex or Ollama) from app_config
         client = get_gemma_client()
         # Return an adapter that mimics LangChain's invoke interface
         return GemmaAdapter(client=client)

@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -161,6 +161,11 @@ app.add_middleware(SecurityHeadersMiddleware)
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok"}
+
+@app.get("/")
+async def root_redirect():
+    """Redirect root path to the frontend app."""
+    return RedirectResponse(url="/app/")
 
 
 @app.post("/threads")
