@@ -260,9 +260,9 @@ class InvokeRequest(BaseModel):
                     if loops < 1:
                         raise ValueError("max_research_loops must be at least 1")
                 except ValueError as e:
-                     if "cannot exceed" in str(e) or "must be at least" in str(e):
+                    if "cannot exceed" in str(e) or "must be at least" in str(e):
                         raise e
-                     raise ValueError("max_research_loops must be an integer")
+                    raise ValueError("max_research_loops must be an integer")
 
         return v
 

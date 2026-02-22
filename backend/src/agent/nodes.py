@@ -22,7 +22,7 @@ from typing import List, Dict, Any
 from config.app_config import config as app_config
 from search.router import search_router
 from google.genai import Client
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -737,6 +737,19 @@ def planning_wait(state: OverallState) -> OverallState:
     }
 
 
+def _normalize_task(task: dict) -> dict:
+    """
+    Normalize a task dict to have consistent keys.
+    Handles tasks that may have 'task' instead of 'title' key.
+    """
+    return {
+        "title": task.get("title") or task.get("task", ""),
+        "description": task.get("description", ""),
+        "status": task.get("status", "pending"),
+        "query": task.get("query") or task.get("title") or task.get("task", ""),
+    }
+
+
 @graph_registry.describe(
     "update_plan",
     summary="Updates the plan by marking the current task as done and adding follow-up tasks.",
@@ -838,8 +851,8 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                         break
             except Exception as e:
                 logger.error(f"Gemma plan update failed: {e}")
-                # Fallback: keep existing plan to avoid data loss
-                plan_todos = [dict(t) for t in current_plan]
+                # Fallback: keep existing plan to avoid data loss, with normalized structure
+                plan_todos = [_normalize_task(t) for t in current_plan]
 
         else:
             # Standard Gemini Path
@@ -856,7 +869,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                     plan_todos.append(todo)
             except Exception as e:
                 logger.error(f"Failed to update plan (Gemini): {e}")
-                plan_todos = [dict(t) for t in current_plan]
+                plan_todos = [_normalize_task(t) for t in current_plan]
 
         # Safety Fallback: Ensure the executed task is actually marked as done in the new plan
         # This overrides the LLM if it fails to update the status, preventing infinite loops.
@@ -1416,8 +1429,6 @@ def _flatten_queries(queries: List) -> List[str]:
 # ⚡ Bolt Optimization: Pre-compile regex patterns for performance
 TOKEN_SPLIT_PATTERN = re.compile(r"[^\w]+")
 CITATION_PATTERN = re.compile(r"\[[^\]]+\]\(https?://[^\)]+\)")
-
-
 
 
 def _keywords_from_queries(queries: List[str]) -> List[str]:

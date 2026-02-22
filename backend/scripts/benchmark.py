@@ -41,7 +41,7 @@ def load_dataset(path: str) -> List[Dict[str, Any]]:
             return []
 
     try:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         logger.error(f"Failed to load dataset: {e}")
@@ -57,7 +57,10 @@ async def run_benchmark():
     results = []
     
     for item in questions:
-        question = item["question"]
+        question = item.get("question")
+        if not question:
+            logger.warning(f"Skipping malformed item missing 'question': {item}")
+            continue
         expected_topics = item.get("expected_topics", [])
         logger.info(f"Running benchmark for: {question}")
         
@@ -148,7 +151,7 @@ async def run_benchmark():
         print(report)
         
         # Save to file
-        with open("benchmark_report.md", "w") as f:
+        with open("benchmark_report.md", "w", encoding="utf-8") as f:
             f.write(report)
         logger.info("Report saved to benchmark_report.md")
     else:

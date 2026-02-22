@@ -1,10 +1,18 @@
 import subprocess
 import re
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_remote_branches():
-    # Get all remote branches excluding HEAD and main
+    """Get all remote branches excluding HEAD and main."""
     cmd = ["git", "branch", "-r"]
     result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        raise RuntimeError(f"git branch -r failed: {result.stderr}")
+    
     branches = []
     for line in result.stdout.splitlines():
         branch = line.strip()
@@ -13,16 +21,36 @@ def get_remote_branches():
         branches.append(branch)
     return branches
 
-def get_diff_stats(branch):
+def get_diff_stats(branch, default_branch: str = "main"):
+    """
+    Get diff statistics for a branch compared to the default branch.
+    
+    Args:
+        branch: The branch to analyze
+        default_branch: The default branch to compare against (default: "main")
+    
+    Returns:
+        Tuple of (status_string, total_changes)
+    """
     # Check if merged first
-    cmd_merged = ["git", "rev-list", "--count", f"main..{branch}"]
+    cmd_merged = ["git", "rev-list", "--count", f"{default_branch}..{branch}"]
     res_merged = subprocess.run(cmd_merged, capture_output=True, text=True)
-    if res_merged.returncode == 0 and res_merged.stdout.strip() == "0":
+    
+    if res_merged.returncode != 0:
+        logger.warning(f"Failed to check merge status for {branch}: {res_merged.stderr}")
+        return "ERROR", 0
+    
+    if res_merged.stdout.strip() == "0":
         return "MERGED", 0
         
     # Get diff stats
-    cmd = ["git", "diff", "--shortstat", f"main...{branch}"]
+    cmd = ["git", "diff", "--shortstat", f"{default_branch}...{branch}"]
     result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        logger.warning(f"Failed to get diff stats for {branch}: {result.stderr}")
+        return "ERROR", 0
+    
     output = result.stdout.strip()
     
     if not output:

@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import List, Optional, Dict, Any
 from enum import Enum
 
@@ -23,32 +24,44 @@ class SearchRouter:
         """Initialize router with config."""
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
+        self._providers_lock = threading.Lock()
 
     def _get_provider(self, name: str) -> Optional[SearchProvider]:
+        # Quick check without lock
         if name in self.providers:
             return self.providers[name]
 
-        try:
-            if name == SearchProviderType.GOOGLE.value:
-                from .providers.google_adapter import GoogleSearchAdapter
-                self.providers[name] = GoogleSearchAdapter()
-            elif name == SearchProviderType.BRAVE.value:
-                from .providers.brave_adapter import BraveSearchAdapter
-                self.providers[name] = BraveSearchAdapter()
-            elif name == SearchProviderType.DUCKDUCKGO.value:
-                from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-                self.providers[name] = DuckDuckGoAdapter()
-            elif name == SearchProviderType.TAVILY.value:
-                from .providers.tavily_adapter import TavilyAdapter
-                self.providers[name] = TavilyAdapter()
-            elif name == SearchProviderType.BING.value:
-                from .providers.bing_adapter import BingAdapter
-                self.providers[name] = BingAdapter()
+        with self._providers_lock:
+            # Double-checked locking
+            if name in self.providers:
+                return self.providers[name]
+
+            try:
+                if name == SearchProviderType.GOOGLE.value:
+                    from .providers.google_adapter import GoogleSearchAdapter
+                    self.providers[name] = GoogleSearchAdapter()
+                elif name == SearchProviderType.BRAVE.value:
+                    from .providers.brave_adapter import BraveSearchAdapter
+                    self.providers[name] = BraveSearchAdapter()
+                elif name == SearchProviderType.DUCKDUCKGO.value:
+                    from .providers.duckduckgo_adapter import DuckDuckGoAdapter
+                    self.providers[name] = DuckDuckGoAdapter()
+                elif name == SearchProviderType.TAVILY.value:
+                    from .providers.tavily_adapter import TavilyAdapter
+                    self.providers[name] = TavilyAdapter()
+                elif name == SearchProviderType.BING.value:
+                    from .providers.bing_adapter import BingAdapter
+                    self.providers[name] = BingAdapter()
+            except Exception as e:
+                logger.debug(f"Provider {name} failed to init: {e}")
+                return None
+
+            # Log warning for unrecognized provider
+            if name not in self.providers:
+                valid_providers = [p.value for p in SearchProviderType]
+                logger.warning(f"Unknown provider '{name}'. Valid providers: {valid_providers}")
 
             return self.providers.get(name)
-        except Exception as e:
-            logger.debug(f"Provider {name} failed to init: {e}")
-            return None
 
     def search(
         self,

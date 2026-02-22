@@ -110,34 +110,48 @@ class VertexAIGemmaClient(GemmaClient):
 class OllamaGemmaClient(GemmaClient):
     """Client for local Gemma models via Ollama API."""
 
-    def __init__(self):
+    def __init__(self, timeout: int = 120):
         """
         Initialize Ollama client.
+        
+        Args:
+            timeout: Request timeout in seconds (default: 120).
         """
         import requests
         self.requests = requests
         self.base_url = app_config.ollama_base_url
         self.model_name = app_config.gemma_model_name
         self.generate_url = f"{self.base_url}/api/generate"
+        self.timeout = timeout
 
     def invoke(self, prompt: str, **kwargs) -> str:
         """
         Generate text completion.
         """
+        # Protect critical payload fields from kwargs override
+        PROTECTED_KEYS = {"model", "prompt", "stream"}
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k not in PROTECTED_KEYS}
+        
         payload = {
             "model": self.model_name,
             "prompt": prompt,
             "stream": False,
-            **kwargs
+            **filtered_kwargs
         }
 
         try:
-            response = self.requests.post(self.generate_url, json=payload)
+            response = self.requests.post(self.generate_url, json=payload, timeout=self.timeout)
             response.raise_for_status()
             return response.json().get("response", "")
+        except self.requests.exceptions.Timeout:
+            logger.error(f"Ollama request timed out after {self.timeout}s")
+            raise TimeoutError(f"Ollama request timed out after {self.timeout}s")
+        except self.requests.exceptions.RequestException as e:
+            logger.error(f"Ollama request failed: {e}")
+            raise
         except Exception as e:
             logger.error(f"Ollama call failed: {e}")
-            raise e
+            raise
 
 def get_gemma_client() -> GemmaClient:
     """Factory function to get the configured Gemma client."""

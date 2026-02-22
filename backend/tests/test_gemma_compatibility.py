@@ -113,7 +113,10 @@ class TestGemmaCompatibility:
         # This test is lighter since web_research delegates to search_router (non-LLM usually)
         # But we verify it accepts the state and config without error
         config = RunnableConfig(configurable={"query_generator_model": model_name})
-        state = {"search_query": ["Test Query"], "id": 1}
+        # Use base_state fixture and update it with test-specific values
+        state = base_state.copy()
+        state["search_query"] = ["Test Query"]
+        state["id"] = 1
 
         # Mock search_router with a proper SearchResult-like object
         mock_result = MagicMock()
