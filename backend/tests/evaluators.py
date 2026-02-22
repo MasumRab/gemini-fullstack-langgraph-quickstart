@@ -11,18 +11,42 @@ from langchain_core.prompts import ChatPromptTemplate
 from agent.models import GEMINI_PRO
 import os
 
-# Validate API key before use
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY environment variable is required for evaluators")
+# Module-level cache for the judge model instance
+_judge_model_cache: Optional[ChatGoogleGenerativeAI] = None
 
-# Initialize Judge Model
-# We use Gemini 2.5 Pro for high-quality evaluation
-judge_model = ChatGoogleGenerativeAI(
-    model=GEMINI_PRO,
-    temperature=0,
-    api_key=GEMINI_API_KEY
-)
+
+def _get_judge_model() -> ChatGoogleGenerativeAI:
+    """Lazy getter for the judge model.
+    
+    Validates API key and constructs the judge model only when called,
+    not at import time. This prevents breaking pytest collection when
+    the API key is not set.
+    
+    Returns:
+        ChatGoogleGenerativeAI: The judge model instance.
+        
+    Raises:
+        ValueError: If GEMINI_API_KEY environment variable is not set.
+    """
+    global _judge_model_cache
+    
+    if _judge_model_cache is not None:
+        return _judge_model_cache
+    
+    # Validate API key at runtime, not import time
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_api_key:
+        raise ValueError("GEMINI_API_KEY environment variable is required for evaluators")
+    
+    # Initialize Judge Model
+    # We use Gemini 2.5 Pro for high-quality evaluation
+    _judge_model_cache = ChatGoogleGenerativeAI(
+        model=GEMINI_PRO,
+        temperature=0,
+        api_key=gemini_api_key
+    )
+    
+    return _judge_model_cache
 
 class QualityScore(BaseModel):
     """Overall quality and utility score."""
@@ -51,7 +75,7 @@ def eval_quality(request: str, report: str) -> Dict[str, Any]:
     
     # Use with_structured_output for reliable scoring (available in recent LangChain Google GenAI)
     try:
-        grader = judge_model.with_structured_output(QualityScore)
+        grader = _get_judge_model().with_structured_output(QualityScore)
         result = grader.invoke(prompt.format_messages())
         
         return {
@@ -74,7 +98,7 @@ def eval_groundedness(report: str, sources: List[str]) -> Dict[str, Any]:
     ])
     
     try:
-        grader = judge_model.with_structured_output(QualityScore) # Reusing QualityScore schema for simplicity
+        grader = _get_judge_model().with_structured_output(QualityScore) # Reusing QualityScore schema for simplicity
         result = grader.invoke(prompt.format_messages())
         return {
             "key": "groundedness_score",
