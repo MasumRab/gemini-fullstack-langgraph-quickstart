@@ -4,7 +4,9 @@ import os
 from pathlib import Path
 
 # Add the src directory to sys.path to allow imports
-project_root = Path(__file__).parent.parent
+# backend/scripts/visualize_agent_graph.py -> backend/scripts -> backend -> root
+project_root = Path(__file__).parent.parent.parent
+
 # Updated path to reflect the move to examples/open_deep_research_example
 src_path = project_root / "examples" / "open_deep_research_example" / "src"
 sys.path.append(str(src_path))
@@ -100,9 +102,11 @@ try:
     backend_src_path = project_root / "backend" / "src"
     sys.path.append(str(backend_src_path))
 
-    # Set dummy API key to avoid ValueError during import if not set
+    # Check for required API key before importing
     if "GEMINI_API_KEY" not in os.environ:
-        os.environ["GEMINI_API_KEY"] = "dummy_key_for_visualization"
+        print("Error: GEMINI_API_KEY environment variable is required for visualization.")
+        print("Please set GEMINI_API_KEY before running this script.")
+        sys.exit(1)
 
     from agent.graph import graph as proposed_graph
     print("Successfully imported Proposed Improved Graph", flush=True)
