@@ -268,17 +268,17 @@ def format_search_output(summarized_results: Dict[str, dict]) -> str:
 
     # ⚡ Bolt Optimization: Use list accumulation and join instead of string concatenation in loop
     # This reduces complexity from O(n^2) to O(n) for string construction.
-    parts = ["Search results:\n"]
+    parts = ["Search results:\n\n"]
 
     for i, (url, result) in enumerate(summarized_results.items(), 1):
         parts.append(
-            f"\n--- SOURCE {i}: {result['title']} ---\n"
+            f"--- SOURCE {i}: {result['title']} ---\n"
             f"URL: {url}\n\n"
             f"SUMMARY:\n{result['content']}\n\n"
-            f"{'-' * 80}"
+            f"{'-' * 80}\n\n"
         )
 
-    return "\n".join(parts) + "\n"
+    return "".join(parts)
 
 
 # =============================================================================
