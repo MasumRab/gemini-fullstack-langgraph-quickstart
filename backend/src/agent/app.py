@@ -165,7 +165,7 @@ async def health_check():
 @app.get("/")
 async def root_redirect():
     """Redirect root path to the frontend app."""
-    return RedirectResponse(url="/app/", status_code=301)
+    return RedirectResponse(url="/app/", status_code=302)
 
 
 @app.post("/threads")
