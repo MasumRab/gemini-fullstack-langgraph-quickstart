@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class GemmaClient:
     """Base interface for Gemma clients, conforming to LLMClient standards."""
-    
+
     def invoke(self, prompt: str, **kwargs) -> str:
         """Standard invoke method for compatibility with LangChain-like calls."""
         raise NotImplementedError("Subclasses must implement invoke")
@@ -53,7 +53,7 @@ class VertexAIGemmaClient(GemmaClient):
         """
         max_tokens = kwargs.get("max_tokens", 512)
         instance = {"inputs": prompt, "max_tokens": max_tokens}
-        
+
         try:
             response = self.endpoint.predict(instances=[instance])
             # Vertex AI custom endpoints typically return a list of predictions
@@ -70,7 +70,7 @@ class OllamaGemmaClient(GemmaClient):
     def __init__(self, timeout: int = 120):
         """
         Initialize Ollama client.
-        
+
         Args:
             timeout: Request timeout in seconds (default: 120).
         """
@@ -88,7 +88,7 @@ class OllamaGemmaClient(GemmaClient):
         # Protect critical payload fields from kwargs override
         PROTECTED_KEYS = {"model", "prompt", "stream"}
         filtered_kwargs = {k: v for k, v in kwargs.items() if k not in PROTECTED_KEYS}
-        
+
         payload = {
             "model": self.model_name,
             "prompt": prompt,

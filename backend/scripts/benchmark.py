@@ -55,7 +55,7 @@ async def run_benchmark():
         return
 
     results = []
-    
+
     for item in questions:
         question = item.get("question")
         if not question:
@@ -63,7 +63,7 @@ async def run_benchmark():
             continue
         expected_topics = item.get("expected_topics", [])
         logger.info(f"Running benchmark for: {question}")
-        
+
         try:
             # Invoke agent
             # We rely on the agent graph to handle the flow.
@@ -149,7 +149,7 @@ async def run_benchmark():
 - **Snippet:** {r['final_answer_snippet']}
 """
         print(report)
-        
+
         # Save to file
         with open("benchmark_report.md", "w", encoding="utf-8") as f:
             f.write(report)

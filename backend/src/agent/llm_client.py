@@ -104,15 +104,15 @@ class GemmaAdapter:
         # If tools are present, parse for tool calls
         if self.tools:
             from agent.tool_adapter import parse_tool_calls
-            
+
             # Defensive extraction of tool names
             tool_names = [name for t in self.tools if (name := getattr(t, "name", None))]
             if len(tool_names) != len(self.tools):
                 logger.warning("Some tools lack a 'name' attribute and were skipped")
-            
+
             tool_calls = parse_tool_calls(response_text, allowed_tools=tool_names)
-            
+
             if tool_calls:
                 return AIMessage(content=response_text, tool_calls=tool_calls)
-        
+
         return AIMessage(content=response_text)

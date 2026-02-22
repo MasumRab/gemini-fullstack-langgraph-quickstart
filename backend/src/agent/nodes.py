@@ -1,5 +1,5 @@
 # TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
-# 
+#
 # TODO(priority=Medium, complexity=Medium): [SOTA Deep Research] Benchmarking
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: MLE-bench Integration (Evaluate on Kaggle engineering tasks).
@@ -1168,14 +1168,14 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
         # 4. Invoke child graph
         # Local import to prevent circular dependency
         from agent.graph import graph
-        
+
         child_config = config.copy()
         child_config["configurable"] = parent_config.copy()
         child_config["configurable"]["thread_id"] = f"{parent_id}_sub_{recursion_depth + 1}"
         child_config["configurable"]["recursion_depth"] = recursion_depth + 1
-        
+
         logger.info(f"Recursive Call (Depth {recursion_depth + 1}): {subtopic_query}")
-        
+
         try:
             # We run the graph with the sub-topic as the initial message
             # We also set planning_status to auto_approved to avoid child pausing for UI
@@ -1184,9 +1184,9 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
                 "planning_status": "auto_approved",
                 "scoping_status": "complete" # Skip scoping in subqueries
             }
-            
+
             child_output = graph.invoke(child_input, child_config)
-            
+
             # 5. Merge child results
             child_results = child_output.get("web_research_result", [])
             child_evidence = child_output.get("evidence_bank", [])
@@ -1198,7 +1198,7 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
                 "sources_gathered": child_sources,
                 "validation_notes": [f"Successfully researched sub-topic: {subtopic_query}"]
             }
-            
+
         except Exception as e:
             logger.error(f"Recursive research failed for {subtopic_query}: {e}")
             return {

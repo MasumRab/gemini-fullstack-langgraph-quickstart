@@ -219,20 +219,20 @@ def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\
 @lru_cache(maxsize=16)
 def get_cached_llm(model: str, temperature: float) -> Any:
     """
-    Returns a configured LLM client. 
+    Returns a configured LLM client.
     Supports Gemini (native) and Gemma (via GemmaAdapter).
     """
     is_gemma = "gemma" in model.lower()
-    
+
     if is_gemma:
         from agent.gemma_client import get_gemma_client
         from agent.llm_client import GemmaAdapter
-        
+
         # Instantiate the correct provider (Vertex or Ollama) from app_config
         client = get_gemma_client()
         # Return an adapter that mimics LangChain's invoke interface
         return GemmaAdapter(client=client, temperature=temperature)
-    
+
     return ChatGoogleGenerativeAI(
         model=model,
         temperature=temperature,

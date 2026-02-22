@@ -1,6 +1,6 @@
 """Evaluators for Research Agent Benchmarking.
 
-This module defines Pydantic models and evaluation functions for 
+This module defines Pydantic models and evaluation functions for
 structured grading of agent outputs using a Judge LLM (Gemini 2.5 Pro).
 """
 
@@ -63,7 +63,7 @@ class GroundednessScore(BaseModel):
 def eval_quality(request: str, report: str) -> Dict[str, Any]:
     """
     Evaluates the overall quality of a research report.
-    
+
     Args:
         request: The original user research request.
         report: The final generated report.
@@ -72,12 +72,12 @@ def eval_quality(request: str, report: str) -> Dict[str, Any]:
         ("system", "You are an expert research auditor. Evaluate the report for depth, clarity, and adherence to the user's request. Rate from 1 to 5."),
         ("user", f"User Request: {request}\n\nFinal Report:\n{report}")
     ])
-    
+
     # Use with_structured_output for reliable scoring (available in recent LangChain Google GenAI)
     try:
         grader = _get_judge_model().with_structured_output(QualityScore)
         result = grader.invoke(prompt.format_messages())
-        
+
         return {
             "key": "quality_score",
             "score": result.score / 5.0, # Normalize to 0-1
@@ -96,7 +96,7 @@ def eval_groundedness(report: str, sources: List[str]) -> Dict[str, Any]:
         ("system", "You are a fact-checker. Compare the report against the research findings and identify if citations are accurate and claims are supported."),
         ("user", f"Findings:\n{' '.join(sources)}\n\nReport:\n{report}")
     ])
-    
+  
     try:
         grader = _get_judge_model().with_structured_output(QualityScore) # Reusing QualityScore schema for simplicity
         result = grader.invoke(prompt.format_messages())
