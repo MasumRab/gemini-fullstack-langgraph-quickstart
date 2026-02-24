@@ -63,13 +63,15 @@ def fetch_open_prs(repo, token):
     api_url = "https://api.github.com"
 
     # Get list of open PRs
-    prs_url = f"{api_url}/repos/{repo}/pulls?state=open"
+    prs_url = f"{api_url}/repos/{repo}/pulls?state=open&per_page=100"
     try:
-        resp = requests.get(prs_url, headers=headers)
-        if resp.status_code != 200:
-            print(f"Error fetching PRs: {resp.status_code} {resp.text}")
-            return []
-        prs = resp.json()
+        prs = []
+        next_url = prs_url
+        while next_url:
+            resp = requests.get(next_url, headers=headers, timeout=10)
+            resp.raise_for_status()
+            prs.extend(resp.json())
+            next_url = resp.links.get("next", {}).get("url")
     except Exception as e:
         print(f"Request failed: {e}")
         return []
