@@ -226,7 +226,20 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
     outputs=["todo_list", "artifacts"],
 )
 def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
-    """Load context from persistence layer if thread_id is available."""
+    """
+    Load persisted planning context when a thread identifier is provided.
+    
+    Parameters:
+        state (OverallState): Current orchestration state (ignored by this helper).
+        config (RunnableConfig): Runtime configuration; expects `configurable.thread_id` when present.
+    
+    Returns:
+        OverallState: A dict containing persisted keys when a plan exists:
+            - `todo_list` (list): The saved list of todos (empty list if missing).
+            - `artifacts` (dict): Saved artifacts (empty dict if missing).
+            - `planning_steps` (list): Mirrors `todo_list`.
+        Returns an empty dict if no `thread_id` is present or no persisted plan is found.
+    """
     thread_id = config.get("configurable", {}).get("thread_id")
     if not thread_id:
         return {}
@@ -241,7 +254,13 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
     return {}
 
 def _get_active_context() -> str:
-    """Read the active context file if it exists."""
+    """
+    Retrieve the project's active context from docs/ACTIVE_CONTEXT.md.
+    
+    Returns:
+        The contents of the ACTIVE_CONTEXT.md file as a string, or the literal
+        "No active context available." if the file is missing or cannot be read.
+    """
     context_path = "docs/ACTIVE_CONTEXT.md"
     try:
         if os.path.exists(context_path):
@@ -259,10 +278,15 @@ def _get_active_context() -> str:
     outputs=["plan", "search_query"],
 )
 def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
-    """LangGraph node that generates a research plan based on the User's question.
-
-    Uses Gemini 2.5 Flash to create an optimized plan (list of Todos).
-    Each Todo serves as a step in the research process.
+    """
+    Generate a structured research plan (list of todos) and a set of initial search queries for the current research topic.
+    
+    Builds a plan based on the runnable configuration and conversation state using the configured LLM; when available, uses model-specific structured output or tool-call formats and falls back to simple heuristics if extraction fails.
+    
+    Returns:
+        dict: A mapping with:
+            - "plan": List[dict] — each todo has keys "task" (str), "status" (e.g., "pending" or "done"), and "result" (nullable, usually None).
+            - "search_query": List[str] — list of initial search queries (one per todo) to drive web research.
     """
     with observe_span("generate_plan", config):
         configurable = Configuration.from_runnable_config(config)

@@ -5,7 +5,14 @@ import requests
 from datetime import datetime
 
 def get_repo_info():
-    """Attempt to get repository 'owner/repo' string."""
+    """
+    Determine the repository identifier in the form "owner/repo".
+    
+    Checks the GITHUB_REPOSITORY environment variable first, then falls back to parsing the configured git remote origin URL (supports common SSH and HTTPS GitHub URL formats). Returns None if no repository can be determined or an error occurs.
+    
+    Returns:
+        repo (str or None): Repository identifier in 'owner/repo' format if found, otherwise None.
+    """
     # 1. From Environment
     repo = os.getenv("GITHUB_REPOSITORY")
     if repo:
@@ -30,7 +37,25 @@ def get_repo_info():
     return None
 
 def fetch_open_prs(repo, token):
-    """Fetch open PRs and their changed files."""
+    """
+    Retrieve open pull requests for a repository and collect the filenames changed in each PR.
+    
+    Parameters:
+        repo (str): Repository identifier in the form "owner/repo".
+        token (str): GitHub personal access token used for API authentication.
+    
+    Returns:
+        list[dict]: A list of dictionaries describing each open PR. Each dictionary contains:
+            - "number" (int): PR number.
+            - "title" (str): PR title.
+            - "user" (str): Author's login.
+            - "url" (str): PR HTML URL.
+            - "files" (list[str]): Filenames changed in the PR (may be empty).
+    
+    Notes:
+        - If the request for the list of PRs fails or returns a non-200 status, an empty list is returned.
+        - Failures when fetching per-PR file lists are ignored for that PR; those PRs will have an empty "files" list.
+    """
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
@@ -75,6 +100,22 @@ def fetch_open_prs(repo, token):
     return results
 
 def generate_markdown(prs):
+    """
+    Builds a Markdown document summarizing open pull requests and their modified files.
+    
+    Parameters:
+        prs (list): Sequence of pull request mappings. Each mapping is expected to contain the keys:
+            - `number` (int): PR number.
+            - `title` (str): PR title.
+            - `user` (str): Author login.
+            - `url` (str): HTML URL to the PR.
+            - `files` (list): List of modified file paths (may be empty).
+    
+    Returns:
+        str: A Markdown-formatted string containing a header with a UTC timestamp and, for each PR,
+             the PR number and title, author, GitHub link, and a bulleted list of modified files.
+             If `prs` is empty, the document notes that no open pull requests were found.
+    """
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     lines = [
         "# 🧠 Active Development Context",
@@ -101,6 +142,11 @@ def generate_markdown(prs):
     return "\n".join(lines)
 
 def main():
+    """
+    Orchestrates retrieval of repository pull-request context and writes an Active Development Context Markdown file.
+    
+    Writes a summary of open pull requests and their changed files to docs/ACTIVE_CONTEXT.md. If the GITHUB_TOKEN environment variable is missing, writes a placeholder indicating the context is unavailable. Ensures the docs directory exists, overwrites the target file, and emits simple status messages to stdout.
+    """
     token = os.getenv("GITHUB_TOKEN")
     if not token:
         print("GITHUB_TOKEN not set. Creating placeholder context.")
