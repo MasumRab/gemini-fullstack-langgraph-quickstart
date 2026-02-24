@@ -2,25 +2,25 @@ import os
 import sys
 import json
 import requests
-from datetime import datetime
+import subprocess
+from datetime import datetime, timezone
 
 def get_repo_info():
-    """
-    Determine the repository identifier in the form "owner/repo".
-    
-    Checks the GITHUB_REPOSITORY environment variable first, then falls back to parsing the configured git remote origin URL (supports common SSH and HTTPS GitHub URL formats). Returns None if no repository can be determined or an error occurs.
-    
-    Returns:
-        repo (str or None): Repository identifier in 'owner/repo' format if found, otherwise None.
-    """
+    """Attempt to get repository 'owner/repo' string."""
     # 1. From Environment
     repo = os.getenv("GITHUB_REPOSITORY")
     if repo:
         return repo
 
-    # 2. From git config
+    # 2. From git config using subprocess
     try:
-        remote_url = os.popen("git config --get remote.origin.url").read().strip()
+        result = subprocess.run(
+            ["git", "config", "--get", "remote.origin.url"],
+            capture_output=True,
+            text=True
+        )
+        remote_url = result.stdout.strip()
+
         if remote_url:
             # Handle ssh: git@github.com:Owner/Repo.git
             if "git@github.com:" in remote_url:
@@ -29,52 +29,52 @@ def get_repo_info():
             elif "github.com/" in remote_url:
                 repo = remote_url.split("github.com/")[1]
 
-            if repo.endswith(".git"):
+            if repo and repo.endswith(".git"):
                 repo = repo[:-4]
             return repo
-    except Exception:
+    except Exception as e:
+        print(f"Error getting repo info: {e}")
         pass
     return None
 
 def fetch_open_prs(repo, token):
-    """
-    Retrieve open pull requests for a repository and collect the filenames changed in each PR.
-    
-    Parameters:
-        repo (str): Repository identifier in the form "owner/repo".
-        token (str): GitHub personal access token used for API authentication.
-    
-    Returns:
-        list[dict]: A list of dictionaries describing each open PR. Each dictionary contains:
-            - "number" (int): PR number.
-            - "title" (str): PR title.
-            - "user" (str): Author's login.
-            - "url" (str): PR HTML URL.
-            - "files" (list[str]): Filenames changed in the PR (may be empty).
-    
-    Notes:
-        - If the request for the list of PRs fails or returns a non-200 status, an empty list is returned.
-        - Failures when fetching per-PR file lists are ignored for that PR; those PRs will have an empty "files" list.
-    """
+    """Fetch open PRs and their changed files with pagination."""
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
     }
     api_url = "https://api.github.com"
 
-    # Get list of open PRs
-    prs_url = f"{api_url}/repos/{repo}/pulls?state=open&per_page=100"
-    try:
-        prs = []
-        next_url = prs_url
-        while next_url:
+    # Get list of open PRs with pagination
+    prs = []
+    # Add per_page=100 to get more results per request
+    next_url = f"{api_url}/repos/{repo}/pulls?state=open&per_page=100"
+
+    while next_url:
+        try:
             resp = requests.get(next_url, headers=headers, timeout=10)
             resp.raise_for_status()
-            prs.extend(resp.json())
-            next_url = resp.links.get("next", {}).get("url")
-    except Exception as e:
-        print(f"Request failed: {e}")
-        return []
+
+            page_prs = resp.json()
+            if not page_prs:
+                break
+
+            prs.extend(page_prs)
+
+            # Check for next page in Link header
+            if 'Link' in resp.headers:
+                links = resp.headers['Link'].split(', ')
+                next_url = None
+                for link in links:
+                    if 'rel="next"' in link:
+                        next_url = link[link.find("<")+1:link.find(">")]
+                        break
+            else:
+                next_url = None
+
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed while fetching PRs: {e}")
+            break
 
     results = []
     print(f"Found {len(prs)} open PRs.")
@@ -85,11 +85,12 @@ def fetch_open_prs(repo, token):
         files_url = f"{api_url}/repos/{repo}/pulls/{pr_number}/files"
         files = []
         try:
-            f_resp = requests.get(files_url, headers=headers)
-            if f_resp.status_code == 200:
-                files = [f["filename"] for f in f_resp.json()]
-        except Exception:
-            pass
+            f_resp = requests.get(files_url, headers=headers, timeout=10)
+            f_resp.raise_for_status()
+            files = [f["filename"] for f in f_resp.json()]
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed while fetching files for PR #{pr_number}: {e}")
+            # Continue with empty files list for this PR rather than failing completely
 
         results.append({
             "number": pr_number,
@@ -102,23 +103,7 @@ def fetch_open_prs(repo, token):
     return results
 
 def generate_markdown(prs):
-    """
-    Builds a Markdown document summarizing open pull requests and their modified files.
-    
-    Parameters:
-        prs (list): Sequence of pull request mappings. Each mapping is expected to contain the keys:
-            - `number` (int): PR number.
-            - `title` (str): PR title.
-            - `user` (str): Author login.
-            - `url` (str): HTML URL to the PR.
-            - `files` (list): List of modified file paths (may be empty).
-    
-    Returns:
-        str: A Markdown-formatted string containing a header with a UTC timestamp and, for each PR,
-             the PR number and title, author, GitHub link, and a bulleted list of modified files.
-             If `prs` is empty, the document notes that no open pull requests were found.
-    """
-    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     lines = [
         "# 🧠 Active Development Context",
         f"Last Updated: {timestamp}\n",
@@ -144,21 +129,20 @@ def generate_markdown(prs):
     return "\n".join(lines)
 
 def main():
-    """
-    Orchestrates retrieval of repository pull-request context and writes an Active Development Context Markdown file.
-    
-    Writes a summary of open pull requests and their changed files to docs/ACTIVE_CONTEXT.md. If the GITHUB_TOKEN environment variable is missing, writes a placeholder indicating the context is unavailable. Ensures the docs directory exists, overwrites the target file, and emits simple status messages to stdout.
-    """
     token = os.getenv("GITHUB_TOKEN")
     if not token:
         print("GITHUB_TOKEN not set. Creating placeholder context.")
+        os.makedirs("docs", exist_ok=True)
         with open("docs/ACTIVE_CONTEXT.md", "w") as f:
             f.write("# 🧠 Active Development Context\n\n*Github Token missing - Context unavailable*")
         return
 
     repo = get_repo_info()
     if not repo:
-        print("Could not determine repository. Exiting.")
+        print("Could not determine repository. Creating placeholder context and exiting.")
+        os.makedirs("docs", exist_ok=True)
+        with open("docs/ACTIVE_CONTEXT.md", "w") as f:
+            f.write("# 🧠 Active Development Context\n\n*Repository detection failed - Context unavailable*")
         return
 
     print(f"Fetching context for {repo}...")
