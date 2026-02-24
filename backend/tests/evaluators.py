@@ -96,7 +96,7 @@ def eval_groundedness(report: str, sources: List[str]) -> Dict[str, Any]:
         ("system", "You are a fact-checker. Compare the report against the research findings and identify if citations are accurate and claims are supported."),
         ("user", f"Findings:\n{' '.join(sources)}\n\nReport:\n{report}")
     ])
-  
+    
     try:
         grader = _get_judge_model().with_structured_output(QualityScore) # Reusing QualityScore schema for simplicity
         result = grader.invoke(prompt.format_messages())

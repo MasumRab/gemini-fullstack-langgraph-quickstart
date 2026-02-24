@@ -17,7 +17,28 @@ logger = logging.getLogger(__name__)
 # 🛡️ Sentinel: Configurable trusted proxy count for X-Forwarded-For extraction
 # This should be set to the number of trusted proxies between the client and your server.
 # For example, if you have a CDN + load balancer, set this to 2.
-TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
+def _parse_int_env(env_var: str, default: int = 0) -> int:
+    """Safely parse an integer environment variable.
+    
+    Args:
+        env_var: The name of the environment variable.
+        default: The default value if parsing fails or variable is not set.
+    
+    Returns:
+        The parsed integer value, or default on failure.
+    """
+    value = os.getenv(env_var)
+    if value is None or value == "":
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        logger.warning(
+            f"Invalid integer value for {env_var}: '{value}', defaulting to {default}"
+        )
+        return default
+
+TRUSTED_PROXY_COUNT = _parse_int_env("TRUSTED_PROXY_COUNT", 0)
 
 # 🛡️ Sentinel: Optional set of trusted proxy IP addresses
 # If set, we iterate from right to left and skip these IPs to find the first untrusted IP.
@@ -115,10 +136,13 @@ def extract_client_ip_from_forwarded(
             for ip in reversed(ips):
                 if not _is_ip_in_trusted_proxies(ip):
                     return ip
-            # All IPs are trusted proxies, return the leftmost (original client)
-            # This shouldn't happen in normal operation
-            logger.warning("All IPs in X-Forwarded-For are trusted proxies, using leftmost")
-            return ips[0] if ips else fallback_ip
+            # All IPs are trusted proxies - this shouldn't happen in normal operation.
+            # Return fallback_ip for safety since ips[0] is attacker-controllable.
+            logger.error(
+                f"All IPs in X-Forwarded-For matched trusted proxies (ips={ips}), "
+                f"using safe fallback (fallback_ip={fallback_ip})"
+            )
+            return fallback_ip
         
         # Method 2: Use trusted proxy count
         if trusted_proxy_count > 0:
