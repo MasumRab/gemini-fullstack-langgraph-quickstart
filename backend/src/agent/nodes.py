@@ -240,6 +240,17 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
         }
     return {}
 
+def _get_active_context() -> str:
+    """Read the active context file if it exists."""
+    context_path = "docs/ACTIVE_CONTEXT.md"
+    try:
+        if os.path.exists(context_path):
+            with open(context_path, "r") as f:
+                return f.read()
+    except Exception as e:
+        logger.warning(f"Failed to read active context: {e}")
+    return "No active context available."
+
 
 @graph_registry.describe(
     "generate_plan",
@@ -262,10 +273,13 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
 
         # Format the prompt
         current_date = get_current_date()
+        active_context = _get_active_context()
+
         formatted_prompt = plan_writer_instructions.format(
             current_date=current_date,
             research_topic=get_research_topic(state["messages"]),
             number_queries=state["initial_search_query_count"],
+            active_context=active_context,
         )
 
         # Truncate if needed

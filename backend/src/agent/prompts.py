@@ -15,6 +15,9 @@ Instructions:
 - Tasks should be diverse covering different angles.
 - Ensure tasks targets the most current information. The current date is {current_date}.
 
+Current Context (Open PRs/Issues):
+{active_context}
+
 Format: 
 - Format your response as a JSON object with ALL two of these exact keys:
    - "rationale": Brief explanation of the research strategy.
