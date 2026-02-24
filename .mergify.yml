@@ -1,0 +1,28 @@
+pull_request_rules:
+  - name: Make sure PRs are up to date before merging with rebase
+    description: This automatically rebases PRs when they are out-of-date with the
+      base branch to avoid semantic conflicts (next step is to switch to merge
+      queue).
+    conditions:
+      - "#commits-behind >= 10"
+    actions:
+      rebase:
+  - name: Automatic merge during office hours + hotfix support
+    description: Merge when PR passes all branch protection during office hours,
+      except for hotfix
+    conditions:
+      - or:
+          - schedule = Mon-Fri 09:00-17:00[America/Los_Angeles]
+          - label = hotfix
+    actions:
+      merge:
+  - name: Ping PR author when conflicting
+    description: Warn the pull request author when their PR is conflicting
+    conditions:
+      - conflict
+      - -closed
+    actions:
+      comment:
+        message: >
+          👋 {{author}} your PR is conflicting and needs to be updated to be
+          merged
