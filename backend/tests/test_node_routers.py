@@ -8,7 +8,8 @@ SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from agent.nodes import continue_to_web_research
+from agent.nodes import continue_to_web_research  # noqa: E402
+
 
 # Tests for continue_to_web_research
 def test_continue_to_web_research_single_query():

@@ -291,11 +291,11 @@ Your goal is to synthesize the best components of these drafts into a single, hi
 comprehensive, and well-structured final report.
 
 Instructions:
-1. **Analyze & Debate**: Simulate a panel debate where expert reviewers discuss the unique strengths, weaknesses, and missing details of every draft in the provided {drafts} list.
-2. **Synthesize**: Using the insights from the debate from all drafts, create a definitive final report that combines the best elements of every draft.
-3. **Resolve Conflicts**: When resolving conflicts among all draft versions, favor the most well-supported information.
-4. **Tone & Flow**: Ensure professional tone and logical flow utilizing all drafts.
-5. **Citations**: Maintain all relevant citations from the original search results across all drafts (e.g. [Title](url)).
+1. **Analyze & Debate**: Simulate a brief critique between two expert reviewers. One advocates for Draft 1, the other for Draft 2. They should identify the unique strengths, weaknesses, and missing details in each.
+2. **Synthesize**: Using the insights from the debate, create a definitive final report that combines the best elements of both.
+3. **Resolve Conflicts**: favor the most well-supported information.
+4. **Tone & Flow**: Ensure professional tone and logical flow.
+5. **Citations**: Maintain all relevant citations from the original search results (e.g. [Title](url)).
 6. The current date is {current_date}.
 
 Drafts:

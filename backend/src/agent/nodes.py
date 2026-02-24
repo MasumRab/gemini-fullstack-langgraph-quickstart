@@ -478,8 +478,6 @@ def _format_search_results(
     sources = []
     texts = []
     for r in results_list:
-        # Populate short_url with something distinct if we had shorten logic.
-        # Otherwise simply keep it equal to r.url or None.
         source = {"label": r.title, "short_url": r.url, "value": r.url}
         sources.append(source)
         snippet = r.content or r.raw_content or ""
@@ -1378,8 +1376,8 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
         # 5. Restore URLs (Critical for Citations)
         if "sources_gathered" in state:
             for source in state["sources_gathered"]:
-                if source.get("short_url") and source["short_url"] != source["value"]:
-                    pattern = re.escape(source["short_url"])
+                pattern = re.escape(source["short_url"])
+                if re.search(pattern, final_content):
                     final_content = re.sub(pattern, source["value"], final_content)
 
         # 6. Create Artifact for Open Canvas
