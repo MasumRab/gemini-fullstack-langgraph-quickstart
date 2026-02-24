@@ -1,3 +1,3 @@
 # 🧠 Active Development Context
 
-*Github Token missing - Context unavailable*
+*GitHub Token missing - Context unavailable*

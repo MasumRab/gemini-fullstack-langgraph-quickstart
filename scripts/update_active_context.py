@@ -14,11 +14,17 @@ def get_repo_info():
 
     # 2. From git config using subprocess
     try:
+        # Use subprocess.run properly without shell=True
         result = subprocess.run(
             ["git", "config", "--get", "remote.origin.url"],
             capture_output=True,
-            text=True
+            text=True,
+            check=False
         )
+
+        if result.returncode != 0:
+            return None
+
         remote_url = result.stdout.strip()
 
         if remote_url:
@@ -81,16 +87,37 @@ def fetch_open_prs(repo, token):
 
     for pr in prs:
         pr_number = pr["number"]
-        # Get files for this PR
-        files_url = f"{api_url}/repos/{repo}/pulls/{pr_number}/files"
+
+        # Get files for this PR with pagination
         files = []
-        try:
-            f_resp = requests.get(files_url, headers=headers, timeout=10)
-            f_resp.raise_for_status()
-            files = [f["filename"] for f in f_resp.json()]
-        except requests.exceptions.RequestException as e:
-            print(f"Request failed while fetching files for PR #{pr_number}: {e}")
-            # Continue with empty files list for this PR rather than failing completely
+        files_url = f"{api_url}/repos/{repo}/pulls/{pr_number}/files?per_page=100"
+
+        while files_url:
+            try:
+                f_resp = requests.get(files_url, headers=headers, timeout=10)
+                f_resp.raise_for_status()
+
+                page_files = f_resp.json()
+                if not page_files:
+                    break
+
+                files.extend([f["filename"] for f in page_files])
+
+                # Check for next page in Link header
+                if 'Link' in f_resp.headers:
+                    links = f_resp.headers['Link'].split(', ')
+                    files_url = None
+                    for link in links:
+                        if 'rel="next"' in link:
+                            files_url = link[link.find("<")+1:link.find(">")]
+                            break
+                else:
+                    files_url = None
+
+            except requests.exceptions.RequestException as e:
+                print(f"Request failed while fetching files for PR #{pr_number}: {e}")
+                # Stop paginating for this PR but keep what we have
+                break
 
         results.append({
             "number": pr_number,
@@ -134,7 +161,7 @@ def main():
         print("GITHUB_TOKEN not set. Creating placeholder context.")
         os.makedirs("docs", exist_ok=True)
         with open("docs/ACTIVE_CONTEXT.md", "w") as f:
-            f.write("# 🧠 Active Development Context\n\n*Github Token missing - Context unavailable*")
+            f.write("# 🧠 Active Development Context\n\n*GitHub Token missing - Context unavailable*")
         return
 
     repo = get_repo_info()

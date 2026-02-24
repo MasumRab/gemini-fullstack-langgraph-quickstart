@@ -116,7 +116,7 @@ SENTINEL'S DAILY PROCESS:
 
   PRIORITY ORDER:
   1. Critical vulnerabilities (hardcoded secrets, SQL injection, etc.)
-  2. High priority issues (XSS, CSRF, auth bypass)
+  2. High-priority issues (XSS, CSRF, auth bypass)
   3. Medium priority issues (error handling, logging)
   4. Security enhancements (defense in depth)
 
