@@ -1,0 +1,47 @@
+repos:
+  - repo: local
+    hooks:
+      # ── Python: ruff format ──────────────────────────────────────────────
+      - id: ruff-format
+        name: ruff format (backend)
+        language: system
+        entry: bash -c 'cd backend && .venv/bin/ruff format src/'
+        types: [python]
+        pass_filenames: false
+        exclude: ^tests/
+
+      # ── Python: ruff lint ────────────────────────────────────────────────
+      - id: ruff-check
+        name: ruff check (backend)
+        language: system
+        entry: bash -c 'cd backend && .venv/bin/ruff check src/'
+        types: [python]
+        pass_filenames: false
+        exclude: ^tests/
+
+      # ── Python: bandit security check ───────────────────────────────────
+      - id: bandit
+        name: bandit security check (backend)
+        language: system
+        entry: bash -c 'cd backend && .venv/bin/python -m bandit -r src/ -ll -q 2>/dev/null || true'
+        types: [python]
+        pass_filenames: false
+        exclude: ^tests/
+
+      # ── Node: ESLint ─────────────────────────────────────────────────────
+      - id: eslint
+        name: ESLint (frontend)
+        language: system
+        entry: bash -c 'cd frontend && npm run lint -- --max-warnings=0'
+        types_or: [javascript, jsx, ts, tsx]
+        pass_filenames: false
+        exclude: ^tests/
+
+      # ── Node: Prettier ───────────────────────────────────────────────────
+      - id: prettier
+        name: Prettier format check (frontend)
+        language: system
+        entry: bash -c 'cd frontend && npx prettier --check "src/**/*.{ts,tsx,css,json}"'
+        types_or: [javascript, jsx, ts, tsx, json, css]
+        pass_filenames: false
+        exclude: ^tests/

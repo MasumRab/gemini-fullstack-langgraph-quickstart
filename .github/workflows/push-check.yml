@@ -1,0 +1,39 @@
+name: Push Check
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  python-quality:
+    name: Python Quality (Push to main)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run ruff lint check
+        run: uv run ruff check src/
+
+      - name: Run ruff format check
+        run: uv run ruff format --check src/
+
+      - name: Verify Python syntax (py_compile)
+        run: |
+          uv run python -m compileall src/ -q
