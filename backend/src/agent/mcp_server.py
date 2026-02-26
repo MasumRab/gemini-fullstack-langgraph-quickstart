@@ -33,7 +33,9 @@ MAX_DIR_ITEMS = 1000
 class ToolResult:
     """Helper to match the spec's ToolResult expectation if not in mcp.types directly as that name."""
 
-    def __init__(self, success: bool, data: Dict | None = None, error: str | None = None):
+    def __init__(
+        self, success: bool, data: Dict | None = None, error: str | None = None
+    ):
         self.success = success
         self.data = data
         self.error = error
@@ -54,45 +56,54 @@ class FilesystemMCPServer:
     def _register_tools(self):
         """Register available filesystem tools."""
         # We store tools in a list of wrappers that include the handler
-        self.tools.append(self._create_tool(
-            name="read_file",
-            description="Read contents of a file",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "File path to read"}
+        self.tools.append(
+            self._create_tool(
+                name="read_file",
+                description="Read contents of a file",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "File path to read"}
+                    },
+                    "required": ["path"],
                 },
-                "required": ["path"]
-            },
-            handler=self.read_file
-        ))
+                handler=self.read_file,
+            )
+        )
 
-        self.tools.append(self._create_tool(
-            name="write_file",
-            description="Write content to a file",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "File path to write"},
-                    "content": {"type": "string", "description": "Content to write"}
+        self.tools.append(
+            self._create_tool(
+                name="write_file",
+                description="Write content to a file",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "File path to write"},
+                        "content": {
+                            "type": "string",
+                            "description": "Content to write",
+                        },
+                    },
+                    "required": ["path", "content"],
                 },
-                "required": ["path", "content"]
-            },
-            handler=self.write_file
-        ))
+                handler=self.write_file,
+            )
+        )
 
-        self.tools.append(self._create_tool(
-            name="list_directory",
-            description="List files in a directory",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "Directory path"}
+        self.tools.append(
+            self._create_tool(
+                name="list_directory",
+                description="List files in a directory",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "Directory path"}
+                    },
+                    "required": ["path"],
                 },
-                "required": ["path"]
-            },
-            handler=self.list_directory
-        ))
+                handler=self.list_directory,
+            )
+        )
 
     def _create_tool(self, name, description, parameters, handler):
         """Helper to create a tool object with a handler attached."""
@@ -131,10 +142,7 @@ class FilesystemMCPServer:
         """Read file contents."""
         if not self._check_path_allowed(path):
             logger.warning(f"Path traversal attempt blocked: {path}")
-            return ToolResult(
-                success=False,
-                error=f"Path not allowed: {path}"
-            )
+            return ToolResult(success=False, error=f"Path not allowed: {path}")
 
         try:
             p = Path(path)
@@ -146,14 +154,11 @@ class FilesystemMCPServer:
             if file_size > MAX_FILE_SIZE:
                 return ToolResult(
                     success=False,
-                    error=f"File too large: {file_size} bytes (Limit: {MAX_FILE_SIZE} bytes)"
+                    error=f"File too large: {file_size} bytes (Limit: {MAX_FILE_SIZE} bytes)",
                 )
 
-            content = p.read_text(encoding='utf-8')
-            return ToolResult(
-                success=True,
-                data={"content": content, "path": path}
-            )
+            content = p.read_text(encoding="utf-8")
+            return ToolResult(success=True, data={"content": content, "path": path})
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
@@ -168,23 +173,22 @@ class FilesystemMCPServer:
         if len(content) > MAX_FILE_SIZE:
             return ToolResult(
                 success=False,
-                error=f"Content too large: {len(content)} chars (Limit: {MAX_FILE_SIZE} bytes)"
+                error=f"Content too large: {len(content)} chars (Limit: {MAX_FILE_SIZE} bytes)",
             )
 
-        content_bytes = content.encode('utf-8')
+        content_bytes = content.encode("utf-8")
         if len(content_bytes) > MAX_FILE_SIZE:
             return ToolResult(
                 success=False,
-                error=f"Content too large: {len(content_bytes)} bytes (Limit: {MAX_FILE_SIZE} bytes)"
+                error=f"Content too large: {len(content_bytes)} bytes (Limit: {MAX_FILE_SIZE} bytes)",
             )
 
         try:
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(content, encoding='utf-8')
+            p.write_text(content, encoding="utf-8")
             return ToolResult(
-                success=True,
-                data={"path": path, "bytes_written": len(content)}
+                success=True, data={"path": path, "bytes_written": len(content)}
             )
         except Exception as e:
             return ToolResult(success=False, error=str(e))
@@ -203,11 +207,13 @@ class FilesystemMCPServer:
             items = []
             count = 0
             for f in dir_path.iterdir():
-                items.append({
-                    "name": f.name,
-                    "type": "file" if f.is_file() else "directory",
-                    "size": f.stat().st_size if f.is_file() else None
-                })
+                items.append(
+                    {
+                        "name": f.name,
+                        "type": "file" if f.is_file() else "directory",
+                        "size": f.stat().st_size if f.is_file() else None,
+                    }
+                )
                 count += 1
                 # 🛡️ Sentinel: Limit number of items
                 if count >= MAX_DIR_ITEMS:
@@ -215,7 +221,11 @@ class FilesystemMCPServer:
 
             return ToolResult(
                 success=True,
-                data={"files": items, "count": len(items), "truncated": count >= MAX_DIR_ITEMS}
+                data={
+                    "files": items,
+                    "count": len(items),
+                    "truncated": count >= MAX_DIR_ITEMS,
+                },
             )
         except Exception as e:
             return ToolResult(success=False, error=str(e))

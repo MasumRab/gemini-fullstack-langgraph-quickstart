@@ -5,7 +5,7 @@ used throughout the application. This prevents typos and ensures consistency.
 
 Usage:
     from agent.models import GEMINI_FLASH, GEMINI_PRO
-    
+
     llm = ChatGoogleGenerativeAI(model=GEMINI_FLASH)
 """
 
@@ -93,34 +93,41 @@ _DEPRECATED_MODELS = {
 # Validation Functions
 # ============================================================================
 
+
 def is_valid_model(model_name: str) -> bool:
     """Check if a model name is valid and accessible.
-    
+
     Args:
         model_name: Model name to validate
-        
+
     Returns:
         True if model is valid and accessible, False otherwise
     """
     # Check if it's a known valid model
-    valid_models = {GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT, GEMMA_3_27B_IT}
-    
+    valid_models = {
+        GEMINI_FLASH,
+        GEMINI_FLASH_LITE,
+        GEMINI_PRO,
+        GEMMA_2_27B_IT,
+        GEMMA_3_27B_IT,
+    }
+
     if model_name in valid_models:
         return True
-    
+
     # Check if it's a valid alias
     if model_name in MODEL_ALIASES:
         return True
-    
+
     return False
 
 
 def is_deprecated_model(model_name: str) -> bool:
     """Check if a model name is deprecated.
-    
+
     Args:
         model_name: Model name to check
-        
+
     Returns:
         True if model is deprecated, False otherwise
     """
@@ -129,36 +136,36 @@ def is_deprecated_model(model_name: str) -> bool:
 
 def get_model_or_default(model_name: str, default: str = GEMMA_3_27B_IT) -> str:
     """Get a valid model name, falling back to default if invalid.
-    
+
     Args:
         model_name: Requested model name
         default: Default model to use if requested model is invalid
-        
+
     Returns:
         Valid model name
     """
     # Check if it's an alias
     if model_name in MODEL_ALIASES:
         return MODEL_ALIASES[model_name]
-    
+
     # Check if it's valid
     if is_valid_model(model_name):
         return model_name
-    
+
     # Check if it's deprecated
     if is_deprecated_model(model_name):
         import logging
+
         logging.warning(
             f"Model '{model_name}' is deprecated and not accessible. "
             f"Using '{default}' instead."
         )
         return default
-    
+
     # Unknown model - use default
     import logging
-    logging.warning(
-        f"Unknown model '{model_name}'. Using '{default}' instead."
-    )
+
+    logging.warning(f"Unknown model '{model_name}'. Using '{default}' instead.")
     return default
 
 
@@ -166,14 +173,22 @@ def get_model_or_default(model_name: str, default: str = GEMMA_3_27B_IT) -> str:
 # All Valid Models (for iteration/validation)
 # ============================================================================
 
-ALL_VALID_MODELS = [GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, GEMMA_2_27B_IT, GEMMA_3_27B_IT]
+ALL_VALID_MODELS = [
+    GEMINI_FLASH,
+    GEMINI_FLASH_LITE,
+    GEMINI_PRO,
+    GEMMA_2_27B_IT,
+    GEMMA_3_27B_IT,
+]
 """List of all valid, accessible Gemini models."""
+
 
 def is_gemma_model(model_name: str) -> bool:
     """Check if the model is a Gemma model (requires custom tool handling)."""
     if not model_name:
         return False
     return "gemma" in model_name.lower()
+
 
 def is_gemini_model(model_name: str) -> bool:
     """Check if the model is a Gemini model (supports native tool binding)."""

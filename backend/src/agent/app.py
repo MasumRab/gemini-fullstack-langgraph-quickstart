@@ -70,7 +70,9 @@ async def lifespan(app: FastAPI):
     """
     # Startup validation
     if not check_env_strict():
-        logger.warning("WARNING: Environment validation failed. Check logs for details.")
+        logger.warning(
+            "WARNING: Environment validation failed. Check logs for details."
+        )
 
     # Load MCP Tools on startup
     mcp_settings = load_mcp_settings()
@@ -133,10 +135,7 @@ app.add_middleware(
 )
 
 # Add Trusted Host Middleware (Guard against Host Header attacks)
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=app_config.allowed_hosts
-)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=app_config.allowed_hosts)
 
 # Add Content Size Limit Middleware (Guard against DoS)
 app.add_middleware(ContentSizeLimitMiddleware, max_upload_size=10 * 1024 * 1024)
@@ -148,7 +147,7 @@ app.add_middleware(
     limit=100,
     window=60,
     protected_paths=["/agent", "/threads"],
-    trust_proxy_headers=app_config.trust_proxy_headers
+    trust_proxy_headers=app_config.trust_proxy_headers,
 )
 
 # Add Security Headers (OUTERMOST - added last)
@@ -210,7 +209,9 @@ class InvokeRequest(BaseModel):
 
             if isinstance(obj, str):
                 if len(obj) > MAX_INPUT_LENGTH:
-                    raise ValueError(f"Input string too long ({len(obj)} chars). Max allowed: {MAX_INPUT_LENGTH}")
+                    raise ValueError(
+                        f"Input string too long ({len(obj)} chars). Max allowed: {MAX_INPUT_LENGTH}"
+                    )
                 stats["chars"] += len(obj)
             elif isinstance(obj, dict):
                 stats["items"] += len(obj)
@@ -225,9 +226,13 @@ class InvokeRequest(BaseModel):
 
             # Check limits at every step to fail fast
             if stats["chars"] > MAX_TOTAL_CHARS:
-                raise ValueError(f"Total input size too large ({stats['chars']} chars). Max allowed: {MAX_TOTAL_CHARS}")
+                raise ValueError(
+                    f"Total input size too large ({stats['chars']} chars). Max allowed: {MAX_TOTAL_CHARS}"
+                )
             if stats["items"] > MAX_ITEMS:
-                raise ValueError(f"Too many items in input ({stats['items']}). Max allowed: {MAX_ITEMS}")
+                raise ValueError(
+                    f"Too many items in input ({stats['items']}). Max allowed: {MAX_ITEMS}"
+                )
 
         check_complexity(v, 0)
 
@@ -240,7 +245,9 @@ class InvokeRequest(BaseModel):
                     if count > 10:
                         raise ValueError("initial_search_query_count cannot exceed 10")
                     if count < 1:
-                        raise ValueError("initial_search_query_count must be at least 1")
+                        raise ValueError(
+                            "initial_search_query_count must be at least 1"
+                        )
                 except ValueError as e:
                     if "cannot exceed" in str(e) or "must be at least" in str(e):
                         raise e

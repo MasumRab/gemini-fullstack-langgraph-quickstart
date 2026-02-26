@@ -1,7 +1,6 @@
-from langgraph.graph import StateGraph, START, END
 from langchain_core.runnables import RunnableConfig
+from langgraph.graph import END, START, StateGraph
 
-from agent.state import OverallState
 from agent.configuration import Configuration
 
 # Import the variant graphs
@@ -10,14 +9,17 @@ from agent.graph import graph as parallel_graph
 from agent.graphs.linear import graph as linear_graph
 from agent.graphs.supervisor import graph as supervisor_graph
 from agent.registry import graph_registry
+from agent.state import OverallState
 
 # Meta-Router Graph
 # This graph acts as a facade, routing the initial request to the configured agent variant.
+
 
 def router_node(state: OverallState, config: RunnableConfig):
     """Routes to the appropriate sub-agent based on configuration."""
     # We simply pass the state through; routing happens in the conditional edge.
     return {"messages": state.get("messages", [])}
+
 
 def select_agent(state: OverallState, config: RunnableConfig) -> str:
     configurable = Configuration.from_runnable_config(config)
@@ -30,6 +32,7 @@ def select_agent(state: OverallState, config: RunnableConfig) -> str:
         return "supervisor_agent"
     else:
         return "parallel_agent"
+
 
 builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("router", router_node)
@@ -44,8 +47,8 @@ builder.add_conditional_edges(
     {
         "parallel_agent": "parallel_agent",
         "linear_agent": "linear_agent",
-        "supervisor_agent": "supervisor_agent"
-    }
+        "supervisor_agent": "supervisor_agent",
+    },
 )
 builder.add_edge("parallel_agent", END)
 builder.add_edge("linear_agent", END)
