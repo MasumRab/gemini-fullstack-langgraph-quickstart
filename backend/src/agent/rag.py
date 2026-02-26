@@ -531,7 +531,7 @@ def is_rag_enabled() -> bool:
 
 
 class Resource:
-    pass
+    """Stub resource class for legacy compatibility."""
 
 
 def create_rag_tool(resources):

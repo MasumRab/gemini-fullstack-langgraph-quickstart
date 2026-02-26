@@ -37,7 +37,7 @@ def evaluate_mle_bench():
     for task in dataset:
         # output = run_agent(task.prompt)
         # results.append({"task_id": task.id, "output": output})
-        pass
+        _ = task  # placeholder until implementation is complete
 
     # TODO(priority=Medium, complexity=Medium): [mle_bench:3] Evaluate
     scores = []

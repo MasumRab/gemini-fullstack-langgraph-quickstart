@@ -97,7 +97,7 @@ class ToolRegistry:
                 category="search",
             )
         except ImportError:
-            pass
+            logger.debug("search.router not available; web_search tool not registered")
 
         # RAG retrieval
         try:
@@ -113,7 +113,7 @@ class ToolRegistry:
                         category="search",
                     )
         except ImportError:
-            pass
+            logger.debug("agent.rag not available; rag_search tool not registered")
 
         # Tavily (if available)
         try:
@@ -127,7 +127,7 @@ class ToolRegistry:
                     category="search",
                 )
         except ImportError:
-            pass
+            logger.debug("agent.research_tools not available; tavily_search tool not registered")
 
     def register(
         self,
@@ -225,7 +225,7 @@ class AgentPool:
                 capabilities=["search", "quick_answer"],
             )
         except ImportError:
-            pass
+            logger.debug("agent.graphs.upstream not available; quick_search agent not registered")
 
         try:
             from agent.graphs.planning import graph as planning
@@ -237,7 +237,7 @@ class AgentPool:
                 capabilities=["planning", "search", "reflection", "synthesis"],
             )
         except ImportError:
-            pass
+            logger.debug("agent.graphs.planning not available; planner agent not registered")
 
         try:
             from agent.graph import graph as enriched
@@ -249,7 +249,7 @@ class AgentPool:
                 capabilities=["planning", "search", "kg", "compression", "synthesis"],
             )
         except ImportError:
-            pass
+            logger.debug("agent.graph not available; deep_researcher agent not registered")
 
     def register(
         self,

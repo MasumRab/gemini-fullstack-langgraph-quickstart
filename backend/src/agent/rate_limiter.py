@@ -160,7 +160,7 @@ class RateLimiter:
                     logger.error(
                         f"Daily request limit ({self.limits['rpd']}) reached for {self.model}!"
                     )
-                    raise Exception(
+                    raise RuntimeError(
                         f"Daily quota exceeded for {self.model}. Resets at midnight Pacific time."
                     )
 

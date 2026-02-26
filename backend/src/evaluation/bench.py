@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 from pathlib import Path
 from typing import Dict, List
 
@@ -97,8 +98,6 @@ class BenchmarkEvaluator:
 
             except Exception as e:
                 logger.error(f"Error evaluating {query_id}: {e}")
-                import traceback
-
                 traceback.print_exc()
                 continue
 

@@ -171,10 +171,8 @@ def get_citations(response, resolved_urls_map):
                         }
                     )
                 except (IndexError, AttributeError, NameError):
-                    # Handle cases where chunk, web, uri, or resolved_map might be problematic
-                    # For simplicity, we'll just skip adding this particular segment link
-                    # In a production system, you might want to log this.
-                    pass
+                    # Skip malformed grounding chunk — chunk, web, or uri attribute missing
+                    continue
         citations.append(citation)
     return citations
 

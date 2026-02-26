@@ -484,8 +484,8 @@ export function ChatMessagesView({
       await navigator.clipboard.writeText(text)
       setCopiedMessageId(messageId)
       setTimeout(() => setCopiedMessageId(null), 2000) // Reset after 2 seconds
-    } catch (err) {
-      console.error('Failed to copy text: ', err)
+    } catch {
+      // Clipboard write failed silently — no action needed as UI shows no copied state
     }
   }, []) // Empty deps as setCopiedMessageId is stable
 

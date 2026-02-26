@@ -51,7 +51,8 @@ class WebSearcher:
             self.tool = TavilySearchResults(max_results=3)
         except ImportError:
             self.tool = None
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to initialize TavilySearchResults: {e}")
             self.tool = None
 
     def search(self, query: str) -> List[Dict]:

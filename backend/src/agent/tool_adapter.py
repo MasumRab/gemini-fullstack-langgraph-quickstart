@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+import uuid
 from typing import Any, Dict, List
 
 from langchain_core.tools import BaseTool
@@ -92,8 +93,8 @@ def parse_tool_calls(
                 candidate = content[start : end + 1]
                 json.loads(candidate)
                 json_str = candidate
-        except Exception:
-            pass
+        except json.JSONDecodeError:
+            pass  # no valid JSON object found; json_str remains empty
 
     if not json_str:
         logger.warning("No JSON block found in LLM output.")
@@ -157,10 +158,8 @@ def parse_tool_calls(
             if isinstance(arguments, str):
                 try:
                     arguments = json.loads(arguments)
-                except Exception:
-                    pass
-
-            import uuid
+                except json.JSONDecodeError:
+                    logger.warning("Could not parse tool arguments as JSON; using raw string")
 
             call_id = f"call_{uuid.uuid4().hex[:8]}"
 
@@ -170,6 +169,5 @@ def parse_tool_calls(
 
     except json.JSONDecodeError as e:
         logger.error(f"JSON decode failed: {e}")
-        pass
 
     return tool_calls

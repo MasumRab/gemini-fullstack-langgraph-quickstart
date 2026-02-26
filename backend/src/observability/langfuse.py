@@ -38,7 +38,7 @@ def get_langfuse_handler(metadata: Dict[str, Any] | None = None) -> Any | None:
             try:
                 from langfuse.integrations.langchain import LangfuseCallbackHandler
             except ImportError:
-                pass
+                pass  # not available in this version; try next path
 
         # 2. Native package (V2/V3) - Verified working path for 3.10.5
         if LangfuseCallbackHandler is None:
@@ -47,7 +47,7 @@ def get_langfuse_handler(metadata: Dict[str, Any] | None = None) -> Any | None:
                     CallbackHandler as LangfuseCallbackHandler,
                 )
             except ImportError:
-                pass
+                pass  # not available in this version; try next path
 
         # 3. Callback module (Older V2)
         if LangfuseCallbackHandler is None:
@@ -56,7 +56,7 @@ def get_langfuse_handler(metadata: Dict[str, Any] | None = None) -> Any | None:
                     CallbackHandler as LangfuseCallbackHandler,
                 )
             except ImportError:
-                pass
+                pass  # not available in this version; all paths exhausted
 
         if LangfuseCallbackHandler is None:
             logger.warning(

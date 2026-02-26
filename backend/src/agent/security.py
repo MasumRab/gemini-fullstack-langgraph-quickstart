@@ -258,22 +258,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Check rate limit for API endpoints."""
         path = request.url.path
 
-        # Check if path is protected
-        is_protected = False
-        if not self.protected_paths:
-            # If no paths specified, protect everything? Or protect nothing?
-            # Usually strict default means protect everything.
-            # But here we want to protect specific API endpoints.
-            # Let's assume if list is empty, we don't limit (or user should provide paths).
-            # To be safe, if protected_paths is None/Empty in __init__, we default to [] which means effectively disabled
-            # unless we change default.
-            # Let's adhere to "explicit is better than implicit". If list is empty, nothing is protected.
-            pass
-        else:
-            for prefix in self.protected_paths:
-                if path.startswith(prefix):
-                    is_protected = True
-                    break
+        # Check if path is protected.
+        # If protected_paths is empty, nothing is rate-limited (explicit opt-in).
+        is_protected = any(path.startswith(prefix) for prefix in self.protected_paths)
 
         if is_protected:
             # 🛡️ Sentinel: Support X-Forwarded-For for proxies (Render/Load Balancers)
