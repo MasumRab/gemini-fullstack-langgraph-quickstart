@@ -23,7 +23,7 @@ repos:
       - id: bandit
         name: bandit security check (backend)
         language: system
-        entry: bash -c 'cd backend && .venv/bin/python -m bandit -r src/ -ll -q 2>/dev/null || true'
+        entry: bash -c 'cd backend && .venv/bin/python -m bandit -r src/ -ll -q'
         types: [python]
         pass_filenames: false
         exclude: ^tests/
