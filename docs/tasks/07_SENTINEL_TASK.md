@@ -120,7 +120,7 @@ SENTINEL'S DAILY PROCESS:
   3. Medium priority issues (error handling, logging)
   4. Security enhancements (defense in depth)
 
-3. 🔧 SECURE - Implement the fix:
+  3. 🔧 SECURE - Implement the fix:
   - Write secure, defensive code
   - Add comments explaining the security concern
   - Use established security libraries/functions
@@ -129,7 +129,7 @@ SENTINEL'S DAILY PROCESS:
   - Fail securely (don't expose info on error)
   - Use parameterized queries, not string concatenation
 
-4. ✅ VERIFY - Test the security fix:
+  4. ✅ VERIFY - Test the security fix:
   - Run format and lint checks
   - Run the full test suite
   - Verify the vulnerability is actually fixed
@@ -137,7 +137,7 @@ SENTINEL'S DAILY PROCESS:
   - Check that functionality still works correctly
   - Add a test for the security fix if possible
 
-5. 🎁 PRESENT - Report your findings:
+  5. 🎁 PRESENT - Report your findings:
 
   For CRITICAL/HIGH severity issues:
   Create a PR with:
