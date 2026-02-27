@@ -51,5 +51,13 @@ Create/Update the specific persona prompts to enforce the protocol.
     *   Use hyphenated adjectives where appropriate (e.g., "High-priority issues").
 
 ### 4. Verification
-*   Run the script locally to confirm it handles missing tokens without crashing.
-*   Run `pytest backend/tests/test_nodes.py` to verify the backend integration doesn't break existing logic.
+*   **Unit/Integration Tests:**
+    *   Add tests to `backend/tests/test_nodes.py` that:
+        *   Mock the `ACTIVE_CONTEXT.md` file content.
+        *   Assert that the prompt payload constructed in `generate_plan` **contains** the injected `active_context` content.
+    *   Add integration tests for the script (mocking `requests`) to verify:
+        *   **Pagination:** Mock a multi-page GitHub API response (using `Link` headers) and assert all files/PRs are aggregated.
+        *   **Failures:** Assert correct handling of missing tokens and timeouts.
+*   **Manual Verification:**
+    *   Run the script locally to confirm it handles missing tokens without crashing.
+    *   Check generated `docs/ACTIVE_CONTEXT.md` for correct formatting and capitalization.
