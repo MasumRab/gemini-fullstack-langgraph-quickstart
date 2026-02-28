@@ -12,6 +12,7 @@
 
 import concurrent.futures
 import json
+from pathlib import Path
 import logging
 import os
 import re
@@ -239,8 +240,32 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
     return {}
 
 
+
+def _get_active_context() -> str:
+    """Read the active context file if it exists."""
+    try:
+        repo_root = Path(__file__).resolve().parents[3]
+        context_path = repo_root / "docs" / "ACTIVE_CONTEXT.md"
+        max_chars = 4000
+        if context_path.exists():
+            content = context_path.read_text(encoding="utf-8")
+            if len(content) > max_chars:
+                logger.warning(
+                    "Active context is large; truncating to the first %d characters.",
+                    max_chars,
+                )
+                content = (
+                    content[:max_chars]
+                    + "\n\n[... active context truncated for prompt size ...]"
+                )
+            return content
+    except Exception as e:
+        logger.warning(f"Failed to read active context: {e}")
+    return "No active context available."
+
 @graph_registry.describe(
     "generate_plan",
+
     summary="LLM generates a structured research plan (Todos) from the conversation context.",
     tags=["llm", "planning"],
     outputs=["plan", "search_query"],
@@ -260,10 +285,12 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
 
         # Format the prompt
         current_date = get_current_date()
+        active_context = _get_active_context()
         formatted_prompt = plan_writer_instructions.format(
             current_date=current_date,
             research_topic=get_research_topic(state["messages"]),
             number_queries=state["initial_search_query_count"],
+            active_context=active_context,
         )
 
         # Truncate if needed
