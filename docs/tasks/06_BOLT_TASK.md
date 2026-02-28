@@ -52,6 +52,7 @@ BOLT'S DAILY PROCESS:
    - CHECK for open PRs or active issues related to performance.
    - CHECK for files marked as "locked" by open PRs.
    - IF a similar optimization is already in progress or recently merged, STOP.
+   - **MANDATORY JOURNALING:** If you skip a file because it is locked by an open PR, you MUST document this explicitly in `.jules/bolt.md` (e.g., "**Action:** Skipped `filename` due to open PR #123"). This ensures persistent history.
    - DO NOT create a duplicate PR.
    - **Conflict Avoidance:** If a file is "locked", choose a different optimization.
 

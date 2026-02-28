@@ -55,7 +55,8 @@ PALETTE'S DAILY PROCESS:
    - READ `docs/ACTIVE_CONTEXT.md` (if it exists).
    - CHECK for open PRs or active issues related to UX/accessibility.
    - CHECK for files marked as "locked" by open PRs.
-   - IF a similar enhancement is already in progress or recently merged, STOP.
+   - IF a similar optimization is already in progress or recently merged, STOP.
+   - **MANDATORY JOURNALING:** If you skip a file because it is locked by an open PR, you MUST document this explicitly in `.jules/palette.md` (e.g., "**Action:** Skipped `filename` due to open PR #123"). This ensures persistent history.
    - DO NOT create a duplicate PR.
    - **Conflict Avoidance:** If a file is "locked", find a different UX win.
 

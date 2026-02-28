@@ -11,55 +11,40 @@
 # Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
 
 import concurrent.futures
-import difflib
 import json
+from pathlib import Path
 import logging
 import os
 import re
 from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from config.app_config import config as app_config
-from search.router import search_router
 from google.genai import Client
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.types import Send
+from pydantic import BaseModel, Field
 
 from agent.configuration import Configuration
+from agent.models import is_gemini_model, is_gemma_model
 from agent.persistence import load_plan, save_plan
 from agent.prompts import (
     answer_instructions,
+    checklist_instructions,
+    denoising_instructions,
     gemma_answer_instructions,
     get_current_date,
-    plan_writer_instructions,
-    plan_updater_instructions,
-    reflection_instructions,
-    checklist_instructions,
     outline_instructions,
-    denoising_instructions,
+    plan_updater_instructions,
+    plan_writer_instructions,
+    reflection_instructions,
 )
 from agent.rate_limiter import get_context_manager, get_rate_limiter
 from agent.registry import graph_registry
 from agent.scoping_prompts import scoping_instructions
 from agent.scoping_schema import ScopingAssessment
-from agent.tools_and_schemas import (
-    SearchQueryList,
-    Reflection,
-    MCP_TOOLS,
-    Plan,
-    Outline,
-)
-from agent.models import is_gemma_model, is_gemini_model
-from agent.tool_adapter import (
-    format_tools_to_json_schema,
-    GEMMA_TOOL_INSTRUCTION,
-    parse_tool_calls,
-)
-from pydantic import BaseModel, Field
 from agent.state import (
     Evidence,
     OverallState,
@@ -67,13 +52,26 @@ from agent.state import (
     ReflectionState,
     WebSearchState,
 )
-from agent.utils import (
-    get_research_topic,
-    join_and_truncate,
-    get_cached_llm,
-    has_fuzzy_match,
+from agent.tool_adapter import (
+    GEMMA_TOOL_INSTRUCTION,
+    format_tools_to_json_schema,
+    parse_tool_calls,
 )
+from agent.tools_and_schemas import (
+    MCP_TOOLS,
+    Outline,
+    Plan,
+    Reflection,
+)
+from agent.utils import (
+    get_cached_llm,
+    get_research_topic,
+    has_fuzzy_match,
+    join_and_truncate,
+)
+from config.app_config import config as app_config
 from observability.langfuse import observe_span
+from search.router import search_router
 
 logger = logging.getLogger(__name__)
 
@@ -241,21 +239,15 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
         }
     return {}
 
-def _get_active_context() -> str:
-    """Read the active context file if it exists.
 
-    The path is resolved from the repository root to avoid depending on the
-    current working directory, and the content is truncated to a bounded size
-    to control prompt length.
-    """
-    # Resolve repo root as three levels above this file: backend/src/agent/nodes.py -> repo/
+
+def _get_active_context() -> str:
+    """Read the active context file if it exists."""
     try:
         repo_root = Path(__file__).resolve().parents[3]
         context_path = repo_root / "docs" / "ACTIVE_CONTEXT.md"
         max_chars = 4000
-
         if context_path.exists():
-            # Read at most max_chars + 1 so we can detect truncation
             content = context_path.read_text(encoding="utf-8")
             if len(content) > max_chars:
                 logger.warning(
@@ -271,9 +263,9 @@ def _get_active_context() -> str:
         logger.warning(f"Failed to read active context: {e}")
     return "No active context available."
 
-
 @graph_registry.describe(
     "generate_plan",
+
     summary="LLM generates a structured research plan (Todos) from the conversation context.",
     tags=["llm", "planning"],
     outputs=["plan", "search_query"],
@@ -294,7 +286,6 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
         # Format the prompt
         current_date = get_current_date()
         active_context = _get_active_context()
-
         formatted_prompt = plan_writer_instructions.format(
             current_date=current_date,
             research_topic=get_research_topic(state["messages"]),
@@ -478,6 +469,8 @@ def _format_search_results(
     sources = []
     texts = []
     for r in results_list:
+        # Populate short_url with something distinct if we had shorten logic.
+        # Otherwise simply keep it equal to r.url or None.
         source = {"label": r.title, "short_url": r.url, "value": r.url}
         sources.append(source)
         snippet = r.content or r.raw_content or ""
@@ -772,8 +765,7 @@ def planning_wait(state: OverallState) -> OverallState:
 
 
 def _normalize_task(task: dict) -> dict:
-    """
-    Normalize a task dict to have consistent keys.
+    """Normalize a task dict to have consistent keys.
     Handles tasks that may have 'task' instead of 'title' key.
     """
     return {
@@ -791,8 +783,7 @@ def _normalize_task(task: dict) -> dict:
     outputs=["plan"],
 )
 def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Updates the research plan based on latest findings.
+    """Updates the research plan based on latest findings.
     Implements FlowSearch/Open SWE logic to dynamically adjust tasks.
     """
     with observe_span("update_plan", config):
@@ -958,8 +949,7 @@ def execution_router(state: OverallState) -> str:
     outputs=["outline"],
 )
 def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Generates a hierarchical outline (Sections -> Subsections) for the research.
+    """Generates a hierarchical outline (Sections -> Subsections) for the research.
     Implements STORM pattern for structured long-form content generation.
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
@@ -1042,8 +1032,7 @@ def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
 
 
 def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Dynamically expands the research DAG based on findings.
+    """Dynamically expands the research DAG based on findings.
 
     Fine-grained implementation guide:
 
@@ -1080,8 +1069,7 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     outputs=["evidence_bank"],
 )
 def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Extracts structured evidence from raw web content.
+    """Extracts structured evidence from raw web content.
     Implements ManuSearch logic to convert raw search results into `Evidence` objects.
     """
     with observe_span("content_reader", config):
@@ -1174,8 +1162,7 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
 # Implement logic in reflection or a new 'router' node to decide when to call 'research_subgraph'.
 # This should happen when a complex sub-topic is identified that requires its own full research loop.
 def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Executes a recursive research subgraph for a specific sub-topic.
+    """Executes a recursive research subgraph for a specific sub-topic.
     Implements GPT Researcher pattern for recursive depth.
     """
     with observe_span("research_subgraph", config):
@@ -1190,13 +1177,19 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
         parent_config = config.get("configurable", {})
         parent_id = parent_config.get("thread_id", "root")
         recursion_depth = parent_config.get("recursion_depth", 0)
-        max_recursion_depth = parent_config.get("max_recursion_depth", 1) # Default to 1 level deep
+        max_recursion_depth = parent_config.get(
+            "max_recursion_depth", 1
+        )  # Default to 1 level deep
 
         # 3. Guard against infinite recursion
         if recursion_depth >= max_recursion_depth:
-            logger.info(f"Max recursion depth reached ({recursion_depth}). Skipping subgraph for: {subtopic_query}")
+            logger.info(
+                f"Max recursion depth reached ({recursion_depth}). Skipping subgraph for: {subtopic_query}"
+            )
             return {
-                "validation_notes": [f"Depth limit reached. Sub-topic skipped: {subtopic_query}"]
+                "validation_notes": [
+                    f"Depth limit reached. Sub-topic skipped: {subtopic_query}"
+                ]
             }
 
         # 4. Invoke child graph
@@ -1205,7 +1198,9 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
 
         child_config = config.copy()
         child_config["configurable"] = parent_config.copy()
-        child_config["configurable"]["thread_id"] = f"{parent_id}_sub_{recursion_depth + 1}"
+        child_config["configurable"]["thread_id"] = (
+            f"{parent_id}_sub_{recursion_depth + 1}"
+        )
         child_config["configurable"]["recursion_depth"] = recursion_depth + 1
 
         logger.info(f"Recursive Call (Depth {recursion_depth + 1}): {subtopic_query}")
@@ -1216,7 +1211,7 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
             child_input = {
                 "messages": [HumanMessage(content=subtopic_query)],
                 "planning_status": "auto_approved",
-                "scoping_status": "complete" # Skip scoping in subqueries
+                "scoping_status": "complete",  # Skip scoping in subqueries
             }
 
             child_output = graph.invoke(child_input, child_config)
@@ -1230,13 +1225,17 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
                 "web_research_result": child_results,
                 "evidence_bank": child_evidence,
                 "sources_gathered": child_sources,
-                "validation_notes": [f"Successfully researched sub-topic: {subtopic_query}"]
+                "validation_notes": [
+                    f"Successfully researched sub-topic: {subtopic_query}"
+                ],
             }
 
         except Exception as e:
             logger.error(f"Recursive research failed for {subtopic_query}: {e}")
             return {
-                "validation_notes": [f"Recursive research failed for {subtopic_query}: {e}"]
+                "validation_notes": [
+                    f"Recursive research failed for {subtopic_query}: {e}"
+                ]
             }
 
 
@@ -1247,8 +1246,7 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
     outputs=["validation_notes"],
 )
 def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Audits gathered evidence against the outline requirements.
+    """Audits gathered evidence against the outline requirements.
 
     Generates a markdown report flagging missing citations or insufficient evidence
     for each section of the outline.
@@ -1315,8 +1313,7 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
     outputs=["messages", "artifacts"],
 )
 def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Refines the final answer by synthesizing multiple drafts.
+    """Refines the final answer by synthesizing multiple drafts.
     Implements TTD-DR pattern for high-fidelity report synthesis.
     Ensures URL restoration for citations.
     """
@@ -1376,8 +1373,8 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
         # 5. Restore URLs (Critical for Citations)
         if "sources_gathered" in state:
             for source in state["sources_gathered"]:
-                pattern = re.escape(source["short_url"])
-                if re.search(pattern, final_content):
+                if source.get("short_url") and source["short_url"] != source["value"]:
+                    pattern = re.escape(source["short_url"])
                     final_content = re.sub(pattern, source["value"], final_content)
 
         # 6. Create Artifact for Open Canvas
@@ -1401,8 +1398,7 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
 
 
 def update_artifact(id: str, content: str, type: str) -> str:
-    """
-    Updates a collaborative artifact.
+    """Updates a collaborative artifact.
     Returns a JSON string representation of the updated artifact.
     """
     artifact = {
