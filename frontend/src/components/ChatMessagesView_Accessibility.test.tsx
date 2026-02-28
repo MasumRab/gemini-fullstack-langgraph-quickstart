@@ -1,21 +1,21 @@
-import { render, screen } from '@testing-library/react';
-import { ChatMessagesView } from './ChatMessagesView';
-import { vi, describe, it, expect } from 'vitest';
-import React from 'react';
+import { render, screen } from '@testing-library/react'
+import { ChatMessagesView } from './ChatMessagesView'
+import { vi, describe, it, expect } from 'vitest'
+import React from 'react'
 
 // Mock child components to avoid dependency issues
 vi.mock('@/components/InputForm', () => ({
-  InputForm: () => <div data-testid="input-form">InputForm</div>
-}));
+  InputForm: () => <div data-testid="input-form">InputForm</div>,
+}))
 
 vi.mock('@/components/ui/scroll-area', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ScrollArea: ({ children }: any) => <div data-testid="scroll-area">{children}</div>
-}));
+  ScrollArea: ({ children }: any) => <div data-testid="scroll-area">{children}</div>,
+}))
 
 vi.mock('@/components/ActivityTimeline', () => ({
-  ActivityTimeline: () => <div data-testid="activity-timeline">Timeline</div>
-}));
+  ActivityTimeline: () => <div data-testid="activity-timeline">Timeline</div>,
+}))
 
 describe('ChatMessagesView Planning Mode', () => {
   const defaultProps = {
@@ -27,42 +27,48 @@ describe('ChatMessagesView Planning Mode', () => {
     liveActivityEvents: [],
     historicalActivities: {},
     onSendCommand: vi.fn(),
-  };
+  }
 
   it('renders planning card with correct accessibility attributes', () => {
     const planningContext = {
       steps: [
-        { id: '1', title: 'Step 1', query: 'q1', suggested_tool: 'web_research', status: 'pending' }
+        {
+          id: '1',
+          title: 'Step 1',
+          query: 'q1',
+          suggested_tool: 'web_research',
+          status: 'pending',
+        },
       ],
       status: 'awaiting_confirmation',
-      feedback: ['Feedback message']
-    };
+      feedback: ['Feedback message'],
+    }
 
-    render(<ChatMessagesView {...defaultProps} planningContext={planningContext} />);
+    render(<ChatMessagesView {...defaultProps} planningContext={planningContext} />)
 
     // Check for region role and label
-    const region = screen.getByRole('region', { name: /planning status/i });
-    expect(region).toBeInTheDocument();
+    const region = screen.getByRole('region', { name: /planning status/i })
+    expect(region).toBeInTheDocument()
 
     // Check for aria-live on the region (or specific status part, depending on implementation)
     // We will implement it on the region for simplicity and robustness
-    expect(region).toHaveAttribute('aria-live', 'polite');
-  });
+    expect(region).toHaveAttribute('aria-live', 'polite')
+  })
 
   it('renders processing indicator with status role when loading', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const messages: any[] = [{ type: 'human', content: 'hello', id: '1' }];
+    const messages: any[] = [{ type: 'human', content: 'hello', id: '1' }]
     const props = {
       ...defaultProps,
       isLoading: true,
-      messages
-    };
-    render(<ChatMessagesView {...props} />);
+      messages,
+    }
+    render(<ChatMessagesView {...props} />)
 
     // Note: We expect 'status' role to be present on the loading indicator container
     // If this fails, it means the role="status" is missing or configured incorrectly
-    const status = screen.getByRole('status');
-    expect(status).toBeInTheDocument();
-    expect(status).toHaveTextContent('Processing...');
-  });
-});
+    const status = screen.getByRole('status')
+    expect(status).toBeInTheDocument()
+    expect(status).toHaveTextContent('Processing...')
+  })
+})

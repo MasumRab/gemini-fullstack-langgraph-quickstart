@@ -1,13 +1,14 @@
-from typing import List, Dict, Any, Optional
 import json
 import logging
+from typing import Dict, List
+
 from agent.llm_client import call_llm_robust
 
 logger = logging.getLogger(__name__)
 
+
 class MCPToolUser:
-    """
-    Enables agent to use MCP tools for planned operations.
+    """Enables agent to use MCP tools for planned operations.
     Implements tool selection and execution logic.
     """
 
@@ -25,7 +26,7 @@ class MCPToolUser:
                 registry[f"{server_name}.{tool.name}"] = {
                     "server": server,
                     "tool": tool,
-                    "description": tool.description
+                    "description": tool.description,
                 }
         return registry
 
@@ -46,13 +47,15 @@ class MCPToolUser:
             elif len(candidates) == 1:
                 # Unambiguous match
                 matched_tool = candidates[0]
-                logger.warning(f"Tool '{tool_name}' matched to '{matched_tool}'. Please use the full tool name in the future.")
+                logger.warning(
+                    f"Tool '{tool_name}' matched to '{matched_tool}'. Please use the full tool name in the future."
+                )
                 tool_name = matched_tool
             else:
                 # Ambiguous match
                 return {
                     "success": False,
-                    "error": f"Ambiguous tool name '{tool_name}'. Candidates: {', '.join(candidates)}"
+                    "error": f"Ambiguous tool name '{tool_name}'. Candidates: {', '.join(candidates)}",
                 }
 
         tool_info = self.tool_registry[tool_name]
@@ -63,25 +66,22 @@ class MCPToolUser:
             return {
                 "success": result.success,
                 "data": result.data,
-                "error": result.error
+                "error": result.error,
             }
         except Exception as e:
             return {"success": False, "error": f"Execution exception: {str(e)}"}
 
-    def plan_tool_sequence(
-        self,
-        task_description: str,
-        llm_client
-    ) -> List[Dict]:
-        """
-        Use LLM to plan sequence of tool calls for a task.
+    def plan_tool_sequence(self, task_description: str, llm_client) -> List[Dict]:
+        """Use LLM to plan sequence of tool calls for a task.
         This is the "planned tool use" capability.
         """
         # Build tool descriptions
-        tool_descriptions = "\n".join([
-            f"- {name}: {info['description']} (Params: {json.dumps(info['tool'].inputSchema)})"
-            for name, info in self.tool_registry.items()
-        ])
+        tool_descriptions = "\n".join(
+            [
+                f"- {name}: {info['description']} (Params: {json.dumps(info['tool'].inputSchema)})"
+                for name, info in self.tool_registry.items()
+            ]
+        )
 
         planning_prompt = f"""
 Given this task, plan a sequence of tool calls to complete it.
@@ -110,7 +110,7 @@ ENSURE to use the full tool name (e.g. filesystem.write_file).
             if "```json" in response_text:
                 response_text = response_text.split("```json")[1].split("```")[0]
             elif "```" in response_text:
-                 response_text = response_text.split("```")[1].split("```")[0]
+                response_text = response_text.split("```")[1].split("```")[0]
 
             plan = json.loads(response_text)
             if isinstance(plan, list):
@@ -136,12 +136,14 @@ ENSURE to use the full tool name (e.g. filesystem.write_file).
             logger.info(f"Executing: {tool_name} with {params}")
             result = await self.execute_tool(tool_name, **params)
 
-            results.append({
-                "tool": tool_name,
-                "params": params,
-                "result": result,
-                "reason": step.get("reason", "")
-            })
+            results.append(
+                {
+                    "tool": tool_name,
+                    "params": params,
+                    "result": result,
+                    "reason": step.get("reason", ""),
+                }
+            )
 
             # Stop on failure
             if not result.get("success", False):
