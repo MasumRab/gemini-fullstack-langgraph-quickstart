@@ -10,7 +10,10 @@ or used as standalone clients for specific nodes.
 
 import json
 import os
+import logging
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # 1. Google Vertex AI (Cloud)
@@ -224,13 +227,24 @@ print("Model loaded successfully")
 class KaggleGemmaClient:
     """Client for local Gemma models downloaded via Kagglehub and run with KerasNLP."""
 
-    def __init__(self, model_handle: str = "google/gemma-2/keras/gemma2-2b-en"):
+    def __init__(self, model_handle: str = "google/gemma-2/keras/gemma2-2b-en", dtype: Optional[str] = None):
         """
         Initialize Kaggle Gemma client.
 
         Args:
             model_handle: Kaggle model handle (e.g., 'google/gemma-2/keras/gemma2-2b-en').
+            dtype: Optional Keras floatx type (e.g., 'bfloat16'). Set before client use if not relying on global config.
         """
+        self.model_handle = model_handle
+        self.dtype = dtype
+        self.model_path = None
+        self.llm = None
+
+    def _lazy_load(self):
+        """Lazily load the model and its dependencies."""
+        if self.llm is not None:
+            return
+
         try:
             import kagglehub
             import keras_nlp
@@ -240,21 +254,20 @@ class KaggleGemmaClient:
             # Authenticate with Kaggle
             # Requires KAGGLE_USERNAME and KAGGLE_KEY environment variables to be set
             if not os.environ.get("KAGGLE_USERNAME") or not os.environ.get("KAGGLE_KEY"):
-                print("Warning: KAGGLE_USERNAME or KAGGLE_KEY not found in environment. "
-                      "Authentication may fail if the model requires it.")
+                logger.warning("KAGGLE_USERNAME or KAGGLE_KEY not found in environment. "
+                               "Authentication may fail if the model requires it.")
 
             # Download the model weights and assets via kagglehub
-            print(f"Downloading/Locating model {model_handle} via kagglehub...")
-            self.model_path = kagglehub.model_download(model_handle)
-            print(f"Model path: {self.model_path}")
+            logger.info(f"Downloading/Locating model {self.model_handle} via kagglehub...")
+            self.model_path = kagglehub.model_download(self.model_handle)
+            logger.info(f"Model path: {self.model_path}")
 
-            # Set floatx for efficiency if desired
-            keras.config.set_floatx("bfloat16")
+            # Set floatx for efficiency if explicitly requested by caller
+            if self.dtype:
+                keras.config.set_floatx(self.dtype)
 
             # Initialize the causal language model via Keras NLP
-            # Since keras_nlp uses presets, we load it using the downloaded path
-            print(f"Loading Gemma model via Keras NLP from {self.model_path}...")
-            # Note: For custom downloaded paths, from_preset can point to a local directory
+            logger.info(f"Loading Gemma model via Keras NLP from {self.model_path}...")
             self.llm = keras_nlp.models.GemmaCausalLM.from_preset(self.model_path)
 
         except ImportError as e:
@@ -270,6 +283,7 @@ class KaggleGemmaClient:
             prompt: The input prompt string.
             max_length: Maximum length of the generated sequence.
         """
+        self._lazy_load()
         # KerasNLP GemmaCausalLM 'generate' takes the prompt and max_length
-        output = self.llm.generate(prompt, max_length=max_length)
-        return output
+        output = self.llm.generate(prompt, max_length=max_length, **kwargs)
+        return str(output)
