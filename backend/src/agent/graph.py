@@ -225,3 +225,6 @@ graph = builder.compile(name="pro-search-agent")
 def draw_graph_png():
     """Helper to draw the graph as a PNG (for notebooks)."""
     return graph.get_graph().draw_mermaid_png()
+
+
+# Removed stale TODOs for visualization as draw_graph_png is now implemented.

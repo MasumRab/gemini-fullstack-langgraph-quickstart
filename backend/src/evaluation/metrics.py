@@ -167,7 +167,8 @@ Format: {{"claims": ["claim1", "claim2", ...]}}
 
             content = content.replace("```json", "").replace("```", "").strip()
             claims = json.loads(content)["claims"]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to extract claims via LLM; falling back to sentence split: {e}")
             # Fallback: simple sentence splitting
             claims = [
                 s.strip() for s in generated_answer.split(".") if len(s.strip()) > 10
@@ -211,7 +212,8 @@ Answer:
                     hallucinations.append(claim)
                 else:
                     supported_claims.append(claim)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Claim verification failed; treating as unsupported: {e}")
                 # Conservative: assume unsupported if verification fails
                 hallucinations.append(claim)
 

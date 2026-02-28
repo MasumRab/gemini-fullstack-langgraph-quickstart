@@ -443,10 +443,7 @@ Respond in JSON format:
             }
 
     def get_context_for_synthesis(
-        self,
-        query: str,
-        max_tokens: int = 4000,
-        subgoal_ids: List[str] | None = None,
+        self, query: str, max_tokens: int = 4000, subgoal_ids: List[str] | None = None,
     ) -> str:
         all_chunks = []
 
@@ -534,7 +531,8 @@ def is_rag_enabled() -> bool:
 
 
 class Resource:
-    pass
+    """Stub resource class for legacy compatibility."""
+
 
 
 def create_rag_tool(resources):

@@ -2,11 +2,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List
 
-# We will use the standard MCPServer class from mcp (low level) as per spec, or FastMCP if it's easier.
-# The spec uses MCPServer but imports seem slightly different in latest mcp.
-# Let's try to follow the spec provided closely, assuming `mcp` package structure.
-# If `mcp` package has changed, we might need to adjust.
-# Based on "from mcp import MCPServer, Tool, ToolResult", this looks like a specific version.
+logger = logging.getLogger(__name__)
 
 try:
     import mcp.types as types  # noqa: F401
@@ -18,10 +14,7 @@ try:
         Tool,
     )
 except ImportError:
-    # Fallback or different import structure
-    pass
-
-logger = logging.getLogger(__name__)
+    logger.warning("mcp package not available; MCP server features will be limited")
 
 # 🛡️ Sentinel: Limit file read size to 1MB to prevent Memory Exhaustion / DoS
 MAX_FILE_SIZE = 1 * 1024 * 1024  # 1 MB
@@ -135,7 +128,7 @@ class FilesystemMCPServer:
                 resolved == allowed or resolved.is_relative_to(allowed)
                 for allowed in self.allowed_paths
             )
-        except Exception:
+        except (OSError, ValueError):
             return False
 
     async def read_file(self, path: str) -> ToolResult:
@@ -231,7 +224,8 @@ class FilesystemMCPServer:
             return ToolResult(success=False, error=str(e))
 
     async def start(self):
-        # In a real MCP server, this would start stdio/sse transport.
-        # For this implementation (in-process usage in notebooks), it's a no-op
-        # or sets up internal state.
-        pass
+        """Start the MCP server.
+
+        In a real MCP server, this would start stdio/sse transport.
+        For this implementation (in-process usage), it is intentionally a no-op.
+        """

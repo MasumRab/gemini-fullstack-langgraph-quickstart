@@ -4,6 +4,8 @@
 import json
 import logging
 import pathlib
+import traceback
+import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -167,8 +169,6 @@ async def create_thread():
     """Create a new thread."""
     # Mock thread creation for frontend compatibility
     # The frontend SDK usually expects an ID or object back
-    import uuid
-
     return {"thread_id": str(uuid.uuid4())}
 
 
@@ -318,8 +318,6 @@ async def stream_run(thread_id: str, request: InvokeRequest):
                 yield f"event: metadata\ndata: {json.dumps({'run_id': 'run_123'})}\n\n"
                 yield f"event: data\ndata: {data}\n\n"
         except Exception:
-            import traceback
-
             traceback.print_exc()
             # Security: Don't leak exception details to client
             yield (
@@ -345,8 +343,6 @@ async def invoke_agent(request: InvokeRequest):
         result = await graph.invoke(request.input, request.config)
         return result
     except Exception:
-        import traceback
-
         traceback.print_exc()
         # Security: Don't leak exception details to client
         return Response("Internal Server Error", status_code=500)
@@ -366,8 +362,6 @@ async def stream_agent(request: InvokeRequest):
                 # We yield it as JSON lines
                 yield json.dumps(chunk, default=str) + "\n"
         except Exception:
-            import traceback
-
             traceback.print_exc()
             # Security: Don't leak exception details to client
             yield json.dumps({"error": "Stream processing error"}) + "\n"
