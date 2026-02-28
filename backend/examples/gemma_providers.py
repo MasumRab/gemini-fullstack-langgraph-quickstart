@@ -216,3 +216,60 @@ keras.config.set_floatx("bfloat16")
 gemma_lm = keras_nlp.models.GemmaCausalLM.from_preset("gemma2_2b_en")
 print("Model loaded successfully")
 """
+
+# ============================================================================
+# 5. Kaggle Models (Using Kagglehub & KerasNLP)
+# ============================================================================
+
+class KaggleGemmaClient:
+    """Client for local Gemma models downloaded via Kagglehub and run with KerasNLP."""
+
+    def __init__(self, model_handle: str = "google/gemma-2/keras/gemma2-2b-en"):
+        """
+        Initialize Kaggle Gemma client.
+
+        Args:
+            model_handle: Kaggle model handle (e.g., 'google/gemma-2/keras/gemma2-2b-en').
+        """
+        try:
+            import kagglehub
+            import keras_nlp
+            import keras
+            import os
+
+            # Authenticate with Kaggle
+            # Requires KAGGLE_USERNAME and KAGGLE_KEY environment variables to be set
+            if not os.environ.get("KAGGLE_USERNAME") or not os.environ.get("KAGGLE_KEY"):
+                print("Warning: KAGGLE_USERNAME or KAGGLE_KEY not found in environment. "
+                      "Authentication may fail if the model requires it.")
+
+            # Download the model weights and assets via kagglehub
+            print(f"Downloading/Locating model {model_handle} via kagglehub...")
+            self.model_path = kagglehub.model_download(model_handle)
+            print(f"Model path: {self.model_path}")
+
+            # Set floatx for efficiency if desired
+            keras.config.set_floatx("bfloat16")
+
+            # Initialize the causal language model via Keras NLP
+            # Since keras_nlp uses presets, we load it using the downloaded path
+            print(f"Loading Gemma model via Keras NLP from {self.model_path}...")
+            # Note: For custom downloaded paths, from_preset can point to a local directory
+            self.llm = keras_nlp.models.GemmaCausalLM.from_preset(self.model_path)
+
+        except ImportError as e:
+            raise ImportError(
+                f"Please install 'kagglehub', 'keras', and 'keras-nlp' to use KaggleGemmaClient.\nError: {e}"
+            )
+
+    def generate(self, prompt: str, max_length: int = 256, **kwargs) -> str:
+        """
+        Generate text completion.
+
+        Args:
+            prompt: The input prompt string.
+            max_length: Maximum length of the generated sequence.
+        """
+        # KerasNLP GemmaCausalLM 'generate' takes the prompt and max_length
+        output = self.llm.generate(prompt, max_length=max_length)
+        return output
