@@ -13,20 +13,21 @@ This document contains the reconstructed prompt that would have achieved the "Ac
 ### 1. The Context Updater Script (`scripts/update_active_context.py`)
 Create a robust Python script to fetch the current development state.
 
-*   **Dependencies:** Use `requests` and standard libraries only. Do not rely on external CLIs like `gh`.
+*   **Design Decision - NO CLI TOOLS:** You **must not** use the `gh` CLI tool. It is not guaranteed to be installed in all execution environments.
+*   **Design Decision - NO SCRAPING:** Do not attempt to use Playwright or web scraping as a workaround if the API fails; it is too brittle.
+*   **Dependencies:** Use Python's `requests` library and the official GitHub REST API.
 *   **Repo Detection:**
     *   First check `GITHUB_REPOSITORY` env var.
     *   Fallback to `subprocess.run(["git", "config", ...])` (safely, no `shell=True`) to parse the remote URL.
 *   **Authentication:** Read `GITHUB_TOKEN`.
-*   **API Logic:**
-    *   Fetch **all** open PRs from GitHub API.
-    *   **Crucial:** Implement **pagination** (follow `Link` headers or iterate pages) to ensure no PRs are missed.
-    *   For each PR, fetch the list of **modified files** (also paginated).
+*   **API Logic (Comprehensive Coverage):**
+    *   Fetch **ALL** open PRs. You must implement **pagination** (follow `Link` headers or iterate pages) to ensure no PRs are missed.
+    *   For **EVERY** PR, fetch the complete list of **modified files** (also paginated if the file list is large).
     *   **Robustness:** Use `timeout=10` for all requests. Handle `requests.RequestException` gracefully.
 *   **Output:** Write to `docs/ACTIVE_CONTEXT.md`.
     *   Format: A Markdown list/table of PRs and their "locked" files.
     *   **Branding:** Use "GitHub" (Capital H) in all text.
-*   **Safety:** Ensure the `docs/` directory exists (`os.makedirs`) before writing. If the token is missing, write a clear placeholder: `*GitHub Token missing - Context unavailable*`.
+*   **Degraded Mode (Graceful Failure):** Ensure the `docs/` directory exists (`os.makedirs`) before writing. If the `GITHUB_TOKEN` is missing, the system should degrade gracefully. Do not crash. Instead, write a clear placeholder: `*GitHub Token missing - Context unavailable*`. This signals to the agents that context is temporarily unavailable, allowing them to proceed blindly rather than halting execution entirely.
 
 ### 2. Backend Integration (`backend/src/agent/nodes.py`)
 Update the agent's planning logic to read this context.
@@ -57,7 +58,7 @@ Create/Update the specific persona prompts to enforce the protocol.
         *   Assert that the prompt payload constructed in `generate_plan` **contains** the injected `active_context` content.
     *   Add integration tests for the script (mocking `requests`) to verify:
         *   **Pagination:** Mock a multi-page GitHub API response (using `Link` headers) and assert all files/PRs are aggregated.
-        *   **Failures:** Assert correct handling of missing tokens and timeouts.
+        *   **Failures:** Assert correct handling of missing tokens and timeouts (Degraded Mode).
 *   **Manual Verification:**
     *   Run the script locally to confirm it handles missing tokens without crashing.
     *   Check generated `docs/ACTIVE_CONTEXT.md` for correct formatting and capitalization.
