@@ -6,7 +6,7 @@ import math
 import os
 import time
 from collections import defaultdict
-from typing import List, Optional, Set
+from typing import List, Set
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -26,17 +26,19 @@ TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
 TRUSTED_PROXIES_ENV = os.getenv("TRUSTED_PROXIES", "")
 TRUSTED_PROXIES: Set[str] = set()
 if TRUSTED_PROXIES_ENV:
-    TRUSTED_PROXIES = set(ip.strip() for ip in TRUSTED_PROXIES_ENV.split(",") if ip.strip())
+    TRUSTED_PROXIES = set(
+        ip.strip() for ip in TRUSTED_PROXIES_ENV.split(",") if ip.strip()
+    )
 
 
 def _is_ip_in_trusted_proxies(ip: str) -> bool:
     """Check if an IP address is in the trusted proxies set.
-    
+
     Supports both direct IP matching and CIDR range matching.
     """
     if not TRUSTED_PROXIES:
         return False
-    
+
     try:
         ip_obj = ipaddress.ip_address(ip.strip())
         for trusted in TRUSTED_PROXIES:
@@ -62,34 +64,34 @@ def _is_ip_in_trusted_proxies(ip: str) -> bool:
 
 
 def extract_client_ip_from_forwarded(
-    forwarded: str, 
+    forwarded: str,
     trusted_proxy_count: int = TRUSTED_PROXY_COUNT,
-    fallback_ip: Optional[str] = None
-) -> Optional[str]:
+    fallback_ip: str | None = None,
+) -> str | None:
     """Extract the real client IP from X-Forwarded-For header using trust-bound extraction.
-    
+
     🛡️ Sentinel: This implements secure IP extraction to prevent IP spoofing attacks.
-    
+
     The X-Forwarded-For header format is: client, proxy1, proxy2, ...
-    Each proxy appends its IP to the right. However, the leftmost IP is 
+    Each proxy appends its IP to the right. However, the leftmost IP is
     attacker-controllable if the request passed through an untrusted network.
-    
+
     Trust-bound extraction works by:
-    1. If TRUSTED_PROXIES is configured: iterate from right to left, skip trusted 
+    1. If TRUSTED_PROXIES is configured: iterate from right to left, skip trusted
        proxy IPs, return the first untrusted IP.
     2. If only TRUSTED_PROXY_COUNT is set: pick ips[-(trusted_proxy_count + 1)].
-    
+
     Args:
         forwarded: The X-Forwarded-For header value.
         trusted_proxy_count: Number of trusted proxies between client and server.
         fallback_ip: IP to return if no valid candidate is found.
-    
+
     Returns:
         The extracted client IP, or fallback_ip if no valid candidate found.
     """
     if not forwarded:
         return fallback_ip
-    
+
     try:
         # Parse and validate all IPs in the chain
         ips = []
@@ -105,10 +107,10 @@ def extract_client_ip_from_forwarded(
                 # Invalid IP format, skip
                 logger.warning(f"Invalid IP in X-Forwarded-For: {ip_str}")
                 continue
-        
+
         if not ips:
             return fallback_ip
-        
+
         # Method 1: Use trusted proxies list if available (more flexible)
         if TRUSTED_PROXIES:
             # Iterate from right to left, skip trusted proxies
@@ -117,9 +119,11 @@ def extract_client_ip_from_forwarded(
                     return ip
             # All IPs are trusted proxies, return the leftmost (original client)
             # This shouldn't happen in normal operation
-            logger.warning("All IPs in X-Forwarded-For are trusted proxies, using leftmost")
+            logger.warning(
+                "All IPs in X-Forwarded-For are trusted proxies, using leftmost"
+            )
             return ips[0] if ips else fallback_ip
-        
+
         # Method 2: Use trusted proxy count
         if trusted_proxy_count > 0:
             # Pick ips[-(trusted_proxy_count + 1)]
@@ -135,7 +139,7 @@ def extract_client_ip_from_forwarded(
                     f"using leftmost IP"
                 )
                 return ips[0] if ips else fallback_ip
-        
+
         # No trusted proxies configured - return fallback for safety
         # This prevents IP spoofing when trust_proxy_headers is True but no proxies are configured
         logger.warning(
@@ -143,7 +147,7 @@ def extract_client_ip_from_forwarded(
             "Using fallback IP for security. Set TRUSTED_PROXY_COUNT or TRUSTED_PROXIES."
         )
         return fallback_ip
-        
+
     except Exception as e:
         logger.warning(f"Error parsing X-Forwarded-For header: {e}")
         return fallback_ip
@@ -276,17 +280,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Use trust-bound extraction to prevent IP spoofing attacks.
             forwarded = request.headers.get("X-Forwarded-For")
             fallback_ip = request.client.host if request.client else "unknown"
-            
+
             if forwarded and self.trust_proxy_headers:
                 # 🛡️ Sentinel: Use trust-bound IP extraction instead of naive ips[0]
                 # The leftmost IP is attacker-controllable; we must use trust-bound extraction.
                 client_ip = extract_client_ip_from_forwarded(
-                    forwarded=forwarded,
-                    fallback_ip=fallback_ip
+                    forwarded=forwarded, fallback_ip=fallback_ip
                 )
                 if client_ip is None:
                     client_ip = fallback_ip
-                    
+
                 # Truncate to 100 chars to prevent memory exhaustion attacks
                 client_ip = client_ip[:100]
             else:

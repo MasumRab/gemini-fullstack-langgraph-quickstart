@@ -1,8 +1,15 @@
 import logging
-from typing import Any, Union, List, Optional
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from typing import Any, List, Union
+
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 logger = logging.getLogger(__name__)
+
 
 # Define a retry strategy: wait 1s, 2s, 4s, etc., up to 3 times
 # You can customize this or make it configurable via kwargs if needed,
@@ -12,11 +19,10 @@ logger = logging.getLogger(__name__)
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=1, max=10),
     retry=retry_if_exception_type(Exception),
-    reraise=True
+    reraise=True,
 )
 def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
-    """
-    Robustly calls an LLM client, handling different interfaces (invoke vs generate)
+    """Robustly calls an LLM client, handling different interfaces (invoke vs generate)
     and applying retries.
 
     Args:
@@ -42,7 +48,7 @@ def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
             response = llm_client.generate(prompt, **kwargs)
             # Response handling might vary
             if hasattr(response, "text"):
-                 return response.text
+                return response.text
             return str(response)
 
         # 3. Fallback to callable (some custom wrappers)
@@ -58,17 +64,25 @@ def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
 
 
 class GemmaAdapter:
-    """
-    Adapter for Gemma models to provide a LangChain-like 'invoke' interface
+    """Adapter for Gemma models to provide a LangChain-like 'invoke' interface
     with tool-calling support via manual prompting and parsing.
     """
-    def __init__(self, client: Any, tools: Optional[List[Any]] = None, temperature: float = 0.7):
+
+    def __init__(
+        self, client: Any, tools: List[Any] | None = None, temperature: float = 0.7
+    ):
         self.client = client
         self.tools = tools or []
         self.temperature = temperature
-        from agent.tool_adapter import GEMMA_TOOL_INSTRUCTION, format_tools_to_json_schema
+        from agent.tool_adapter import (
+            GEMMA_TOOL_INSTRUCTION,
+            format_tools_to_json_schema,
+        )
+
         self.instruction_template = GEMMA_TOOL_INSTRUCTION
-        self.tools_schema = format_tools_to_json_schema(self.tools) if self.tools else ""
+        self.tools_schema = (
+            format_tools_to_json_schema(self.tools) if self.tools else ""
+        )
 
     def invoke(self, input_data: Union[str, Any], **kwargs) -> Any:
         # Extract prompt from input (could be string or list of messages)
@@ -85,9 +99,10 @@ class GemmaAdapter:
 
         # Inject tool instructions if tools are present
         if self.tools:
-            full_prompt = self.instruction_template.format(
-                tool_schemas=self.tools_schema
-            ) + f"\n\nUser Request: {prompt}"
+            full_prompt = (
+                self.instruction_template.format(tool_schemas=self.tools_schema)
+                + f"\n\nUser Request: {prompt}"
+            )
         else:
             full_prompt = prompt
 
@@ -106,7 +121,9 @@ class GemmaAdapter:
             from agent.tool_adapter import parse_tool_calls
 
             # Defensive extraction of tool names
-            tool_names = [name for t in self.tools if (name := getattr(t, "name", None))]
+            tool_names = [
+                name for t in self.tools if (name := getattr(t, "name", None))
+            ]
             if len(tool_names) != len(self.tools):
                 logger.warning("Some tools lack a 'name' attribute and were skipped")
 

@@ -26,18 +26,18 @@ Usage:
     )
 """
 
-from typing import Dict, List, Any, Callable, Optional, Union
-from dataclasses import dataclass, field
 import logging
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, StructuredTool
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
-from agent.state import OverallState
 from agent.configuration import Configuration
 from agent.models import GEMINI_PRO
+from agent.state import OverallState
 from agent.utils import get_cached_llm
 
 logger = logging.getLogger(__name__)
@@ -47,9 +47,11 @@ logger = logging.getLogger(__name__)
 # Tool Registry
 # =============================================================================
 
+
 @dataclass
 class ToolSpec:
     """Specification for a registered tool."""
+
     name: str
     func: Callable
     description: str
@@ -87,6 +89,7 @@ class ToolRegistry:
         # Web search
         try:
             from search.router import search_router
+
             self.register(
                 "web_search",
                 lambda query: search_router.search(query, max_results=3),
@@ -99,6 +102,7 @@ class ToolRegistry:
         # RAG retrieval
         try:
             from agent.rag import create_rag_tool, is_rag_enabled
+
             if is_rag_enabled():
                 rag_tool = create_rag_tool([])
                 if rag_tool:
@@ -114,6 +118,7 @@ class ToolRegistry:
         # Tavily (if available)
         try:
             from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
+
             if TAVILY_AVAILABLE:
                 self.register(
                     "tavily_search",
@@ -147,7 +152,7 @@ class ToolRegistry:
         if name in self._tools:
             del self._tools[name]
 
-    def get_tools(self, category: Optional[str] = None) -> List[BaseTool]:
+    def get_tools(self, category: str | None = None) -> List[BaseTool]:
         """Get registered tools as LangChain tools."""
         tools = []
         for spec in self._tools.values():
@@ -166,7 +171,7 @@ class ToolRegistry:
         """Get list of registered tool names."""
         return list(self._tools.keys())
 
-    def get_tool(self, name: str) -> Optional[ToolSpec]:
+    def get_tool(self, name: str) -> ToolSpec | None:
         """Get a specific tool spec."""
         return self._tools.get(name)
 
@@ -175,9 +180,11 @@ class ToolRegistry:
 # Agent Pool
 # =============================================================================
 
+
 @dataclass
 class AgentSpec:
     """Specification for a registered agent."""
+
     name: str
     graph: Any  # Compiled StateGraph
     description: str
@@ -210,6 +217,7 @@ class AgentPool:
         """Load default agents from the project."""
         try:
             from agent.graphs.upstream import graph as upstream
+
             self.register(
                 "quick_search",
                 upstream,
@@ -221,6 +229,7 @@ class AgentPool:
 
         try:
             from agent.graphs.planning import graph as planning
+
             self.register(
                 "planner",
                 planning,
@@ -232,6 +241,7 @@ class AgentPool:
 
         try:
             from agent.graph import graph as enriched
+
             self.register(
                 "deep_researcher",
                 enriched,
@@ -262,7 +272,7 @@ class AgentPool:
         if name in self._agents:
             del self._agents[name]
 
-    def get_agent(self, name: str) -> Optional[AgentSpec]:
+    def get_agent(self, name: str) -> AgentSpec | None:
         """Get a specific agent."""
         return self._agents.get(name)
 
@@ -273,8 +283,7 @@ class AgentPool:
     def get_agents_with_capability(self, capability: str) -> List[AgentSpec]:
         """Get agents that have a specific capability."""
         return [
-            agent for agent in self._agents.values()
-            if capability in agent.capabilities
+            agent for agent in self._agents.values() if capability in agent.capabilities
         ]
 
     def get_agent_descriptions(self) -> str:
@@ -289,6 +298,7 @@ class AgentPool:
 # =============================================================================
 # Coordinator Node
 # =============================================================================
+
 
 def create_coordinator_node(
     tools: ToolRegistry,
@@ -310,7 +320,11 @@ def create_coordinator_node(
             return {"coordinator_decision": "finalize"}
 
         last_message = messages[-1]
-        query = last_message.content if hasattr(last_message, "content") else str(last_message)
+        query = (
+            last_message.content
+            if hasattr(last_message, "content")
+            else str(last_message)
+        )
 
         # Build routing prompt
         tool_list = ", ".join(tools.get_tool_names())
@@ -337,12 +351,15 @@ Respond with JSON:
             # ⚡ Bolt Optimization: Use centralized cached factory
             llm = get_cached_llm(model, 0)
             response = llm.invoke(prompt)
-            content = response.content if hasattr(response, "content") else str(response)
+            content = (
+                response.content if hasattr(response, "content") else str(response)
+            )
 
             # Parse decision (simple extraction)
             import json
             import re
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+
+            json_match = re.search(r"\{.*\}", content, re.DOTALL)
             if json_match:
                 decision = json.loads(json_match.group())
                 return {
@@ -386,9 +403,10 @@ def create_task_router(agents: AgentPool):
 # Orchestrated Graph Builder
 # =============================================================================
 
+
 def build_orchestrated_graph(
-    tools: Optional[ToolRegistry] = None,
-    agents: Optional[AgentPool] = None,
+    tools: ToolRegistry | None = None,
+    agents: AgentPool | None = None,
     coordinator_model: str = GEMINI_PRO,
     name: str = "orchestrated-agent",
 ) -> StateGraph:
@@ -411,13 +429,15 @@ def build_orchestrated_graph(
     if agents is None:
         agents = AgentPool()
 
-    from agent.nodes import load_context, denoising_refiner
+    from agent.nodes import denoising_refiner, load_context
 
     builder = StateGraph(OverallState, config_schema=Configuration)
 
     # Core nodes
     builder.add_node("load_context", load_context)
-    builder.add_node("coordinator", create_coordinator_node(tools, agents, coordinator_model))
+    builder.add_node(
+        "coordinator", create_coordinator_node(tools, agents, coordinator_model)
+    )
     builder.add_node("finalize", denoising_refiner)
 
     # Add agent nodes (wrap each agent as a node)
@@ -429,6 +449,7 @@ def build_orchestrated_graph(
                 async def agent_node(state: OverallState, config: RunnableConfig):
                     result = await spec.graph.ainvoke(state, config)
                     return result
+
                 return agent_node
 
             builder.add_node(f"agent_{agent_name}", make_agent_node(agent_spec))
@@ -470,6 +491,7 @@ def build_orchestrated_graph(
 # =============================================================================
 # Convenience Functions
 # =============================================================================
+
 
 def get_default_registry() -> ToolRegistry:
     """Get a ToolRegistry with default tools loaded."""
