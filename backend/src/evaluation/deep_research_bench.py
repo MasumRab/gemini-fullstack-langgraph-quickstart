@@ -31,9 +31,10 @@
 #
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 
-
 def evaluate_deep_research():
-    """Evaluates the agent on DeepResearch-Bench (muset-ai)."""
+    """
+    Evaluates the agent on DeepResearch-Bench (muset-ai).
+    """
     # TODO(priority=High, complexity=Low): [deep_bench:1] Load dataset
     dataset = []  # load_deep_research_dataset()
 
@@ -42,7 +43,7 @@ def evaluate_deep_research():
     for task in dataset:
         # report = run_full_research(task.query)
         # results.append({"task_id": task.id, "report": report})
-        _ = task  # placeholder until implementation is complete
+        pass
 
     # TODO(priority=Medium, complexity=High): [deep_bench:3] Score reports
     scores = []
@@ -59,7 +60,6 @@ def evaluate_deep_research():
 
     # TODO(priority=Low, complexity=Low): [deep_bench:6] Report
     print("DeepResearch-Bench evaluation not yet implemented")
-
 
 if __name__ == "__main__":
     evaluate_deep_research()

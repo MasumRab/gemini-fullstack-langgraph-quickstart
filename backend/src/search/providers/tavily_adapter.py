@@ -1,7 +1,6 @@
-import logging
+from typing import List, Optional
 import os
-from typing import List
-
+import logging
 from ..provider import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
@@ -12,11 +11,10 @@ try:
 except ImportError:
     TavilyClient = None
 
-
 class TavilyAdapter(SearchProvider):
     """Adapter for Tavily Search API."""
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self, api_key: Optional[str] = None):
         """Initialize with API key."""
         # Avoid circular import by using os.getenv directly or checking config later
         # We will follow the pattern of checking env var in init
@@ -33,12 +31,14 @@ class TavilyAdapter(SearchProvider):
         self,
         query: str,
         max_results: int = 5,
-        region: str | None = None,
-        time_range: str | None = None,
+        region: Optional[str] = None,
+        time_range: Optional[str] = None,
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """Execute search."""
+        """
+        Execute search.
+        """
         if not self.client:
             if not TavilyClient:
                 logger.error("Tavily python package not installed.")
@@ -60,20 +60,16 @@ class TavilyAdapter(SearchProvider):
             results = []
             # Tavily returns {'results': [...]}
             for item in response.get("results", []):
-                results.append(
-                    SearchResult(
-                        title=item.get("title", "Untitled"),
-                        url=item.get("url", ""),
-                        content=item.get("content", ""),
-                        source="tavily",
-                        metadata={
-                            "score": item.get("score"),
-                            "raw_content": item.get(
-                                "raw_content"
-                            ),  # sometimes available
-                        },
-                    )
-                )
+                results.append(SearchResult(
+                    title=item.get("title", "Untitled"),
+                    url=item.get("url", ""),
+                    content=item.get("content", ""),
+                    source="tavily",
+                    metadata={
+                        "score": item.get("score"),
+                        "raw_content": item.get("raw_content") # sometimes available
+                    }
+                ))
 
             return results
 

@@ -7,13 +7,13 @@ This module provides utilities to stay within Gemini API rate limits:
 - Context window size limits
 """
 
-import logging
 import time
-from collections import deque
-from datetime import datetime
+import logging
 from functools import lru_cache
+from datetime import datetime, timedelta
+from typing import Dict, Optional
+from collections import deque
 from threading import Lock
-from typing import Dict
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -78,9 +78,7 @@ class RateLimiter:
         # This prevents cleaning up on every single token estimation/check if calls are bursty.
         self._last_cleanup = 0.0
 
-        logger.info(
-            f"Initialized RateLimiter for {model}: RPM={self.limits['rpm']}, TPM={self.limits['tpm']}, RPD={self.limits['rpd']}"
-        )
+        logger.info(f"Initialized RateLimiter for {model}: RPM={self.limits['rpm']}, TPM={self.limits['tpm']}, RPD={self.limits['rpd']}")
 
     def _cleanup_old_requests(self):
         """Remove requests older than tracking windows."""
@@ -157,12 +155,8 @@ class RateLimiter:
 
                 # Check RPD limit (Hard Fail)
                 if len(self._requests_per_day) >= self.limits["rpd"]:
-                    logger.error(
-                        f"Daily request limit ({self.limits['rpd']}) reached for {self.model}!"
-                    )
-                    raise RuntimeError(
-                        f"Daily quota exceeded for {self.model}. Resets at midnight Pacific time."
-                    )
+                    logger.error(f"Daily request limit ({self.limits['rpd']}) reached for {self.model}!")
+                    raise Exception(f"Daily quota exceeded for {self.model}. Resets at midnight Pacific time.")
 
                 if not should_wait:
                     # Proceed: Record this request
@@ -175,9 +169,7 @@ class RateLimiter:
             # 🛡️ Sentinel: Wait OUTSIDE the lock to prevent blocking other threads
             # This allows other threads to check limits/stats even while this one waits for a slot.
             if should_wait:
-                logger.warning(
-                    f"Rate limit reached for {self.model}. Waiting {time_to_wait:.2f}s"
-                )
+                logger.warning(f"Rate limit reached for {self.model}. Waiting {time_to_wait:.2f}s")
                 time.sleep(time_to_wait)
                 total_wait_time += time_to_wait
                 # Loop back to check if we can proceed now
@@ -236,9 +228,7 @@ class ContextWindowManager:
         # Reserve tokens for output
         self.max_input_tokens = self.max_tokens - self.max_output_tokens
 
-        logger.info(
-            f"ContextWindowManager for {model}: max_input={self.max_input_tokens}, max_output={self.max_output_tokens}"
-        )
+        logger.info(f"ContextWindowManager for {model}: max_input={self.max_input_tokens}, max_output={self.max_output_tokens}")
 
     def estimate_tokens(self, text: str) -> int:
         """Estimate token count for text.
@@ -254,7 +244,7 @@ class ContextWindowManager:
         # Rough estimation: 1 token ≈ 4 characters
         return len(text) // 4
 
-    def truncate_to_fit(self, text: str, max_tokens: int | None = None) -> str:
+    def truncate_to_fit(self, text: str, max_tokens: Optional[int] = None) -> str:
         """Truncate text to fit within token limit.
 
         Args:
@@ -280,7 +270,7 @@ class ContextWindowManager:
 
         return truncated + "\n\n[... truncated to fit context window ...]"
 
-    def split_into_chunks(self, text: str, chunk_size: int | None = None) -> list[str]:
+    def split_into_chunks(self, text: str, chunk_size: Optional[int] = None) -> list[str]:
         """Split text into chunks that fit within context window.
 
         Args:
@@ -303,7 +293,7 @@ class ContextWindowManager:
         chunks = []
 
         for i in range(0, len(text), chars_per_chunk):
-            chunk = text[i : i + chars_per_chunk]
+            chunk = text[i:i + chars_per_chunk]
             chunks.append(chunk)
 
         logger.info(f"Split text into {len(chunks)} chunks (~{chunk_size} tokens each)")

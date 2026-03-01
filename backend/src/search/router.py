@@ -1,14 +1,12 @@
 import logging
 import threading
+from typing import List, Optional, Dict, Any
 from enum import Enum
-from typing import Dict, List
 
-from config.app_config import AppConfig, config
-
+from config.app_config import config, AppConfig
 from .provider import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
-
 
 class SearchProviderType(Enum):
     GOOGLE = "google"
@@ -17,9 +15,10 @@ class SearchProviderType(Enum):
     TAVILY = "tavily"
     BING = "bing"
 
-
 class SearchRouter:
-    """Routes search queries to the appropriate provider with fallback logic."""
+    """
+    Routes search queries to the appropriate provider with fallback logic.
+    """
 
     def __init__(self, app_config: AppConfig = config):
         """Initialize router with config."""
@@ -27,7 +26,7 @@ class SearchRouter:
         self.providers: Dict[str, SearchProvider] = {}
         self._providers_lock = threading.Lock()
 
-    def _get_provider(self, name: str) -> SearchProvider | None:
+    def _get_provider(self, name: str) -> Optional[SearchProvider]:
         # Quick check without lock
         if name in self.providers:
             return self.providers[name]
@@ -40,23 +39,18 @@ class SearchRouter:
             try:
                 if name == SearchProviderType.GOOGLE.value:
                     from .providers.google_adapter import GoogleSearchAdapter
-
                     self.providers[name] = GoogleSearchAdapter()
                 elif name == SearchProviderType.BRAVE.value:
                     from .providers.brave_adapter import BraveSearchAdapter
-
                     self.providers[name] = BraveSearchAdapter()
                 elif name == SearchProviderType.DUCKDUCKGO.value:
                     from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-
                     self.providers[name] = DuckDuckGoAdapter()
                 elif name == SearchProviderType.TAVILY.value:
                     from .providers.tavily_adapter import TavilyAdapter
-
                     self.providers[name] = TavilyAdapter()
                 elif name == SearchProviderType.BING.value:
                     from .providers.bing_adapter import BingAdapter
-
                     self.providers[name] = BingAdapter()
             except Exception as e:
                 logger.debug(f"Provider {name} failed to init: {e}")
@@ -65,9 +59,7 @@ class SearchRouter:
             # Log warning for unrecognized provider
             if name not in self.providers:
                 valid_providers = [p.value for p in SearchProviderType]
-                logger.warning(
-                    f"Unknown provider '{name}'. Valid providers: {valid_providers}"
-                )
+                logger.warning(f"Unknown provider '{name}'. Valid providers: {valid_providers}")
 
             return self.providers.get(name)
 
@@ -75,10 +67,11 @@ class SearchRouter:
         self,
         query: str,
         max_results: int = 5,
-        provider_name: str | None = None,
+        provider_name: Optional[str] = None,
         attempt_fallback: bool = True,
     ) -> List[SearchResult]:
-        """Execute search with routing and fallback logic.
+        """
+        Execute search with routing and fallback logic.
 
         Args:
             query: Search query
@@ -124,7 +117,6 @@ class SearchRouter:
                 # If we get here, all attempts failed
                 logger.error("All search attempts failed.")
                 return []
-
 
 # Singleton instance
 search_router = SearchRouter()

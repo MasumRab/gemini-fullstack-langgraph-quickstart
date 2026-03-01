@@ -1,5 +1,10 @@
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Loader2,
   Activity,
@@ -10,69 +15,77 @@ import {
   Pen,
   ChevronDown,
   ChevronUp,
-} from 'lucide-react'
-import { useEffect, useState, memo } from 'react'
+} from "lucide-react";
+import { useEffect, useState, memo } from "react";
 
 export interface ProcessedEvent {
-  title: string
+  title: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
+  data: any;
 }
 
 interface ActivityTimelineProps {
-  processedEvents: ProcessedEvent[]
-  isLoading: boolean
+  processedEvents: ProcessedEvent[];
+  isLoading: boolean;
 }
 
 // ⚡ Bolt Optimization: Extracted helper function outside component to prevent recreation on re-renders.
 // Removed dead code checking for empty array inside the map loop.
 const getEventIcon = (title: string) => {
-  const lowerTitle = title.toLowerCase()
-  if (lowerTitle.includes('generating')) {
-    return <TextSearch className="h-4 w-4 text-neutral-400" aria-hidden="true" />
-  } else if (lowerTitle.includes('thinking')) {
-    return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" aria-hidden="true" />
-  } else if (lowerTitle.includes('reflection')) {
-    return <Brain className="h-4 w-4 text-neutral-400" aria-hidden="true" />
-  } else if (lowerTitle.includes('research')) {
-    return <Search className="h-4 w-4 text-neutral-400" aria-hidden="true" />
-  } else if (lowerTitle.includes('finalizing')) {
-    return <Pen className="h-4 w-4 text-neutral-400" aria-hidden="true" />
+  const lowerTitle = title.toLowerCase();
+  if (lowerTitle.includes("generating")) {
+    return <TextSearch className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
+  } else if (lowerTitle.includes("thinking")) {
+    return <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" aria-hidden="true" />;
+  } else if (lowerTitle.includes("reflection")) {
+    return <Brain className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
+  } else if (lowerTitle.includes("research")) {
+    return <Search className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
+  } else if (lowerTitle.includes("finalizing")) {
+    return <Pen className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
   }
-  return <Activity className="h-4 w-4 text-neutral-400" aria-hidden="true" />
-}
+  return <Activity className="h-4 w-4 text-neutral-400" aria-hidden="true" />;
+};
 
 // ⚡ Bolt Optimization: Memoized list item component.
 // This ensures that when the parent list grows (processedEvents appends new item),
 // the existing items (0 to N-1) do NOT re-render, significantly reducing
 // virtual DOM diffing overhead during high-frequency streaming updates.
 interface TimelineItemProps {
-  eventItem: ProcessedEvent
-  showLine: boolean
+  eventItem: ProcessedEvent;
+  showLine: boolean;
 }
 
-const TimelineItem = memo(function TimelineItem({ eventItem, showLine }: TimelineItemProps) {
+const TimelineItem = memo(function TimelineItem({
+  eventItem,
+  showLine,
+}: TimelineItemProps) {
   return (
     <li className="relative pl-8 pb-4">
-      {showLine ? <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-600" /> : null}
+      {showLine ? (
+        <div className="absolute left-3 top-3.5 h-full w-0.5 bg-neutral-600" />
+      ) : null}
       <div className="absolute left-0.5 top-2 h-6 w-6 rounded-full bg-neutral-600 flex items-center justify-center ring-4 ring-neutral-700">
         {getEventIcon(eventItem.title)}
       </div>
       <div>
-        <p className="text-sm text-neutral-200 font-medium mb-0.5">{eventItem.title}</p>
+        <p className="text-sm text-neutral-200 font-medium mb-0.5">
+          {eventItem.title}
+        </p>
         <p className="text-xs text-neutral-300 leading-relaxed">
-          {typeof eventItem.data === 'string'
+          {typeof eventItem.data === "string"
             ? eventItem.data
             : Array.isArray(eventItem.data)
-              ? (eventItem.data as string[]).join(', ')
+              ? (eventItem.data as string[]).join(", ")
               : JSON.stringify(eventItem.data)}
         </p>
       </div>
     </li>
-  )
-})
+  );
+});
 // Explicit display name for devtools
-TimelineItem.displayName = 'TimelineItem'
+TimelineItem.displayName = "TimelineItem";
+
 
 // ⚡ Bolt Optimization: Memoize to prevent unnecessary re-renders when parent (AiMessageBubble)
 // updates due to UI interactions (like Copy button state) but the timeline data hasn't changed.
@@ -82,13 +95,14 @@ export const ActivityTimeline = memo(function ActivityTimeline({
   processedEvents,
   isLoading,
 }: ActivityTimelineProps) {
-  const [isTimelineCollapsed, setIsTimelineCollapsed] = useState<boolean>(false)
+  const [isTimelineCollapsed, setIsTimelineCollapsed] =
+    useState<boolean>(false);
 
   useEffect(() => {
     if (!isLoading && processedEvents.length !== 0) {
-      setIsTimelineCollapsed(true)
+      setIsTimelineCollapsed(true);
     }
-  }, [isLoading, processedEvents])
+  }, [isLoading, processedEvents]);
 
   return (
     <Card className="border-none rounded-lg bg-neutral-700 max-h-96">
@@ -98,7 +112,7 @@ export const ActivityTimeline = memo(function ActivityTimeline({
             type="button"
             className="flex items-center justify-start text-sm w-full cursor-pointer gap-2 text-neutral-100 bg-transparent border-none p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 rounded"
             onClick={() => setIsTimelineCollapsed(!isTimelineCollapsed)}
-            title={isTimelineCollapsed ? 'Show research activity' : 'Hide research activity'}
+            title={isTimelineCollapsed ? "Show research activity" : "Hide research activity"}
             aria-expanded={!isTimelineCollapsed}
             aria-controls="activity-timeline-content"
           >
@@ -127,7 +141,9 @@ export const ActivityTimeline = memo(function ActivityTimeline({
                     <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-sm text-neutral-300 font-medium">Searching...</p>
+                    <p className="text-sm text-neutral-300 font-medium">
+                      Searching...
+                    </p>
                   </div>
                 </li>
               </ul>
@@ -138,22 +154,18 @@ export const ActivityTimeline = memo(function ActivityTimeline({
                   <TimelineItem
                     key={index}
                     eventItem={eventItem}
-                    showLine={
-                      index < processedEvents.length - 1 ||
-                      (isLoading && index === processedEvents.length - 1)
-                    }
+                    showLine={index < processedEvents.length - 1 || (isLoading && index === processedEvents.length - 1)}
                   />
                 ))}
                 {isLoading && processedEvents.length > 0 && (
                   <li className="relative pl-8 pb-4">
                     <div className="absolute left-0.5 top-2 h-5 w-5 rounded-full bg-neutral-600 flex items-center justify-center ring-4 ring-neutral-700">
-                      <Loader2
-                        className="h-3 w-3 text-neutral-400 animate-spin"
-                        aria-hidden="true"
-                      />
+                      <Loader2 className="h-3 w-3 text-neutral-400 animate-spin" aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-sm text-neutral-300 font-medium">Searching...</p>
+                      <p className="text-sm text-neutral-300 font-medium">
+                        Searching...
+                      </p>
                     </div>
                   </li>
                 )}
@@ -171,5 +183,5 @@ export const ActivityTimeline = memo(function ActivityTimeline({
         </ScrollArea>
       )}
     </Card>
-  )
-})
+  );
+});

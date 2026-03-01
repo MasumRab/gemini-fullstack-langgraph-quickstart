@@ -1,10 +1,9 @@
-import logging
-import os
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import Tuple, List
+import os
+import logging
 
 logger = logging.getLogger(__name__)
-
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -17,9 +16,7 @@ class AppConfig:
 
     # Knowledge Graph Configuration
     kg_enabled: bool = os.getenv("KG_ENABLED", "false").lower() == "true"
-    kg_allowlist: Tuple[str, ...] = tuple(
-        filter(None, os.getenv("KG_ALLOWLIST", "").split(","))
-    )
+    kg_allowlist: Tuple[str, ...] = tuple(filter(None, os.getenv("KG_ALLOWLIST", "").split(",")))
 
     # Search Configuration
     search_provider: str = os.getenv("SEARCH_PROVIDER", "google")
@@ -31,30 +28,20 @@ class AppConfig:
     require_citations: bool = os.getenv("REQUIRE_CITATIONS", "true").lower() == "true"
 
     # Compression Configuration
-    compression_enabled: bool = (
-        os.getenv("COMPRESSION_ENABLED", "true").lower() == "true"
-    )
+    compression_enabled: bool = os.getenv("COMPRESSION_ENABLED", "true").lower() == "true"
     compression_mode: str = os.getenv("COMPRESSION_MODE", "tiered")
 
     # Budgets & Performance
-    token_budget: int = field(
-        default_factory=lambda: int(os.getenv("TOKEN_BUDGET", "50000"))
-    )
-    call_budget: int = field(
-        default_factory=lambda: int(os.getenv("CALL_BUDGET", "50"))
-    )
-    latency_target_ms: int = field(
-        default_factory=lambda: int(os.getenv("LATENCY_TARGET_MS", "8000"))
-    )
+    token_budget: int = field(default_factory=lambda: int(os.getenv("TOKEN_BUDGET", "50000")))
+    call_budget: int = field(default_factory=lambda: int(os.getenv("CALL_BUDGET", "50")))
+    latency_target_ms: int = field(default_factory=lambda: int(os.getenv("LATENCY_TARGET_MS", "8000")))
 
     # Observability
     audit_mode: str = os.getenv("AUDIT_MODE", "off")
     log_level: str = os.getenv("LOG_LEVEL", "info")
 
     # Security
-    trust_proxy_headers: bool = (
-        os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
-    )
+    trust_proxy_headers: bool = os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
     cors_origins: Tuple[str, ...] = tuple(
         filter(None, os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","))
     )
@@ -94,7 +81,6 @@ class AppConfig:
         except ValueError as e:
             logger.error(f"Configuration loading failed: {e}")
             raise e
-
 
 # Singleton instance
 config = AppConfig.load()

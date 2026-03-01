@@ -1,4 +1,5 @@
-"""Alternative/Experimental Graph Implementation.
+"""
+Alternative/Experimental Graph Implementation.
 
 This module provides a standalone, multi-provider LangGraph workflow that can be used
 for experimentation or as a fallback. It maintains compatibility with the main graph.py
@@ -11,28 +12,28 @@ Key differences from graph.py:
 - Suitable for CLI/notebook usage
 """
 
-import json
-import logging
 import os
-import re
 import time
-from typing import Any, Dict, List
+import json
+import re
+import logging
+from typing import Dict, Any, List, Optional
 
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.graph import END, START, StateGraph
+from langgraph.graph import StateGraph, START, END
 
-from agent import rag_nodes
+from agent.state import OverallState, ReflectionState
 from agent.configuration import Configuration
 from agent.prompts import (
-    answer_instructions,
-    get_current_date,
     query_writer_instructions,
     reflection_instructions,
+    answer_instructions,
+    get_current_date,
 )
-from agent.state import OverallState, ReflectionState
-from agent.utils import LLMFactory, get_research_topic
+from agent.utils import get_research_topic, LLMFactory
+from agent import rag_nodes
 
 # Optional imports with graceful fallback
 try:
@@ -44,7 +45,6 @@ except ImportError:
 try:
     from google import genai
     from google.genai import types
-
     genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 except ImportError:
     genai_client = None
@@ -58,7 +58,6 @@ logger = logging.getLogger(__name__)
 # Node Implementations (Simplified versions for experimental graph)
 # =============================================================================
 
-
 def generate_query(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
     """Generate search queries based on the user's question."""
     configurable = Configuration.from_runnable_config(config)
@@ -66,9 +65,7 @@ def generate_query(state: OverallState, config: RunnableConfig) -> Dict[str, Any
     messages = state.get("messages", [])
     research_topic = get_research_topic(messages) if messages else "General research"
 
-    initial_count = state.get(
-        "initial_search_query_count", configurable.number_of_initial_queries
-    )
+    initial_count = state.get("initial_search_query_count", configurable.number_of_initial_queries)
 
     formatted_prompt = query_writer_instructions.format(
         current_date=get_current_date(),
@@ -131,9 +128,7 @@ def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
                     title = item.get("title", "")
                     url = item.get("url", "")
                     formatted_results.append(f"{content} [{title}]({url})")
-                    sources.append(
-                        {"title": title, "url": url, "snippet": content[:200]}
-                    )
+                    sources.append({"title": title, "url": url, "snippet": content[:200]})
 
             return {
                 "web_research_result": formatted_results,
@@ -146,7 +141,6 @@ def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
     if genai_client:
         try:
             from agent.models import GEMINI_FLASH
-
             response = genai_client.models.generate_content(
                 model=GEMINI_FLASH,
                 contents=query,
@@ -158,9 +152,7 @@ def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
 
             grounding_metadata = None
             if response.candidates:
-                grounding_metadata = getattr(
-                    response.candidates[0], "grounding_metadata", None
-                )
+                grounding_metadata = getattr(response.candidates[0], "grounding_metadata", None)
 
             sources = []
             if grounding_metadata:
@@ -168,13 +160,11 @@ def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
                 for chunk in chunks:
                     web_info = getattr(chunk, "web", None)
                     if web_info:
-                        sources.append(
-                            {
-                                "title": getattr(web_info, "title", ""),
-                                "url": getattr(web_info, "uri", ""),
-                                "snippet": "",
-                            }
-                        )
+                        sources.append({
+                            "title": getattr(web_info, "title", ""),
+                            "url": getattr(web_info, "uri", ""),
+                            "snippet": "",
+                        })
 
             return {
                 "web_research_result": [response.text] if response.text else [],
@@ -194,11 +184,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
     reasoning_model = state.get("reasoning_model", configurable.reflection_model)
 
     web_research_result = state.get("web_research_result", [])
-    summaries_text = (
-        "\n\n---\n\n".join(web_research_result)
-        if web_research_result
-        else "No research content available."
-    )
+    summaries_text = "\n\n---\n\n".join(web_research_result) if web_research_result else "No research content available."
 
     messages = state.get("messages", [])
     research_topic = get_research_topic(messages) if messages else "General research"
@@ -300,11 +286,7 @@ def finalize_answer(state: OverallState, config: RunnableConfig) -> Dict[str, An
         labeled_result = f"=== WEB RESEARCH SOURCE {idx + 1} ===\n{result}\n=== END WEB RESEARCH SOURCE {idx + 1} ==="
         all_summaries.append(labeled_result)
 
-    summaries_text = (
-        "\n\n".join(all_summaries)
-        if all_summaries
-        else "No research content available."
-    )
+    summaries_text = "\n\n".join(all_summaries) if all_summaries else "No research content available."
 
     messages = state.get("messages", [])
     research_topic = get_research_topic(messages) if messages else "General research"
@@ -328,9 +310,7 @@ def finalize_answer(state: OverallState, config: RunnableConfig) -> Dict[str, An
     response_metadata = getattr(result, "response_metadata", {})
     finish_reason = response_metadata.get("finish_reason")
     while finish_reason == "length":
-        continuation = llm.invoke(
-            "Please continue from where you left off:\n" + final_answer[-500:]
-        )
+        continuation = llm.invoke("Please continue from where you left off:\n" + final_answer[-500:])
         final_answer += "\n" + getattr(continuation, "content", str(continuation))
         response_metadata = getattr(continuation, "response_metadata", {})
         finish_reason = response_metadata.get("finish_reason")
@@ -342,7 +322,6 @@ def finalize_answer(state: OverallState, config: RunnableConfig) -> Dict[str, An
 # =============================================================================
 # Graph Builder
 # =============================================================================
-
 
 def build_graph() -> StateGraph:
     """Build the experimental multi-provider LangGraph workflow."""

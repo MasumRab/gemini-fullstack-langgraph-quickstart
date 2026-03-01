@@ -67,29 +67,6 @@ lint.ignore = [
     # Relax the convention by _not_ requiring documentation for every function parameter.
     "D417",
     "E501",
-    # Missing docstrings - pre-existing codebase style
-    "D100",
-    "D101",
-    "D102",
-    "D103",
-    "D104",
-    "D107",
-    "D200",
-    "D205",
-    "D401",
-    "D415",
-    # print() calls used for logging/debugging
-    "T201",
-    # Type comparison style - existing patterns
-    "E721",
-    # Module-level imports not at top - conditional imports
-    "E402",
-    # Unused variables - existing patterns
-    "F841",
-    # Unused imports - conditional/optional feature imports
-    "F401",
-    # Multiple statements on one line
-    "E701",
 ]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "UP"]

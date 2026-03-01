@@ -8,13 +8,15 @@ SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from agent.nodes import continue_to_web_research, evaluate_research
+from agent.nodes import continue_to_web_research  # noqa: E402
 
 
 # Tests for continue_to_web_research
 def test_continue_to_web_research_single_query():
     """Test routing a single search query to web research."""
-    state = {"search_query": ["single query"]}
+    state = {
+        "search_query": ["single query"]
+    }
 
     result = continue_to_web_research(state)
 
@@ -27,7 +29,9 @@ def test_continue_to_web_research_single_query():
 
 def test_continue_to_web_research_multiple_queries():
     """Test routing multiple search queries to web research."""
-    state = {"search_query": ["query1", "query2", "query3"]}
+    state = {
+        "search_query": ["query1", "query2", "query3"]
+    }
 
     result = continue_to_web_research(state)
 
@@ -42,7 +46,9 @@ def test_continue_to_web_research_multiple_queries():
 
 def test_continue_to_web_research_empty_queries():
     """Test behavior with empty query list."""
-    state = {"search_query": []}
+    state = {
+        "search_query": []
+    }
 
     result = continue_to_web_research(state)
 
@@ -52,7 +58,9 @@ def test_continue_to_web_research_empty_queries():
 
 def test_continue_to_web_research_preserves_query_order():
     """Test that query order is preserved in Send objects."""
-    state = {"search_query": ["first", "second", "third"]}
+    state = {
+        "search_query": ["first", "second", "third"]
+    }
 
     result = continue_to_web_research(state)
 
@@ -63,7 +71,9 @@ def test_continue_to_web_research_preserves_query_order():
 
 def test_continue_to_web_research_ids_increment():
     """Test that IDs increment correctly."""
-    state = {"search_query": ["q1", "q2", "q3", "q4", "q5"]}
+    state = {
+        "search_query": ["q1", "q2", "q3", "q4", "q5"]
+    }
 
     result = continue_to_web_research(state)
 

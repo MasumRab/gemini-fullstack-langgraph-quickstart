@@ -6,7 +6,7 @@ import math
 import os
 import time
 from collections import defaultdict
-from typing import List, Set
+from typing import List, Optional, Set
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -26,9 +26,7 @@ TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
 TRUSTED_PROXIES_ENV = os.getenv("TRUSTED_PROXIES", "")
 TRUSTED_PROXIES: Set[str] = set()
 if TRUSTED_PROXIES_ENV:
-    TRUSTED_PROXIES = set(
-        ip.strip() for ip in TRUSTED_PROXIES_ENV.split(",") if ip.strip()
-    )
+    TRUSTED_PROXIES = set(ip.strip() for ip in TRUSTED_PROXIES_ENV.split(",") if ip.strip())
 
 
 def _is_ip_in_trusted_proxies(ip: str) -> bool:
@@ -66,8 +64,8 @@ def _is_ip_in_trusted_proxies(ip: str) -> bool:
 def extract_client_ip_from_forwarded(
     forwarded: str,
     trusted_proxy_count: int = TRUSTED_PROXY_COUNT,
-    fallback_ip: str | None = None,
-) -> str | None:
+    fallback_ip: Optional[str] = None
+) -> Optional[str]:
     """Extract the real client IP from X-Forwarded-For header using trust-bound extraction.
 
     🛡️ Sentinel: This implements secure IP extraction to prevent IP spoofing attacks.
@@ -119,9 +117,7 @@ def extract_client_ip_from_forwarded(
                     return ip
             # All IPs are trusted proxies, return the leftmost (original client)
             # This shouldn't happen in normal operation
-            logger.warning(
-                "All IPs in X-Forwarded-For are trusted proxies, using leftmost"
-            )
+            logger.warning("All IPs in X-Forwarded-For are trusted proxies, using leftmost")
             return ips[0] if ips else fallback_ip
 
         # Method 2: Use trusted proxy count
@@ -258,9 +254,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Check rate limit for API endpoints."""
         path = request.url.path
 
-        # Check if path is protected.
-        # If protected_paths is empty, nothing is rate-limited (explicit opt-in).
-        is_protected = any(path.startswith(prefix) for prefix in self.protected_paths)
+        # Check if path is protected
+        is_protected = False
+        if not self.protected_paths:
+            # If no paths specified, protect everything? Or protect nothing?
+            # Usually strict default means protect everything.
+            # But here we want to protect specific API endpoints.
+            # Let's assume if list is empty, we don't limit (or user should provide paths).
+            # To be safe, if protected_paths is None/Empty in __init__, we default to [] which means effectively disabled
+            # unless we change default.
+            # Let's adhere to "explicit is better than implicit". If list is empty, nothing is protected.
+            pass
+        else:
+            for prefix in self.protected_paths:
+                if path.startswith(prefix):
+                    is_protected = True
+                    break
 
         if is_protected:
             # 🛡️ Sentinel: Support X-Forwarded-For for proxies (Render/Load Balancers)
@@ -272,7 +281,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # 🛡️ Sentinel: Use trust-bound IP extraction instead of naive ips[0]
                 # The leftmost IP is attacker-controllable; we must use trust-bound extraction.
                 client_ip = extract_client_ip_from_forwarded(
-                    forwarded=forwarded, fallback_ip=fallback_ip
+                    forwarded=forwarded,
+                    fallback_ip=fallback_ip
                 )
                 if client_ip is None:
                     client_ip = fallback_ip

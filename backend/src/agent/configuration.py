@@ -1,13 +1,13 @@
 import os
-from typing import Any
+from pydantic import BaseModel, Field
+from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
-from pydantic import BaseModel, Field
 
 from agent.models import (
-    DEFAULT_ANSWER_MODEL,
     DEFAULT_QUERY_MODEL,
     DEFAULT_REFLECTION_MODEL,
+    DEFAULT_ANSWER_MODEL,
 )
 
 
@@ -37,16 +37,12 @@ class Configuration(BaseModel):
 
     number_of_initial_queries: int = Field(
         default=3,
-        json_schema_extra={
-            "description": "The number of initial search queries to generate."
-        },
+        json_schema_extra={"description": "The number of initial search queries to generate."},
     )
 
     max_research_loops: int = Field(
         default=2,
-        json_schema_extra={
-            "description": "The maximum number of research loops to perform."
-        },
+        json_schema_extra={"description": "The maximum number of research loops to perform."},
     )
 
     require_planning_confirmation: bool = Field(
@@ -72,7 +68,7 @@ class Configuration(BaseModel):
 
     @classmethod
     def from_runnable_config(
-        cls, config: RunnableConfig | None = None
+        cls, config: Optional[RunnableConfig] = None
     ) -> "Configuration":
         """Create a Configuration instance from a RunnableConfig."""
         configurable = (
@@ -90,18 +86,14 @@ class Configuration(BaseModel):
                 field_type = field_info.annotation
 
                 # Handle boolean fields
-                if field_type == bool or (
-                    hasattr(field_type, "__origin__") and field_type.__origin__ == bool
-                ):
+                if field_type == bool or (hasattr(field_type, '__origin__') and field_type.__origin__ == bool):
                     if isinstance(value, str):
-                        value = value.lower() in ("true", "1", "yes", "on")
+                        value = value.lower() in ('true', '1', 'yes', 'on')
                     else:
                         value = bool(value)
 
                 # Handle integer fields
-                elif field_type == int or (
-                    hasattr(field_type, "__origin__") and field_type.__origin__ == int
-                ):
+                elif field_type == int or (hasattr(field_type, '__origin__') and field_type.__origin__ == int):
                     if isinstance(value, str):
                         value = int(value)
 
