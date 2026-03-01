@@ -22,16 +22,19 @@ logger = logging.getLogger(__name__)
     reraise=True,
 )
 def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
-    """Robustly calls an LLM client, handling different interfaces (invoke vs generate)
-    and applying retries.
-
-    Args:
-        llm_client: The LLM client object (LangChain, Gemini SDK, etc.).
-        prompt: The prompt string.
-        **kwargs: Additional arguments to pass to the client.
-
+    """
+    Call an LLM client and return its textual response, handling several client interfaces and triggering retry behavior on failure.
+    
+    Parameters:
+        llm_client (Any): LLM client instance or callable. Supports objects with `invoke(...)`, objects with `generate(...)`, or a callable that accepts (prompt, **kwargs).
+        prompt (str): The prompt or input text to send to the LLM.
+        **kwargs: Additional client-specific keyword arguments forwarded to the underlying call.
+    
     Returns:
-        str: The generated text content.
+        str: The response text produced by the LLM. If the response object exposes a `content` or `text` attribute, that value is returned as a string; otherwise the stringified response is returned.
+    
+    Raises:
+        Exception: Re-raises any exception from the underlying client call (a warning is logged before re-raising to allow external retry logic to run).
     """
     try:
         # 1. Try LangChain 'invoke' interface
@@ -71,6 +74,14 @@ class GemmaAdapter:
     def __init__(
         self, client: Any, tools: List[Any] | None = None, temperature: float = 0.7
     ):
+        """
+        Initialize the GemmaAdapter with an LLM client, optional tool definitions, and a default temperature.
+        
+        Parameters:
+            client (Any): The underlying LLM client or callable used to generate responses.
+            tools (List[Any] | None): Optional list of tool descriptors; when provided, they are formatted into a JSON schema and stored on the adapter. Defaults to no tools.
+            temperature (float): Sampling temperature to use for generation when not overridden in calls; defaults to 0.7.
+        """
         self.client = client
         self.tools = tools or []
         self.temperature = temperature
@@ -86,6 +97,16 @@ class GemmaAdapter:
 
     def invoke(self, input_data: Union[str, Any], **kwargs) -> Any:
         # Extract prompt from input (could be string or list of messages)
+        """
+        Invoke the adapter with user input and return an AIMessage containing the model response and any parsed tool calls.
+        
+        Parameters:
+            input_data (str | Any): The user prompt or message(s). May be a raw string, an object with a `content` attribute, or a sequence of message-like objects (the last message will be used).
+            **kwargs: Additional keyword arguments forwarded to the underlying LLM client (e.g., `temperature`); if `temperature` is not provided it defaults to the adapter's temperature.
+        
+        Returns:
+            AIMessage: An AIMessage whose `content` is the model's text. If tool calling is enabled and tool calls are detected in the response, the AIMessage will include a `tool_calls` field describing those calls.
+        """
         if isinstance(input_data, str):
             prompt = input_data
         elif hasattr(input_data, "content"):

@@ -64,35 +64,23 @@ def build_graph(
     parallel_search: bool = True,
     name: str = "custom-agent",
 ) -> StateGraph:
-    """Build a customized agent graph based on feature flags.
-
-    Args:
-        enable_planning: Include planning mode for user review (default: False)
-        enable_reflection: Include reflection loop for follow-up queries (default: True)
-        enable_validation: Include web result validation (default: True)
-        enable_compression: Include result compression (default: False)
-        enable_rag: Include RAG retrieval node (default: False)
-        enable_kg: Include Knowledge Graph enrichment (default: False)
-        parallel_search: Use parallel Send for web research (default: True)
-        name: Name for the compiled graph
-
+    """
+    Builds and compiles a StateGraph configured by feature flags to assemble an agent pipeline.
+    
+    Each boolean flag toggles a stage in the post-query pipeline (planning, reflection, validation, compression, RAG retrieval, KG enrichment). The `parallel_search` flag controls whether the search phase is invoked with a parallel/fan-out path or a direct sequential edge.
+    
+    Parameters:
+        enable_planning (bool): Include planning mode to allow user review/iterative planning.
+        enable_reflection (bool): Include a reflection step to re-evaluate search results before finalization.
+        enable_validation (bool): Include validation of web research results.
+        enable_compression (bool): Include a compression step for intermediate results.
+        enable_rag (bool): Include a retrieval-augmented generation (RAG) retrieval node when available.
+        enable_kg (bool): Include knowledge-graph enrichment when available.
+        parallel_search (bool): Use a parallel/fan-out path for web research instead of a single sequential edge.
+        name (str): Name assigned to the compiled graph.
+    
     Returns:
-        Compiled StateGraph ready for invocation
-
-    Example:
-        # Minimal graph (upstream-like)
-        graph = build_graph(enable_planning=False, enable_reflection=False)
-
-        # Standard planning graph
-        graph = build_graph(enable_planning=True, enable_reflection=True)
-
-        # Full enriched graph
-        graph = build_graph(
-            enable_planning=True,
-            enable_reflection=True,
-            enable_compression=True,
-            enable_kg=True,
-        )
+        StateGraph: A compiled StateGraph configured according to the provided flags.
     """
     builder = StateGraph(OverallState, config_schema=Configuration)
 

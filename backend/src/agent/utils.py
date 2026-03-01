@@ -8,7 +8,19 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 def get_research_topic(messages: List[AnyMessage]) -> str:
-    """Get the research topic from the messages."""
+    """
+    Derive a single research topic string from a sequence of chat messages.
+    
+    When given a single message, returns that message's content. When given multiple messages,
+    concatenates each message's content into a single string, prefixing HumanMessage entries
+    with "User: " and AIMessage entries with "Assistant: ", each followed by a newline.
+    
+    Parameters:
+        messages (List[AnyMessage]): Sequence of chat messages (e.g., HumanMessage and AIMessage).
+    
+    Returns:
+        str: The resulting research topic string assembled from the provided messages.
+    """
     # check if request has a history and combine the messages into a single string
     if len(messages) == 1:
         research_topic = messages[-1].content
@@ -23,8 +35,20 @@ def get_research_topic(messages: List[AnyMessage]) -> str:
 
 
 def resolve_urls(urls_to_resolve: List[Any], id: int) -> Dict[str, str]:
-    """Create a map of the vertex ai search urls (very long) to a short url with a unique id for each url.
-    Ensures each original URL gets a consistent shortened form while maintaining uniqueness.
+    """
+    Create stable short URLs for a list of Vertex AI Search results.
+    
+    Each unique original URL is mapped to a shortened form that includes the provided `id`
+    and the index of the URL's first occurrence. Duplicate original URLs receive the same
+    shortened value.
+    
+    Parameters:
+        urls_to_resolve (List[Any]): Sequence of result objects from which the original URL
+            is taken via `site.web.uri`.
+        id (int): Identifier to include in every shortened URL to provide contextual grouping.
+    
+    Returns:
+        Dict[str, str]: Mapping from each original long URL to its shortened URL.
     """
     prefix = "https://vertexaisearch.cloud.google.com/id/"
     urls = [site.web.uri for site in urls_to_resolve]
@@ -39,17 +63,22 @@ def resolve_urls(urls_to_resolve: List[Any], id: int) -> Dict[str, str]:
 
 
 def insert_citation_markers(text, citations_list):
-    """Inserts citation markers into a text string based on start and end indices.
-
-    Args:
-        text (str): The original text string.
-        citations_list (list): A list of dictionaries, where each dictionary
-                               contains 'start_index', 'end_index', and
-                               'segment_string' (the marker to insert).
-                               Indices are assumed to be for the original text.
-
+    """
+    Insert citation markers into text at the citations' end positions.
+    
+    Each citation in `citations_list` must include `start_index`, `end_index`, and `segments`. Each segment is a mapping with `label` and `short_url`. For a citation, this function appends a marker composed of its segments in order, where each segment is formatted as " [label](short_url)" and placed immediately after `end_index` in the original `text`. Citations that overlap or are out of order are handled by placing markers according to ascending `end_index`.
+    
+    Parameters:
+        text (str): The original text to annotate.
+        citations_list (List[dict]): List of citation dictionaries. Required keys:
+            - start_index (int): Start index of the cited span in `text`.
+            - end_index (int): End index of the cited span in `text`; marker is placed after this index.
+            - segments (List[dict]): Segment entries for the citation; each segment must contain:
+                - label (str): Display label for the segment.
+                - short_url (str): Shortened URL used in the marker.
+    
     Returns:
-        str: The text with citation markers inserted.
+        str: The input text with citation markers inserted at the specified end positions.
     """
     # ⚡ Bolt Optimization: Sort by end_index ascending for linear O(N) pass.
     # This replaces O(N^2) string concatenation loop with O(N) list construction.
@@ -83,33 +112,26 @@ def insert_citation_markers(text, citations_list):
 
 
 def get_citations(response, resolved_urls_map):
-    """Extracts and formats citation information from a Gemini model's response.
-
-    This function processes the grounding metadata provided in the response to
-    construct a list of citation objects. Each citation object includes the
-    start and end indices of the text segment it refers to, and a string
-    containing formatted markdown links to the supporting web chunks.
-
-    Args:
-        response: The response object from the Gemini model, expected to have
-                  a structure including `candidates[0].grounding_metadata`.
-                  It also relies on a `resolved_map` being available in its
-                  scope to map chunk URIs to resolved URLs.
-
+    """
+    Builds a list of citation entries extracted from a Gemini model response's grounding metadata.
+    
+    Parameters:
+        response: The Gemini response object expected to contain `candidates[0].grounding_metadata`
+            with `grounding_supports` and `grounding_chunks`.
+        resolved_urls_map (dict): Mapping from original chunk URIs to resolved or shortened URLs.
+    
     Returns:
-        list: A list of dictionaries, where each dictionary represents a citation
-              and has the following keys:
-              - "start_index" (int): The starting character index of the cited
-                                     segment in the original text. Defaults to 0
-                                     if not specified.
-              - "end_index" (int): The character index immediately after the
-                                   end of the cited segment (exclusive).
-              - "segments" (list[str]): A list of individual markdown-formatted
-                                        links for each grounding chunk.
-              - "segment_string" (str): A concatenated string of all markdown-
-                                        formatted links for the citation.
-              Returns an empty list if no valid candidates or grounding supports
-              are found, or if essential data is missing.
+        list: A list of citation dictionaries. Each dictionary contains:
+            - "start_index" (int): Starting character index of the cited segment (defaults to 0 when missing).
+            - "end_index" (int): Ending character index of the cited segment (must be present for a citation to be included).
+            - "segments" (list[dict]): List of segment objects for the grounding chunks; each segment dict has:
+                - "label" (str or None): A trimmed title used as the segment label (file extension removed when present).
+                - "short_url" (str or None): The resolved/shortened URL from `resolved_urls_map` for the chunk's URI.
+                - "value" (str): The original chunk URI.
+        Returns an empty list if the response lacks valid candidates, grounding supports, or if no valid citations are found.
+    
+    Notes:
+        - Malformed or incomplete grounding supports/chunks are skipped rather than raising errors.
     """
     citations = []
 
@@ -180,8 +202,16 @@ def get_citations(response, resolved_urls_map):
 def join_and_truncate(
     strings: List[str], max_length: int, separator: str = "\n\n"
 ) -> str:
-    """Efficiently joins a list of strings up to a maximum length.
-    Avoids creating the full joined string in memory if it exceeds the limit.
+    """
+    Join a list of strings into one string, stopping and truncating when adding another segment would exceed max_length.
+    
+    Parameters:
+        strings (List[str]): Strings to join in order.
+        max_length (int): Maximum allowed length of the returned string.
+        separator (str): Separator placed between joined strings.
+    
+    Returns:
+        str: Joined string with length <= max_length; the final appended segment may be truncated to fit.
     """
     if not strings:
         return ""
@@ -213,8 +243,17 @@ def join_and_truncate(
 # Since config (model, temp) is usually stable within a session, we can reuse instances.
 @lru_cache(maxsize=16)
 def get_cached_llm(model: str, temperature: float) -> Any:
-    """Returns a configured LLM client.
-    Supports Gemini (native) and Gemma (via GemmaAdapter).
+    """
+    Selects and returns a configured LLM client implementation based on the model name.
+    
+    If the model name contains the substring "gemma" (case-insensitive), returns a GemmaAdapter wrapping a Gemma client; otherwise returns a ChatGoogleGenerativeAI configured with the provided model and temperature.
+    
+    Parameters:
+        model (str): Model identifier string; the presence of "gemma" (case-insensitive) selects the Gemma adapter path.
+        temperature (float): Sampling temperature to configure on the returned client.
+    
+    Returns:
+        An LLM client instance: a `GemmaAdapter` when `model` indicates Gemma, or a `ChatGoogleGenerativeAI` otherwise.
     """
     is_gemma = "gemma" in model.lower()
 
@@ -237,17 +276,16 @@ def get_cached_llm(model: str, temperature: float) -> Any:
 def has_fuzzy_match(
     keyword: str, candidates: Iterable[str], cutoff: float = 0.8
 ) -> bool:
-    """Checks if there is any candidate in the list that has a fuzzy match ratio >= cutoff
-    with the keyword. Returns True immediately on the first match.
-    Avoids sorting overhead of get_close_matches.
-
-    Args:
-        keyword: The word to match against.
-        candidates: Iterable of words to search in.
-        cutoff: Minimum similarity ratio (0.0 to 1.0).
-
+    """
+    Determine whether any candidate string fuzzy-matches the keyword at or above the given similarity cutoff.
+    
+    Parameters:
+        keyword (str): The string to compare against.
+        candidates (Iterable[str]): Iterable of candidate strings to test.
+        cutoff (float): Minimum similarity ratio between 0.0 and 1.0 required to count as a match.
+    
     Returns:
-        True if a match is found, False otherwise.
+        True if a candidate meets or exceeds the cutoff, False otherwise.
     """
     # Reuse SequenceMatcher instance for efficiency
     matcher = difflib.SequenceMatcher(b=keyword)

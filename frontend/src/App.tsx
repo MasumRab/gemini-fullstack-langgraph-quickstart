@@ -4,6 +4,11 @@ import { Button } from '@/components/ui/button'
 import { useAgentState } from '@/hooks/useAgentState'
 import { ArtifactView } from '@/components/ArtifactView'
 
+/**
+ * Root application component that renders the main chat interface and an optional artifact panel.
+ *
+ * @returns The root React element containing the main content area (welcome screen, error view, or chat messages) and an artifact panel when an artifact is available.
+ */
 export default function App() {
   const {
     thread,

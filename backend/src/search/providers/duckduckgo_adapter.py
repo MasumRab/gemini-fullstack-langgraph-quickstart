@@ -24,10 +24,19 @@ class DuckDuckGoAdapter(SearchProvider):
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """Execute search.
-
-        Arguments:
-            tuned (bool): If False, clears the time_range to relax search constraints.
+        """
+        Perform a DuckDuckGo web search and return normalized results.
+        
+        Parameters:
+            query (str): Search keywords.
+            max_results (int): Maximum number of results to return.
+            region (str | None): DDG region code to use; defaults to "wt-wt" when None or not provided.
+            time_range (str | None): DDG timelimit value ('d', 'w', 'm', 'y') to restrict results by age.
+            safe_search (bool): If True enable DDG safesearch; if False disable it.
+            tuned (bool): When False, ignore `time_range` to relax temporal constraints (used for retries/fallbacks).
+        
+        Returns:
+            List[SearchResult]: A list of SearchResult objects with `title`, `url`, `content`, and `source` set to "duckduckgo".
         """
         # specific DDG region mapping if needed
         ddg_region = region if region else "wt-wt"

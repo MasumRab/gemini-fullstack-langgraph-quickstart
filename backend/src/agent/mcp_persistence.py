@@ -14,13 +14,14 @@ mcp = FastMCP("persistence")
 
 @mcp.tool()
 def load_thread_plan(thread_id: str) -> Dict[str, Any] | None:
-    """Loads the plan and artifacts for a specific thread from the local file system.
-
-    Args:
-        thread_id: The unique identifier for the thread/conversation.
-
+    """
+    Loads the saved plan and associated artifacts for the given thread.
+    
+    Parameters:
+        thread_id (str): Unique identifier of the thread or conversation.
+    
     Returns:
-        The plan data (todo_list, artifacts) or None if not found.
+        Dict[str, Any] | None: The saved plan data (expected to include keys 'todo_list' and 'artifacts') if found, or `None` if no plan exists or an error occurred.
     """
     try:
         return load_plan(thread_id)

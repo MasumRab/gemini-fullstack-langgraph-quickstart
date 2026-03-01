@@ -3,6 +3,23 @@ import { useStream } from '@langchain/langgraph-sdk/react'
 import type { Message } from '@langchain/langgraph-sdk'
 import { ProcessedEvent } from '@/components/ActivityTimeline'
 
+/**
+ * Manages the agent streaming thread and related UI/state (processed events, planning context, artifacts, history, and controls) for interactive agent sessions.
+ *
+ * @returns An object exposing the agent state and control handlers:
+ * - `thread`: the streaming thread instance used for message exchange and streaming updates
+ * - `processedEventsTimeline`: accumulated timeline of processed events emitted by the agent
+ * - `historicalActivities`: map of finalized message IDs to their recorded processed event timelines
+ * - `planningContext`: current planning steps, status, and feedback (or `null` when no planning context exists)
+ * - `artifacts`: map of artifact entries produced by the agent
+ * - `isArtifactOpen`: boolean flag indicating whether the artifact UI is open
+ * - `error`: current error message string or `null` if none
+ * - `scrollAreaRef`: ref to the scrollable container element used for auto-scrolling
+ * - `handleSubmit(submittedInputValue, effort, model)`: submit a new user input with effort/model configuration
+ * - `handlePlanningCommand(command)`: submit a planning command while preserving last used config
+ * - `handleCancel()`: stop the current thread and reload the page
+ * - `setIsArtifactOpen`: setter to toggle artifact UI visibility
+ */
 export function useAgentState() {
   const [processedEventsTimeline, setProcessedEventsTimeline] = useState<ProcessedEvent[]>([])
   const [historicalActivities, setHistoricalActivities] = useState<

@@ -74,7 +74,17 @@ class Configuration(BaseModel):
     def from_runnable_config(
         cls, config: RunnableConfig | None = None
     ) -> "Configuration":
-        """Create a Configuration instance from a RunnableConfig."""
+        """
+        Builds a Configuration from a RunnableConfig mapping and environment variables.
+        
+        Reads values from config["configurable"] if provided, otherwise from environment variables named by the uppercase field names; values from the configurable mapping take precedence. String values for boolean fields are interpreted as true for "true", "1", "yes", or "on" (case-insensitive); string values for integer fields are converted with int(). Invalid numeric conversions will raise the usual Python errors.
+        
+        Parameters:
+            config (RunnableConfig | None): Optional runnable configuration containing a "configurable" mapping of field names to values.
+        
+        Returns:
+            Configuration: A Configuration instance populated from the provided config and environment.
+        """
         configurable = (
             config["configurable"] if config and "configurable" in config else {}
         )

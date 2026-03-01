@@ -25,6 +25,14 @@ from agent.state import OverallState
     outputs=["artifacts"],
 )
 async def kg_enrich(state: OverallState, config: RunnableConfig) -> OverallState:
+    """
+    Enriches the knowledge graph using allowlisted web research results via Cognee.
+    
+    When enabled and Cognee is available, inspects results from `validated_web_research_result` or `web_research_result`, extracts a URL and domain from each result, and sends the result text to Cognee for enrichment for domains that appear in the configured allowlist. Performs per-item error handling and logs progress; enrichment is performed as a side effect and no artifacts are returned.
+    
+    Returns:
+        An empty dict; artifacts are not returned from this function and enrichment occurs as a side effect.
+    """
     from config.app_config import config as app_config
 
     if not app_config.kg_enabled:

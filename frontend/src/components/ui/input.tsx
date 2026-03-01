@@ -2,6 +2,15 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
+/**
+ * Renders a styled input element with the component's base classes and accessibility states.
+ *
+ * The provided `className` is merged with the component's default Tailwind classes; any other props are forwarded to the underlying input element.
+ *
+ * @param className - Additional CSS classes to merge with the component's default classes
+ * @param type - The input's `type` attribute (e.g., "text", "password")
+ * @returns The rendered input element
+ */
 function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
   return (
     <input

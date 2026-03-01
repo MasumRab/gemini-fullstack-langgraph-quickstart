@@ -3,6 +3,13 @@ import * as TabsPrimitive from '@radix-ui/react-tabs'
 
 import { cn } from '@/lib/utils'
 
+/**
+ * Renders a tabs root container with default layout styling.
+ *
+ * @param className - Optional additional CSS class names to merge with the component's defaults
+ * @param props - Additional props are forwarded to the underlying root element
+ * @returns The rendered tabs root element
+ */
 function Tabs({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Root>) {
   return (
     <TabsPrimitive.Root
@@ -13,6 +20,13 @@ function Tabs({ className, ...props }: React.ComponentProps<typeof TabsPrimitive
   )
 }
 
+/**
+ * Render a styled Tabs list wrapper that applies a data-slot and merges default classes with any provided classes.
+ *
+ * @param className - Additional CSS classes that are merged with the component's default list styles
+ * @param props - Additional props forwarded to the underlying Radix `TabsPrimitive.List` component
+ * @returns The rendered `TabsPrimitive.List` element with `data-slot="tabs-list"` and combined class names
+ */
 function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.List>) {
   return (
     <TabsPrimitive.List
@@ -26,6 +40,13 @@ function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimi
   )
 }
 
+/**
+ * Render a styled tab trigger element with merged classes and a data-slot attribute.
+ *
+ * @param className - Additional class names to merge with the component's default styles.
+ * @param props - Remaining props forwarded to the underlying Trigger primitive.
+ * @returns The tab trigger element configured with data-slot="tabs-trigger" and the combined className.
+ */
 function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
   return (
     <TabsPrimitive.Trigger
@@ -39,6 +60,13 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
   )
 }
 
+/**
+ * Render the tab content element with default layout classes and a data-slot for slot targeting.
+ *
+ * @param className - Additional CSS class names appended to the default content classes.
+ * @param props - Remaining props forwarded to the underlying TabsPrimitive.Content component.
+ * @returns The rendered tab content element.
+ */
 function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Content>) {
   return (
     <TabsPrimitive.Content

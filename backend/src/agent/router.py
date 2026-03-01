@@ -16,12 +16,27 @@ from agent.state import OverallState
 
 
 def router_node(state: OverallState, config: RunnableConfig):
-    """Routes to the appropriate sub-agent based on configuration."""
+    """
+    Extract the messages list from the overall state for downstream routing.
+    
+    Returns:
+        dict: A mapping with the key "messages" whose value is the state's messages list, or an empty list if the state has no messages.
+    """
     # We simply pass the state through; routing happens in the conditional edge.
     return {"messages": state.get("messages", [])}
 
 
 def select_agent(state: OverallState, config: RunnableConfig) -> str:
+    """
+    Selects which agent node variant to route to based on the runnable configuration.
+    
+    Parameters:
+        state (OverallState): Current overall state (not used for selection).
+        config (RunnableConfig): Runnable configuration from which `agent_mode` is read.
+    
+    Returns:
+        str: The target node name: `"linear_agent"` if `agent_mode` is `"linear"`, `"supervisor_agent"` if `agent_mode` is `"supervisor"`, and `"parallel_agent"` otherwise.
+    """
     configurable = Configuration.from_runnable_config(config)
     # Default to parallel if not specified
     mode = getattr(configurable, "agent_mode", "parallel")

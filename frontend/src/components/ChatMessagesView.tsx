@@ -135,7 +135,13 @@ interface HumanMessageBubbleProps {
 }
 
 // ⚡ Bolt Optimization: Custom comparator to ignore object reference changes
-// when content and ID are identical (crucial for streaming lists).
+/**
+ * Determines whether two HumanMessageBubbleProps objects are equivalent for rendering decisions.
+ *
+ * Compares the message `id`, `content`, and `type`, and checks `mdComponents` by reference.
+ *
+ * @returns `true` if `prev` and `next` have the same message id, content, type, and `mdComponents` reference; `false` otherwise.
+ */
 function areHumanMessageBubblePropsEqual(
   prev: HumanMessageBubbleProps,
   next: HumanMessageBubbleProps
@@ -179,7 +185,15 @@ interface AiMessageBubbleProps {
 
 // ⚡ Bolt Optimization: Custom comparator for AI bubbles.
 // Explicitly checks primitive values and specific props to avoid re-rendering
-// when the parent passes new message objects with identical content.
+/**
+ * Determines whether two AiMessageBubbleProps objects are equivalent so the AI message bubble can skip re-rendering.
+ *
+ * Compares the message identity and content, visible/loading/copy state, activity lists, and stable references for the copy handler and markdown components.
+ *
+ * @param prev - The previous props
+ * @param next - The next props
+ * @returns `true` if the compared prop fields are equal and a re-render can be skipped, `false` otherwise.
+ */
 function areAiMessageBubblePropsEqual(prev: AiMessageBubbleProps, next: AiMessageBubbleProps) {
   return (
     prev.message.id === next.message.id &&
@@ -263,6 +277,17 @@ interface MessageItemProps {
   mdComponents: typeof mdComponents
 }
 
+/**
+ * Determine whether two MessageItemProps objects are equivalent for the purpose of memoized rendering.
+ *
+ * Compares the message identity and content, message type, last/loading flags, the copied message id,
+ * the liveActivity reference, the historical activity specific to this message id, and the references
+ * for handleCopy and mdComponents.
+ *
+ * @param prev - Previous props
+ * @param next - Next props
+ * @returns `true` if all compared fields are equal and a re-render can be skipped, `false` otherwise.
+ */
 function areMessageItemPropsEqual(prev: MessageItemProps, next: MessageItemProps) {
   // ⚡ Bolt Optimization: Check specific activity for this message instead of whole map.
   // This prevents re-renders when other messages update their activity.
@@ -465,6 +490,21 @@ interface ChatMessagesViewProps {
   onSendCommand?: (command: string) => void
 }
 
+/**
+ * Render the chat messages interface, including message bubbles, activity timelines,
+ * a message input form, and optional planning controls.
+ *
+ * @param messages - Array of chat messages to display in order.
+ * @param isLoading - Whether the chat is currently processing a response; controls loading UI for the last message.
+ * @param scrollAreaRef - Ref attached to the scrollable messages container.
+ * @param onSubmit - Called when the input form is submitted with (inputValue, effort, model).
+ * @param onCancel - Called when the input form's cancel action is triggered.
+ * @param liveActivityEvents - Activity events associated with the currently streaming/last message.
+ * @param historicalActivities - Mapping of message IDs to their past activity events.
+ * @param planningContext - Optional planning context used to render the planning status panel.
+ * @param onSendCommand - Optional handler invoked when a planning action command is issued.
+ * @returns A React element that displays the chat history, activity timelines, input form, and planning UI when provided.
+ */
 export function ChatMessagesView({
   messages,
   isLoading,

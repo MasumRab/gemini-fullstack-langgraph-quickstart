@@ -58,6 +58,16 @@ class DeepSearchRAG:
         chunk_overlap: int = 50,
         max_context_chunks: int = 10,
     ):
+        """
+        Initialize the DeepSearchRAG instance, loading the embedding model, selecting and initializing vector stores (FAISS and optionally Chroma) according to configuration, creating a consistent embedding wrapper for Chroma, and configuring the text splitter and subgoal evidence tracking.
+        
+        Parameters:
+            config (Any | None): Optional configuration object to override the global app config; expects attributes like `rag_store`, `dual_write`, and optionally `chroma_persist_path`.
+            embedding_model (str): SentenceTransformers model identifier to load for embeddings.
+            chunk_size (int): Maximum characters per text chunk produced by the splitter.
+            chunk_overlap (int): Number of overlapping characters between adjacent chunks.
+            max_context_chunks (int): Maximum number of evidence chunks to include when building synthesis context.
+        """
         self.embedding_model = embedding_model
         # Use provided config or fallback to global
         from config.app_config import config as global_config
@@ -109,10 +119,25 @@ class DeepSearchRAG:
 
                 class ConsistentEmbeddingFunction:
                     def __init__(self, model):
+                        """
+                        Initialize the instance with the provided model used for downstream operations.
+                        
+                        Parameters:
+                            model: The model object to use (e.g., a machine-learning model or encoder). It should implement the interface expected by this class for inference or embedding operations.
+                        """
                         self.model = model
 
                     def __call__(self, input):
                         # Ensure input is list of strings
+                        """
+                        Generate embeddings for a string or list of strings using the wrapped model.
+                        
+                        Parameters:
+                            input (str | list[str]): A single text string or a list of text strings to encode.
+                        
+                        Returns:
+                            list[list[float]]: A list of embedding vectors (one vector per input string), each vector represented as a list of floats.
+                        """
                         if isinstance(input, str):
                             input = [input]
                         # Return list of lists of floats
@@ -145,7 +170,22 @@ class DeepSearchRAG:
     def retrieve_from_chroma(
         self, query: str, top_k: int, query_embedding: List[float] | None = None
     ) -> List[Tuple[EvidenceChunk, float]]:
-        """Retrieve directly from Chroma store if enabled."""
+        """
+        Retrieve relevant evidence from the Chroma vector store for a textual query.
+        
+        If a precomputed embedding is provided, it will be used instead of encoding the query.
+        
+        Parameters:
+            query (str): Text query used to find relevant evidence.
+            top_k (int): Maximum number of results to return.
+            query_embedding (List[float] | None): Optional precomputed embedding for `query`; must match the embedding dimensionality used by the store.
+        
+        Returns:
+            List[Tuple[EvidenceChunk, float]]: A list of (evidence, score) tuples ordered by the store's relevance ranking. `score` is a relevance/similarity value where larger indicates more relevant matches.
+        
+        Raises:
+            ValueError: If the Chroma store is not enabled.
+        """
         if not self.use_chroma:
             raise ValueError("Chroma not enabled")
 
@@ -176,8 +216,18 @@ class DeepSearchRAG:
     def ingest_research_results(
         self, documents: List[Dict], subgoal_id: str, metadata: Dict | None = None
     ) -> List[int]:
-        """Ingest web search results into the RAG system.
-        Supports dual-write.
+        """
+        Ingests a list of web documents into the RAG stores by splitting each document into text chunks, encoding them in a single batch, and writing the resulting evidence into FAISS and/or Chroma according to the instance configuration.
+        
+        Each chunk receives a deterministic chunk_id (prefixed by the provided subgoal_id), associated metadata, a timestamp, and a relevance_score derived from the source document. The method updates the subgoal-to-evidence mapping for FAISS and performs batch inserts to the configured stores.
+        
+        Parameters:
+            documents (List[Dict]): List of document objects; each document should contain at least a "content" string. Optional keys used: "url" and "score".
+            subgoal_id (str): Identifier for the subgoal to which these evidence chunks belong.
+            metadata (Dict | None): Optional metadata to attach to every ingested chunk.
+        
+        Returns:
+            List[int]: List of integer IDs assigned to the ingested chunks in the FAISS store. Returns an empty list if no chunks were ingested into FAISS.
         """
         ingested_ids = []
         chroma_chunks = []
@@ -277,8 +327,20 @@ class DeepSearchRAG:
         min_score: float = 0.0,
         query_embedding: List[float] | None = None,
     ) -> List[Tuple[EvidenceChunk, float]]:
-        """Retrieve relevant evidence.
-        If dual-write is on, respects RAG_STORE preference for retrieval.
+        """
+        Retrieve evidence chunks relevant to the given query using the configured vector store.
+        
+        The method will prefer the configured read store (Chroma when selected and available) and fall back to the FAISS index when appropriate. Returned results are sorted by descending similarity.
+        
+        Parameters:
+            query (str): The search query text.
+            top_k (int): Maximum number of results to return.
+            subgoal_filter (str | None): If provided, only return evidence whose subgoal_id equals this value.
+            min_score (float): Minimum similarity score (0.0–1.0) required for an item to be included.
+            query_embedding (List[float] | None): Precomputed embedding for `query`; used directly if provided.
+        
+        Returns:
+            List[Tuple[EvidenceChunk, float]]: A list of (evidence_chunk, similarity) tuples sorted by similarity (highest first). The similarity is a float in the range [0.0, 1.0].
         """
         # Decide which store to read from
         read_source = self.config.rag_store
@@ -326,24 +388,30 @@ class DeepSearchRAG:
         relevance_threshold: float = 0.5,
         diversity_weight: float = 0.3,
     ) -> Dict:
-        """Audit and prune low-relevance evidence for a specific subgoal.
-
-        Currently optimized for FAISS. If Chroma-only, this would need a Chroma-specific
-        implementation using `get` and `delete`.
-
-        IMPORTANT: This implements a SOFT-DELETE pattern:
-        - Pruned items are removed from subgoal_evidence_map (excluded from future retrievals)
-        - Items remain in doc_store and FAISS index (memory not reclaimed)
-        - This is intentional for performance (avoiding expensive index rebuilds)
-        - For long-running sessions, consider implementing hard delete with index rebuild
-
-        Args:
-            subgoal_id: ID of the subgoal to audit
-            relevance_threshold: Minimum score to keep (0.0-1.0)
-            diversity_weight: Weight for diversity scoring (not currently used)
-
+        """
+        Prune low-relevance evidence for a given subgoal using a soft-delete policy.
+        
+        Performs a relevance-based audit of evidence associated with subgoal_id and removes
+        (lowers visibility of) items whose relevance score is below relevance_threshold.
+        This routine applies to the FAISS-backed store; when FAISS is not enabled the
+        operation is skipped.
+        
+        Parameters:
+            subgoal_id (str): Identifier of the subgoal whose evidence should be audited.
+            relevance_threshold (float): Minimum relevance score (0.0-1.0) required for an
+                evidence item to be retained.
+            diversity_weight (float): Weight intended for diversity scoring (present for API
+                compatibility; not used by the current implementation).
+        
         Returns:
-            Dict with pruning statistics
+            dict: A statistics/result object. On success contains:
+                - status: "success"
+                - original_count: int, number of evidence items before pruning
+                - kept_count: int, number of items retained
+                - pruned_count: int, number of items removed from the subgoal mapping
+                - avg_score: float, average relevance score of retained items
+            If skipped or no evidence, contains a status and a reason (e.g., "pruning_not_implemented_for_chroma"
+            or "no_evidence").
         """
         if not self.use_faiss:
             return {"status": "skipped", "reason": "pruning_not_implemented_for_chroma"}
@@ -395,6 +463,23 @@ class DeepSearchRAG:
         llm_client,
         confidence_threshold: float = 0.7,
     ) -> Dict:
+        """
+        Assess whether retrieved evidence sufficiently covers a research sub-goal by querying an LLM verifier.
+        
+        Parameters:
+            subgoal (str): The research sub-goal to verify.
+            subgoal_id (str): Identifier used to filter evidence relevant to the sub-goal.
+            llm_client: LLM client or interface used by the internal LLM call function.
+            confidence_threshold (float): Minimum confidence (0.0–1.0) considered sufficient for verification.
+        
+        Returns:
+            dict: Verification result containing:
+                - `verified` (bool): `true` if the evidence is judged to cover the sub-goal, `false` otherwise.
+                - `confidence` (float): Confidence score between 0.0 and 1.0.
+                - `reasoning` (str, optional): Explanatory text from the verifier when provided.
+                - `evidence_count` (int): Number of evidence items evaluated.
+                - `reason` (str, optional): Short machine-readable reason for failure (e.g., "no_evidence" or an error tag).
+        """
         evidence_list = self.retrieve(query=subgoal, subgoal_filter=subgoal_id, top_k=5)
         if not evidence_list:
             return {"verified": False, "confidence": 0.0, "reason": "no_evidence"}
@@ -445,6 +530,19 @@ Respond in JSON format:
     def get_context_for_synthesis(
         self, query: str, max_tokens: int = 4000, subgoal_ids: List[str] | None = None,
     ) -> str:
+        """
+        Assembles a deduplicated, relevance-ordered contextual string of evidence to provide as synthesis input.
+        
+        Retrieves relevant evidence chunks for the given query (optionally restricted to the supplied subgoal IDs), removes duplicate chunk contents, orders the remaining chunks by their relevance score (highest first), and concatenates them into a single context string. Each chunk is prefixed with a "[Source: URL]" header and chunks are separated by "\n---\n". The returned context is truncated to approximately max_tokens (enforced by a character cap of max_tokens * 4) to keep the payload within the requested size.
+        
+        Parameters:
+            query (str): The text query used to retrieve relevant evidence.
+            max_tokens (int): Target maximum tokens for the returned context; the function enforces an approximate character cap of max_tokens * 4.
+            subgoal_ids (List[str] | None): Optional list of subgoal IDs to restrict retrieval to those subgoals; if omitted, evidence is retrieved across all subgoals.
+        
+        Returns:
+            str: A concatenated, source-labeled context string composed of the highest-relevance, deduplicated evidence chunks, truncated to fit the token-based size limit.
+        """
         all_chunks = []
 
         # ⚡ Bolt Optimization: Pre-compute query embedding once for all subgoals
@@ -503,6 +601,15 @@ Respond in JSON format:
         return "\n---\n".join(context_parts)
 
     def export_state(self) -> Dict:
+        """
+        Export a summary of the RAG instance's current storage state.
+        
+        Returns:
+            state (Dict): Dictionary with keys:
+                - `doc_count` (int): Number of documents stored in the active vector store (FAISS or Chroma).
+                - `subgoal_map` (Dict[str, int]): Mapping of subgoal_id to count of evidence items associated with that subgoal.
+                - `next_id` (int): Next available numeric ID for FAISS entries (0 if not applicable).
+        """
         count = 0
         if self.use_faiss:
             count = len(self.doc_store)
@@ -527,6 +634,12 @@ rag_config = _RAGConfig()
 
 
 def is_rag_enabled() -> bool:
+    """
+    Indicates whether the retrieval-augmented generation (RAG) system is enabled.
+    
+    Returns:
+        `true` if RAG is enabled, `false` otherwise.
+    """
     return True
 
 
@@ -536,12 +649,13 @@ class Resource:
 
 
 def create_rag_tool(resources):
-    """Legacy compatibility stub - returns None.
-
-    TODO(priority=Low, complexity=Medium): [rag:legacy] Replace stub with real implementation
-    - Migrate callers to use DeepSearchRAG directly
-    - Remove this function once all callers are updated
-    - Update tests that mock this function
+    """
+    Compatibility stub preserving the legacy create_rag_tool API while performing no operation.
+    
+    This function accepts a legacy `resources` argument, emits a warning, and returns None to maintain backward compatibility with callers that still invoke create_rag_tool.
+    
+    Parameters:
+        resources: Legacy resources object or mapping expected by older callers; this parameter is unused.
     """
     logger.warning("Using legacy create_rag_tool stub")
     return None

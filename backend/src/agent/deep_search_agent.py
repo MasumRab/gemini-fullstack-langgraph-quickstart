@@ -31,6 +31,11 @@ Notes:
 class WebSearcher:
     """Wrapper for web search."""
     def __init__(self):
+        """
+        Initialize the web search wrapper and attempt to create a TavilySearchResults tool.
+        
+        Attempts to instantiate TavilySearchResults(max_results=3) and assigns it to `self.tool`. If the TavilySearchResults import is unavailable or initialization fails, `self.tool` is set to `None` and a warning is logged. Requires the TAVILY_API_KEY environment variable for successful initialization.
+        """
         try:
             # Requires TAVILY_API_KEY environment variable
             self.tool = TavilySearchResults(max_results=3)
@@ -41,7 +46,15 @@ class WebSearcher:
             self.tool = None
 
     def search(self, query: str) -> List[Dict]:
-        """Execute a search query."""
+        """
+        Perform a web search for the given query and return collected results.
+        
+        Parameters:
+        	query (str): The search query string.
+        
+        Returns:
+        	List[Dict]: A list of result dictionaries, each typically containing keys like `'url'` and `'content'`. If the underlying search tool is not initialized, returns a single dummy result. If an error occurs during searching, returns an empty list.
+        """
         if not self.tool:
             logger.warning("Search tool not initialized. Returning dummy results.")
             return [{"url": "dummy", "content": f"Dummy result for '{query}'"}]
@@ -55,12 +68,25 @@ class DeepResearchAgent:
     """A minimal, standalone implementation of a deep research workflow."""
 
     def __init__(self, llm_client: Any):
+        """
+        Create a DeepResearchAgent with a provided LLM client, a WebSearcher instance, and a default recursion depth.
+        
+        Parameters:
+            llm_client (Any): Language model client used to generate planning and synthesis responses.
+        """
         self.llm = llm_client
         self.searcher = WebSearcher()
         self.max_depth = 2
 
     async def _plan_queries(self, topic: str) -> List[str]:
-        """Generate search queries for the topic."""
+        """
+        Create a short list of focused web search queries for a research topic.
+        
+        Attempts to produce a JSON list of 2–4 actionable search queries using the research planning prompt. If the LLM output cannot be parsed or an error occurs, returns a single-item list containing the original `topic`.
+        
+        Returns:
+            List[str]: Search query strings; typically 2–4 actionable queries. Returns `[topic]` as a fallback if planning or parsing fails.
+        """
         try:
             prompt = ChatPromptTemplate.from_messages([
                 ("system", RESEARCH_PLAN_PROMPT),
@@ -82,7 +108,16 @@ class DeepResearchAgent:
             return [topic]
 
     async def _research_topic(self, topic: str, depth: int = 1) -> str:
-        """Recursively research a topic."""
+        """
+        Gather notes for a topic by planning search queries and collecting results from the web searcher.
+        
+        Parameters:
+        	topic (str): The research subject or query to investigate.
+        	depth (int): Current recursion depth; used to stop deeper research when it exceeds the agent's max_depth.
+        
+        Returns:
+        	notes (str): Concatenated notes where each entry contains a source URL and its content. If the provided depth is greater than the agent's max_depth, returns the literal string "Max depth reached.".
+        """
         logger.info(f"Researching at depth {depth}: {topic}")
         if depth > self.max_depth:
             return "Max depth reached."
@@ -100,7 +135,18 @@ class DeepResearchAgent:
         return joined_notes
 
     async def run(self, topic: str, config: Optional[RunnableConfig] = None) -> str:
-        """Execute the full deep research workflow."""
+        """
+        Run the end-to-end deep research workflow for a given topic.
+        
+        Performs planning, web search note collection, and synthesis to produce a single comprehensive report.
+        
+        Parameters:
+            topic (str): The research subject or query to investigate.
+            config (Optional[RunnableConfig]): Optional runtime configuration that may influence LLM or workflow behavior.
+        
+        Returns:
+            report (str): A synthesized, structured research report generated from the gathered notes.
+        """
         logger.info(f"Starting deep research on: {topic}")
 
         # 1. Gather notes
@@ -119,6 +165,12 @@ class DeepResearchAgent:
 # Example usage function
 async def main():
     # To run this, you need GEMINI_API_KEY and TAVILY_API_KEY
+    """
+    Demonstrates usage of DeepResearchAgent to run a sample deep-research workflow and print the synthesized report.
+    
+    Runs a simple example that instantiates a Google GenAI LLM, creates a DeepResearchAgent, performs research on the given sample topic, and prints the final synthesized report. Requires the environment variables GEMINI_API_KEY and TAVILY_API_KEY to be set for the LLM and web search tool to function.
+    
+    """
     from langchain_google_genai import ChatGoogleGenerativeAI
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro")
 

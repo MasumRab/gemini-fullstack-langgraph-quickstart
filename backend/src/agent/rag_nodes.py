@@ -34,7 +34,14 @@ logger = logging.getLogger(__name__)
 
 
 def _lazy_import_state_utils():
-    """Lazy import helpers to avoid circular dependencies."""
+    """
+    Lazily import and return state-related utilities to avoid circular imports.
+    
+    Returns:
+        tuple: (OverallState, create_rag_resources, get_research_topic) —
+        the OverallState class, a function to create RAG resources from state,
+        and a function that extracts the research topic from messages.
+    """
     from agent.state import OverallState, create_rag_resources  # type: ignore
     from agent.utils import get_research_topic  # type: ignore
 
@@ -42,7 +49,20 @@ def _lazy_import_state_utils():
 
 
 def rag_retrieve(state: Dict[str, Any], config: RunnableConfig) -> Dict[str, Any]:
-    """Retrieve documents from configured RAG sources."""
+    """
+    Retrieve relevant documents using configured RAG resources for the current research topic.
+    
+    Parameters:
+        state (dict): Runtime state containing at least:
+            - "messages": list of conversation messages used to derive the research topic.
+            - "rag_resources" (optional): list of resource URIs to restrict retrieval.
+        config (RunnableConfig): Execution configuration for the runnable (not used to determine return shape).
+    
+    Returns:
+        dict: A dictionary with:
+            - "rag_documents" (list[str]): Retrieved document texts; empty if none found or on error.
+            - "rag_enabled" (bool): `True` if RAG functionality was available/enabled, `False` if RAG is disabled.
+    """
     _, create_rag_resources, get_research_topic = _lazy_import_state_utils()
 
     logger.info("Starting RAG retrieval")
@@ -96,12 +116,28 @@ def rag_retrieve(state: Dict[str, Any], config: RunnableConfig) -> Dict[str, Any
 
 
 def has_rag_resources(state: Dict[str, Any]) -> bool:
-    """Check if explicit RAG resources are configured in state."""
+    """
+    Determine whether state contains a non-empty 'rag_resources' list.
+    
+    Parameters:
+        state (Dict[str, Any]): Execution state that may include the 'rag_resources' key.
+    
+    Returns:
+        bool: `True` if 'rag_resources' exists in state and is non-empty, `False` otherwise.
+    """
     return bool(state.get("rag_resources", []))
 
 
 def should_use_rag(state: Dict[str, Any]) -> str:
-    """Routing function deciding whether to call RAG or fallback to web search."""
+    """
+    Decides whether to use RAG retrieval or web research based on RAG availability and state.
+    
+    Parameters:
+        state (dict): Agent state used to determine if RAG resources are present.
+    
+    Returns:
+        'rag_retrieve' to invoke RAG retrieval, 'web_research' to invoke web search.
+    """
     if not is_rag_enabled():
         logger.info("RAG is not enabled, routing to web research")
         return "web_research"
@@ -119,7 +155,17 @@ def should_use_rag(state: Dict[str, Any]) -> str:
 
 
 def rag_fallback_to_web(state: Dict[str, Any]) -> str:
-    """Determine whether to fall back to web search after a RAG attempt."""
+    """
+    Decide whether to route to a web search or to proceed to reflection after a RAG attempt.
+    
+    Parameters:
+        state (dict): Overall agent state. Expected keys:
+            - "rag_documents" (list): Documents returned by the RAG step.
+            - "research_loop_count" (int): Number of prior research-loop iterations.
+    
+    Returns:
+        str: The next routing target, either "web_research" to perform a web search or "reflection" to continue with reflection.
+    """
     rag_documents = state.get("rag_documents", [])
     research_loop_count = state.get("research_loop_count", 0) or 0
     is_continue_research = research_loop_count > 0
@@ -148,7 +194,12 @@ def rag_fallback_to_web(state: Dict[str, Any]) -> str:
 
 
 def continue_research_rag_to_web(_state: Dict[str, Any]) -> str:
-    """Routing helper for continue_research iterations that always does web search."""
+    """
+    Route continued RAG research iterations to a web search.
+    
+    Returns:
+        str: The route name 'web_research'.
+    """
     logger.info(
         "Continue research: performing web search after RAG for comprehensive coverage"
     )

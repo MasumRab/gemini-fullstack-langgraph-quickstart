@@ -41,25 +41,29 @@ from agent.prompts import summarize_webpage_prompt
 
 
 def get_today_str() -> str:
-    """Get current date in a human-readable format.
-
+    """
+    Format today's date as a human-readable string.
+    
     Returns:
-        Formatted date string (e.g., 'Sun Dec 8, 2024')
+        A date string formatted like 'Sun Dec 8, 2024'.
     """
     return datetime.now().strftime("%a %b %d, %Y")
 
 
 def get_tavily_api_key(config: RunnableConfig | None = None) -> str:
-    """Retrieve Tavily API key from config or environment.
-
-    Args:
-        config: Optional runtime configuration
-
+    """
+    Get the Tavily API key from the provided runtime config or from the TAVILY_API_KEY environment variable.
+    
+    If `config` is provided, the function checks `config["configurable"]["tavily_api_key"]` first; if no key is found there, it falls back to the `TAVILY_API_KEY` environment variable.
+    
+    Parameters:
+        config (RunnableConfig | None): Optional runtime configuration that may contain a `configurable` mapping with a `tavily_api_key` entry.
+    
     Returns:
-        Tavily API key string
-
+        str: The Tavily API key.
+    
     Raises:
-        ValueError: If no API key is found
+        ValueError: If no API key is found in either the provided config or the environment.
     """
     # Try config first
     if config:
@@ -130,17 +134,18 @@ async def tavily_search_async(
     include_raw_content: bool = True,
     config: RunnableConfig | None = None,
 ) -> List[dict]:
-    """Execute multiple Tavily search queries asynchronously.
-
+    """
+    Run multiple Tavily search queries and return their results mapped to each query.
+    
     Args:
-        search_queries: List of search query strings to execute
-        max_results: Maximum number of results per query
-        topic: Topic category for filtering results
-        include_raw_content: Whether to include full webpage content
-        config: Runtime configuration for API key access
-
+        search_queries (List[str]): Queries to execute.
+        max_results (int): Maximum number of results to return per query.
+        topic (Literal["general", "news", "finance"]): Category filter for results.
+        include_raw_content (bool): If true, include full webpage content when available.
+        config (RunnableConfig | None): Runtime configuration used to obtain the Tavily API key.
+    
     Returns:
-        List of search result dictionaries from Tavily API
+        List[dict]: A list of search result dictionaries corresponding to the input queries. If a per-query search fails, the corresponding entry will contain the original query and an empty `"results"` list.
     """
     if not TAVILY_AVAILABLE:
         logging.warning("Tavily async client not available, returning empty results")
@@ -205,15 +210,16 @@ def process_search_results(
     summarization_model: BaseChatModel | None = None,
     max_content_length: int = 250000,
 ) -> Dict[str, dict]:
-    """Process search results by summarizing content where available.
-
-    Args:
-        unique_results: Dictionary of unique search results
-        summarization_model: Optional model for content summarization
-        max_content_length: Maximum content length before truncation
-
+    """
+    Process search results into normalized title/content summaries.
+    
+    Parameters:
+        unique_results (Dict[str, dict]): Mapping from URL to a search-result dict that may contain 'raw_content', 'content', and 'title'.
+        summarization_model (BaseChatModel | None): Model to generate a condensed summary from 'raw_content'. If None, raw content is truncated.
+        max_content_length (int): Maximum number of characters of raw content to pass to the summarizer or to keep when truncating.
+    
     Returns:
-        Dictionary of processed results with summaries
+        Dict[str, dict]: Mapping from URL to a dict with keys 'title' and 'content', both ensured to be strings.
     """
     summarized_results = {}
 
@@ -289,15 +295,16 @@ def summarize_webpage_content(
     webpage_content: str,
     timeout: float = 60.0,
 ) -> str:
-    """Summarize webpage content using AI model.
-
-    Args:
-        model: The chat model configured for summarization
-        webpage_content: Raw webpage content to be summarized
-        timeout: Timeout in seconds for summarization
-
+    """
+    Produce a concise summary and key excerpts for the given webpage content using the provided chat model.
+    
+    Parameters:
+        model (BaseChatModel): Chat model used to generate the summary.
+        webpage_content (str): Raw webpage text to summarize.
+        timeout (float): Maximum time in seconds allowed for the summarization request; some model implementations may ignore this.
+    
     Returns:
-        Formatted summary with key excerpts, or original content if failed
+        str: A formatted summary string containing a `<summary>` block and, when available, a `<key_excerpts>` block. If summarization fails, returns the original content truncated to 1000 characters with an appended ellipsis when truncation occurs.
     """
     try:
         prompt_content = summarize_webpage_prompt.format(
@@ -333,15 +340,16 @@ async def summarize_webpage_async(
     webpage_content: str,
     timeout: float = 60.0,
 ) -> str:
-    """Summarize webpage content using AI model asynchronously.
-
-    Args:
-        model: The chat model configured for summarization
-        webpage_content: Raw webpage content to be summarized
-        timeout: Timeout in seconds for the summarization task
-
+    """
+    Generate a formatted summary of webpage content using the provided chat model.
+    
+    Parameters:
+        model (BaseChatModel): Chat model used to produce the summary; expected to support `ainvoke`.
+        webpage_content (str): Raw webpage text to summarize.
+        timeout (float): Maximum time in seconds to wait for the model response.
+    
     Returns:
-        Formatted summary with key excerpts, or original content if failed
+        str: Formatted summary. If the model response contains `summary` and `key_excerpts` fields, those are returned wrapped in `<summary>` and `<key_excerpts>` blocks. If the operation times out or fails, returns the original content truncated to 1000 characters (with "..." appended if truncated) or the full content if shorter.
     """
     try:
         prompt_content = summarize_webpage_prompt.format(
@@ -514,14 +522,15 @@ Provide the refined report:
 
 
 def is_token_limit_exceeded(exception: Exception, model_name: str = None) -> bool:
-    """Determine if an exception indicates a token/context limit was exceeded.
-
-    Args:
-        exception: The exception to analyze
-        model_name: Optional model name to optimize provider detection
-
+    """
+    Detect whether an exception was caused by exceeding a model's token or context length limits.
+    
+    Parameters:
+        exception (Exception): The exception to inspect.
+        model_name (str | None): Optional model identifier to help detect provider-specific token-limit messages.
+    
     Returns:
-        True if the exception indicates a token limit was exceeded, False otherwise
+        `true` if the exception message indicates a token or context length limit was exceeded, `false` otherwise.
     """
     error_str = str(exception).lower()
 

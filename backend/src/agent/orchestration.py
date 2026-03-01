@@ -85,7 +85,11 @@ class ToolRegistry:
         self._load_default_tools()
 
     def _load_default_tools(self):
-        """Load default tools from the project."""
+        """
+        Register available default tools into the registry (web_search, rag_search, tavily_search) by probing optional project modules and adding corresponding ToolSpec entries.
+        
+        Each tool is registered only when its provider module is importable and any provider-level enablement checks pass. Missing or unavailable providers are skipped and a debug message is emitted.
+        """
         # Web search
         try:
             from search.router import search_router
@@ -137,7 +141,16 @@ class ToolRegistry:
         category: str = "general",
         requires_confirmation: bool = False,
     ):
-        """Register a tool."""
+        """
+        Register or update a tool specification in the registry.
+        
+        Parameters:
+            name (str): Unique identifier for the tool.
+            func (Callable): Callable invoked when the tool is executed.
+            description (str): Human-readable description shown to coordinators or users; defaults to "Tool: {name}" when empty.
+            category (str): Classification used to filter or group tools (default "general").
+            requires_confirmation (bool): If True, indicates the tool requires explicit user confirmation before use.
+        """
         self._tools[name] = ToolSpec(
             name=name,
             func=func,
@@ -148,12 +161,27 @@ class ToolRegistry:
         logger.info(f"Registered tool: {name} [{category}]")
 
     def unregister(self, name: str):
-        """Remove a tool."""
+        """
+        Unregister a tool from the registry by name.
+        
+        If a tool with the given name exists in the registry, removes its entry; does nothing if the name is not registered.
+        
+        Parameters:
+            name (str): The registered tool name to remove.
+        """
         if name in self._tools:
             del self._tools[name]
 
     def get_tools(self, category: str | None = None) -> List[BaseTool]:
-        """Get registered tools as LangChain tools."""
+        """
+        Return registered tools as LangChain StructuredTool objects, optionally filtered by category.
+        
+        Parameters:
+            category (str | None): If provided, only tools whose ToolSpec.category equals this value are returned; if None, all registered tools are returned.
+        
+        Returns:
+            List[BaseTool]: A list of LangChain StructuredTool instances corresponding to the registered tools (empty list if no tools match).
+        """
         tools = []
         for spec in self._tools.values():
             if category and spec.category != category:
@@ -168,11 +196,24 @@ class ToolRegistry:
         return tools
 
     def get_tool_names(self) -> List[str]:
-        """Get list of registered tool names."""
+        """
+        List names of all registered tools.
+        
+        Returns:
+            tool_names (List[str]): A list of registered tool names.
+        """
         return list(self._tools.keys())
 
     def get_tool(self, name: str) -> ToolSpec | None:
-        """Get a specific tool spec."""
+        """
+        Retrieve the ToolSpec registered under the given tool name.
+        
+        Parameters:
+        	name (str): The name of the tool to look up.
+        
+        Returns:
+        	ToolSpec | None: The ToolSpec for the tool if found, `None` if no tool is registered under that name.
+        """
         return self._tools.get(name)
 
 
@@ -214,7 +255,16 @@ class AgentPool:
         self._load_default_agents()
 
     def _load_default_agents(self):
-        """Load default agents from the project."""
+        """
+        Register available default sub-agents discovered in the project into the pool.
+        
+        Attempts to import and register these optional agents by name and capabilities:
+        - "quick_search": fast minimal search agent with ["search", "quick_answer"]
+        - "planner": planning and reflection agent with ["planning", "search", "reflection", "synthesis"]
+        - "deep_researcher": full-featured research agent with ["planning", "search", "kg", "compression", "synthesis"]
+        
+        If an agent module is not importable, the function skips registration for that agent and emits a debug log message.
+        """
         try:
             from agent.graphs.upstream import graph as upstream
 
@@ -258,7 +308,17 @@ class AgentPool:
         description: str = "",
         capabilities: List[str] = None,
     ):
-        """Register a sub-agent."""
+        """
+        Register or update a sub-agent in the pool.
+        
+        Adds or updates an AgentSpec under the given name.
+        
+        Parameters:
+            name (str): Unique identifier for the agent.
+            graph (Any): Compiled state graph or callable representing the agent's execution graph.
+            description (str): Human-readable description of the agent. If empty, a default description of the form "Agent: <name>" is used.
+            capabilities (List[str] | None): List of capability keywords the agent declares; treated as an empty list if None.
+        """
         self._agents[name] = AgentSpec(
             name=name,
             graph=graph,
@@ -268,12 +328,22 @@ class AgentPool:
         logger.info(f"Registered agent: {name}")
 
     def unregister(self, name: str):
-        """Remove an agent."""
+        """
+        Remove an agent from the pool if it exists.
+        
+        Parameters:
+            name (str): The registered agent's name to remove. If no agent with this name exists, the method does nothing.
+        """
         if name in self._agents:
             del self._agents[name]
 
     def get_agent(self, name: str) -> AgentSpec | None:
-        """Get a specific agent."""
+        """
+        Retrieve a registered agent by name.
+        
+        Returns:
+            AgentSpec: The agent specification for the given name, or `None` if no agent with that name is registered.
+        """
         return self._agents.get(name)
 
     def get_agent_names(self) -> List[str]:
@@ -281,13 +351,29 @@ class AgentPool:
         return list(self._agents.keys())
 
     def get_agents_with_capability(self, capability: str) -> List[AgentSpec]:
-        """Get agents that have a specific capability."""
+        """
+        Find agents that declare the given capability.
+        
+        Parameters:
+            capability (str): Capability name to filter agents by.
+        
+        Returns:
+            List[AgentSpec]: Agents whose `capabilities` list includes `capability`.
+        """
         return [
             agent for agent in self._agents.values() if capability in agent.capabilities
         ]
 
     def get_agent_descriptions(self) -> str:
-        """Get formatted descriptions for coordinator prompt."""
+        """
+        Produce a formatted list of agent descriptions for use in coordinator prompts.
+        
+        Each line represents one registered agent in the form:
+        "- {name}: {description} [capabilities: {cap1, cap2}]" — agents with no declared capabilities use "general".
+        
+        Returns:
+            A newline-separated string containing one formatted description per agent.
+        """
         lines = []
         for agent in self._agents.values():
             caps = ", ".join(agent.capabilities) if agent.capabilities else "general"
@@ -305,16 +391,33 @@ def create_coordinator_node(
     agents: AgentPool,
     model: str = GEMINI_PRO,
 ):
-    """Create a coordinator node that routes to tools or agents.
-
-    The coordinator:
-    1. Analyzes the task
-    2. Decides which tool or agent to invoke
-    3. Returns the routing decision
+    """
+    Create a coordinator callable that decides whether to delegate to an agent, invoke a tool, or produce a direct answer.
+    
+    The returned callable examines the current overall state and returns a routing decision dictionary describing the chosen action, the target (agent or tool name), and a brief reason.
+    
+    Parameters:
+        model (str): Identifier of the LLM model used to make routing decisions.
+    
+    Returns:
+        dict: A routing decision with keys:
+            - coordinator_decision (str): One of "delegate_agent", "use_tool", or "direct_answer".
+            - coordinator_target (str): The chosen agent name or tool name to handle the task.
+            - coordinator_reason (str): A short explanation for the decision.
     """
 
     def coordinator(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
-        """Coordinator node that allocates tasks."""
+        """
+        Decides how to route the latest user query: delegate to an agent, invoke a tool, or produce a direct answer.
+        
+        Analyzes the most recent message in `state` and formulates a routing decision by prompting an LLM; the returned mapping contains the chosen action, a target agent or tool name, and a short rationale. If no messages are present, the decision is to finalize immediately. On parsing or invocation failures, falls back to delegating to the "planner" agent.
+        
+        Returns:
+            dict: A dictionary with keys:
+                - "coordinator_decision" (str): One of "delegate_agent", "use_tool", or "direct_answer".
+                - "coordinator_target" (str): The agent name or tool name selected (defaults to "planner" on fallback).
+                - "coordinator_reason" (str): Short explanation for the decision.
+        """
         messages = state.get("messages", [])
         if not messages:
             return {"coordinator_decision": "finalize"}
@@ -410,21 +513,17 @@ def build_orchestrated_graph(
     coordinator_model: str = GEMINI_PRO,
     name: str = "orchestrated-agent",
 ) -> StateGraph:
-    """Build a graph with coordinator-based orchestration.
-
-    This creates a supervisor-style graph where:
-    1. Coordinator analyzes the query
-    2. Routes to appropriate sub-agent or tool
-    3. Collects and synthesizes results
-
-    Args:
-        tools: ToolRegistry with available tools
-        agents: AgentPool with available sub-agents
-        coordinator_model: Model for the coordinator LLM
-        name: Name for the compiled graph
-
+    """
+    Builds a supervisor-style state graph that routes tasks via a coordinator to tools or sub-agents and then finalizes results.
+    
+    Parameters:
+        tools (ToolRegistry | None): Optional registry of available tools; a default ToolRegistry is not created here.
+        agents (AgentPool | None): Optional pool of sub-agents; if None, a default AgentPool is instantiated.
+        coordinator_model (str): Model identifier used by the coordinator LLM to make routing decisions.
+        name (str): Name assigned to the compiled StateGraph.
+    
     Returns:
-        Compiled StateGraph with orchestration
+        StateGraph: A compiled StateGraph named `name` that contains nodes for context loading, a coordinator, per-agent nodes (agent_<name>), an optional tools node, and a finalization node. The coordinator routes execution to one of these nodes and the graph ends after finalization.
     """
     if agents is None:
         agents = AgentPool()
@@ -446,6 +545,15 @@ def build_orchestrated_graph(
         if agent_spec:
             # Create a wrapper that invokes the sub-agent
             def make_agent_node(spec):
+                """
+                Create an async node function that invokes an agent's compiled graph.
+                
+                Parameters:
+                    spec: An object representing an agent (e.g., AgentSpec) whose `graph` exposes an async `ainvoke(state, config)` method. The `graph` will be invoked when the returned node is called.
+                
+                Returns:
+                    An async callable(state: OverallState, config: RunnableConfig) that invokes `spec.graph.ainvoke(state, config)` and returns the value produced by that invocation.
+                """
                 async def agent_node(state: OverallState, config: RunnableConfig):
                     result = await spec.graph.ainvoke(state, config)
                     return result
@@ -494,7 +602,12 @@ def build_orchestrated_graph(
 
 
 def get_default_registry() -> ToolRegistry:
-    """Get a ToolRegistry with default tools loaded."""
+    """
+    Create a ToolRegistry populated with default tools.
+    
+    Returns:
+        tool_registry (ToolRegistry): A new ToolRegistry instance with available default tools registered.
+    """
     return ToolRegistry()
 
 

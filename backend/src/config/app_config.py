@@ -85,7 +85,13 @@ class AppConfig:
 
     @classmethod
     def load(cls) -> "AppConfig":
-        """Load configuration and log the effective settings."""
+        """
+        Create an AppConfig by reading environment variables and return the resulting configuration.
+        
+        If the instance's audit_mode is not "off", the loaded configuration is logged. Raises ValueError if configuration parsing or validation fails.
+        @returns The loaded AppConfig instance.
+        @raises ValueError If configuration parsing or validation fails.
+        """
         try:
             config = cls()
             if config.audit_mode != "off":

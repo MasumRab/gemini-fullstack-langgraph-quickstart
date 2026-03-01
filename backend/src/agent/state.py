@@ -123,8 +123,14 @@ class WebSearchState(TypedDict):
 
 
 def validate_scoping(state: OverallState) -> bool:
-    """Runtime validation helper to check if required scoping fields are present.
-    Returns True if valid, False otherwise.
+    """
+    Check whether the required scoping fields are present in the given OverallState.
+    
+    Parameters:
+        state (OverallState): The overall agent state to validate.
+    
+    Returns:
+        bool: `true` if all of `query`, `clarifications_needed`, and `user_answers` keys are present in `state`, `false` otherwise.
     """
     required_fields = ["query", "clarifications_needed", "user_answers"]
     return all(field in state for field in required_fields)

@@ -35,11 +35,14 @@ class ChromaStore:
         embedding_function: Any = None,
         allow_reset: bool = False,
     ):
-        """Args:
-        collection_name: Name of the Chroma collection.
-        persist_path: Path to persist the DB.
-        embedding_function: Optional embedding function. If None, uses default (all-MiniLM-L6-v2 compatible).
-        allow_reset: Whether to allow resetting the database (destructive).
+        """
+        Initialize the ChromaDB-backed store and ensure the collection exists.
+        
+        Parameters:
+            collection_name: Name of the Chroma collection to create or open.
+            persist_path: Filesystem path where the Chroma database is persisted.
+            embedding_function: Optional embedding function to use for the collection; if `None`, the store uses Chroma's default compatible embedding (all-MiniLM-L6-v2).
+            allow_reset: If `True`, allow destructive reset operations on the underlying persistent client.
         """
         self.client = chromadb.PersistentClient(
             path=persist_path, settings=Settings(allow_reset=allow_reset)
@@ -58,11 +61,14 @@ class ChromaStore:
         evidence_list: List[EvidenceChunk],
         embeddings: List[List[float]] | None = None,
     ):
-        """Add evidence chunks to the store.
-
-        Args:
-            evidence_list: List of EvidenceChunk objects.
-            embeddings: Optional pre-computed embeddings. If None, Chroma computes them.
+        """
+        Add multiple EvidenceChunk items to the Chroma collection.
+        
+        If `evidence_list` is empty this is a no-op. Each chunk's core fields (source_url, subgoal_id, relevance_score, timestamp) and any additional `metadata` are stored as flattened metadata entries.
+        
+        Parameters:
+            evidence_list (List[EvidenceChunk]): Evidence chunks to add to the store.
+            embeddings (List[List[float]] | None): Optional list of precomputed embeddings aligned with `evidence_list`; if `None`, the collection will compute embeddings.
         """
         if not evidence_list:
             return
@@ -97,17 +103,20 @@ class ChromaStore:
         min_score: float = 0.0,
         query_embedding: List[float] | None = None,
     ) -> List[Tuple[EvidenceChunk, float]]:
-        """Retrieve relevant evidence.
-
-        Args:
-            query: Search text.
-            top_k: Number of results.
-            subgoal_filter: Optional filter by subgoal_id.
-            min_score: Minimum similarity score (0-1).
-            query_embedding: Optional pre-computed query embedding.
-
+        """
+        Retrieve relevant evidence chunks matching a text query or a precomputed query embedding.
+        
+        Searches the collection using either `query` (text) or `query_embedding` (vector), optionally restricts results to a specific `subgoal_id`, filters out results with similarity below `min_score`, and returns up to `top_k` matches sorted by descending similarity.
+        
+        Parameters:
+            query (str): Text query used when `query_embedding` is not provided.
+            top_k (int): Maximum number of results to return.
+            subgoal_filter (str | None): If provided, only return chunks with this `subgoal_id`.
+            min_score (float): Minimum similarity threshold (0 to 1); results with similarity below this value are excluded.
+            query_embedding (List[float] | None): Optional precomputed embedding to use instead of the text query.
+        
         Returns:
-            List of (EvidenceChunk, similarity_score).
+            List[Tuple[EvidenceChunk, float]]: List of (EvidenceChunk, similarity_score) pairs where `similarity_score` is in [0, 1], sorted by similarity descending.
         """
         where_filter = {}
         if subgoal_filter:

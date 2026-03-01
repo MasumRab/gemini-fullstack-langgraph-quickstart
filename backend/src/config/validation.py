@@ -7,8 +7,16 @@ logger = logging.getLogger(__name__)
 
 
 def validate_environment() -> Dict[str, bool]:
-    """Validates the runtime environment for critical dependencies and variables.
-    Returns a dict of check statuses.
+    """
+    Validate runtime environment for required API keys and Python packages.
+    
+    The returned dictionary includes:
+    - "api_key": `True` if either GEMINI_API_KEY or GOOGLE_API_KEY is set, `False` otherwise.
+    - "pkg_<name>": `True` if the corresponding required package (by import path) is importable, `False` otherwise. Present keys include "pkg_langchain", "pkg_langgraph", and "pkg_google_genai".
+    - "sentence_transformers": `True` if the optional `sentence_transformers` package is importable, `False` otherwise.
+    
+    Returns:
+        A dict mapping check names to boolean results: `True` if the check passed, `False` otherwise.
     """
     checks = {}
 
@@ -56,8 +64,13 @@ def validate_environment() -> Dict[str, bool]:
 
 
 def check_env_strict():
-    """Strict check that raises an error if critical components are missing.
-    Call this on app startup if you want to fail fast.
+    """
+    Validate critical runtime dependencies and indicate whether startup can proceed.
+    
+    This treats a missing API key and any failed package check whose key starts with "pkg_" as critical. If any critical failures are detected an error is logged and the function signals failure.
+    
+    Returns:
+        bool: True if no critical failures were found, False if one or more critical failures were detected.
     """
     results = validate_environment()
 

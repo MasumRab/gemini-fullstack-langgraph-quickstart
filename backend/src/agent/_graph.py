@@ -60,7 +60,16 @@ logger = logging.getLogger(__name__)
 
 
 def generate_query(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
-    """Generate search queries based on the user's question."""
+    """
+    Generate a list of search queries tailored to the user's question or conversation context.
+    
+    Parameters:
+        state (OverallState): Agent state; used to extract conversation `messages` to determine the research topic and optional `initial_search_query_count` to set how many queries to return.
+        config (RunnableConfig): Runtime configuration used to resolve query-generation settings (model and defaults).
+    
+    Returns:
+        dict: A mapping with key `search_query` whose value is a list of generated query strings. If generation fails or no queries are produced, the list contains a single topic-derived fallback query.
+    """
     configurable = Configuration.from_runnable_config(config)
 
     messages = state.get("messages", [])
@@ -106,7 +115,17 @@ def generate_query(state: OverallState, config: RunnableConfig) -> Dict[str, Any
 
 
 def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
-    """Perform web research using available search providers."""
+    """
+    Search the web using available providers and return captured result texts and structured source metadata.
+    
+    Returns:
+        result (Dict[str, Any]): Dictionary containing:
+            - `web_research_result` (List[str]): List of textual search results or summaries (may be empty).
+            - `sources_gathered` (List[Dict[str, str]]): List of source metadata objects with keys:
+                - `title`: Source title or empty string.
+                - `url`: Source URL or empty string.
+                - `snippet`: Short snippet or preview text (may be empty).
+    """
     configurable = Configuration.from_runnable_config(config)
 
     search_query = state.get("search_query", [])
@@ -187,7 +206,19 @@ def web_research(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
 
 
 def reflection(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
-    """Identify knowledge gaps and propose follow-up queries."""
+    """
+    Identify knowledge gaps from web research and propose follow-up queries.
+    
+    Analyzes the latest web research summaries and the conversation topic to determine whether the research is sufficient, extract any stated knowledge gaps, and produce a list of follow-up queries. Also increments and returns the research loop count and the number of queries that were run.
+    
+    Returns:
+        result (dict): Mapping with keys:
+            is_sufficient (bool): `true` if the current research is judged sufficient, `false` otherwise.
+            knowledge_gap (str): A short description of any identified knowledge gap (empty string if none).
+            follow_up_queries (List[str]): Ordered follow-up search queries to continue research (may be empty).
+            research_loop_count (int): Updated number of reflection cycles performed.
+            number_of_ran_queries (int): Count of queries that were executed in the most recent search step.
+    """
     configurable = Configuration.from_runnable_config(config)
 
     state["research_loop_count"] = state.get("research_loop_count", 0) + 1
@@ -258,7 +289,12 @@ def reflection(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
 
 
 def evaluate_research(state: ReflectionState, config: RunnableConfig) -> str:
-    """Decide whether to continue researching or finalize the answer."""
+    """
+    Decide whether the research loop should stop or continue.
+    
+    Returns:
+    	"finalize_answer" if the state indicates research is sufficient or the loop count has reached the configured maximum, "continue_research" otherwise.
+    """
     configurable = Configuration.from_runnable_config(config)
     max_loops = state.get("max_research_loops", configurable.max_research_loops)
     loop_count = state.get("research_loop_count", 0)
@@ -269,7 +305,17 @@ def evaluate_research(state: ReflectionState, config: RunnableConfig) -> str:
 
 
 def continue_research(state: OverallState) -> Dict[str, Any]:
-    """Route follow-up queries back into the research loop."""
+    """
+    Route the next follow-up query into the research loop by converting it into a new search query.
+    
+    Parameters:
+        state (OverallState): Graph state expected to contain an optional "follow_up_queries" list.
+    
+    Returns:
+        dict: If no follow-up queries are present, returns an empty dict. Otherwise returns a dict with
+        "search_query" set to a single-item list containing the next query and "follow_up_queries"
+        containing the remaining queries.
+    """
     follow_up_queries = state.get("follow_up_queries", [])
     if not follow_up_queries:
         return {}
@@ -282,7 +328,14 @@ def continue_research(state: OverallState) -> Dict[str, Any]:
 
 
 def finalize_answer(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
-    """Combine RAG documents and web research into the final answer."""
+    """
+    Assemble RAG and web research summaries and produce the final AI answer.
+    
+    Formats RAG documents and web research results into a single prompt, invokes the configured reasoning model to generate the final answer, and requests continuations if the model's response is truncated.
+    
+    Returns:
+        dict: A mapping with key "messages" containing a list with one AIMessage whose content is the final answer.
+    """
     configurable = Configuration.from_runnable_config(config)
     reasoning_model = state.get("reasoning_model") or configurable.answer_model
 

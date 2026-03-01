@@ -19,7 +19,24 @@ class DeepResearchMetrics:
         key_facts: List[Dict],
         threshold: float = 0.7,
     ) -> Dict:
-        """Measure if the generated answer is correct on first attempt."""
+        """
+        Evaluate whether a generated answer passes on the first attempt by combining coverage of required key facts and semantic similarity to a reference answer.
+        
+        Parameters:
+            generated_answer (str): The model-generated answer to evaluate.
+            reference_answer (str): The reference or ground-truth answer used for semantic comparison.
+            key_facts (List[Dict]): List of required facts where each dict should contain a "fact" string (and may include a "source"). Coverage is measured against these facts.
+            threshold (float): Score threshold in [0, 1] above which the answer is considered to have passed. Default is 0.7.
+        
+        Returns:
+            dict: A summary of the evaluation containing:
+                - "passed" (bool): `true` if combined score >= threshold, `false` otherwise.
+                - "score" (float): Combined pass score (weighted sum of fact coverage and similarity).
+                - "fact_coverage" (float): Proportion of key facts found in the generated answer.
+                - "similarity" (float): Semantic similarity score between reference and generated answers.
+                - "covered_facts" (List[str]): List of key fact strings detected in the generated answer.
+                - "total_facts" (int): Total number of key facts provided.
+        """
         # Extract facts from generated answer
         generated_facts = DeepResearchMetrics._extract_facts(generated_answer)
 
@@ -57,7 +74,26 @@ class DeepResearchMetrics:
     def evidence_quality_score(
         retrieved_docs: List[Dict], required_sources: List[str], min_evidence_count: int
     ) -> Dict:
-        """Evaluate quality of retrieved evidence."""
+        """
+        Assess the quality and diversity of retrieved evidence against a set of required sources.
+        
+        Computes a combined quality score from three components: proportion of required sources covered by the retrieved documents, sufficiency of the retrieved document count relative to min_evidence_count, and domain diversity of the retrieved documents.
+        
+        Parameters:
+            retrieved_docs (List[Dict]): Retrieved documents, each expected to contain a "url" key and optional other metadata.
+            required_sources (List[str]): Domains or source identifiers that should be present among retrieved documents.
+            min_evidence_count (int): Minimum desirable number of retrieved documents used to scale the evidence count component.
+        
+        Returns:
+            Dict: A dictionary with the following keys:
+                quality_score (float): Combined quality score (0.0–1.0) derived from source coverage, evidence count sufficiency, and diversity.
+                source_coverage (float): Fraction of required_sources that were found among retrieved documents (0.0–1.0).
+                covered_sources (List[str]): List of required sources present in the retrieved documents.
+                required_sources (List[str]): The input required_sources list (returned for convenience).
+                evidence_count (int): Number of retrieved documents.
+                min_required (int): The input min_evidence_count value.
+                diversity_score (float): Shannon-entropy-based diversity score computed over retrieved document domains.
+        """
         # Extract domains from retrieved docs
         retrieved_domains = set()
         for doc in retrieved_docs:
@@ -107,7 +143,24 @@ class DeepResearchMetrics:
     def subgoal_completion_rate(
         subgoals: List[str], rag_system, llm_client, confidence_threshold: float = 0.7
     ) -> Dict:
-        """Measure how well each subgoal was addressed."""
+        """
+        Assess which subgoals were verified and compute the overall completion rate.
+        
+        Parameters:
+            subgoals (List[str]): Ordered list of subgoal descriptions to verify.
+            confidence_threshold (float): Minimum confidence required from the verification step to consider a subgoal verified.
+        
+        Returns:
+            dict: {
+                "completion_rate": float,       # fraction of subgoals marked verified (0.0–1.0)
+                "completed_count": int,         # number of subgoals verified
+                "total_subgoals": int,          # total number of subgoals provided
+                "subgoal_details": List[dict],  # per-subgoal records with keys:
+                                               #   "subgoal" (str): original subgoal text,
+                                               #   "verified" (bool): whether verification succeeded,
+                                               #   "confidence" (float): reported verification confidence
+            }
+        """
         completed = 0
         subgoal_results = []
 
@@ -144,7 +197,24 @@ class DeepResearchMetrics:
     def hallucination_rate(
         generated_answer: str, retrieved_docs: List[Dict], llm_client
     ) -> Dict:
-        """Detect factual claims not supported by evidence."""
+        """
+        Identify claims in a generated answer that are not supported by provided evidence.
+        
+        Attempts to extract factual claims from `generated_answer` using `llm_client`; if extraction fails it falls back to splitting the answer into sentences. Each claim is then checked against the concatenated contents of `retrieved_docs` via `llm_client`; verification failures are treated conservatively as unsupported.
+        
+        Parameters:
+            generated_answer (str): The model-generated answer to inspect for factual claims.
+            retrieved_docs (List[Dict]): Retrieved documents; each dict may contain a "content" field used as evidence.
+            llm_client: A callable or client object used to (1) extract claims and (2) verify claims against evidence. May be an object exposing `invoke` or `generate`, or a plain callable.
+        
+        Returns:
+            dict: {
+                "hallucination_rate": float,            # fraction of claims marked unsupported (0.0–1.0)
+                "hallucinated_claims": List[str],       # claims judged unsupported
+                "supported_claims": List[str],          # claims judged supported
+                "total_claims": int                     # number of claims evaluated
+            }
+        """
         # Extract claims using LLM
         claims_prompt = f"""
 Extract factual claims from this answer. Return as JSON list of strings.
@@ -230,7 +300,23 @@ Answer:
     def context_efficiency(
         final_answer_length: int, total_context_length: int, answer_quality_score: float
     ) -> Dict:
-        """Measure token efficiency: quality per unit of context used."""
+        """
+        Estimate how efficiently a final answer uses provided context by relating answer quality to approximate context token usage.
+        
+        Parameters:
+            final_answer_length (int): Length of the final answer in characters (used to approximate tokens).
+            total_context_length (int): Length of the available context in characters (used to approximate tokens).
+            answer_quality_score (float): Scalar quality score for the final answer.
+        
+        Returns:
+            dict: {
+                "efficiency_score" (float): Quality per 1000 context tokens (higher is better).
+                "answer_tokens" (float): Estimated tokens in the answer (characters / 4).
+                "context_tokens" (float): Estimated tokens in the context (characters / 4).
+                "context_usage_ratio" (float): Ratio of answer tokens to context tokens.
+                "quality_score" (float): The input answer_quality_score.
+            }
+        """
         # Approximate token counts (4 chars ≈ 1 token)
         answer_tokens = final_answer_length / 4
         context_tokens = total_context_length / 4
@@ -256,7 +342,17 @@ Answer:
 
     @staticmethod
     def _extract_facts(text: str) -> List[str]:
-        """Extract fact-like sentences from text"""
+        """
+        Identify and return fact-like sentences from the input text.
+        
+        Uses simple heuristics to select declarative sentences that are likely factual (for example, longer sentences containing common copular/auxiliary verbs). The original sentence order is preserved.
+        
+        Parameters:
+            text (str): Input text to analyze.
+        
+        Returns:
+            List[str]: Extracted sentences that resemble factual statements; an empty list if none are found.
+        """
         sentences = re.split(r"[.!?]+", text)
         facts = []
         for sent in sentences:
@@ -271,7 +367,13 @@ Answer:
 
     @staticmethod
     def _fact_mentioned(fact: str, text: str) -> bool:
-        """Check if fact is mentioned in text (fuzzy match)"""
+        """
+        Determine whether a candidate fact is mentioned in a text by measuring token overlap.
+        
+        Returns:
+            `True` if more than 60% of the words in `fact` appear in `text`, `False` otherwise.
+            Returns `False` when `fact` is empty.
+        """
         fact_words = set(fact.lower().split())
         text_words = set(text.lower().split())
         if not fact_words:
@@ -281,7 +383,15 @@ Answer:
 
     @staticmethod
     def _extract_domain(url: str) -> str:
-        """Extract domain from URL"""
+        """
+        Extract the domain hostname from a URL string.
+        
+        Parameters:
+            url (str): The URL to parse; may include scheme (http/https), "www." prefix, and path.
+        
+        Returns:
+            str: The domain portion of the URL (e.g., "example.com"), or an empty string if no domain can be found.
+        """
         match = re.search(r"(?:https?://)?(?:www\.)?([^/]+)", url)
         return match.group(1) if match else ""
 

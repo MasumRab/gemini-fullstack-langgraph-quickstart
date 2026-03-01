@@ -13,7 +13,14 @@ class BraveSearchAdapter(SearchProvider):
     """Adapter for Brave Search."""
 
     def __init__(self, api_key: str | None = None):
-        """Initialize with API key."""
+        """
+        Create a BraveSearchAdapter and configure its Brave Search API key.
+        
+        If `api_key` is provided it will be used; otherwise the `BRAVE_API_KEY` environment variable is read. If no key is found, the instance is still created but a warning is logged and subsequent searches will fail.
+        
+        Parameters:
+            api_key (str | None): Optional Brave Search API key.
+        """
         self.api_key = api_key or os.getenv("BRAVE_API_KEY")
         if not self.api_key:
             # We don't raise here to allow instantiation, but search will fail/warn
@@ -28,7 +35,24 @@ class BraveSearchAdapter(SearchProvider):
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """Execute search via Brave API."""
+        """
+        Perform a web search using the Brave Search API and convert results to SearchResult objects.
+        
+        Parameters:
+            query (str): The search query string.
+            max_results (int): Maximum number of results to request.
+            region (str | None): Currently unused; kept for API compatibility.
+            time_range (str | None): Optional time filter key. Accepted single-letter values map to Brave freshness: 'd' -> 'pd', 'w' -> 'pw', 'm' -> 'pm', 'y' -> 'py'.
+            safe_search (bool): If True, requests strict safe search filtering.
+            tuned (bool): If True, apply the `time_range` → Brave freshness mapping when `time_range` is provided.
+        
+        Returns:
+            List[SearchResult]: A list of SearchResult instances constructed from Brave's web results; empty list if no results found.
+        
+        Raises:
+            ValueError: If no API key is configured on the adapter.
+            Exception: Propagates exceptions raised during the HTTP request or response parsing.
+        """
         if not self.api_key:
             raise ValueError("BRAVE_API_KEY is missing")
 

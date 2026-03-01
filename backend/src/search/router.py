@@ -22,13 +22,30 @@ class SearchRouter:
     """Routes search queries to the appropriate provider with fallback logic."""
 
     def __init__(self, app_config: AppConfig = config):
-        """Initialize router with config."""
+        """
+        Create a SearchRouter configured with the given application settings.
+        
+        Parameters:
+            app_config (AppConfig): Application configuration used to determine the default search provider and fallback behavior.
+        
+        Description:
+            Stores the provided configuration, prepares an empty provider cache, and creates a lock for thread-safe lazy initialization of providers.
+        """
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
         self._providers_lock = threading.Lock()
 
     def _get_provider(self, name: str) -> SearchProvider | None:
         # Quick check without lock
+        """
+        Retrieve a cached search provider by name or instantiate and cache it if available.
+        
+        Parameters:
+            name (str): The provider identifier (e.g., "google", "duckduckgo", "brave", "tavily", "bing").
+        
+        Returns:
+            SearchProvider | None: The provider instance for the given name, or `None` if the provider could not be instantiated or is unrecognized.
+        """
         if name in self.providers:
             return self.providers[name]
 
@@ -78,13 +95,22 @@ class SearchRouter:
         provider_name: str | None = None,
         attempt_fallback: bool = True,
     ) -> List[SearchResult]:
-        """Execute search with routing and fallback logic.
-
-        Args:
-            query: Search query
-            max_results: Max results
-            provider_name: Override configured provider
-            attempt_fallback: Whether to try fallback provider on failure
+        """
+        Route a query to the selected search provider and return matching results.
+        
+        Selects the explicit provider_name if given, otherwise uses the configured primary provider; if that provider is unavailable and attempt_fallback is True, the configured fallback provider will be used. The method returns results from the first successful provider attempt or an empty list if all attempts fail.
+        
+        Parameters:
+            query (str): Search query text.
+            max_results (int): Maximum number of results to return.
+            provider_name (str | None): Optional provider identifier to override the configured primary provider.
+            attempt_fallback (bool): Whether to try the configured fallback provider when the primary provider fails.
+        
+        Returns:
+            List[SearchResult]: Search results from the chosen provider; an empty list if no provider can successfully return results.
+        
+        Raises:
+            ValueError: If no valid search provider is available.
         """
         # Determine primary provider
         primary_name = provider_name or self.config.search_provider

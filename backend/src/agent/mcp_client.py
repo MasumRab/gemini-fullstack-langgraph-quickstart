@@ -17,7 +17,17 @@ class MCPToolUser:
         self.tool_registry = self._build_tool_registry()
 
     def _build_tool_registry(self) -> Dict:
-        """Build registry of all available tools"""
+        """
+        Create a registry mapping fully-qualified tool names to their metadata.
+        
+        Each key is formatted as "server_name.tool_name". Each value is a dict containing:
+        - "server": the server object,
+        - "tool": the tool wrapper object,
+        - "description": the tool's description.
+        
+        Returns:
+            registry (Dict[str, Dict]): Mapping from fully-qualified tool name to its metadata dictionary.
+        """
         registry = {}
         for server_name, server in self.servers.items():
             for tool in server.tools:
@@ -31,7 +41,18 @@ class MCPToolUser:
         return registry
 
     async def execute_tool(self, tool_name: str, **kwargs) -> Dict:
-        """Execute a tool by name"""
+        """
+        Execute a registered tool by name, accepting either a fully-qualified name (e.g., "server.tool") or a bare tool name.
+        
+        Parameters:
+            tool_name (str): Fully-qualified tool name or bare tool name. If a bare name matches exactly one registered tool, that tool is used; if it matches multiple tools the call fails with an ambiguity error.
+        
+        Returns:
+            dict: A dictionary with the following keys:
+                - "success" (bool): `true` if the tool executed successfully, `false` otherwise.
+                - "data": The tool's returned data on success (may be None or omitted by the tool).
+                - "error" (str): An error message when "success" is `false`, describing not-found, ambiguity, execution failure, or exception details.
+        """
         # Handle cases where tool_name might be just "read_file" or "filesystem.read_file"
         if tool_name not in self.tool_registry:
             # Try finding it without server prefix
@@ -72,8 +93,17 @@ class MCPToolUser:
             return {"success": False, "error": f"Execution exception: {str(e)}"}
 
     def plan_tool_sequence(self, task_description: str, llm_client) -> List[Dict]:
-        """Use LLM to plan sequence of tool calls for a task.
-        This is the "planned tool use" capability.
+        """
+        Plan a sequence of fully-qualified tool calls for a task using an LLM.
+        
+        Builds a prompt describing available tools and asks the LLM to return a JSON plan. The function extracts JSON from the LLM response (supports fenced code blocks with or without a "json" fence), parses it, and returns the plan as a list of dictionaries. If the parsed JSON is a dict with a "plan" key, that value is returned. On parse error, unexpected format, or any exception, an empty list is returned and an error is logged.
+        
+        Parameters:
+        	task_description (str): Natural-language description of the task to plan.
+        	llm_client: LLM client or object passed through to the robust LLM caller.
+        
+        Returns:
+        	plan (List[Dict]): A list of planned tool call objects (e.g., {"tool": "namespace.tool", "params": {...}, "reason": "..."}) or an empty list on error.
         """
         # Build tool descriptions
         tool_descriptions = "\n".join(
@@ -126,7 +156,25 @@ ENSURE to use the full tool name (e.g. filesystem.write_file).
             return []
 
     async def execute_plan(self, plan: List[Dict]) -> List[Dict]:
-        """Execute a planned sequence of tool calls"""
+        """
+        Execute a planned sequence of tool calls.
+        
+        Parameters:
+            plan (List[Dict]): A list of steps where each step is a dict containing:
+                - "tool" (str): Full tool identifier (e.g., "server.tool").
+                - "params" (dict, optional): Keyword arguments to pass to the tool handler.
+                - "reason" (str, optional): Human-readable reason for the step.
+        
+        Returns:
+            List[Dict]: A list of result entries in execution order. Each entry contains:
+                - "tool" (str): The tool name executed.
+                - "params" (dict): The parameters used for the call.
+                - "result" (dict): The tool execution result (contains "success", "data", and/or "error" as provided by execute_tool).
+                - "reason" (str): The step's reason, or empty string if not provided.
+        
+        Notes:
+            Execution stops at the first step whose result has "success" equal to `False`.
+        """
         results = []
 
         for step in plan:

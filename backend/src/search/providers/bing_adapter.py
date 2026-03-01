@@ -13,7 +13,12 @@ class BingAdapter(SearchProvider):
     """Adapter for Bing Web Search API."""
 
     def __init__(self, api_key: str | None = None):
-        """Initialize with API key."""
+        """
+        Create a BingAdapter instance configured with an API key and endpoint.
+        
+        If `api_key` is not provided, it is read from the `BING_API_KEY` environment variable. The `endpoint` is read from `BING_ENDPOINT` with a default of "https://api.bing.microsoft.com/v7.0/search". Logs a warning if no API key is available.
+        @param api_key: Optional Bing API key to use; if omitted, the `BING_API_KEY` environment variable will be used.
+        """
         self.api_key = api_key or os.getenv("BING_API_KEY")
         self.endpoint = os.getenv(
             "BING_ENDPOINT", "https://api.bing.microsoft.com/v7.0/search"
@@ -31,7 +36,27 @@ class BingAdapter(SearchProvider):
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """Execute search using Bing API."""
+        """
+        Perform a web search using the Bing Web Search API and map results to SearchResult objects.
+        
+        Parameters:
+            query (str): Search query string.
+            max_results (int): Maximum number of results to request.
+            region (str | None): Optional ISO country code sent as the `cc` parameter to bias results.
+            time_range (str | None): Optional freshness filter; accepted values are:
+                "d" for one day, "w" for one week, "m" for one month.
+            safe_search (bool): If True, enables Bing's "Strict" safe search filtering.
+            tuned (bool): Present for compatibility; not used by this implementation.
+        
+        Returns:
+            List[SearchResult]: A list of SearchResult objects populated from Bing's webPages response.
+        
+        Raises:
+            Exception: Propagates any exception raised while performing the HTTP request or parsing the response.
+        
+        Notes:
+            If the adapter has no API key configured, this method returns an empty list without performing a request.
+        """
         if not self.api_key:
             return []
 

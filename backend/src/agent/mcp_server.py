@@ -29,6 +29,14 @@ class ToolResult:
     def __init__(
         self, success: bool, data: Dict | None = None, error: str | None = None
     ):
+        """
+        Initialize a ToolResult representing the outcome of a tool operation.
+        
+        Parameters:
+            success (bool): Whether the operation completed successfully.
+            data (Dict | None): Optional result payload returned by the operation.
+            error (str | None): Optional error message describing a failure.
+        """
         self.success = success
         self.data = data
         self.error = error
@@ -99,7 +107,18 @@ class FilesystemMCPServer:
         )
 
     def _create_tool(self, name, description, parameters, handler):
-        """Helper to create a tool object with a handler attached."""
+        """
+        Create a lightweight tool object exposing metadata and a callable handler compatible with the MCP tool shape.
+        
+        Parameters:
+            name (str): Tool name identifier.
+            description (str): Short description of the tool's purpose.
+            parameters (dict): Input schema for the tool; assigned to the returned object's `inputSchema` attribute to match the MCP spec.
+            handler (callable): Callable that will be invoked to execute the tool.
+        
+        Returns:
+            SimpleTool: An object with attributes `name`, `description`, `inputSchema`, and `handler` suitable for in-process use or exposure to MCP-compatible consumers.
+        """
         # In a real MCP server, we would use the SDK's Tool class.
         # Here we create a simple object that holds the metadata and handler
         # so our MCPToolUser can consume it directly (in-process)
@@ -117,7 +136,15 @@ class FilesystemMCPServer:
         return SimpleTool(name, description, parameters, handler)
 
     def _check_path_allowed(self, path: str) -> bool:
-        """Security: ensure path is within allowed directories."""
+        """
+        Resolve the given filesystem path and determine whether it resides within any configured allowed path.
+        
+        Parameters:
+            path (str): The filesystem path to check; may refer to an existing or non-existing location.
+        
+        Returns:
+            bool: `True` if the resolved path equals or is inside one of the server's allowed paths, `False` otherwise.
+        """
         try:
             resolved = Path(path).resolve()
             # If path doesn't exist yet (for write), check parent
@@ -132,7 +159,17 @@ class FilesystemMCPServer:
             return False
 
     async def read_file(self, path: str) -> ToolResult:
-        """Read file contents."""
+        """
+        Read and return the text content of a file.
+        
+        Checks that the provided path is within the server's allowed paths and that the file exists and is no larger than the configured maximum size; reads the file as UTF-8 text when allowed.
+        
+        Parameters:
+            path (str): Filesystem path to the file to read. Must reside under the server's allowed paths.
+        
+        Returns:
+            ToolResult: On success, `success` is `True` and `data` contains `{"content": <str>, "path": <str>}`. On failure, `success` is `False` and `error` contains a descriptive message (e.g., path not allowed, file not found, file too large, or other I/O errors).
+        """
         if not self._check_path_allowed(path):
             logger.warning(f"Path traversal attempt blocked: {path}")
             return ToolResult(success=False, error=f"Path not allowed: {path}")
@@ -156,7 +193,14 @@ class FilesystemMCPServer:
             return ToolResult(success=False, error=str(e))
 
     async def write_file(self, path: str, content: str) -> ToolResult:
-        """Write content to file."""
+        """
+        Write UTF-8 text to a file at the given path.
+        
+        Writes the provided string to the filesystem, creating parent directories if necessary. Enforces a maximum content size (in characters and UTF-8 bytes) and rejects writes when the path is outside the server's allowed paths. Returns a ToolResult containing the written path and the number of bytes written on success, or an error message on failure.
+        
+        Returns:
+            ToolResult: On success, `data` contains `{"path": path, "bytes_written": <int>}`; on failure, `error` contains a human-readable message.
+        """
         if not self._check_path_allowed(path):
             logger.warning(f"Path traversal attempt blocked: {path}")
             return ToolResult(success=False, error=f"Path not allowed: {path}")
@@ -187,7 +231,19 @@ class FilesystemMCPServer:
             return ToolResult(success=False, error=str(e))
 
     async def list_directory(self, path: str) -> ToolResult:
-        """List directory contents."""
+        """
+        List the entries in a directory, subject to the server's allowed path restrictions.
+        
+        Parameters:
+            path (str): Filesystem path of the directory to list. The path must resolve inside the server's configured allowed paths.
+        
+        Returns:
+            ToolResult: On success (`success=True`) `data` contains:
+                - `files` (List[dict]): Entries with keys `name` (str), `type` ("file" or "directory"), and `size` (int or None).
+                - `count` (int): Number of entries returned.
+                - `truncated` (bool): `true` if the listing was cut off due to the MAX_DIR_ITEMS limit.
+            On failure (`success=False`) `error` contains a human-readable message describing the problem (e.g., path not allowed, directory not found, or unexpected error).
+        """
         if not self._check_path_allowed(path):
             logger.warning(f"Path traversal attempt blocked: {path}")
             return ToolResult(success=False, error=f"Path not allowed: {path}")

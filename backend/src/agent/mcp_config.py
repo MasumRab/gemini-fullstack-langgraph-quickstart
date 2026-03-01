@@ -15,7 +15,19 @@ class MCPSettings:
 
 
 def load_mcp_settings() -> MCPSettings:
-    """Loads MCP settings from environment variables."""
+    """
+    Load MCP configuration from environment variables into an MCPSettings instance.
+    
+    Reads these environment variables and maps them to MCPSettings fields:
+    - MCP_ENABLED: case-insensitive; set to `True` only if the value equals "true".
+    - MCP_ENDPOINT: optional string used as the MCP endpoint.
+    - MCP_API_KEY: optional string used as the MCP API key.
+    - MCP_TIMEOUT: parsed as an integer; falls back to 30 if missing or not an integer.
+    - MCP_TOOL_WHITELIST: comma-separated list; entries are trimmed, empty entries removed, and stored as a tuple.
+    
+    Returns:
+        MCPSettings: An MCPSettings instance populated from the environment values.
+    """
     enabled_str = os.getenv("MCP_ENABLED", "false").lower()
     enabled = enabled_str == "true"
 
@@ -40,7 +52,15 @@ def load_mcp_settings() -> MCPSettings:
 
 
 def validate(settings: MCPSettings) -> None:
-    """Validates the MCP settings."""
+    """
+    Validate MCPSettings for required configuration.
+    
+    Parameters:
+        settings (MCPSettings): MCP configuration to validate.
+    
+    Raises:
+        ValueError: If `settings.enabled` is True and `settings.endpoint` is empty or None.
+    """
     if settings.enabled and not settings.endpoint:
         raise ValueError("MCP enabled but MCP_ENDPOINT missing")
 
@@ -71,11 +91,25 @@ def validate(settings: MCPSettings) -> None:
 # - Integrate with Langfuse spans
 class McpConnectionManager:
     def __init__(self, settings: MCPSettings | None = None):
+        """
+        Create a connection manager configured with MCP settings.
+        
+        If `settings` is None, configuration is loaded from environment variables and used.
+        Parameters:
+            settings (MCPSettings | None): MCP configuration to use for this manager; pass None to load configuration from the environment.
+        """
         self.settings = settings or load_mcp_settings()
         self.clients = []
 
     def get_persistence_tools(self) -> List:
-        """Returns persistence tools wrapped for LangChain."""
+        """
+        Provide persistence StructuredTool instances for loading and saving thread plans.
+        
+        Returns:
+            List[StructuredTool]: Two StructuredTool objects:
+                - The first loads a thread's plan and artifacts from the local filesystem.
+                - The second saves a thread's plan and artifacts to the local filesystem.
+        """
         from langchain_core.tools import StructuredTool
 
         from agent.mcp_persistence import load_thread_plan, save_thread_plan
@@ -98,6 +132,14 @@ class McpConnectionManager:
         # - Connect to MCP endpoint from settings
         # - Fetch tool list via SSE stream
         # - Convert to LangChain StructuredTool format
+        """
+        Discover and return available MCP tools as LangChain StructuredTool instances.
+        
+        When MCP is disabled, this returns an empty list. When enabled, it yields the tools exposed by the configured MCP endpoint formatted as LangChain StructuredTool objects.
+        
+        Returns:
+            List: A list of StructuredTool objects representing available MCP tools; an empty list if MCP is disabled or no tools are discovered.
+        """
         if not self.settings.enabled:
             return []
         # Return stubs or connect to real MCP server

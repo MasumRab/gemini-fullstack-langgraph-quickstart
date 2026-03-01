@@ -83,7 +83,11 @@ class RateLimiter:
         )
 
     def _cleanup_old_requests(self):
-        """Remove requests older than tracking windows."""
+        """
+        Remove entries outside the minute and day tracking windows and throttle cleanup frequency.
+        
+        Purges timestamps older than 60 seconds from _requests_per_minute and _tokens_per_minute (the latter stores (timestamp, tokens)) and timestamps older than 86400 seconds from _requests_per_day. If called again within one second of the previous cleanup, the method returns immediately to limit cleanup frequency and reduce contention.
+        """
         now = time.time()
 
         # ⚡ Bolt Optimization: Throttle cleanup
@@ -108,7 +112,11 @@ class RateLimiter:
             self._requests_per_day.popleft()
 
     def _check_daily_reset(self):
-        """Check if we need to reset daily counters (midnight Pacific time)."""
+        """
+        Reset daily request counters when the current date in Pacific Time advances.
+        
+        If the Pacific Time date is later than the stored last reset date, clears the daily request deque and updates the stored reset date; logs an informational message.
+        """
         now_pt = datetime.now(PACIFIC_TZ)
         if now_pt.date() > self._last_reset_date:
             self._requests_per_day.clear()
@@ -116,13 +124,17 @@ class RateLimiter:
             logger.info(f"Daily quota reset for {self.model} (Pacific Time)")
 
     def wait_if_needed(self, estimated_tokens: int = 1000) -> float:
-        """Wait if necessary to stay within rate limits.
-
-        Args:
-            estimated_tokens: Estimated tokens for this request
-
+        """
+        Pause execution as needed to keep requests within the configured RPM, TPM, and RPD limits.
+        
+        Parameters:
+            estimated_tokens (int): Estimated number of tokens this request will consume; used for TPM checks.
+        
         Returns:
-            Time waited in seconds
+            total_wait_time (float): Total time in seconds the caller waited before the request was allowed to proceed.
+        
+        Raises:
+            Exception: If the daily request limit (RPD) has been reached for the model.
         """
         total_wait_time = 0.0
 
@@ -183,10 +195,17 @@ class RateLimiter:
                 # Loop back to check if we can proceed now
 
     def get_current_usage(self) -> Dict[str, int]:
-        """Get current usage statistics.
-
+        """
+        Return current rate-limit usage counts and configured limits.
+        
         Returns:
-            Dictionary with current RPM, TPM, and RPD usage
+            usage (Dict[str, int]): Mapping with keys:
+                - `rpm`: number of requests in the last 60 seconds.
+                - `rpm_limit`: configured requests-per-minute limit.
+                - `tpm`: total estimated tokens used in the last 60 seconds.
+                - `tpm_limit`: configured tokens-per-minute limit.
+                - `rpd`: number of requests in the current Pacific-day window.
+                - `rpd_limit`: configured requests-per-day limit.
         """
         with self._lock:
             self._cleanup_old_requests()
@@ -211,10 +230,11 @@ class RateLimiter:
         return self.limits["max_tokens"]
 
     def get_max_output_tokens(self) -> int:
-        """Get maximum output tokens for this model.
-
+        """
+        Return the maximum number of tokens allowed for model output.
+        
         Returns:
-            Maximum output tokens allowed
+            The maximum number of tokens permitted for the model's output.
         """
         return self.limits["max_output_tokens"]
 
@@ -223,10 +243,11 @@ class ContextWindowManager:
     """Manage context window sizes to stay within model limits."""
 
     def __init__(self, model: str = GEMINI_FLASH):
-        """Initialize context window manager.
-
-        Args:
-            model: Model name to get limits for
+        """
+        Create a ContextWindowManager configured for the specified model's token limits.
+        
+        Parameters:
+            model: Model name whose limits are used; defaults to GEMINI_FLASH if the model is unrecognized.
         """
         self.model = model
         self.limits = RATE_LIMITS.get(model, RATE_LIMITS[GEMINI_FLASH])
@@ -241,28 +262,28 @@ class ContextWindowManager:
         )
 
     def estimate_tokens(self, text: str) -> int:
-        """Estimate token count for text.
-
-        Uses rough approximation: 1 token ≈ 4 characters for English text.
-
-        Args:
-            text: Input text
-
+        """
+        Estimate the number of tokens in the given text using a heuristic of about 1 token per 4 characters.
+        
+        Parameters:
+            text (str): Input text to estimate.
+        
         Returns:
-            Estimated token count
+            int: Estimated number of tokens in the text.
         """
         # Rough estimation: 1 token ≈ 4 characters
         return len(text) // 4
 
     def truncate_to_fit(self, text: str, max_tokens: int | None = None) -> str:
-        """Truncate text to fit within token limit.
-
-        Args:
-            text: Input text
-            max_tokens: Maximum tokens (defaults to max_input_tokens)
-
+        """
+        Ensure text fits within the input token limit by truncating when necessary.
+        
+        Parameters:
+            text (str): Input text to constrain.
+            max_tokens (int | None): Maximum allowed input tokens; if None, uses self.max_input_tokens.
+        
         Returns:
-            Truncated text
+            str: The original text if within the limit, otherwise a truncated version with a footer marker indicating truncation.
         """
         if max_tokens is None:
             max_tokens = self.max_input_tokens
@@ -311,17 +332,18 @@ class ContextWindowManager:
         return chunks
 
     def validate_input_size(self, text: str, raise_error: bool = False) -> bool:
-        """Validate that input text fits within context window.
-
+        """
+        Check whether the given text fits within the manager's allowable input token budget.
+        
         Args:
-            text: Input text
-            raise_error: Whether to raise exception if too large
-
+            text: The input text to measure.
+            raise_error: If True, raise a ValueError when the text exceeds the limit.
+        
         Returns:
-            True if text fits, False otherwise
-
+            `True` if the estimated token count is less than or equal to the maximum input tokens, `False` otherwise.
+        
         Raises:
-            ValueError: If text is too large and raise_error=True
+            ValueError: If the text exceeds the maximum input tokens and `raise_error` is True.
         """
         estimated = self.estimate_tokens(text)
 
@@ -362,12 +384,13 @@ def get_rate_limiter(model: str) -> RateLimiter:
 # caching it prevents unnecessary object creation and log spam on every LLM call.
 @lru_cache(maxsize=16)
 def get_context_manager(model: str) -> ContextWindowManager:
-    """Get a context window manager for a model.
-
-    Args:
-        model: Model name
-
+    """
+    Get a ContextWindowManager configured for the specified model.
+    
+    Parameters:
+        model (str): Target model name.
+    
     Returns:
-        ContextWindowManager instance
+        ContextWindowManager: Manager configured for the specified model.
     """
     return ContextWindowManager(model)

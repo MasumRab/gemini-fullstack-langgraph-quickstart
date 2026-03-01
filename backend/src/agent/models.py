@@ -95,13 +95,11 @@ _DEPRECATED_MODELS = {
 
 
 def is_valid_model(model_name: str) -> bool:
-    """Check if a model name is valid and accessible.
-
-    Args:
-        model_name: Model name to validate
-
+    """
+    Determine whether a model name is recognized as a known model identifier or a defined alias.
+    
     Returns:
-        True if model is valid and accessible, False otherwise
+        True if `model_name` matches a known model or an alias, `False` otherwise.
     """
     # Check if it's a known valid model
     valid_models = {
@@ -123,26 +121,28 @@ def is_valid_model(model_name: str) -> bool:
 
 
 def is_deprecated_model(model_name: str) -> bool:
-    """Check if a model name is deprecated.
-
-    Args:
-        model_name: Model name to check
-
+    """
+    Determine whether the given model name is deprecated.
+    
     Returns:
-        True if model is deprecated, False otherwise
+        `True` if the model name is deprecated, `False` otherwise.
     """
     return model_name in _DEPRECATED_MODELS
 
 
 def get_model_or_default(model_name: str, default: str = GEMMA_3_27B_IT) -> str:
-    """Get a valid model name, falling back to default if invalid.
-
-    Args:
-        model_name: Requested model name
-        default: Default model to use if requested model is invalid
-
+    """
+    Resolve a requested model name to a known model identifier or return the provided default.
+    
+    Parameters:
+        model_name (str): Requested model name or alias to resolve.
+        default (str): Model identifier to return when the requested name is deprecated or unknown.
+    
     Returns:
-        Valid model name
+        str: The resolved model identifier — either the alias target, the original valid name, or `default`.
+    
+    Notes:
+        If `model_name` is deprecated or unknown, a warning is logged and `default` is returned.
     """
     # Check if it's an alias
     if model_name in MODEL_ALIASES:
@@ -184,14 +184,24 @@ ALL_VALID_MODELS = [
 
 
 def is_gemma_model(model_name: str) -> bool:
-    """Check if the model is a Gemma model (requires custom tool handling)."""
+    """
+    Determine whether a model name refers to a Gemma model.
+    
+    Returns:
+        `true` if the provided model name contains "gemma" (case-insensitive), `false` otherwise.
+    """
     if not model_name:
         return False
     return "gemma" in model_name.lower()
 
 
 def is_gemini_model(model_name: str) -> bool:
-    """Check if the model is a Gemini model (supports native tool binding)."""
+    """
+    Determine whether a model name refers to a Gemini or Google model.
+    
+    Returns:
+        `true` if `model_name` contains "gemini" or "google" (case-insensitive), `false` otherwise.
+    """
     if not model_name:
         return False
     name = model_name.lower()

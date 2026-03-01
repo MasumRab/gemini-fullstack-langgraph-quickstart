@@ -229,11 +229,11 @@ class KaggleGemmaClient:
 
     def __init__(self, model_handle: str = "google/gemma-2/keras/gemma2-2b-en", dtype: Optional[str] = None):
         """
-        Initialize Kaggle Gemma client.
-
-        Args:
-            model_handle: Kaggle model handle (e.g., 'google/gemma-2/keras/gemma2-2b-en').
-            dtype: Optional Keras floatx type (e.g., 'bfloat16'). Set before client use if not relying on global config.
+        Create a KaggleGemmaClient configured to load a Gemma model from KaggleHub for use with KerasNLP.
+        
+        Parameters:
+            model_handle (str): Kaggle model identifier, e.g. "google/gemma-2/keras/gemma2-2b-en".
+            dtype (Optional[str]): Optional Keras `floatx` value (for example, "bfloat16"); if provided, it will be applied to Keras configuration before the model is loaded.
         """
         self.model_handle = model_handle
         self.dtype = dtype
@@ -241,7 +241,14 @@ class KaggleGemmaClient:
         self.llm = None
 
     def _lazy_load(self):
-        """Lazily load the model and its dependencies."""
+        """
+        Ensure the Kaggle-hosted Gemma model and required libraries are loaded into the client when first needed.
+        
+        Loads kagglehub, keras_nlp, and keras, attempts Kaggle authentication using KAGGLE_USERNAME/KAGGLE_KEY (logs a warning if missing), downloads or locates the model into `self.model_path`, applies `self.dtype` to Keras floatx if provided, and initializes `self.llm` with the loaded GemmaCausalLM. If the model is already loaded (`self.llm` is not None), this is a no-op.
+        
+        Raises:
+            ImportError: If required third-party packages are not available; the error message advises installing `kagglehub`, `keras`, and `keras-nlp`.
+        """
         if self.llm is not None:
             return
 
@@ -277,11 +284,16 @@ class KaggleGemmaClient:
 
     def generate(self, prompt: str, max_length: int = 256, **kwargs) -> str:
         """
-        Generate text completion.
-
-        Args:
-            prompt: The input prompt string.
-            max_length: Maximum length of the generated sequence.
+        Generate text from the loaded Gemma model for the given prompt.
+        
+        Ensures the model and its dependencies are loaded lazily before invoking generation.
+        
+        Parameters:
+            prompt (str): The input prompt to generate text from.
+            max_length (int): Maximum number of tokens/characters to generate.
+        
+        Returns:
+            str: The generated text output.
         """
         self._lazy_load()
         # KerasNLP GemmaCausalLM 'generate' takes the prompt and max_length

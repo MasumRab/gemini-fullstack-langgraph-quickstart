@@ -32,9 +32,13 @@ if TRUSTED_PROXIES_ENV:
 
 
 def _is_ip_in_trusted_proxies(ip: str) -> bool:
-    """Check if an IP address is in the trusted proxies set.
-
-    Supports both direct IP matching and CIDR range matching.
+    """
+    Determine whether an IP address is considered a trusted proxy.
+    
+    Checks the global TRUSTED_PROXIES for either an exact IP match or inclusion in a CIDR range. Invalid or unparsable IP inputs return False.
+    
+    Returns:
+        True if the IP matches any entry in TRUSTED_PROXIES (exact match or within a CIDR), False otherwise.
     """
     if not TRUSTED_PROXIES:
         return False
@@ -68,26 +72,18 @@ def extract_client_ip_from_forwarded(
     trusted_proxy_count: int = TRUSTED_PROXY_COUNT,
     fallback_ip: str | None = None,
 ) -> str | None:
-    """Extract the real client IP from X-Forwarded-For header using trust-bound extraction.
-
-    🛡️ Sentinel: This implements secure IP extraction to prevent IP spoofing attacks.
-
-    The X-Forwarded-For header format is: client, proxy1, proxy2, ...
-    Each proxy appends its IP to the right. However, the leftmost IP is
-    attacker-controllable if the request passed through an untrusted network.
-
-    Trust-bound extraction works by:
-    1. If TRUSTED_PROXIES is configured: iterate from right to left, skip trusted
-       proxy IPs, return the first untrusted IP.
-    2. If only TRUSTED_PROXY_COUNT is set: pick ips[-(trusted_proxy_count + 1)].
-
-    Args:
-        forwarded: The X-Forwarded-For header value.
-        trusted_proxy_count: Number of trusted proxies between client and server.
-        fallback_ip: IP to return if no valid candidate is found.
-
+    """
+    Determine the originating client IP from an X-Forwarded-For header using configured trust boundaries.
+    
+    Parses and validates the comma-separated IP list in `forwarded` and returns the first untrusted IP according to either the configured TRUSTED_PROXIES set (preferred) or the numeric `trusted_proxy_count`. If no valid candidate is found, returns `fallback_ip`.
+    
+    Parameters:
+        forwarded (str): The raw X-Forwarded-For header value (comma-separated IPs).
+        trusted_proxy_count (int): Number of trusted proxies to skip from the right when TRUSTED_PROXIES is not configured.
+        fallback_ip (str | None): Value to return when no valid client IP can be determined.
+    
     Returns:
-        The extracted client IP, or fallback_ip if no valid candidate found.
+        str | None: The selected client IP string, or `fallback_ip` if none could be determined.
     """
     if not forwarded:
         return fallback_ip
@@ -255,7 +251,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.cleanup_interval = 60  # seconds
 
     async def dispatch(self, request: Request, call_next):
-        """Check rate limit for API endpoints."""
+        """
+        Enforces in-memory rate limits for protected paths and forwards the request to the next handler when allowed.
+        
+        When the request path matches a configured protected prefix, this middleware:
+        - Resolves a client identity (optionally using trust-bound X-Forwarded-For extraction and grouping IPv6 by /64).
+        - Maintains a sliding time window of recent request timestamps per client and rejects requests that exceed the configured limit with a 429 response including a `retry_after` value and `Retry-After` header.
+        - Performs periodic, throttled cleanup of stale client entries to limit memory growth and, if the total tracked client count exceeds capacity, rejects new client entries with a 503 "Server Busy" response to protect service stability.
+        
+        Parameters:
+            request (Request): The incoming Starlette/FastAPI request.
+            call_next (Callable): The downstream request handler to invoke when the request is allowed.
+        
+        Returns:
+            Response: The downstream handler's response, or a 429/503 Response when rate limiting or capacity protections apply.
+        """
         path = request.url.path
 
         # Check if path is protected.

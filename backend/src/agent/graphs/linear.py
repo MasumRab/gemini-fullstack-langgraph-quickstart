@@ -26,7 +26,18 @@ from agent.state import OverallState, ReflectionState
     tags=["routing", "policy"],
 )
 def evaluate_research_linear(state: ReflectionState, config: RunnableConfig) -> str:
-    """Decides next step: 'web_research' (loop) or 'finalize_answer'."""
+    """
+    Choose whether to continue web research or finalize the answer.
+    
+    Evaluates the reflection state against the configured maximum research loops and the state's sufficiency flag to determine routing.
+    
+    Parameters:
+        state (ReflectionState): Reflection state containing at least `is_sufficient` (bool) and `research_loop_count` (int). May include `max_research_loops` to override the configured default.
+        config (RunnableConfig): Runtime configuration used to obtain the default `max_research_loops` when not provided in `state`.
+    
+    Returns:
+        str: "web_research" to continue the research loop, "finalize_answer" to end the loop and finalize the answer.
+    """
     configurable = Configuration.from_runnable_config(config)
     max_loops = state.get("max_research_loops") or configurable.max_research_loops
 
@@ -46,10 +57,21 @@ def evaluate_research_linear(state: ReflectionState, config: RunnableConfig) -> 
     tags=["queue", "linear"],
 )
 def queue_manager(state: OverallState) -> Dict[str, Any]:
-    """Prepares the next query for the single-threaded web_research node.
-
-    In parallel mode, 'Send' distributes all queries.
-    In linear mode, we need to pick one.
+    """
+    Selects and prepares the next single search query for strict linear execution.
+    
+    When reflection produced follow-up queries, uses the first follow-up as the next
+    `search_query` and returns an updated `follow_up_queries` list with that item removed.
+    If no follow-ups are present, returns an empty dict (no change to state).
+    
+    Parameters:
+        state (OverallState): The current overall state which may contain
+            `follow_up_queries` (list) and `search_query`.
+    
+    Returns:
+        Dict[str, Any]: A partial state update containing `search_query` and, when
+        applicable, `follow_up_queries` with the consumed item removed; or an empty
+        dict if no next query is selected.
     """
     # Logic:
     # 1. If we have 'follow_up_queries' from reflection, use the first one.

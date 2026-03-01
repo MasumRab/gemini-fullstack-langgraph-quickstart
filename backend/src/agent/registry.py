@@ -26,7 +26,20 @@ class GraphRegistry:
         tags: List[str] | None = None,
         outputs: List[str] | None = None,
     ):
-        """Decorator that records metadata for a node without altering wiring."""
+        """
+        Create a decorator that registers documentation metadata for a graph node.
+        
+        The returned decorator records the node's handler name, summary, tags, and outputs in the registry under the provided name without altering the decorated function's behavior.
+        
+        Parameters:
+            name (str): Key under which to store the node metadata in the registry.
+            summary (str): Short description of the node's purpose.
+            tags (List[str] | None): Optional list of tags for grouping or filtering; treated as an empty list if None.
+            outputs (List[str] | None): Optional list of output names produced by the node; treated as an empty list if None.
+        
+        Returns:
+            callable: A decorator that accepts a function, stores its metadata under `name`, and returns the original function.
+        """
 
         def decorator(func: Callable):
             self.node_docs[name] = {

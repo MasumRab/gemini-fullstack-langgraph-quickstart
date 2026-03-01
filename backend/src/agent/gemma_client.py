@@ -15,7 +15,19 @@ class GemmaClient:
     """Base interface for Gemma clients, conforming to LLMClient standards."""
 
     def invoke(self, prompt: str, **kwargs) -> str:
-        """Standard invoke method for compatibility with LangChain-like calls."""
+        """
+        Invoke the Gemma model with the given prompt and optional generation parameters.
+        
+        Parameters:
+            prompt (str): The text prompt to send to the model.
+            **kwargs: Optional generation parameters (for example, `max_tokens`, temperature, or other provider-specific options).
+        
+        Returns:
+            str: The generated text response from the model.
+        
+        Raises:
+            NotImplementedError: If a subclass does not implement this method.
+        """
         raise NotImplementedError("Subclasses must implement invoke")
 
 
@@ -23,7 +35,15 @@ class VertexAIGemmaClient(GemmaClient):
     """Client for Gemma models deployed on Google Vertex AI."""
 
     def __init__(self):
-        """Initialize Vertex AI client using configuration from app_config."""
+        """
+        Initialize a Vertex AI endpoint client using configuration from app_config.
+        
+        Loads required google-cloud-aiplatform protobuf helpers, reads project, location, and endpoint IDs from app_config, initializes the Vertex AI platform, and constructs an Endpoint instance stored on self. Also preserves protobuf helpers on self as _json_format and _Value for later use.
+        
+        Raises:
+            ImportError: If google-cloud-aiplatform or required protobuf modules are not installed.
+            ValueError: If any of vertex_project_id, vertex_location, or vertex_endpoint_id are missing from app_config.
+        """
         try:
             from google.cloud import aiplatform
             from google.protobuf import json_format
@@ -51,7 +71,15 @@ class VertexAIGemmaClient(GemmaClient):
         self._Value = Value
 
     def invoke(self, prompt: str, **kwargs) -> str:
-        """Send prediction request to Vertex AI Endpoint."""
+        """
+        Send a text prompt to the configured Vertex AI Endpoint and return the model's prediction.
+        
+        Parameters:
+            max_tokens (int, optional): Maximum number of tokens to generate; passed via kwargs (default 512).
+        
+        Returns:
+            str: The first prediction returned by the endpoint as a string, or an empty string if no predictions are present.
+        """
         max_tokens = kwargs.get("max_tokens", 512)
         instance = {"inputs": prompt, "max_tokens": max_tokens}
 
@@ -70,10 +98,11 @@ class OllamaGemmaClient(GemmaClient):
     """Client for local Gemma models via Ollama API."""
 
     def __init__(self, timeout: int = 120):
-        """Initialize Ollama client.
-
+        """
+        Create an Ollama Gemma client configured for local API calls.
+        
         Args:
-            timeout: Request timeout in seconds (default: 120).
+            timeout (int): Maximum time to wait for HTTP requests to the Ollama API, in seconds.
         """
         import requests
 
@@ -84,7 +113,22 @@ class OllamaGemmaClient(GemmaClient):
         self.timeout = timeout
 
     def invoke(self, prompt: str, **kwargs) -> str:
-        """Generate text completion."""
+        """
+        Generate a completion from the configured Ollama model using the provided prompt.
+        
+        Parameters:
+            prompt (str): The input prompt to send to the model.
+            **kwargs: Additional generation options that will be merged into the request payload.
+                The following keys are ignored if present: "model", "prompt", "stream".
+        
+        Returns:
+            completion (str): The model's response text from the API's "response" field, or an empty string if absent.
+        
+        Raises:
+            TimeoutError: If the HTTP request times out after the configured timeout.
+            requests.exceptions.RequestException: If the HTTP request fails for other HTTP/network reasons; this exception is re-raised.
+            Exception: Other unexpected exceptions encountered during the call are logged and re-raised.
+        """
         # Protect critical payload fields from kwargs override
         PROTECTED_KEYS = {"model", "prompt", "stream"}
         filtered_kwargs = {k: v for k, v in kwargs.items() if k not in PROTECTED_KEYS}
@@ -114,7 +158,14 @@ class OllamaGemmaClient(GemmaClient):
 
 
 def get_gemma_client() -> GemmaClient:
-    """Factory function to get the configured Gemma client."""
+    """
+    Obtain the Gemma client instance configured by app_config.gemma_provider.
+    
+    Supported providers: "vertex" -> VertexAIGemmaClient, "ollama" -> OllamaGemmaClient. If the configured provider is unrecognized, this function defaults to an OllamaGemmaClient and emits a warning.
+    
+    Returns:
+        GemmaClient: An instantiated client matching the configured provider.
+    """
     provider = (app_config.gemma_provider or "ollama").lower()
     if provider == "vertex":
         return VertexAIGemmaClient()

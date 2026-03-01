@@ -12,7 +12,14 @@ BENCHMARK_URLS = {
 
 
 def download_benchmark_data(output_dir: str = "data/benchmark"):
-    """Download DeepResearch-Bench evaluation data, fallback to mock"""
+    """
+    Download DeepResearch-Bench evaluation datasets to the given directory, creating the directory if needed and falling back to generated mock data when downloading is unavailable or fails.
+    
+    Attempts to fetch each dataset listed in BENCHMARK_URLS and save it as "<name>.jsonl" under the specified output directory. If the file already exists it is skipped. If the requests library is unavailable or a download fails, a small mock dataset is created in its place.
+    
+    Parameters:
+        output_dir (str): Path to the directory where dataset files will be written; the directory will be created if it does not exist.
+    """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -55,7 +62,18 @@ def download_benchmark_data(output_dir: str = "data/benchmark"):
 
 
 def create_mock_data(dataset_name: str, output_path: Path):
-    """Create small mock dataset for testing"""
+    """
+    Create a small mock JSONL dataset for testing and write it to the specified output path.
+    
+    Supported `dataset_name` values:
+    - "criteria": produces query items containing fields such as `query_id`, `query`, `subgoals`, `expected_evidence_types`, `difficulty`, and `domain`.
+    - "reference": produces reference items with `query_id`, `reference_answer`, `key_facts` (each with `fact` and `source`), `required_sources`, and `min_evidence_count`.
+    For any other `dataset_name`, an empty JSONL file is written.
+    
+    Parameters:
+        dataset_name (str): Name of the mock dataset to create ("criteria" or "reference").
+        output_path (Path): Directory where the file `<dataset_name>.jsonl` will be written (one JSON object per line).
+    """
     if dataset_name == "criteria":
         mock_data = [
             {

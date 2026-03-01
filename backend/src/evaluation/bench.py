@@ -19,6 +19,16 @@ class BenchmarkEvaluator:
     """
 
     def __init__(self, agent: DeepSearchAgent, data_dir: str = "data/benchmark"):
+        """
+        Initialize the BenchmarkEvaluator with an agent and benchmark data directory.
+        
+        Parameters:
+            agent (DeepSearchAgent): Agent used to run research queries during evaluation.
+            data_dir (str): Path to the benchmark data directory containing `criteria.jsonl` and `reference.jsonl`. Defaults to `"data/benchmark"`.
+        
+        Description:
+            Stores the agent and data directory, initializes the metrics collector, loads criteria and reference entries from the data directory, and builds a lookup mapping from `query_id` to reference entry for quick access during evaluation.
+        """
         self.agent = agent
         self.data_dir = Path(data_dir)
         self.metrics = DeepResearchMetrics()
@@ -31,7 +41,20 @@ class BenchmarkEvaluator:
         self.ref_lookup = {r["query_id"]: r for r in self.references}
 
     def _load_jsonl(self, file_path: Path) -> List[Dict]:
-        """Load JSONL file"""
+        """
+        Load a JSON Lines (JSONL) file and return a list of parsed JSON objects.
+        
+        If the file does not exist, a warning is logged and an empty list is returned. Blank lines are skipped; each non-blank line is parsed as a JSON object and appended to the result.
+        
+        Parameters:
+            file_path (Path): Path to the JSON Lines file to load.
+        
+        Returns:
+            List[Dict]: A list of dictionaries, one per parsed JSON line.
+        
+        Raises:
+            json.JSONDecodeError: If a non-blank line contains invalid JSON.
+        """
         data = []
         if not file_path.exists():
             logger.warning(f"File not found: {file_path}")
@@ -47,9 +70,22 @@ class BenchmarkEvaluator:
         output_file: str = "results/benchmark_results.json",
         save_detailed: bool = True,
     ) -> Dict:
-        """Run complete benchmark evaluation.
-
-        Returns aggregate scores matching leaderboard format.
+        """
+        Run the full benchmark over all criteria and produce aggregated leaderboard-style scores.
+        
+        Parameters:
+            output_file (str): Path to write the JSON results file.
+            save_detailed (bool): If True, include per-query detailed results in the output file.
+        
+        Returns:
+            final_scores (Dict): Mapping of aggregated metric names to their computed values, including:
+                - overall_score (float): Weighted leaderboard score scaled 0–100.
+                - pass_at_1_accuracy (float): Mean Pass@1 accuracy as a percentage (0–100).
+                - evidence_quality (float): Mean evidence quality score as a percentage (0–100).
+                - subgoal_completion (float): Mean subgoal completion rate as a percentage (0–100).
+                - hallucination_rate (float): Mean hallucination rate as a percentage (0–100).
+                - context_efficiency (float): Mean context efficiency score (raw scale).
+                - num_queries_evaluated (int): Number of queries that were successfully evaluated.
         """
         all_results = []
         aggregate_scores = {
@@ -145,7 +181,31 @@ class BenchmarkEvaluator:
         return final_scores
 
     def _evaluate_single_query(self, criterion: Dict, reference: Dict) -> Dict:
-        """Evaluate single query with all metrics"""
+        """
+        Evaluate a single benchmark query and compute the full set of evaluation metrics.
+        
+        Parameters:
+            criterion (Dict): Benchmark criterion containing at least the keys:
+                - "query": the natural-language query to evaluate.
+                - "query_id": unique identifier for the query.
+                - "subgoals": list of subgoals used for subgoal completion measurement.
+            reference (Dict): Reference data containing at least the keys:
+                - "reference_answer": the canonical answer for the query.
+                - "key_facts": facts required for Pass@1 evaluation.
+                - "required_sources": source identifiers expected for evidence quality.
+                - "min_evidence_count": minimum evidence items expected.
+        
+        Returns:
+            Dict: A results dictionary with the following keys:
+                - "query_id": the provided query identifier.
+                - "query": the evaluated query text.
+                - "generated_answer": the agent-produced answer text.
+                - "pass_at_1": Pass@1 evaluation result (score object/dict indicating match to reference).
+                - "evidence_quality": numeric score assessing retrieved evidence relevance/coverage (typically 0–1).
+                - "subgoal_completion": numeric rate of completed subgoals (typically 0–1).
+                - "hallucination": numeric hallucination rate (typically 0–1).
+                - "context_efficiency": numeric score measuring answer length vs. context cost (typically 0–1).
+        """
         query = criterion["query"]
         query_id = criterion["query_id"]
 
@@ -201,7 +261,23 @@ class BenchmarkEvaluator:
         return results
 
     def _calculate_overall_score(self, aggregate_scores: Dict) -> float:
-        """Calculate overall benchmark score matching leaderboard formula."""
+        """
+        Compute the final leaderboard-style score from aggregated per-query metric lists.
+        
+        Calculates a weighted combination of metrics using the leaderboard weights:
+        pass_at_1 40%, evidence_quality 25%, subgoal_completion 20%, hallucination_rate 10% (inverted as 1 - mean), and context_efficiency 5% (mean divided by 10 then capped at 1). The result is scaled to a percentage in the range 0–100.
+        
+        Parameters:
+            aggregate_scores (Dict): Mapping of metric names to lists of numeric per-query scores. Expected keys:
+                - "pass_at_1": list of values in [0,1] indicating top-answer correctness.
+                - "evidence_quality": list of quality scores (same scale as produced by metrics).
+                - "subgoal_completion": list of completion rates in [0,1].
+                - "hallucination_rate": list of rates in [0,1] (higher means more hallucination; this is inverted).
+                - "context_efficiency": list of efficiency values (higher is better; averaged then divided by 10 and capped).
+        
+        Returns:
+            float: Final aggregated leaderboard score as a percentage (0.0 to 100.0).
+        """
         weights = {
             "pass_at_1": 0.40,
             "evidence_quality": 0.25,
@@ -230,7 +306,19 @@ class BenchmarkEvaluator:
         return score * 100  # Convert to percentage
 
     def _print_summary(self, scores: Dict):
-        """Print formatted results"""
+        """
+        Display a formatted textual summary of evaluation scores.
+        
+        Parameters:
+            scores (Dict): Mapping containing final evaluation metrics with the following keys:
+                - 'overall_score' (float): Aggregated overall leaderboard score (percentage).
+                - 'pass_at_1_accuracy' (float): Pass@1 accuracy as a percentage.
+                - 'evidence_quality' (float): Evidence quality score as a percentage.
+                - 'subgoal_completion' (float): Subgoal completion score as a percentage.
+                - 'hallucination_rate' (float): Hallucination rate as a percentage.
+                - 'context_efficiency' (float): Context efficiency score (unitless or ratio).
+                - 'num_queries_evaluated' (int): Number of queries that were evaluated.
+        """
         print("\n" + "=" * 60)
         print("DEEPRESEARCH-BENCH EVALUATION RESULTS")
         print("=" * 60)

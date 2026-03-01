@@ -41,7 +41,17 @@ If no tool is needed, just respond with the text answer.
 
 
 def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
-    """Converts a list of LangChain tools into a readable JSON schema string for the prompt."""
+    """
+    Builds a JSON schema describing a list of tools for inclusion in an agent prompt.
+    
+    Each array element describes a tool with its `name`, `description`, and `parameters`. When a tool exposes an input schema, that schema is used to populate `parameters`; otherwise the tool's `args` are used.
+    
+    Parameters:
+        tools (List[BaseTool]): Tools to convert into schema entries.
+    
+    Returns:
+        json_schema (str): Pretty-printed JSON array where each element is an object with `name`, `description`, and `parameters`.
+    """
     tool_schemas = []
     for tool in tools:
         # Pydantic v1 uses .args, v2 uses .args_schema or model_json_schema()
@@ -69,8 +79,21 @@ def format_tools_to_json_schema(tools: List[BaseTool]) -> str:
 def parse_tool_calls(
     content: str, allowed_tools: List[str] | None = None
 ) -> List[Dict[str, Any]]:
-    """Parses the LLM output for JSON tool calls.
-    Robustly handles markdown blocks and fallback JSON extraction.
+    """
+    Extracts tool call instructions from LLM output formatted as JSON (optionally inside a ```json``` code block).
+    
+    Parses the first JSON object or JSON code block found in content and interprets it as one or more tool call descriptions. If allowed_tools is provided, results are filtered to that set (with case-insensitive canonicalization); when allowed_tools contains exactly one name and the parsed JSON is an arguments object, that tool name will be assumed.
+    
+    Parameters:
+        content (str): Raw text output from the LLM that may contain JSON describing tool calls.
+        allowed_tools (List[str] | None): Optional whitelist of permitted tool names. If set, only calls whose name matches an entry (case-insensitive) are returned.
+    
+    Returns:
+        List[Dict[str, Any]]: A list of tool call dictionaries with keys:
+            - name (str): Canonical tool name.
+            - args (dict | str): Parsed arguments for the tool (a dict when parseable as JSON, otherwise the raw string).
+            - id (str): Unique call identifier (prefixed with "call_").
+            - type (str): Literal value "tool_call".
     """
     # Debug logging to see what the model actually output
     logger.debug(f"Raw LLM Output for Tool Parsing:\n{content}\n" + "-" * 20)

@@ -28,7 +28,18 @@
 
 
 def evaluate_mle_bench():
-    """Evaluates the agent on MLE-bench tasks."""
+    """
+    Orchestrates evaluation of an agent on the MLE-bench benchmark by loading tasks, running the agent, scoring outputs, aggregating metrics, and producing a report.
+    
+    This function is a high-level entry point intended to:
+    - Load the MLE-bench dataset.
+    - Execute the agent on each task and collect outputs.
+    - Score outputs per task using defined evaluators.
+    - Aggregate metrics (e.g., pass@1, average score, latency percentiles).
+    - Emit a final report (JSON/Markdown) with per-task and aggregate results.
+    
+    Currently implemented as a placeholder: it performs no evaluation and prints a short notice when invoked.
+    """
     # TODO(priority=High, complexity=Low): [mle_bench:1] Load dataset
     dataset = []  # load_mle_dataset()
 

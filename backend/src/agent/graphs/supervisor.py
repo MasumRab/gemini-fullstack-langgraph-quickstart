@@ -32,12 +32,13 @@ logger = logging.getLogger(__name__)
     outputs=["web_research_result"],
 )
 def compress_context(state: OverallState, config: RunnableConfig) -> Dict[str, Any]:
-    """Summarizes the current batch of web research results to prevent context bloat.
-
-    Instead of appending to an ever-growing list, this node:
-    1. Takes the new 'validated_web_research_result'.
-    2. Merges it with existing 'web_research_result' (history).
-    3. Uses an LLM to summarize/deduplicate into a 'Running Summary'.
+    """
+    Produce a consolidated web research context by merging, deduplicating, and optionally compressing recent validated results.
+    
+    Merges the state's "validated_web_research_result" into the existing "web_research_result", preserving insertion order and removing duplicates. If compression is disabled, the merged list is returned unchanged. When compression is enabled in "tiered" mode, the merged results are compressed into a single summarized entry that preserves source citations and key factual claims; if compression fails, the merged list is returned instead.
+    
+    Returns:
+        dict[str, Any]: A state fragment with the key "web_research_result". The value is either a list of deduplicated snippets (when compression is off or on failure) or a single-item list containing the compressed summary (when tiered compression succeeds).
     """
     # 1. Gather all results
     new_results = state.get("validated_web_research_result", [])
