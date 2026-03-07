@@ -42,7 +42,11 @@ async def test_rate_limiter_proxy_logic():
     # We use a distinct path prefix to ensure we hit the logic
     # 🛡️ Sentinel: Explicitly enable trust_proxy_headers for this test as we want to test X-Forwarded-For logic
     middleware = RateLimitMiddleware(
-        mock_app, limit=2, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app,
+        limit=2,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
     # Helper to simulate request
@@ -114,7 +118,11 @@ async def test_rate_limiter_truncation():
 
     # 🛡️ Sentinel: Enable proxy trust to test header parsing
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
     long_ip = "1.2.3.4" + "a" * 1000  # Very long string

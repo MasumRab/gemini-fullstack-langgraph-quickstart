@@ -1,6 +1,6 @@
 """Benchmark Orchestration Script
 
-This script runs the agent against a dataset of questions and evaluates performance 
+This script runs the agent against a dataset of questions and evaluates performance
 using the evaluators defined in backend/tests/evaluators.py.
 """
 
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Path relative to backend root
 DATASET_PATH = os.path.join("tests", "data", "benchmark_questions.json")
 
+
 def load_dataset(path: str) -> List[Dict[str, Any]]:
     """Load questions from a JSON file."""
     if not os.path.exists(path):
@@ -48,6 +49,7 @@ def load_dataset(path: str) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Failed to load dataset: {e}")
         return []
+
 
 async def run_benchmark():
     """Run evaluation for all questions."""
@@ -73,12 +75,13 @@ async def run_benchmark():
             # For automation, we assume the graph can run autonomously or we'd need to mock input.
             # Increase recursion limit to handle multi-step research plans (default is 25)
             # Disable planning confirmation to allow automated execution
-            response = await graph.ainvoke({
-                "messages": [("user", question)]
-            }, config={
-                "recursion_limit": 100,
-                "configurable": {"require_planning_confirmation": False}
-            })
+            response = await graph.ainvoke(
+                {"messages": [("user", question)]},
+                config={
+                    "recursion_limit": 100,
+                    "configurable": {"require_planning_confirmation": False},
+                },
+            )
 
             # Extract final answer from the last message content
             messages = response.get("messages", [])
@@ -115,14 +118,22 @@ async def run_benchmark():
                 "question": question,
                 "expected_topics": expected_topics,
                 "quality_score": quality_result.get("score", 0),
-                "quality_reasoning": quality_result.get("metadata", {}).get("reasoning", "No reasoning provided"),
+                "quality_reasoning": quality_result.get("metadata", {}).get(
+                    "reasoning", "No reasoning provided"
+                ),
                 "groundedness_score": groundedness_result.get("score", 0),
-                "groundedness_reasoning": groundedness_result.get("metadata", {}).get("reasoning", "No reasoning provided"),
-                "final_answer_snippet": (final_content[:200] + "...") if final_content else "No content"
+                "groundedness_reasoning": groundedness_result.get("metadata", {}).get(
+                    "reasoning", "No reasoning provided"
+                ),
+                "final_answer_snippet": (final_content[:200] + "...")
+                if final_content
+                else "No content",
             }
             results.append(result_entry)
 
-            logger.info(f"Result for '{question}': Q={result_entry['quality_score']}, G={result_entry['groundedness_score']}")
+            logger.info(
+                f"Result for '{question}': Q={result_entry['quality_score']}, G={result_entry['groundedness_score']}"
+            )
 
         except Exception as e:
             logger.error(f"Agent failed for '{question}': {e}", exc_info=True)
@@ -143,12 +154,12 @@ async def run_benchmark():
 """
         for r in results:
             report += f"""
-### {r['question']}
-- **Quality:** {r['quality_score']}
-  - *Reasoning:* {r['quality_reasoning']}
-- **Groundedness:** {r['groundedness_score']}
-  - *Reasoning:* {r['groundedness_reasoning']}
-- **Snippet:** {r['final_answer_snippet']}
+### {r["question"]}
+- **Quality:** {r["quality_score"]}
+  - *Reasoning:* {r["quality_reasoning"]}
+- **Groundedness:** {r["groundedness_score"]}
+  - *Reasoning:* {r["groundedness_reasoning"]}
+- **Snippet:** {r["final_answer_snippet"]}
 """
         print(report)
 
@@ -158,6 +169,7 @@ async def run_benchmark():
         logger.info("Report saved to benchmark_report.md")
     else:
         logger.warning("No results to report.")
+
 
 if __name__ == "__main__":
     asyncio.run(run_benchmark())

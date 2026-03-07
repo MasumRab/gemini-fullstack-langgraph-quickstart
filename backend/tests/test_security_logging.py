@@ -12,7 +12,9 @@ from agent.security import RateLimitMiddleware
 # Setup simple app for middleware testing
 def create_rate_limit_app():
     app = FastAPI()
-    app.add_middleware(RateLimitMiddleware, limit=1, window=60, protected_paths=["/test"])
+    app.add_middleware(
+        RateLimitMiddleware, limit=1, window=60, protected_paths=["/test"]
+    )
 
     @app.get("/test")
     def test_route():
@@ -20,9 +22,12 @@ def create_rate_limit_app():
 
     return app
 
+
 def create_content_size_app():
     app = FastAPI()
-    app.add_middleware(ContentSizeLimitMiddleware, max_upload_size=10) # Small limit for testing
+    app.add_middleware(
+        ContentSizeLimitMiddleware, max_upload_size=10
+    )  # Small limit for testing
 
     @app.post("/upload")
     def upload_route(data: dict):
@@ -30,8 +35,8 @@ def create_content_size_app():
 
     return app
 
-class TestSecurityLogging:
 
+class TestSecurityLogging:
     def test_rate_limit_logging(self, caplog):
         """Test that rate limit violations are logged with path."""
         app = create_rate_limit_app()
@@ -58,7 +63,11 @@ class TestSecurityLogging:
         large_data = "x" * 20
 
         with caplog.at_level(logging.WARNING):
-            client.post("/upload", content=large_data, headers={"Content-Length": str(len(large_data))})
+            client.post(
+                "/upload",
+                content=large_data,
+                headers={"Content-Length": str(len(large_data))},
+            )
 
         # Check logs
         assert "Request entity too large" in caplog.text

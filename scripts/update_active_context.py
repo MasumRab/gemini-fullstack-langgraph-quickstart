@@ -5,6 +5,7 @@ import requests
 import subprocess
 from datetime import datetime, timezone
 
+
 def get_repo_info():
     """Attempt to get repository 'owner/repo' string."""
     # 1. From Environment
@@ -19,7 +20,7 @@ def get_repo_info():
             ["git", "config", "--get", "remote.origin.url"],
             capture_output=True,
             text=True,
-            check=False
+            check=False,
         )
 
         if result.returncode != 0:
@@ -43,11 +44,12 @@ def get_repo_info():
         pass
     return None
 
+
 def fetch_open_prs(repo, token):
     """Fetch open PRs and their changed files with pagination."""
     headers = {
         "Authorization": f"token {token}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": "application/vnd.github.v3+json",
     }
     api_url = "https://api.github.com"
 
@@ -68,12 +70,12 @@ def fetch_open_prs(repo, token):
             prs.extend(page_prs)
 
             # Check for next page in Link header
-            if 'Link' in resp.headers:
-                links = resp.headers['Link'].split(', ')
+            if "Link" in resp.headers:
+                links = resp.headers["Link"].split(", ")
                 next_url = None
                 for link in links:
                     if 'rel="next"' in link:
-                        next_url = link[link.find("<")+1:link.find(">")]
+                        next_url = link[link.find("<") + 1 : link.find(">")]
                         break
             else:
                 next_url = None
@@ -104,12 +106,12 @@ def fetch_open_prs(repo, token):
                 files.extend([f["filename"] for f in page_files])
 
                 # Check for next page in Link header
-                if 'Link' in f_resp.headers:
-                    links = f_resp.headers['Link'].split(', ')
+                if "Link" in f_resp.headers:
+                    links = f_resp.headers["Link"].split(", ")
                     files_url = None
                     for link in links:
                         if 'rel="next"' in link:
-                            files_url = link[link.find("<")+1:link.find(">")]
+                            files_url = link[link.find("<") + 1 : link.find(">")]
                             break
                 else:
                     files_url = None
@@ -119,15 +121,18 @@ def fetch_open_prs(repo, token):
                 # Stop paginating for this PR but keep what we have
                 break
 
-        results.append({
-            "number": pr_number,
-            "title": pr["title"],
-            "user": pr["user"]["login"],
-            "url": pr["html_url"],
-            "files": files
-        })
+        results.append(
+            {
+                "number": pr_number,
+                "title": pr["title"],
+                "user": pr["user"]["login"],
+                "url": pr["html_url"],
+                "files": files,
+            }
+        )
 
     return results
+
 
 def generate_markdown(prs):
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -135,7 +140,7 @@ def generate_markdown(prs):
         "# 🧠 Active Development Context",
         f"Last Updated: {timestamp}\n",
         "## 🚧 Open Pull Requests & Locked Files",
-        "> **CONFLICT WARNING:** Do not modify files listed below if they are currently being changed in an open PR.\n"
+        "> **CONFLICT WARNING:** Do not modify files listed below if they are currently being changed in an open PR.\n",
     ]
 
     if not prs:
@@ -146,8 +151,8 @@ def generate_markdown(prs):
             lines.append(f"- **Author:** @{pr['user']}")
             lines.append(f"- **Link:** [View on GitHub]({pr['url']})")
             lines.append("- **Files Modified:**")
-            if pr['files']:
-                for f in pr['files']:
+            if pr["files"]:
+                for f in pr["files"]:
                     lines.append(f"  - `{f}`")
             else:
                 lines.append("  - *(No file changes detected)*")
@@ -155,21 +160,28 @@ def generate_markdown(prs):
 
     return "\n".join(lines)
 
+
 def main():
     token = os.getenv("GITHUB_TOKEN")
     if not token:
         print("GITHUB_TOKEN not set. Creating placeholder context.")
         os.makedirs("docs", exist_ok=True)
         with open("docs/ACTIVE_CONTEXT.md", "w") as f:
-            f.write("# 🧠 Active Development Context\n\n*GitHub Token missing - Context unavailable*")
+            f.write(
+                "# 🧠 Active Development Context\n\n*GitHub Token missing - Context unavailable*"
+            )
         return
 
     repo = get_repo_info()
     if not repo:
-        print("Could not determine repository. Creating placeholder context and exiting.")
+        print(
+            "Could not determine repository. Creating placeholder context and exiting."
+        )
         os.makedirs("docs", exist_ok=True)
         with open("docs/ACTIVE_CONTEXT.md", "w") as f:
-            f.write("# 🧠 Active Development Context\n\n*Repository detection failed - Context unavailable*")
+            f.write(
+                "# 🧠 Active Development Context\n\n*Repository detection failed - Context unavailable*"
+            )
         return
 
     print(f"Fetching context for {repo}...")
@@ -180,6 +192,7 @@ def main():
     with open("docs/ACTIVE_CONTEXT.md", "w") as f:
         f.write(md_content)
     print("Updated docs/ACTIVE_CONTEXT.md")
+
 
 if __name__ == "__main__":
     main()

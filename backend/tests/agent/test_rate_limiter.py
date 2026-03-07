@@ -93,8 +93,11 @@ class TestRateLimiter(unittest.TestCase):
         # 5. record -> 1061.0
 
         mock_time.time.side_effect = [
-            start_time, start_time,             # Iteration 1
-            start_time + 61.0, start_time + 61.0, start_time + 61.0  # Iteration 2
+            start_time,
+            start_time,  # Iteration 1
+            start_time + 61.0,
+            start_time + 61.0,
+            start_time + 61.0,  # Iteration 2
         ]
 
         limiter.wait_if_needed(10)
@@ -103,6 +106,7 @@ class TestRateLimiter(unittest.TestCase):
         # After success, we added the new request at 1061, old one removed
         self.assertEqual(len(limiter._requests_per_minute), 1)
         self.assertEqual(limiter._requests_per_minute[0], 1061.0)
+
 
 if __name__ == "__main__":
     unittest.main()

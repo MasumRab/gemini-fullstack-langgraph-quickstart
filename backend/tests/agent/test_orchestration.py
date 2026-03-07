@@ -28,6 +28,7 @@ from agent.state import OverallState
 # ToolRegistry Tests
 # =============================================================================
 
+
 class TestToolRegistry:
     """Tests for ToolRegistry."""
 
@@ -89,6 +90,7 @@ class TestToolRegistry:
 # AgentPool Tests
 # =============================================================================
 
+
 class TestAgentPool:
     """Tests for AgentPool."""
 
@@ -135,6 +137,7 @@ class TestAgentPool:
 # Coordinator Node Tests
 # =============================================================================
 
+
 class TestCoordinatorNode:
     """Tests for the coordinator node logic."""
 
@@ -143,7 +146,9 @@ class TestCoordinatorNode:
         """Test parsing of LLM JSON response."""
         # Setup mocks
         mock_llm = mock_get_llm.return_value
-        mock_llm.invoke.return_value = AIMessage(content='```json\n{"action": "delegate_agent", "target": "researcher", "reason": "complex query"}\n```')
+        mock_llm.invoke.return_value = AIMessage(
+            content='```json\n{"action": "delegate_agent", "target": "researcher", "reason": "complex query"}\n```'
+        )
 
         registry = ToolRegistry()
         pool = AgentPool()
@@ -189,6 +194,7 @@ class TestCoordinatorNode:
 # Orchestrated Graph Tests
 # =============================================================================
 
+
 class TestOrchestratedGraphBuilder:
     """Tests for build_orchestrated_graph."""
 
@@ -228,7 +234,7 @@ class TestOrchestratedGraphBuilder:
         # Registered agent
         state = {
             "coordinator_decision": "delegate_agent",
-            "coordinator_target": "researcher"
+            "coordinator_target": "researcher",
         }
         assert router(state) == "agent_researcher"
 

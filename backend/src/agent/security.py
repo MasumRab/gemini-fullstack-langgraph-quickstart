@@ -283,7 +283,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # 🛡️ Sentinel: Use trust-bound IP extraction instead of naive ips[0]
                 # The leftmost IP is attacker-controllable; we must use trust-bound extraction.
                 client_ip = extract_client_ip_from_forwarded(
-                    forwarded=forwarded, trusted_proxy_count=TRUSTED_PROXY_COUNT, trusted_proxies=TRUSTED_PROXIES, fallback_ip=fallback_ip
+                    forwarded=forwarded,
+                    trusted_proxy_count=TRUSTED_PROXY_COUNT,
+                    trusted_proxies=TRUSTED_PROXIES,
+                    fallback_ip=fallback_ip,
                 )
                 if client_ip is None:
                     client_ip = fallback_ip
