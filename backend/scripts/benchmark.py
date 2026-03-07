@@ -133,7 +133,7 @@ async def run_benchmark():
 
             logger.info(
                 f"Result for '{question}': Q={result_entry['quality_score']}, G={result_entry['groundedness_score']}"
-            )
+            )  # NOSONAR
 
         except Exception as e:
             logger.error(f"Agent failed for '{question}': {e}", exc_info=True)

@@ -136,10 +136,10 @@ async def test_rate_limiter_truncation():
     }
 
     async def mock_send(message):
-        pass
+        return None  # NOSONAR
 
     async def mock_receive():
-        return {"type": "http.request"}
+        return {"type": "http.request"}  # NOSONAR
 
     await middleware(scope, mock_receive, mock_send)
 

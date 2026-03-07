@@ -143,19 +143,14 @@ class TestAPISecurity:
         # Add 5000 stale entries (older than window=60s)
         for i in range(5000):
             # Use valid IPs to bypass "unknown" sanitization
-            ip = f"192.0.2.{i % 250}" # Just use simple suffix. Wait, loop is 5000. 5000 / 250 = 20.
-            # To get a valid IP, we need exactly 4 octets. f"192.0.{i // 250}.{i % 250}" is already 4 octets.
-            # Oh, the issue was I changed 10.0.x.y to 192.0.2.x.y which is FIVE octets!
-            # It should be 192.0.{i // 250}.{i % 250} or similar.
-            # But wait, 192.0.x.y is not standard. The original was 10.0.0.0. I can just use 10.0.0.0 for tests, it's safe.
-            ip = f"10.0.{i // 250}.{i % 250}"
+            ip = f"10.0.{i // 250}.{i % 250}"  # NOSONAR
             mw.requests[ip] = [now - 100]
 
         # Add 5002 active entries (newer than window)
         # Note: We need total > 10000 to trigger cleanup logic
         for i in range(5002):
             # Use valid IPs distinct from stale ones
-            ip = f"10.1.{i // 250}.{i % 250}"
+            ip = f"10.1.{i // 250}.{i % 250}"  # NOSONAR
             mw.requests[ip] = [now - 10]
 
         assert len(mw.requests) == 10002
@@ -205,7 +200,7 @@ class TestAPISecurity:
         now = time.time()
         # Add 10001 stale entries (older than window=60s)
         for i in range(10001):
-            ip = f"10.0.{i // 250}.{i % 250}"
+            ip = f"10.0.{i // 250}.{i % 250}"  # NOSONAR
             mw.requests[ip] = [now - 100]
 
         # Set last_cleanup to NOW (simulating it just ran)

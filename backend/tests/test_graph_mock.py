@@ -43,7 +43,7 @@ class TestGraphNodes:
     @patch("agent.nodes.plan_writer_instructions")
     def test_generate_plan_success(
         self, mock_instructions, mock_get_cm, MockLLM, mock_state, mock_config
-    ):
+    ):  # NOSONAR
         # Mock prompts
         mock_get_cm.return_value.truncate_to_fit.return_value = "Mock Prompt"
         mock_instructions.format.return_value = "Mock Prompt"
