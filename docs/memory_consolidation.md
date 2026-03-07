@@ -11,7 +11,7 @@
 - **Python:** Supports 3.12/3.13. `environment.yml` prioritizes `pytorch` and `conda-forge`.
 - **Google:** `google-ai-generativelanguage>=0.9.0` is required in `pyproject.toml` to satisfy `protobuf` constraints.
 - **LangChain:** `langchain-text-splitters` is explicitly required.
-- **Colab:** `notebooks/colab_setup.ipynb` handles environment detection and package uninstallation (tensorflow/grpcio-status) fixes.
+- **Colab:** `backend/notebooks/colab_setup.ipynb` handles environment detection and package uninstallation (tensorflow/grpcio-status) fixes.
 
 ## Features & Configuration
 - **MCP:** Configured in `backend/src/agent/mcp_config.py` via `MCPSettings` (env vars: `MCP_ENABLED`, `MCP_ENDPOINT`).
