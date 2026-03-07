@@ -31,7 +31,9 @@ if TRUSTED_PROXIES_ENV:
     )
 
 
-def _is_ip_in_trusted_proxies(ip: str, trusted_proxies: Set[str] | None = None) -> bool:  # NOSONAR
+def _is_ip_in_trusted_proxies(
+    ip: str, trusted_proxies: Set[str] | None = None
+) -> bool:  # NOSONAR
     """Check if an IP address is in the trusted proxies set.
 
     Supports both direct IP matching and CIDR range matching.

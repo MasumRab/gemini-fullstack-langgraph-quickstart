@@ -141,7 +141,10 @@ class TestGraphNodes:
 
         # It returns messages list where first item is AIMessage
         assert "messages" in result
-        assert "Final Answer with url: http://example.real" in result["messages"][0].content
+        assert (
+            "Final Answer with url: http://example.real"
+            in result["messages"][0].content
+        )
         assert "artifacts" in result
 
     @patch("agent.nodes.load_plan")

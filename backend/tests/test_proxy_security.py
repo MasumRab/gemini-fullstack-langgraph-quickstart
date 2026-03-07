@@ -124,7 +124,10 @@ async def test_spoofing_vulnerability():
     # Trusted Proxy appends Real IP.
     # Header: "203.0.113.1, 192.0.2.105"
 
-    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"203.0.113.1, 192.0.2.105")]
+    headers = [
+        (b"host", b"localhost"),
+        (b"x-forwarded-for", b"203.0.113.1, 192.0.2.105"),
+    ]
 
     scope = {
         "type": "http",

@@ -38,6 +38,7 @@ class TestToolRegistry:
 
         def func(x):
             return x
+
         registry.register("test_tool", func, "Test description", "test_cat")
 
         # Get by name
@@ -57,6 +58,7 @@ class TestToolRegistry:
 
         def func(x):
             return x
+
         registry.register("tool1", func, "Desc 1")
         registry.register("tool2", func, "Desc 2", category="special")
 
