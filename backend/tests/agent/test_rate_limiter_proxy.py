@@ -1,9 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from starlette.responses import PlainTextResponse
+
 from agent.app import app
 from agent.security import RateLimitMiddleware
-from starlette.responses import PlainTextResponse
 
 # ----------------------------------------------------------------------
 # 1. Integration Test with FastAPI App
@@ -26,6 +28,8 @@ def test_rate_limiter_integration():
 
 
 @pytest.mark.asyncio
+@patch("agent.security.TRUSTED_PROXIES", set())
+@patch("agent.security.TRUSTED_PROXY_COUNT", 1)
 async def test_rate_limiter_proxy_logic():
     """Unit test for RateLimitMiddleware proxy logic."""
 
@@ -38,7 +42,11 @@ async def test_rate_limiter_proxy_logic():
     # We use a distinct path prefix to ensure we hit the logic
     # 🛡️ Sentinel: Explicitly enable trust_proxy_headers for this test as we want to test X-Forwarded-For logic
     middleware = RateLimitMiddleware(
-        mock_app, limit=2, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app,
+        limit=2,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
     # Helper to simulate request
@@ -66,39 +74,41 @@ async def test_rate_limiter_proxy_logic():
         return sent_messages
 
     # Scenario:
-    # Client A (Real IP: 1.2.3.4) -> Proxy (IP: 10.0.0.1) -> App
-    # Client B (Real IP: 5.6.7.8) -> Proxy (IP: 10.0.0.1) -> App
+    # Client A (Real IP: 192.0.2.1) -> Proxy (IP: 192.0.2.100) -> App
+    # Client B (Real IP: 198.51.100.1) -> Proxy (IP: 192.0.2.100) -> App
 
     # 1. Client A sends requests
     # The trusted proxy (Render) appends the REAL client IP to the end of X-Forwarded-For.
-    # So if Client A is 1.2.3.4, the header seen by app is "..., 1.2.3.4"
-    header_a = "1.2.3.4"
+    # So if Client A is 192.0.2.1, the header seen by app is "..., 192.0.2.1"
+    header_a = "192.0.2.1"
 
-    await call_middleware("/protected", "10.0.0.1", header_a)
-    await call_middleware("/protected", "10.0.0.1", header_a)
+    await call_middleware("/protected", "192.0.2.100", header_a)
+    await call_middleware("/protected", "192.0.2.100", header_a)
 
     # 2. Client B sends requests
-    header_b = "5.6.7.8"
+    header_b = "198.51.100.1"
 
-    await call_middleware("/protected", "10.0.0.1", header_b)
+    await call_middleware("/protected", "192.0.2.100", header_b)
 
     # 3. Verify Internal State
     # We verify that the middleware tracks the IPs from X-Forwarded-For (Client A/B)
-    # and ignores the direct connection IP (10.0.0.1 - the proxy).
+    # and ignores the direct connection IP (192.0.2.100 - the proxy).
 
     print(f"\nMiddleware State: {middleware.requests}")
 
-    assert "1.2.3.4" in middleware.requests
-    assert len(middleware.requests["1.2.3.4"]) == 2
+    assert "192.0.2.1" in middleware.requests
+    assert len(middleware.requests["192.0.2.1"]) == 2
 
-    assert "5.6.7.8" in middleware.requests
-    assert len(middleware.requests["5.6.7.8"]) == 1
+    assert "198.51.100.1" in middleware.requests
+    assert len(middleware.requests["198.51.100.1"]) == 1
 
-    # "10.0.0.1" (Proxy IP) should NOT be tracked as a client
-    assert "10.0.0.1" not in middleware.requests
+    # "192.0.2.100" (Proxy IP) should NOT be tracked as a client
+    assert "192.0.2.100" not in middleware.requests
 
 
 @pytest.mark.asyncio
+@patch("agent.security.TRUSTED_PROXIES", set())
+@patch("agent.security.TRUSTED_PROXY_COUNT", 1)
 async def test_rate_limiter_truncation():
     """Test that extremely long headers are truncated to prevent memory exhaustion."""
 
@@ -108,10 +118,14 @@ async def test_rate_limiter_truncation():
 
     # 🛡️ Sentinel: Enable proxy trust to test header parsing
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
-    long_ip = "1.2.3.4" + "a" * 1000  # Very long string
+    long_ip = "192.0.2.1" + "a" * 1000  # Very long string
     headers = [(b"x-forwarded-for", long_ip.encode())]
 
     scope = {
@@ -122,15 +136,16 @@ async def test_rate_limiter_truncation():
     }
 
     async def mock_send(message):
-        pass
+        return None  # NOSONAR
 
     async def mock_receive():
-        return {"type": "http.request"}
+        return {"type": "http.request"}  # NOSONAR
 
     await middleware(scope, mock_receive, mock_send)
 
     # Verify the key in requests is truncated
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
-    # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
-    assert keys[0] == "unknown"
+    # Now that we sanitize invalid IPs to "unknown" or "fallback_ip", the long_ip gets rejected.
+    # Since it was rejected and there's no valid IP, it falls back to request.client.host (127.0.0.1)
+    assert keys[0] == "127.0.0.1"

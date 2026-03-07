@@ -134,6 +134,7 @@ else:
         print(f"   - Quota/billing issues (for experimental models)")
         print(f"   - Network connectivity issues")"""
 
+
 def get_colab_setup_cell(rel_path):
     """
     Generates a Colab setup cell that clones the repo and cds to the correct directory.
@@ -213,7 +214,7 @@ def get_cell_index_with_marker(nb, marker):
 def update_or_insert_cell(nb, marker, new_content, position=0):
     """Update existing cell or insert new one."""
     idx = get_cell_index_with_marker(nb, marker)
-    
+
     if idx >= 0:
         # Update existing cell
         nb.cells[idx].source = new_content
@@ -229,24 +230,24 @@ def update_or_insert_cell(nb, marker, new_content, position=0):
 def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
     """Process a single notebook to ensure it has the required cells."""
     print(f"\n[..] Processing: {notebook_path.name}")
-    
+
     try:
-        with open(notebook_path, 'r', encoding='utf-8') as f:
+        with open(notebook_path, "r", encoding="utf-8") as f:
             nb = nbformat.read(f, as_version=4)
-    except Exception as e: # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
         print(f"  [X] Error reading notebook: {e}")
         return False
-    
+
     modified = False
-    
+
     # Calculate relative path for Colab setup
     try:
         rel_path = notebook_path.parent.relative_to(project_root)
     except ValueError:
-        rel_path = Path(".") # Fallback
+        rel_path = Path(".")  # Fallback
 
     colab_setup_content = get_colab_setup_cell(str(rel_path))
-    
+
     # Step 1: Ensure Colab setup cell
     if not has_cell_with_marker(nb, "COLAB SETUP"):
         update_or_insert_cell(nb, "COLAB SETUP", colab_setup_content, 0)
@@ -255,7 +256,7 @@ def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
         # Update existing
         update_or_insert_cell(nb, "COLAB SETUP", colab_setup_content)
         modified = True
-    
+
     # Step 2: Ensure setup cell exists (Backend setup)
     setup_marker = "Universal Setup for Backend Environment"
     if not has_cell_with_marker(nb, setup_marker):
@@ -266,7 +267,7 @@ def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
         # Update existing setup cell
         update_or_insert_cell(nb, setup_marker, SETUP_CELL)
         modified = True
-    
+
     # Step 3: Ensure model configuration cell exists
     model_marker = "MODEL CONFIGURATION"
     if not has_cell_with_marker(nb, model_marker):
@@ -277,7 +278,7 @@ def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
     else:
         update_or_insert_cell(nb, model_marker, MODEL_CONFIG_CELL)
         modified = True
-    
+
     # Step 4: Ensure model verification cell exists
     verify_marker = "MODEL VERIFICATION"
     if not has_cell_with_marker(nb, verify_marker):
@@ -288,15 +289,15 @@ def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
     else:
         update_or_insert_cell(nb, verify_marker, MODEL_VERIFICATION_CELL)
         modified = True
-    
+
     # Save the notebook if modified
     if modified and not dry_run:
         try:
-            with open(notebook_path, 'w', encoding='utf-8') as f:
+            with open(notebook_path, "w", encoding="utf-8") as f:
                 nbformat.write(nb, f)
             print(f"  [OK] Saved changes to {notebook_path.name}")
             return True
-        except Exception as e: # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
             print(f"  [X] Error saving notebook: {e}")
             return False
     elif modified and dry_run:
@@ -310,43 +311,45 @@ def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
 def main():
     """Main function to process all notebooks."""
     dry_run = "--dry-run" in sys.argv
-    
+
     if dry_run:
         print("🔍 DRY RUN MODE - No files will be modified\n")
-    
+
     # Find all notebooks
     project_root = Path(__file__).parent.parent.resolve()
-    
+
     # Define notebook directories to process
     notebook_dirs = [
         project_root / "notebooks",
         project_root / "backend",
         project_root / "examples" / "thinkdepthai_deep_research_example",
-        project_root / "examples" / "open_deep_research_example" / "src" / "legacy"
+        project_root / "examples" / "open_deep_research_example" / "src" / "legacy",
     ]
-    
+
     all_notebooks = []
     for nb_dir in notebook_dirs:
         if nb_dir.exists():
             all_notebooks.extend(nb_dir.glob("*.ipynb"))
-    
+
     if not all_notebooks:
         print("❌ No notebooks found!")
         return
-    
+
     print(f"[..] Found {len(all_notebooks)} notebooks to process\n")
     print("=" * 60)
-    
+
     # Process each notebook
     success_count = 0
     for notebook_path in all_notebooks:
         if process_notebook(notebook_path, project_root, dry_run):
             success_count += 1
-    
+
     # Summary
     print("\n" + "=" * 60)
-    print(f"\n[OK] Successfully processed {success_count}/{len(all_notebooks)} notebooks")
-    
+    print(
+        f"\n[OK] Successfully processed {success_count}/{len(all_notebooks)} notebooks"
+    )
+
     if dry_run:
         print("\n💡 Run without --dry-run to apply changes")
 

@@ -22,7 +22,7 @@ TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
 # 🛡️ Sentinel: Optional set of trusted proxy IP addresses
 # If set, we iterate from right to left and skip these IPs to find the first untrusted IP.
 # This is more flexible than TRUSTED_PROXY_COUNT but requires knowing proxy IPs.
-# Format: comma-separated IPs or CIDR ranges, e.g., "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+# Format: comma-separated IPs or CIDR ranges, e.g., "192.0.2.0/24,198.51.100.0/24,203.0.113.0/24"
 TRUSTED_PROXIES_ENV = os.getenv("TRUSTED_PROXIES", "")
 TRUSTED_PROXIES: Set[str] = set()
 if TRUSTED_PROXIES_ENV:
@@ -31,17 +31,22 @@ if TRUSTED_PROXIES_ENV:
     )
 
 
-def _is_ip_in_trusted_proxies(ip: str) -> bool:
+def _is_ip_in_trusted_proxies(
+    ip: str, trusted_proxies: Set[str] | None = None
+) -> bool:  # NOSONAR
     """Check if an IP address is in the trusted proxies set.
 
     Supports both direct IP matching and CIDR range matching.
     """
-    if not TRUSTED_PROXIES:
+    if trusted_proxies is None:
+        trusted_proxies = TRUSTED_PROXIES
+
+    if not trusted_proxies:
         return False
 
     try:
         ip_obj = ipaddress.ip_address(ip.strip())
-        for trusted in TRUSTED_PROXIES:
+        for trusted in trusted_proxies:
             trusted = trusted.strip()
             if "/" in trusted:
                 # CIDR range
@@ -65,7 +70,8 @@ def _is_ip_in_trusted_proxies(ip: str) -> bool:
 
 def extract_client_ip_from_forwarded(
     forwarded: str,
-    trusted_proxy_count: int = TRUSTED_PROXY_COUNT,
+    trusted_proxy_count: int | None = None,
+    trusted_proxies: Set[str] | None = None,
     fallback_ip: str | None = None,
 ) -> str | None:
     """Extract the real client IP from X-Forwarded-For header using trust-bound extraction.
@@ -112,10 +118,12 @@ def extract_client_ip_from_forwarded(
             return fallback_ip
 
         # Method 1: Use trusted proxies list if available (more flexible)
-        if TRUSTED_PROXIES:
+        _tp = trusted_proxies if trusted_proxies is not None else TRUSTED_PROXIES
+
+        if _tp:
             # Iterate from right to left, skip trusted proxies
             for ip in reversed(ips):
-                if not _is_ip_in_trusted_proxies(ip):
+                if not _is_ip_in_trusted_proxies(ip, _tp):
                     return ip
             # All IPs are trusted proxies, return the leftmost (original client)
             # This shouldn't happen in normal operation
@@ -125,11 +133,16 @@ def extract_client_ip_from_forwarded(
             return ips[0] if ips else fallback_ip
 
         # Method 2: Use trusted proxy count
+        if trusted_proxy_count is None:
+            trusted_proxy_count = TRUSTED_PROXY_COUNT
+
         if trusted_proxy_count > 0:
-            # Pick ips[-(trusted_proxy_count + 1)]
-            # For example, if trusted_proxy_count=1 and ips=[client, proxy1],
-            # we want ips[-2] = client
-            idx = -(trusted_proxy_count + 1)
+            # The X-Forwarded-For is [client, proxy1, proxy2].
+            # If trusted proxy count is 1, then the last element is the trusted proxy.
+            # The proxy appends the socket.peername.
+            # So the real client IP is the LAST element (ips[-1]) if TPC=1.
+            # If TPC=2, it's the second to last element (ips[-2]).
+            idx = -trusted_proxy_count
             if abs(idx) <= len(ips):
                 return ips[idx]
             else:
@@ -272,7 +285,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # 🛡️ Sentinel: Use trust-bound IP extraction instead of naive ips[0]
                 # The leftmost IP is attacker-controllable; we must use trust-bound extraction.
                 client_ip = extract_client_ip_from_forwarded(
-                    forwarded=forwarded, fallback_ip=fallback_ip
+                    forwarded=forwarded,
+                    trusted_proxy_count=TRUSTED_PROXY_COUNT,
+                    trusted_proxies=TRUSTED_PROXIES,
+                    fallback_ip=fallback_ip,
                 )
                 if client_ip is None:
                     client_ip = fallback_ip

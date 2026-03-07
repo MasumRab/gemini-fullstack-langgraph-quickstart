@@ -7,26 +7,27 @@ Tests cover:
 - Orchestrated graph construction
 """
 
+from typing import Any, Dict
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
-from typing import Dict, Any
+from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.orchestration import (
-    ToolRegistry,
     AgentPool,
-    ToolSpec,
     AgentSpec,
+    ToolRegistry,
+    ToolSpec,
+    build_orchestrated_graph,
     create_coordinator_node,
     create_task_router,
-    build_orchestrated_graph,
 )
 from agent.state import OverallState
-from langchain_core.messages import HumanMessage, AIMessage
-
 
 # =============================================================================
 # ToolRegistry Tests
 # =============================================================================
+
 
 class TestToolRegistry:
     """Tests for ToolRegistry."""
@@ -34,7 +35,10 @@ class TestToolRegistry:
     def test_register_and_get_tool(self):
         """Test registering a tool and retrieving it."""
         registry = ToolRegistry()
-        func = lambda x: x
+
+        def func(x):
+            return x
+
         registry.register("test_tool", func, "Test description", "test_cat")
 
         # Get by name
@@ -51,7 +55,10 @@ class TestToolRegistry:
     def test_get_tools_as_langchain_tools(self):
         """Test retrieving tools as LangChain BaseTool objects."""
         registry = ToolRegistry()
-        func = lambda x: x
+
+        def func(x):
+            return x
+
         registry.register("tool1", func, "Desc 1")
         registry.register("tool2", func, "Desc 2", category="special")
 
@@ -88,6 +95,7 @@ class TestToolRegistry:
 # =============================================================================
 # AgentPool Tests
 # =============================================================================
+
 
 class TestAgentPool:
     """Tests for AgentPool."""
@@ -135,6 +143,7 @@ class TestAgentPool:
 # Coordinator Node Tests
 # =============================================================================
 
+
 class TestCoordinatorNode:
     """Tests for the coordinator node logic."""
 
@@ -143,7 +152,9 @@ class TestCoordinatorNode:
         """Test parsing of LLM JSON response."""
         # Setup mocks
         mock_llm = mock_get_llm.return_value
-        mock_llm.invoke.return_value = AIMessage(content='```json\n{"action": "delegate_agent", "target": "researcher", "reason": "complex query"}\n```')
+        mock_llm.invoke.return_value = AIMessage(
+            content='```json\n{"action": "delegate_agent", "target": "researcher", "reason": "complex query"}\n```'
+        )
 
         registry = ToolRegistry()
         pool = AgentPool()
@@ -189,6 +200,7 @@ class TestCoordinatorNode:
 # Orchestrated Graph Tests
 # =============================================================================
 
+
 class TestOrchestratedGraphBuilder:
     """Tests for build_orchestrated_graph."""
 
@@ -228,7 +240,7 @@ class TestOrchestratedGraphBuilder:
         # Registered agent
         state = {
             "coordinator_decision": "delegate_agent",
-            "coordinator_target": "researcher"
+            "coordinator_target": "researcher",
         }
         assert router(state) == "agent_researcher"
 

@@ -36,8 +36,8 @@ CONFIGS = [
             "answer_model": "gemma-3-27b-it",
             "number_of_initial_queries": 2,
             "max_research_loops": 1,
-            "require_planning_confirmation": False
-        }
+            "require_planning_confirmation": False,
+        },
     },
     {
         "name": "02_solid_state_batteries_deep",
@@ -48,8 +48,8 @@ CONFIGS = [
             "answer_model": "gemma-3-27b-it",
             "number_of_initial_queries": 4,
             "max_research_loops": 3,
-            "require_planning_confirmation": False
-        }
+            "require_planning_confirmation": False,
+        },
     },
     {
         "name": "03_remote_work_broad",
@@ -60,8 +60,8 @@ CONFIGS = [
             "answer_model": "gemma-3-27b-it",
             "number_of_initial_queries": 6,
             "max_research_loops": 2,
-            "require_planning_confirmation": False
-        }
+            "require_planning_confirmation": False,
+        },
     },
     {
         "name": "04_rust_vs_cpp_technical",
@@ -72,13 +72,14 @@ CONFIGS = [
             "answer_model": "gemma-3-27b-it",
             "number_of_initial_queries": 3,
             "max_research_loops": 2,
-            "require_planning_confirmation": False
-        }
-    }
+            "require_planning_confirmation": False,
+        },
+    },
 ]
 
 OUTPUT_DIR = REPO_ROOT / "docs" / "sample_reports"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 
 async def generate_report(run_config):
     name = run_config["name"]
@@ -89,18 +90,16 @@ async def generate_report(run_config):
     print(f"Topic: {topic}")
     print(f"Config: {conf_dict}")
 
-    inputs = {
-        "messages": [HumanMessage(content=topic)]
-    }
+    inputs = {"messages": [HumanMessage(content=topic)]}
 
     # Configuration wrapper for LangGraph
     # We pass the Configuration object fields via 'configurable' dict
     runnable_config = {
         "configurable": {
             "thread_id": f"sample_report_{name}_{int(datetime.now().timestamp())}",
-            **conf_dict
+            **conf_dict,
         },
-        "recursion_limit": 100
+        "recursion_limit": 100,
     }
 
     report_content = ""
@@ -113,7 +112,7 @@ async def generate_report(run_config):
         final_state = await graph.ainvoke(inputs, runnable_config)
 
         # Extract Final Answer
-        if "messages" in final_state and final_state["messages"]:
+        if final_state.get("messages"):
             last_msg = final_state["messages"][-1]
             report_content = last_msg.content
         else:
@@ -123,15 +122,16 @@ async def generate_report(run_config):
         duration = (datetime.now() - start_time).total_seconds()
         metadata = {
             "duration_seconds": duration,
-            "total_steps": len(final_state.get("messages", [])), # Proxy for steps
+            "total_steps": len(final_state.get("messages", [])),  # Proxy for steps
             "research_loops_performed": conf_dict.get("max_research_loops"),
-            "model": conf_dict.get("query_generator_model")
+            "model": conf_dict.get("query_generator_model"),
         }
 
     except Exception as e:
         print(f"Error generating report for {name}: {e}")
-        report_content = f"Error generating report: {str(e)}"
+        report_content = f"Error generating report: {e!s}"
         import traceback
+
         traceback.print_exc()
 
     # Save Artifacts
@@ -140,10 +140,10 @@ async def generate_report(run_config):
 
     header = f"""# Sample Report: {topic}
 > **Configuration**: {name}
-> **Model**: {conf_dict['query_generator_model']}
-> **Depth**: {conf_dict['max_research_loops']} Loops
-> **Breadth**: {conf_dict['number_of_initial_queries']} Initial Queries
-> **Duration**: {metadata.get('duration_seconds', 0):.2f}s
+> **Model**: {conf_dict["query_generator_model"]}
+> **Depth**: {conf_dict["max_research_loops"]} Loops
+> **Breadth**: {conf_dict["number_of_initial_queries"]} Initial Queries
+> **Duration**: {metadata.get("duration_seconds", 0):.2f}s
 
 ---
 
@@ -154,8 +154,10 @@ async def generate_report(run_config):
     print(f"Saved report to {md_filename}")
     return metadata
 
+
 async def main():
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--index", type=int, help="Index of config to run (0-3)")
     args = parser.parse_args()
@@ -174,6 +176,7 @@ async def main():
 
         print("\nAll runs complete.")
         print(json.dumps(results, indent=2))
+
 
 if __name__ == "__main__":
     asyncio.run(main())

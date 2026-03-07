@@ -1,4 +1,3 @@
-
 import time
 from unittest.mock import patch
 
@@ -8,7 +7,6 @@ from fastapi.testclient import TestClient
 
 
 class TestAPISecurity:
-
     @pytest.fixture
     def app(self):
         """Create a simple FastAPI app with the middleware."""
@@ -21,7 +19,7 @@ class TestAPISecurity:
             limit=5,
             window=1,
             protected_paths=["/agent"],
-            trust_proxy_headers=True
+            trust_proxy_headers=True,
         )
         app.add_middleware(SecurityHeadersMiddleware)
 
@@ -42,7 +40,10 @@ class TestAPISecurity:
         headers = response.headers
         assert headers["X-Content-Type-Options"] == "nosniff"
         assert headers["X-Frame-Options"] == "DENY"
-        assert headers["Strict-Transport-Security"] == "max-age=31536000; includeSubDomains"
+        assert (
+            headers["Strict-Transport-Security"]
+            == "max-age=31536000; includeSubDomains"
+        )
         assert "geolocation=()" in headers["Permissions-Policy"]
         assert "script-src 'self'" in headers["Content-Security-Policy"]
 
@@ -91,6 +92,8 @@ class TestAPISecurity:
             response = client.get("/agent/test")
             assert response.status_code == 200
 
+    @patch("agent.security.TRUSTED_PROXIES", set())
+    @patch("agent.security.TRUSTED_PROXY_COUNT", 1)
     def test_rate_limit_respects_x_forwarded_for(self):
         """Test that rate limiting uses the X-Forwarded-For header when present."""
         from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
@@ -102,7 +105,7 @@ class TestAPISecurity:
             limit=5,
             window=1,
             protected_paths=["/agent"],
-            trust_proxy_headers=True
+            trust_proxy_headers=True,
         )
         app.add_middleware(SecurityHeadersMiddleware)
 
@@ -113,7 +116,7 @@ class TestAPISecurity:
         client = TestClient(app)
 
         # Simulate 5 requests from IP A (via proxy)
-        headers_a = {"X-Forwarded-For": "10.0.0.1, 10.0.0.2"}
+        headers_a = {"X-Forwarded-For": "192.0.2.100, 192.0.2.102"}
         for _ in range(5):
             response = client.get("/agent/test", headers=headers_a)
             assert response.status_code == 200
@@ -124,7 +127,7 @@ class TestAPISecurity:
 
         # Requests from IP B should still be allowed (distinct from IP A)
         # Even if they come from the same "client host" (mock client doesn't change)
-        headers_b = {"X-Forwarded-For": "10.0.0.3"}
+        headers_b = {"X-Forwarded-For": "192.0.2.103"}
         response = client.get("/agent/test", headers=headers_b)
         assert response.status_code == 200
 
@@ -132,33 +135,34 @@ class TestAPISecurity:
     async def test_memory_cleanup_preserves_active_clients(self):
         """Test that memory cleanup removes stale clients but keeps active ones."""
         from agent.security import RateLimitMiddleware
+
         app = FastAPI()
         mw = RateLimitMiddleware(app, limit=100, window=60, protected_paths=["/"])
 
         now = time.time()
         # Add 5000 stale entries (older than window=60s)
         for i in range(5000):
-             # Use valid IPs to bypass "unknown" sanitization
-             ip = f"10.0.{i // 250}.{i % 250}"
-             mw.requests[ip] = [now - 100]
+            # Use valid IPs to bypass "unknown" sanitization
+            ip = f"10.0.{i // 250}.{i % 250}"  # NOSONAR
+            mw.requests[ip] = [now - 100]
 
         # Add 5002 active entries (newer than window)
         # Note: We need total > 10000 to trigger cleanup logic
         for i in range(5002):
-             # Use valid IPs distinct from stale ones
-             ip = f"10.1.{i // 250}.{i % 250}"
-             mw.requests[ip] = [now - 10]
+            # Use valid IPs distinct from stale ones
+            ip = f"10.1.{i // 250}.{i % 250}"  # NOSONAR
+            mw.requests[ip] = [now - 10]
 
         assert len(mw.requests) == 10002
 
         # Create a mock request from a NEW client
         scope = {
-            'type': 'http',
-            'path': '/',
-            'headers': [],
-            'client': ('10.2.0.1', 8000),
-            'method': 'GET',
-            'scheme': 'http'
+            "type": "http",
+            "path": "/",
+            "headers": [],
+            "client": ("192.0.2.201", 8000),
+            "method": "GET",
+            "scheme": "http",
         }
         request = Request(scope)
 
@@ -182,35 +186,38 @@ class TestAPISecurity:
         assert len(mw.requests) == 5003, "Should have exactly active + new client"
 
         assert "10.0.0.0" not in mw.requests  # Stale IP (i=0) should be gone
-        assert "10.1.0.0" in mw.requests      # Active IP (i=0) should be present
-        assert "10.2.0.1" in mw.requests      # New client should be present
+        assert "10.1.0.0" in mw.requests  # Active IP (i=0) should be present
+        assert "192.0.2.201" in mw.requests  # New client should be present
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_throttled(self):
         """Test that cleanup DOES NOT run if called too frequently."""
         from agent.security import RateLimitMiddleware
+
         app = FastAPI()
         mw = RateLimitMiddleware(app, limit=100, window=60, protected_paths=["/"])
 
         now = time.time()
         # Add 10001 stale entries (older than window=60s)
         for i in range(10001):
-             ip = f"10.0.{i // 250}.{i % 250}"
-             mw.requests[ip] = [now - 100]
+            ip = f"10.0.{i // 250}.{i % 250}"  # NOSONAR
+            mw.requests[ip] = [now - 100]
 
         # Set last_cleanup to NOW (simulating it just ran)
         mw.last_cleanup = now
 
         scope = {
-            'type': 'http',
-            'path': '/',
-            'headers': [],
-            'client': ('10.2.0.1', 8000),
-            'method': 'GET',
-            'scheme': 'http'
+            "type": "http",
+            "path": "/",
+            "headers": [],
+            "client": ("192.0.2.201", 8000),
+            "method": "GET",
+            "scheme": "http",
         }
         request = Request(scope)
-        async def call_next(req): return Response("ok")
+
+        async def call_next(req):
+            return Response("ok")
 
         # Dispatch should SKIP cleanup
         await mw.dispatch(request, call_next)
@@ -230,7 +237,7 @@ class TestAPISecurity:
 
         # So "new_client_ip" is removed. Size remains 10001.
         assert len(mw.requests) == 10001
-        assert "10.0.0.0" in mw.requests # Was NOT cleaned
+        assert "10.0.0.0" in mw.requests  # Was NOT cleaned
 
         # Now reset last_cleanup to 0 and try again
         mw.last_cleanup = 0
@@ -240,4 +247,4 @@ class TestAPISecurity:
 
         # Should be cleaned: 10001 stale removed. 1 new added.
         assert len(mw.requests) == 1
-        assert "10.2.0.1" in mw.requests
+        assert "192.0.2.201" in mw.requests

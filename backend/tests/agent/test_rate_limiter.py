@@ -1,10 +1,12 @@
 """Tests for RateLimiter."""
 
 import unittest
+from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock, patch
-from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
-from agent.rate_limiter import RateLimiter, PACIFIC_TZ
+
+from agent.rate_limiter import PACIFIC_TZ, RateLimiter
+
 
 class TestRateLimiter(unittest.TestCase):
     def test_daily_reset_logic(self):
@@ -91,8 +93,11 @@ class TestRateLimiter(unittest.TestCase):
         # 5. record -> 1061.0
 
         mock_time.time.side_effect = [
-            start_time, start_time,             # Iteration 1
-            start_time + 61.0, start_time + 61.0, start_time + 61.0  # Iteration 2
+            start_time,
+            start_time,  # Iteration 1
+            start_time + 61.0,
+            start_time + 61.0,
+            start_time + 61.0,  # Iteration 2
         ]
 
         limiter.wait_if_needed(10)
@@ -101,6 +106,7 @@ class TestRateLimiter(unittest.TestCase):
         # After success, we added the new request at 1061, old one removed
         self.assertEqual(len(limiter._requests_per_minute), 1)
         self.assertEqual(limiter._requests_per_minute[0], 1061.0)
+
 
 if __name__ == "__main__":
     unittest.main()

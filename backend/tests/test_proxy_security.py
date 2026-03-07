@@ -1,6 +1,10 @@
+from unittest.mock import patch
+
 import pytest
 from starlette.responses import PlainTextResponse
+
 from agent.security import RateLimitMiddleware
+
 
 @pytest.mark.asyncio
 async def test_proxy_security_default_secure():
@@ -13,34 +17,41 @@ async def test_proxy_security_default_secure():
 
     # Initialize middleware with default (trust_proxy_headers=False)
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=False
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=False,
     )
 
     # Simulate request with spoofed header
-    # Real IP: 1.2.3.4
-    # Spoofed Header: 5.6.7.8
-    headers = [
-        (b"host", b"localhost"),
-        (b"x-forwarded-for", b"5.6.7.8")
-    ]
+    # Real IP: 192.0.2.1
+    # Spoofed Header: 198.51.100.1
+    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"198.51.100.1")]
 
     scope = {
         "type": "http",
         "path": "/protected",
-        "client": ("1.2.3.4", 1234),
+        "client": ("192.0.2.1", 1234),
         "headers": headers,
     }
 
-    async def mock_send(message): pass
-    async def mock_receive(): return {"type": "http.request"}
+    async def mock_send(message):
+        return None  # NOSONAR
+
+    async def mock_receive():
+        return {"type": "http.request"}  # NOSONAR
 
     await middleware(scope, mock_receive, mock_send)
 
-    # Expectation: The request should be tracked under the Real IP (1.2.3.4), NOT the spoofed one
-    assert "1.2.3.4" in middleware.requests
-    assert "5.6.7.8" not in middleware.requests
+    # Expectation: The request should be tracked under the Real IP (192.0.2.1), NOT the spoofed one
+    assert "192.0.2.1" in middleware.requests
+    assert "198.51.100.1" not in middleware.requests
+
 
 @pytest.mark.asyncio
+@patch("agent.security.TRUSTED_PROXIES", set())
+@patch("agent.security.TRUSTED_PROXY_COUNT", 1)
 async def test_proxy_security_trusted_enabled():
     """Verify that when enabled, X-Forwarded-For IS used."""
 
@@ -51,34 +62,41 @@ async def test_proxy_security_trusted_enabled():
 
     # Initialize middleware with trust_proxy_headers=True
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
     # Simulate request
-    # Real IP: 10.0.0.1 (Proxy)
-    # Header: 5.6.7.8 (Client)
-    headers = [
-        (b"host", b"localhost"),
-        (b"x-forwarded-for", b"5.6.7.8")
-    ]
+    # Real IP: 192.0.2.100 (Proxy)
+    # Header: 198.51.100.1 (Client)
+    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"198.51.100.1")]
 
     scope = {
         "type": "http",
         "path": "/protected",
-        "client": ("10.0.0.1", 1234),
+        "client": ("192.0.2.100", 1234),
         "headers": headers,
     }
 
-    async def mock_send(message): pass
-    async def mock_receive(): return {"type": "http.request"}
+    async def mock_send(message):
+        return None  # NOSONAR
+
+    async def mock_receive():
+        return {"type": "http.request"}  # NOSONAR
 
     await middleware(scope, mock_receive, mock_send)
 
-    # Expectation: The request should be tracked under the Client IP (5.6.7.8)
-    assert "5.6.7.8" in middleware.requests
-    assert "10.0.0.1" not in middleware.requests
+    # Expectation: The request should be tracked under the Client IP (198.51.100.1)
+    assert "198.51.100.1" in middleware.requests
+    assert "192.0.2.100" not in middleware.requests
+
 
 @pytest.mark.asyncio
+@patch("agent.security.TRUSTED_PROXIES", set())
+@patch("agent.security.TRUSTED_PROXY_COUNT", 1)
 async def test_spoofing_vulnerability():
     """
     Verify that the middleware correctly identifies the client IP even if it's private,
@@ -93,33 +111,40 @@ async def test_spoofing_vulnerability():
 
     # Initialize middleware with trust_proxy_headers=True
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
     # Scenario:
-    # Attacker Real IP (seen by proxy): 10.0.0.5 (Private)
-    # Attacker Spoofs Header: "8.8.8.8" (Public)
+    # Attacker Real IP (seen by proxy): 192.0.2.105 (Private)
+    # Attacker Spoofs Header: "203.0.113.1" (Public)
     # Trusted Proxy appends Real IP.
-    # Header: "8.8.8.8, 10.0.0.5"
+    # Header: "203.0.113.1, 192.0.2.105"
 
     headers = [
         (b"host", b"localhost"),
-        (b"x-forwarded-for", b"8.8.8.8, 10.0.0.5")
+        (b"x-forwarded-for", b"203.0.113.1, 192.0.2.105"),
     ]
 
     scope = {
         "type": "http",
         "path": "/protected",
-        "client": ("10.0.0.1", 1234), # Connection from Proxy
+        "client": ("192.0.2.100", 1234),  # Connection from Proxy
         "headers": headers,
     }
 
-    async def mock_send(message): pass
-    async def mock_receive(): return {"type": "http.request"}
+    async def mock_send(message):
+        return None  # NOSONAR
+
+    async def mock_receive():
+        return {"type": "http.request"}  # NOSONAR
 
     await middleware(scope, mock_receive, mock_send)
 
-    # Expectation: The request should be tracked under the Real IP (10.0.0.5)
-    # If vulnerable, it would be under 8.8.8.8
-    assert "10.0.0.5" in middleware.requests
-    assert "8.8.8.8" not in middleware.requests
+    # Expectation: The request should be tracked under the Real IP (192.0.2.105)
+    # If vulnerable, it would be under 203.0.113.1
+    assert "192.0.2.105" in middleware.requests
+    assert "203.0.113.1" not in middleware.requests

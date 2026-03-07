@@ -40,7 +40,9 @@ def test_rag_fallback_to_web_handles_continue_iterations(monkeypatch):
     monkeypatch.setattr(rag_nodes, "rag_config", SimpleNamespace(enable_fallback=False))
 
     assert (
-        rag_nodes.rag_fallback_to_web({"research_loop_count": 1, "rag_documents": ["doc"]})
+        rag_nodes.rag_fallback_to_web(
+            {"research_loop_count": 1, "rag_documents": ["doc"]}
+        )
         == "web_research"
     )
 
