@@ -88,9 +88,9 @@ def process_single_item(task_data, target_articles_map, reference_articles_map, 
     try:
         criteria_list_str = format_criteria_list(criteria_data)
     except ValueError as e:
-        logger.error(f"ID {task_id}: {str(e)}")
+        logger.error(f"ID {task_id}: {e!s}")
         with lock: pbar.update(1)
-        return {"id": task_id, "prompt": prompt, "error": f"Failed to format criteria: {str(e)}"}
+        return {"id": task_id, "prompt": prompt, "error": f"Failed to format criteria: {e!s}"}
 
     # Choose scoring prompt based on language
     merged_score_prompt = zh_merged_score_prompt if language == "zh" else en_merged_score_prompt
@@ -134,10 +134,10 @@ def process_single_item(task_data, target_articles_map, reference_articles_map, 
         except Exception as e:
             retry_count += 1
             if retry_count < max_retries:
-                logger.warning(f"ID {task_id}: Retry {retry_count}/{max_retries} - {str(e)}")
+                logger.warning(f"ID {task_id}: Retry {retry_count}/{max_retries} - {e!s}")
                 time.sleep(1.5 ** retry_count)
             else:
-                logger.error(f"ID {task_id}: Failed after {max_retries} retries - {str(e)}")
+                logger.error(f"ID {task_id}: Failed after {max_retries} retries - {e!s}")
 
     if not success:
         with lock: pbar.update(1)
@@ -175,12 +175,12 @@ def process_single_item(task_data, target_articles_map, reference_articles_map, 
                 normalized_dims[dim] = 0
 
     except Exception as e:
-        logger.error(f"ID {task_id}: Error calculating scores - {str(e)}")
+        logger.error(f"ID {task_id}: Error calculating scores - {e!s}")
         with lock: pbar.update(1)
         return {
             "id": task_id,
             "prompt": prompt,
-            "error": f"Error calculating scores: {str(e)}"
+            "error": f"Error calculating scores: {e!s}"
         }
 
     # Prepare final result with simplified format
@@ -286,7 +286,7 @@ def process_language_data(language, target_model, llm_client, clean_agent,
         logger.info(f"Processing {len(tasks_to_process)} {language} tasks...")
 
     except Exception as e:
-        logger.error(f"Error loading data: {str(e)}")
+        logger.error(f"Error loading data: {e!s}")
         return None
 
     # Step 3: Process each task and generate scores

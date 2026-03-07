@@ -12,28 +12,30 @@ Tests cover:
 - Edge cases and error handling
 """
 
-import pytest
 import dataclasses
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from langchain_core.runnables import RunnableConfig
-from langchain_core.messages import AIMessage, HumanMessage
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-from config.app_config import AppConfig, config as real_config
-from agent.state import OverallState
+import pytest
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.runnables import RunnableConfig
+
 from agent import nodes
+from agent.models import TEST_MODEL
 from agent.nodes import (
+    content_reader,
+    denoising_refiner,
+    execution_router,
     generate_plan,
     planning_mode,
     planning_wait,
-    web_research,
-    validate_web_results,
     reflection,
-    denoising_refiner,
-    content_reader,
     select_next_task,
-    execution_router,
+    validate_web_results,
+    web_research,
 )
-from agent.models import TEST_MODEL
+from agent.state import OverallState
+from config.app_config import AppConfig
+from config.app_config import config as real_config
 
 
 # Fixtures

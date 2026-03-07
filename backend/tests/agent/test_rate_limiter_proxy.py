@@ -1,9 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from starlette.responses import PlainTextResponse
+
 from agent.app import app
 from agent.security import RateLimitMiddleware
-from starlette.responses import PlainTextResponse
 
 # ----------------------------------------------------------------------
 # 1. Integration Test with FastAPI App
@@ -26,6 +28,8 @@ def test_rate_limiter_integration():
 
 
 @pytest.mark.asyncio
+@patch("agent.security.TRUSTED_PROXIES", set())
+@patch("agent.security.TRUSTED_PROXY_COUNT", 1)
 async def test_rate_limiter_proxy_logic():
     """Unit test for RateLimitMiddleware proxy logic."""
 
@@ -99,6 +103,8 @@ async def test_rate_limiter_proxy_logic():
 
 
 @pytest.mark.asyncio
+@patch("agent.security.TRUSTED_PROXIES", set())
+@patch("agent.security.TRUSTED_PROXY_COUNT", 1)
 async def test_rate_limiter_truncation():
     """Test that extremely long headers are truncated to prevent memory exhaustion."""
 
@@ -132,5 +138,6 @@ async def test_rate_limiter_truncation():
     # Verify the key in requests is truncated
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
-    # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
-    assert keys[0] == "unknown"
+    # Now that we sanitize invalid IPs to "unknown" or "fallback_ip", the long_ip gets rejected.
+    # Since it was rejected and there's no valid IP, it falls back to request.client.host (127.0.0.1)
+    assert keys[0] == "127.0.0.1"

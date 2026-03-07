@@ -14,7 +14,7 @@ def main():
     frontend_dir = os.path.join(root_dir, "frontend")
     backend_dir = os.path.join(root_dir, "backend")
 
-    print(f"🚀 Starting development servers...")
+    print("🚀 Starting development servers...")
 
     # Define commands based on OS
     is_windows = sys.platform.startswith('win')

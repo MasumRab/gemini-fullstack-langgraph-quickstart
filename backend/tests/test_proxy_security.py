@@ -1,6 +1,9 @@
 import pytest
 from starlette.responses import PlainTextResponse
+from unittest.mock import patch
+
 from agent.security import RateLimitMiddleware
+
 
 @pytest.mark.asyncio
 async def test_proxy_security_default_secure():
@@ -40,7 +43,10 @@ async def test_proxy_security_default_secure():
     assert "1.2.3.4" in middleware.requests
     assert "5.6.7.8" not in middleware.requests
 
+
 @pytest.mark.asyncio
+@patch("agent.security.TRUSTED_PROXIES", set())
+@patch("agent.security.TRUSTED_PROXY_COUNT", 1)
 async def test_proxy_security_trusted_enabled():
     """Verify that when enabled, X-Forwarded-For IS used."""
 
@@ -79,6 +85,8 @@ async def test_proxy_security_trusted_enabled():
     assert "10.0.0.1" not in middleware.requests
 
 @pytest.mark.asyncio
+@patch("agent.security.TRUSTED_PROXIES", set())
+@patch("agent.security.TRUSTED_PROXY_COUNT", 1)
 async def test_spoofing_vulnerability():
     """
     Verify that the middleware correctly identifies the client IP even if it's private,
