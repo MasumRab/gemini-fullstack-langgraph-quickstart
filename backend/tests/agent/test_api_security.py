@@ -116,7 +116,7 @@ class TestAPISecurity:
         client = TestClient(app)
 
         # Simulate 5 requests from IP A (via proxy)
-        headers_a = {"X-Forwarded-For": "10.0.0.1, 10.0.0.2"}
+        headers_a = {"X-Forwarded-For": "192.0.2.100, 192.0.2.102"}
         for _ in range(5):
             response = client.get("/agent/test", headers=headers_a)
             assert response.status_code == 200
@@ -127,7 +127,7 @@ class TestAPISecurity:
 
         # Requests from IP B should still be allowed (distinct from IP A)
         # Even if they come from the same "client host" (mock client doesn't change)
-        headers_b = {"X-Forwarded-For": "10.0.0.3"}
+        headers_b = {"X-Forwarded-For": "192.0.2.103"}
         response = client.get("/agent/test", headers=headers_b)
         assert response.status_code == 200
 
@@ -143,6 +143,11 @@ class TestAPISecurity:
         # Add 5000 stale entries (older than window=60s)
         for i in range(5000):
             # Use valid IPs to bypass "unknown" sanitization
+            ip = f"192.0.2.{i % 250}" # Just use simple suffix. Wait, loop is 5000. 5000 / 250 = 20.
+            # To get a valid IP, we need exactly 4 octets. f"192.0.{i // 250}.{i % 250}" is already 4 octets.
+            # Oh, the issue was I changed 10.0.x.y to 192.0.2.x.y which is FIVE octets!
+            # It should be 192.0.{i // 250}.{i % 250} or similar.
+            # But wait, 192.0.x.y is not standard. The original was 10.0.0.0. I can just use 10.0.0.0 for tests, it's safe.
             ip = f"10.0.{i // 250}.{i % 250}"
             mw.requests[ip] = [now - 100]
 
@@ -160,7 +165,7 @@ class TestAPISecurity:
             "type": "http",
             "path": "/",
             "headers": [],
-            "client": ("10.2.0.1", 8000),
+            "client": ("192.0.2.201", 8000),
             "method": "GET",
             "scheme": "http",
         }
@@ -187,7 +192,7 @@ class TestAPISecurity:
 
         assert "10.0.0.0" not in mw.requests  # Stale IP (i=0) should be gone
         assert "10.1.0.0" in mw.requests  # Active IP (i=0) should be present
-        assert "10.2.0.1" in mw.requests  # New client should be present
+        assert "192.0.2.201" in mw.requests  # New client should be present
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_throttled(self):
@@ -210,7 +215,7 @@ class TestAPISecurity:
             "type": "http",
             "path": "/",
             "headers": [],
-            "client": ("10.2.0.1", 8000),
+            "client": ("192.0.2.201", 8000),
             "method": "GET",
             "scheme": "http",
         }
@@ -247,4 +252,4 @@ class TestAPISecurity:
 
         # Should be cleaned: 10001 stale removed. 1 new added.
         assert len(mw.requests) == 1
-        assert "10.2.0.1" in mw.requests
+        assert "192.0.2.201" in mw.requests

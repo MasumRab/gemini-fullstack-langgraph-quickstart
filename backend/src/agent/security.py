@@ -22,7 +22,7 @@ TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
 # 🛡️ Sentinel: Optional set of trusted proxy IP addresses
 # If set, we iterate from right to left and skip these IPs to find the first untrusted IP.
 # This is more flexible than TRUSTED_PROXY_COUNT but requires knowing proxy IPs.
-# Format: comma-separated IPs or CIDR ranges, e.g., "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+# Format: comma-separated IPs or CIDR ranges, e.g., "192.0.2.0/24,198.51.100.0/24,203.0.113.0/24"
 TRUSTED_PROXIES_ENV = os.getenv("TRUSTED_PROXIES", "")
 TRUSTED_PROXIES: Set[str] = set()
 if TRUSTED_PROXIES_ENV:
