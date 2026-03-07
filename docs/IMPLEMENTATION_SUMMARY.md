@@ -33,7 +33,7 @@ Successfully migrated the entire codebase from deprecated Gemini 1.5/2.0 models 
   - Default strategy: `flash` (Gemini 2.5 Flash)
 
 #### Notebooks (All 12 Updated)
-- **Files**: All `.ipynb` files in `notebooks/`, `backend/`, and `examples/`
+- **Files**: All `.ipynb` files in `backend/notebooks/`, `backend/`, and `backend/examples/`
 - **Changes**:
   - Updated model configuration cell with Gemini 2.5 options only
   - Added model verification cell using `google-genai` SDK
