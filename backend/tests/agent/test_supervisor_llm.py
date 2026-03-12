@@ -1,11 +1,14 @@
-import pytest
-from unittest.mock import patch, MagicMock
 import dataclasses
-from agent.state import OverallState
+from unittest.mock import MagicMock, patch
+
+import pytest
+from langchain_core.messages import AIMessage
+from langchain_core.runnables import RunnableConfig
+
 from agent.graphs import supervisor
 from agent.graphs.supervisor import compress_context
-from langchain_core.runnables import RunnableConfig
-from langchain_core.messages import AIMessage
+from agent.state import OverallState
+
 
 @pytest.fixture
 def enable_compression():

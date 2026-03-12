@@ -1,6 +1,8 @@
 import pytest
 from starlette.responses import PlainTextResponse
+
 from agent.security import RateLimitMiddleware
+
 
 @pytest.mark.asyncio
 async def test_proxy_security_default_secure():

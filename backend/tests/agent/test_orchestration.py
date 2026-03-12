@@ -7,22 +7,22 @@ Tests cover:
 - Orchestrated graph construction
 """
 
+from typing import Any, Dict
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
-from typing import Dict, Any
+from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.orchestration import (
-    ToolRegistry,
     AgentPool,
-    ToolSpec,
     AgentSpec,
+    ToolRegistry,
+    ToolSpec,
+    build_orchestrated_graph,
     create_coordinator_node,
     create_task_router,
-    build_orchestrated_graph,
 )
 from agent.state import OverallState
-from langchain_core.messages import HumanMessage, AIMessage
-
 
 # =============================================================================
 # ToolRegistry Tests
