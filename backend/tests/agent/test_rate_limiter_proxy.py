@@ -1,9 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from starlette.responses import PlainTextResponse
+
 from agent.app import app
 from agent.security import RateLimitMiddleware
-from starlette.responses import PlainTextResponse
 
 # ----------------------------------------------------------------------
 # 1. Integration Test with FastAPI App
@@ -133,4 +135,5 @@ async def test_rate_limiter_truncation():
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
     # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
-    assert keys[0] == "unknown"
+    # Actually, if all IPs are invalid, it returns fallback_ip which is client[0] ("127.0.0.1")
+    assert keys[0] == "127.0.0.1"

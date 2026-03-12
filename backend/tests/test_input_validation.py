@@ -1,11 +1,12 @@
-import unittest
-import sys
 import os
+import sys
+import unittest
 
 # Add backend/src to python path
 sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
 
 from agent.app import InvokeRequest
+
 
 class TestDoS(unittest.TestCase):
     def test_large_initial_query_count(self):
