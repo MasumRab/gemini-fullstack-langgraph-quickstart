@@ -240,7 +240,6 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
     return {}
 
 
-
 def _get_active_context() -> str:
     """Read the active context file if it exists."""
     try:
@@ -263,9 +262,9 @@ def _get_active_context() -> str:
         logger.warning(f"Failed to read active context: {e}")
     return "No active context available."
 
+
 @graph_registry.describe(
     "generate_plan",
-
     summary="LLM generates a structured research plan (Todos) from the conversation context.",
     tags=["llm", "planning"],
     outputs=["plan", "search_query"],
