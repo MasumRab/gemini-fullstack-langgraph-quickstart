@@ -203,13 +203,13 @@ describe('ChatInput', () => {
 
 ### 3.1 Reference Implementations
 
-From `examples/open_deep_research_example/src/open_deep_research/`:
+From `backend/examples/open_deep_research_example/src/open_deep_research/`:
 - `tavily_search` - Search tool implementation
 - `think_tool` - Reflection tool
 - `summarize_webpage` - Content summarization
 - `compress_research` - Research compression
 
-From `examples/thinkdepthai_deep_research_example/src/`:
+From `backend/examples/thinkdepthai_deep_research_example/src/`:
 - `tavily_search_multiple` - Batch search
 - `deduplicate_search_results` - Deduplication logic
 - `process_search_results` - Result processing
