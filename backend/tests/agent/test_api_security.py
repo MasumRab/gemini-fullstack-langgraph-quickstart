@@ -214,7 +214,7 @@ class TestAPISecurity:
         }
         request = Request(scope)
 
-        async def call_next(_req):
+        def call_next(_req):
             response = Response("ok")
             return response
 

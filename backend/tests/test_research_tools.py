@@ -244,11 +244,11 @@ class TestTokenLimitDetection:
         from agent.research_tools import is_token_limit_exceeded
 
         cases = [
-            Exception("token limit exceeded"),
-            Exception("Maximum context length is 128000"),
-            Exception("Please reduce the length of your prompt"),
-            Exception("prompt is too long"),
-            Exception("resource exhausted: quota exceeded"),
+            ValueError("token limit exceeded"),
+            ValueError("Maximum context length is 128000"),
+            ValueError("Please reduce the length of your prompt"),
+            ValueError("prompt is too long"),
+            ValueError("resource exhausted: quota exceeded"),
         ]
 
         for exc in cases:
