@@ -1,0 +1,29 @@
+--- backend/tests/test_proxy_security.py
++++ backend/tests/test_proxy_security.py
+@@ -35,7 +35,7 @@
+             "headers": headers,
+         }
+
+-        async def mock_send(_message):
++        async def mock_send(message):
+             pass
+
+         async def mock_receive():
+@@ -83,7 +83,7 @@
+             "headers": headers,
+         }
+
+-        async def mock_send(_message):
++        async def mock_send(message):
+             pass
+
+         async def mock_receive():
+@@ -133,7 +133,7 @@
+             "headers": headers,
+         }
+
+-        async def mock_send(_message):
++        async def mock_send(message):
+             pass
+
+         async def mock_receive():
