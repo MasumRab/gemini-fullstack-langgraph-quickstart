@@ -47,9 +47,9 @@ def update_notebook(notebook_path: str | Path) -> bool:
     modified = False
     
     for cell in nb.get('cells', []):
-        if cell.get('cell_type') == 'code':
-            if _process_code_cell(cell):
-                modified = True
+        cell_type = cell.get('cell_type')
+        if cell_type == 'code' and _process_code_cell(cell):
+            modified = True
     
     if modified:
         with open(notebook_path, 'w', encoding='utf-8') as f:

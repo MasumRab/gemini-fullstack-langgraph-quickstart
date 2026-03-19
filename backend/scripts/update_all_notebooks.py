@@ -293,13 +293,13 @@ def _update_notebook_cells(nb, notebook_path: Path, project_root: Path) -> bool:
 
 
 def _ensure_cell(nb, marker: str, content: str, default_pos: int) -> bool:
-    """Ensure a cell exists with the given marker and content. Returns True if modified."""
-    if not has_cell_with_marker(nb, marker):
+    """Ensure a cell exists with the given marker and content."""
+    has_marker = has_cell_with_marker(nb, marker)
+    if has_marker:
         update_or_insert_cell(nb, marker, content, default_pos)
-        return True
     else:
         update_or_insert_cell(nb, marker, content)
-        return True
+    return not has_marker  # Returns True if new cell was added
 
 
 def _get_next_pos(nb, marker: str, default: int) -> int:

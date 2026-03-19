@@ -259,9 +259,9 @@ class TestTokenLimitDetection:
         from agent.research_tools import is_token_limit_exceeded
 
         cases = [
-            Exception("Network error"),
-            Exception("Authentication failed"),
-            Exception("Invalid API key"),
+            ValueError("Network error"),
+            PermissionError("Authentication failed"),
+            ValueError("Invalid API key"),
         ]
 
         for exc in cases:

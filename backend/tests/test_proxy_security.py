@@ -34,11 +34,12 @@ async def test_proxy_security_default_secure():
         "headers": headers,
     }
 
-    async def mock_send(_message):
+    # Mock send and receive functions
+    def mock_send(_message):
         """Mock send function - no action needed for test."""
         pass
 
-    async def mock_receive():
+    def mock_receive():
         """Mock receive function - returns empty request for test."""
         return {"type": "http.request"}
 
@@ -79,11 +80,12 @@ async def test_proxy_security_trusted_enabled():
         "headers": headers,
     }
 
-    async def mock_send(_message):
+    # Mock send and receive functions
+    def mock_send(_message):
         """Mock send function - no action needed for test."""
         pass
 
-    async def mock_receive():
+    def mock_receive():
         """Mock receive function - returns empty request for test."""
         return {"type": "http.request"}
 
@@ -131,11 +133,12 @@ async def test_spoofing_vulnerability():
         "headers": headers,
     }
 
-    async def mock_send(_message):
+    # Mock send and receive functions
+    def mock_send(_message):
         """Mock send function - no action needed for test."""
         pass
 
-    async def mock_receive():
+    def mock_receive():
         """Mock receive function - returns empty request for test."""
         return {"type": "http.request"}
 

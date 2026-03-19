@@ -164,7 +164,7 @@ class TestAPISecurity:
         }
         request = Request(scope)
 
-        async def call_next(req):
+        def call_next(req):
             return Response("ok")
 
         # 🛡️ Sentinel: Manually reset last_cleanup to ensure logic triggers
@@ -215,7 +215,8 @@ class TestAPISecurity:
         request = Request(scope)
 
         async def call_next(_req):
-            return Response("ok")
+            response = Response("ok")
+            return response
 
         # Dispatch should SKIP cleanup
         await mw.dispatch(request, call_next)
