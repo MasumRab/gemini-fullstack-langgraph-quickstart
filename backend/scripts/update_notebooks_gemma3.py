@@ -4,6 +4,19 @@ import json
 from pathlib import Path
 
 
+def _apply_replacements(line: str) -> tuple[str, bool]:
+    """Helper to apply model replacements."""
+    original_line = line
+    replacements = {
+        'gemini-2.5-flash': 'gemma-3-27b-it',
+        'gemini-2.5-pro': 'gemma-3-27b-it',
+        'gemini-1.5-flash': 'gemma-3-27b-it',
+        'gemini-1.5-pro': 'gemma-3-27b-it'
+    }
+    for old, new in replacements.items():
+        line = line.replace(old, new)
+    return line, line != original_line
+
 def update_notebook(notebook_path):
     """Update a single notebook to use gemma-3-27b-it."""
     with open(notebook_path, encoding='utf-8') as f:
@@ -17,14 +30,8 @@ def update_notebook(notebook_path):
             if isinstance(source, list):
                 new_source = []
                 for line in source:
-                    original_line = line
-                    # Replace model references
-                    line = line.replace('gemini-2.5-flash', 'gemma-3-27b-it')
-                    line = line.replace('gemini-2.5-pro', 'gemma-3-27b-it')
-                    line = line.replace('gemini-1.5-flash', 'gemma-3-27b-it')
-                    line = line.replace('gemini-1.5-pro', 'gemma-3-27b-it')
-                    
-                    if line != original_line:
+                    line, changed = _apply_replacements(line)
+                    if changed:
                         modified = True
                     new_source.append(line)
                 cell['source'] = new_source
