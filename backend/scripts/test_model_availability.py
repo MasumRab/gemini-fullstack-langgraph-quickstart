@@ -15,7 +15,7 @@ try:
 except ImportError:
     OLD_SDK = False
 
-def scan_for_models(keyword="gemma"):
+def scan_for_models(keyword: str = "gemma") -> list[str]:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return ["Error: GEMINI_API_KEY missing"]

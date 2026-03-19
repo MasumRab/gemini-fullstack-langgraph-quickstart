@@ -224,7 +224,7 @@ def update_or_insert_cell(nb, marker, new_content, position=0):
         return position
 
 
-def process_notebook(notebook_path, project_root, dry_run=False):
+def process_notebook(notebook_path: Path, project_root: Path, dry_run: bool = False) -> bool:
     """Process a single notebook to ensure it has the required cells."""
     print(f"\n[..] Processing: {notebook_path.name}")
     

@@ -17,7 +17,7 @@ def _apply_replacements(line: str) -> tuple[str, bool]:
         line = line.replace(old, new)
     return line, line != original_line
 
-def update_notebook(notebook_path):
+def update_notebook(notebook_path: str | Path) -> bool:
     """Update a single notebook to use gemma-3-27b-it."""
     with open(notebook_path, encoding='utf-8') as f:
         nb = json.load(f)

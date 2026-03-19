@@ -214,7 +214,7 @@ class TestAPISecurity:
         }
         request = Request(scope)
 
-        async def call_next(req):
+        async def call_next(_req):
             return Response("ok")
 
         # Dispatch should SKIP cleanup

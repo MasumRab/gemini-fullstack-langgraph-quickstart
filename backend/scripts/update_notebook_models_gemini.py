@@ -2,6 +2,7 @@
 import glob
 import json
 import os
+from pathlib import Path
 
 # Mapping from old/deprecated models to new standard models
 MODEL_REPLACEMENTS = {
@@ -13,7 +14,7 @@ MODEL_REPLACEMENTS = {
     "gemini-2.0-flash-exp": "gemini-2.5-flash",
 }
 
-def update_notebook(path):
+def update_notebook(path: str | Path) -> None:
     with open(path, encoding='utf-8') as f:
         content = f.read()
 

@@ -40,7 +40,7 @@ MODELS_TO_TEST = [
 # Add deprecated models (optional, for verification they fail/warn)
 # MODELS_TO_TEST.extend(list(_DEPRECATED_MODELS))
 
-def test_model(client, model_name):
+def test_model(client: genai.Client, model_name: str) -> tuple[bool, str]:
     """Test if a model is accessible."""
     try:
         response = client.models.generate_content(
@@ -51,7 +51,7 @@ def test_model(client, model_name):
     except Exception as e:
         return False, str(e)[:100]
 
-def main():
+def main() -> None:
     # Load .env file manually to handle variable expansion
     env_path = Path(__file__).parent / ".env"
     api_key = None

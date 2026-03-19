@@ -75,7 +75,7 @@ ENV_FILE = PROJECT_ROOT / ".env"
 ENV_EXAMPLE = PROJECT_ROOT / ".env.example"
 NOTEBOOKS_DIR = PROJECT_ROOT / "notebooks"
 
-def update_file(file_path: Path, pattern: str, replacement: str):
+def update_file(file_path: Path, pattern: str, replacement: str) -> bool:
     """Update a file using regex pattern."""
     if not file_path.exists():
         print(f"Warning: File not found: {file_path}")
@@ -90,7 +90,7 @@ def update_file(file_path: Path, pattern: str, replacement: str):
         return True
     return False
 
-def main():
+def main() -> None:
     strategy_name = sys.argv[1] if len(sys.argv) > 1 else "flash"
 
     if strategy_name not in STRATEGIES:

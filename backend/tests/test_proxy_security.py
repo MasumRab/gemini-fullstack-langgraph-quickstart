@@ -34,7 +34,7 @@ async def test_proxy_security_default_secure():
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():
@@ -77,7 +77,7 @@ async def test_proxy_security_trusted_enabled():
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():
@@ -127,7 +127,7 @@ async def test_spoofing_vulnerability():
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():
