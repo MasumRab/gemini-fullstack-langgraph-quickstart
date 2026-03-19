@@ -4,14 +4,19 @@ import json
 import os
 from pathlib import Path
 
+# Model name constants
+GEMINI_FLASH = "gemini-2.5-flash"
+GEMINI_FLASH_LITE = "gemini-2.5-flash-lite"
+GEMINI_PRO = "gemini-2.5-pro"
+
 # Mapping from old/deprecated models to new standard models
 MODEL_REPLACEMENTS = {
-    "gemini-1.5-flash": "gemini-2.5-flash",
-    "gemini-1.5-pro": "gemini-2.5-pro",
-    "gemini-1.0-pro": "gemini-2.5-flash-lite", # Approximation
-    "gemini-ultra": "gemini-2.5-pro",
-    "gemini-pro": "gemini-2.5-pro",
-    "gemini-2.0-flash-exp": "gemini-2.5-flash",
+    "gemini-1.5-flash": GEMINI_FLASH,
+    "gemini-1.5-pro": GEMINI_PRO,
+    "gemini-1.0-pro": GEMINI_FLASH_LITE,  # Approximation
+    "gemini-ultra": GEMINI_PRO,
+    "gemini-pro": GEMINI_PRO,
+    "gemini-2.0-flash-exp": GEMINI_FLASH,
 }
 
 def update_notebook(path: str | Path) -> None:

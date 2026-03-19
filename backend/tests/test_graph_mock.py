@@ -43,14 +43,14 @@ class TestGraphNodes:
     @patch("agent.nodes.get_context_manager")
     @patch("agent.nodes.plan_writer_instructions")
     def test_generate_plan_success(
-        self, mock_instructions, mock_get_cm, MockLLM, mock_state, mock_config
+        self, mock_instructions, mock_get_cm, mock_llm, mock_state, mock_config
     ):
         # Mock prompts
         mock_get_cm.return_value.truncate_to_fit.return_value = "Mock Prompt"
         mock_instructions.format.return_value = "Mock Prompt"
 
         # Mock LLM instance and response
-        mock_instance = MockLLM.return_value
+        mock_instance = mock_llm.return_value
         mock_instance.with_structured_output.return_value.invoke.return_value = Mock(
             plan=[
                 Mock(title="query1", description="desc", status="pending"),

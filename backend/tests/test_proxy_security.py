@@ -35,9 +35,11 @@ async def test_proxy_security_default_secure():
     }
 
     async def mock_send(_message):
+        """Mock send function - no action needed for test."""
         pass
 
     async def mock_receive():
+        """Mock receive function - returns empty request for test."""
         return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
@@ -78,9 +80,11 @@ async def test_proxy_security_trusted_enabled():
     }
 
     async def mock_send(_message):
+        """Mock send function - no action needed for test."""
         pass
 
     async def mock_receive():
+        """Mock receive function - returns empty request for test."""
         return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
@@ -128,9 +132,11 @@ async def test_spoofing_vulnerability():
     }
 
     async def mock_send(_message):
+        """Mock send function - no action needed for test."""
         pass
 
     async def mock_receive():
+        """Mock receive function - returns empty request for test."""
         return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)

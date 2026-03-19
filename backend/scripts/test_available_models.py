@@ -37,8 +37,6 @@ MODELS_TO_TEST = [
     GEMINI_PRO,
 ]
 
-# Add deprecated models (optional, for verification they fail/warn)
-# MODELS_TO_TEST.extend(list(_DEPRECATED_MODELS))
 
 def test_model(client: genai.Client, model_name: str) -> tuple[bool, str]:
     """Test if a model is accessible."""
@@ -51,48 +49,47 @@ def test_model(client: genai.Client, model_name: str) -> tuple[bool, str]:
     except Exception as e:
         return False, str(e)[:100]
 
-def main() -> None:
-    # Load .env file manually to handle variable expansion
-    env_path = Path(__file__).parent / ".env"
-    api_key = None
+
+def _load_api_key_from_env(env_path: Path) -> str | None:
+    """Load API key from .env file."""
+    if not env_path.exists():
+        return None
     
-    if env_path.exists():
-        env_vars = {}
-        with open(env_path, encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    # Remove quotes
-                    value = value.strip().strip('"').strip("'")
-                    env_vars[key] = value
-        
-        # Resolve variable references
-        for key, value in env_vars.items():
-            if value.startswith('${') and value.endswith('}'):
-                ref_key = value[2:-1]
-                if ref_key in env_vars:
-                    env_vars[key] = env_vars[ref_key]
-        
-        # Try to get API key from various sources
-        api_key = env_vars.get('GEMINI_API_KEY') or env_vars.get('GOOGLE_API_KEY3') or env_vars.get('GOOGLE_API_KEY')
+    env_vars = {}
+    with open(env_path, encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                # Remove quotes
+                value = value.strip().strip('"').strip("'")
+                env_vars[key] = value
+    
+    # Resolve variable references
+    for key, value in env_vars.items():
+        if value.startswith('${') and value.endswith('}'):
+            ref_key = value[2:-1]
+            if ref_key in env_vars:
+                env_vars[key] = env_vars[ref_key]
+    
+    # Try to get API key from various sources
+    return env_vars.get('GEMINI_API_KEY') or env_vars.get('GOOGLE_API_KEY3') or env_vars.get('GOOGLE_API_KEY')
+
+
+def _get_api_key() -> str | None:
+    """Get API key from .env file or environment variable."""
+    env_path = Path(__file__).parent / ".env"
+    api_key = _load_api_key_from_env(env_path)
+    if api_key:
         print("[OK] Loaded API key from .env")
+        return api_key
     
     # Fallback to environment variable
-    if not api_key:
-        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    
-    if not api_key:
-        print("[ERROR] No API key found!")
-        print("   Please set GEMINI_API_KEY in .env or environment")
-        return
-    
-    # Initialize client
-    client = genai.Client(api_key=api_key)
-    
-    print("\n[TEST] Gemini Model Availability")
-    print("=" * 70)
-    
+    return os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+
+
+def _test_models(client: genai.Client) -> tuple[list[str], list[str]]:
+    """Test all models and return working/failed lists."""
     working_models = []
     failed_models = []
     
@@ -107,7 +104,11 @@ def main() -> None:
             print(f"   [FAIL] Error: {result}")
             failed_models.append(model)
     
-    # Summary
+    return working_models, failed_models
+
+
+def _print_summary(working_models: list[str], failed_models: list[str]) -> None:
+    """Print summary of test results."""
     print("\n" + "=" * 70)
     print(f"\n[OK] Working Models ({len(working_models)}):")
     for model in working_models:
@@ -125,6 +126,25 @@ def main() -> None:
         print(f"   Available Options: {', '.join(working_models)}")
     else:
         print("   [WARN] No working models found!")
+
+
+def main() -> None:
+    api_key = _get_api_key()
+    
+    if not api_key:
+        print("[ERROR] No API key found!")
+        print("   Please set GEMINI_API_KEY in .env or environment")
+        return
+    
+    # Initialize client
+    client = genai.Client(api_key=api_key)
+    
+    print("\n[TEST] Gemini Model Availability")
+    print("=" * 70)
+    
+    working_models, failed_models = _test_models(client)
+    _print_summary(working_models, failed_models)
+
 
 if __name__ == "__main__":
     main()

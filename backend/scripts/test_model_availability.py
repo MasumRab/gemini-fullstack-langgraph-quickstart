@@ -1,4 +1,5 @@
 
+
 import os
 import sys
 
@@ -15,34 +16,39 @@ try:
 except ImportError:
     OLD_SDK = False
 
+
+def _scan_with_new_sdk(api_key: str, keyword: str) -> list[str]:
+    """Scan for models using the new Google SDK."""
+    try:
+        client = genai.Client(api_key=api_key)
+        return [m.name for m in client.models.list() if keyword in m.name]
+    except Exception as e:
+        return [f"New SDK Error: {e}"]
+
+
+def _scan_with_old_sdk(api_key: str, keyword: str) -> list[str]:
+    """Scan for models using the old Google SDK."""
+    try:
+        old_genai.configure(api_key=api_key)
+        return [m.name for m in old_genai.list_models() if keyword in m.name]
+    except Exception as e:
+        return [f"Old SDK Error: {e}"]
+
+
 def scan_for_models(keyword: str = "gemma") -> list[str]:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return ["Error: GEMINI_API_KEY missing"]
 
-    found_models = []
-    
-    # Try New SDK
+    # Try New SDK first
     if NEW_SDK:
-        try:
-            client = genai.Client(api_key=api_key)
-            for m in client.models.list():
-                if keyword in m.name:
-                    found_models.append(m.name)
-        except Exception as e:
-            found_models.append(f"New SDK Error: {e}")
+        return _scan_with_new_sdk(api_key, keyword)
 
-    # Try Old SDK
-    if OLD_SDK and not found_models:
-        try:
-            old_genai.configure(api_key=api_key)
-            for m in old_genai.list_models():
-                if keyword in m.name:
-                    found_models.append(m.name)
-        except Exception as e:
-             found_models.append(f"Old SDK Error: {e}")
-            
-    return found_models
+    # Try Old SDK as fallback
+    if OLD_SDK:
+        return _scan_with_old_sdk(api_key, keyword)
+
+    return ["Error: No Google SDK available"]
 
 if __name__ == "__main__":
     from dotenv import load_dotenv

@@ -14,6 +14,12 @@ from pathlib import Path
 import nbformat
 from nbformat.v4 import new_code_cell, new_markdown_cell
 
+# Constants
+COLAB_SETUP_MARKER = "COLAB SETUP"
+SETUP_MARKER = "Universal Setup for Backend Environment"
+MODEL_CONFIG_MARKER = "MODEL CONFIGURATION"
+MODEL_VERIFY_MARKER = "MODEL VERIFICATION"
+
 # Define the setup cell content
 SETUP_CELL = """# Universal Setup for Backend Environment
 import sys
@@ -235,57 +241,7 @@ def process_notebook(notebook_path: Path, project_root: Path, dry_run: bool = Fa
         print(f"  [X] Error reading notebook: {e}")
         return False
     
-    modified = False
-    
-    # Calculate relative path for Colab setup
-    try:
-        rel_path = notebook_path.parent.relative_to(project_root)
-    except ValueError:
-        rel_path = Path(".") # Fallback
-
-    colab_setup_content = get_colab_setup_cell(str(rel_path))
-    
-    # Step 1: Ensure Colab setup cell
-    if not has_cell_with_marker(nb, "COLAB SETUP"):
-        update_or_insert_cell(nb, "COLAB SETUP", colab_setup_content, 0)
-        modified = True
-    else:
-        # Update existing
-        update_or_insert_cell(nb, "COLAB SETUP", colab_setup_content)
-        modified = True
-    
-    # Step 2: Ensure setup cell exists (Backend setup)
-    setup_marker = "Universal Setup for Backend Environment"
-    if not has_cell_with_marker(nb, setup_marker):
-        # Insert after Colab setup (position 1)
-        update_or_insert_cell(nb, setup_marker, SETUP_CELL, 1)
-        modified = True
-    else:
-        # Update existing setup cell
-        update_or_insert_cell(nb, setup_marker, SETUP_CELL)
-        modified = True
-    
-    # Step 3: Ensure model configuration cell exists
-    model_marker = "MODEL CONFIGURATION"
-    if not has_cell_with_marker(nb, model_marker):
-        setup_idx = get_cell_index_with_marker(nb, setup_marker)
-        pos = setup_idx + 1 if setup_idx >= 0 else 2
-        update_or_insert_cell(nb, model_marker, MODEL_CONFIG_CELL, pos)
-        modified = True
-    else:
-        update_or_insert_cell(nb, model_marker, MODEL_CONFIG_CELL)
-        modified = True
-    
-    # Step 4: Ensure model verification cell exists
-    verify_marker = "MODEL VERIFICATION"
-    if not has_cell_with_marker(nb, verify_marker):
-        model_idx = get_cell_index_with_marker(nb, model_marker)
-        pos = model_idx + 1 if model_idx >= 0 else 3
-        update_or_insert_cell(nb, verify_marker, MODEL_VERIFICATION_CELL, pos)
-        modified = True
-    else:
-        update_or_insert_cell(nb, verify_marker, MODEL_VERIFICATION_CELL)
-        modified = True
+    modified = _update_notebook_cells(nb, notebook_path, project_root)
     
     # Save the notebook if modified
     if modified and not dry_run:
@@ -303,6 +259,53 @@ def process_notebook(notebook_path: Path, project_root: Path, dry_run: bool = Fa
     else:
         print("  [i] No changes needed")
         return False
+
+
+def _update_notebook_cells(nb, notebook_path: Path, project_root: Path) -> bool:
+    """Helper to update notebook cells. Returns True if modified."""
+    modified = False
+    
+    # Calculate relative path for Colab setup
+    try:
+        rel_path = notebook_path.parent.relative_to(project_root)
+    except ValueError:
+        rel_path = Path(".")
+
+    colab_setup_content = get_colab_setup_cell(str(rel_path))
+    
+    # Step 1: Ensure Colab setup cell
+    if _ensure_cell(nb, COLAB_SETUP_MARKER, colab_setup_content, 0):
+        modified = True
+    
+    # Step 2: Ensure setup cell exists (Backend setup)
+    if _ensure_cell(nb, SETUP_MARKER, SETUP_CELL, 1):
+        modified = True
+    
+    # Step 3: Ensure model configuration cell exists
+    if _ensure_cell(nb, MODEL_CONFIG_MARKER, MODEL_CONFIG_CELL, _get_next_pos(nb, SETUP_MARKER, 2)):
+        modified = True
+    
+    # Step 4: Ensure model verification cell exists
+    if _ensure_cell(nb, MODEL_VERIFY_MARKER, MODEL_VERIFICATION_CELL, _get_next_pos(nb, MODEL_CONFIG_MARKER, 3)):
+        modified = True
+    
+    return modified
+
+
+def _ensure_cell(nb, marker: str, content: str, default_pos: int) -> bool:
+    """Ensure a cell exists with the given marker and content. Returns True if modified."""
+    if not has_cell_with_marker(nb, marker):
+        update_or_insert_cell(nb, marker, content, default_pos)
+        return True
+    else:
+        update_or_insert_cell(nb, marker, content)
+        return True
+
+
+def _get_next_pos(nb, marker: str, default: int) -> int:
+    """Get the next position after a marker."""
+    idx = get_cell_index_with_marker(nb, marker)
+    return idx + 1 if idx >= 0 else default
 
 
 def main():
