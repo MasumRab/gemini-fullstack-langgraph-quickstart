@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Script to update Gemini model configurations across the project.
+"""Script to update Gemini model configurations across the project.
 Usage: python update_models.py [strategy]
 Strategies:
   - flash (default): Gemini 2.5 Flash for all components (Best price-performance)
@@ -9,8 +8,8 @@ Strategies:
   - balanced: Flash-Lite for queries, Flash for reflection, Pro for answers
 """
 
-import sys
 import re
+import sys
 from pathlib import Path
 
 # Configuration Strategies - Only Gemini 2.5 models (1.5 and 2.0 are deprecated/inaccessible)

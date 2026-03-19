@@ -3,9 +3,10 @@
 import json
 from pathlib import Path
 
+
 def update_notebook(notebook_path):
     """Update a single notebook to use gemma-3-27b-it."""
-    with open(notebook_path, 'r', encoding='utf-8') as f:
+    with open(notebook_path, encoding='utf-8') as f:
         nb = json.load(f)
     
     modified = False

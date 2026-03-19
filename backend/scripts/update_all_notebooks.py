@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Script to ensure all notebooks have model configuration options enabled and correct Colab setup.
+"""Script to ensure all notebooks have model configuration options enabled and correct Colab setup.
 This script will:
 1. Add/update the Colab setup cell (Clone + CD + Install)
 2. Add/update the setup cell for backend environment (Local path setup)
@@ -8,11 +7,12 @@ This script will:
 4. Process all notebooks in the project
 """
 
+import os
+import sys
+from pathlib import Path
+
 import nbformat
 from nbformat.v4 import new_code_cell, new_markdown_cell
-from pathlib import Path
-import sys
-import os
 
 # Define the setup cell content
 SETUP_CELL = """# Universal Setup for Backend Environment
@@ -135,11 +135,9 @@ else:
         print(f"   - Network connectivity issues")"""
 
 def get_colab_setup_cell(rel_path):
-    """
-    Generates a Colab setup cell that clones the repo and cds to the correct directory.
+    """Generates a Colab setup cell that clones the repo and cds to the correct directory.
     rel_path: path of the notebook relative to repo root (e.g. 'notebooks', 'backend')
     """
-
     # Calculate path to cd into after cloning
     # If notebook is in 'notebooks/', we cd to 'gemini.../notebooks'
     # If notebook is in 'backend/', we cd to 'gemini.../backend'
@@ -231,7 +229,7 @@ def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
     print(f"\n[..] Processing: {notebook_path.name}")
     
     try:
-        with open(notebook_path, 'r', encoding='utf-8') as f:
+        with open(notebook_path, encoding='utf-8') as f:
             nb = nbformat.read(f, as_version=4)
     except Exception as e: # noqa: BLE001
         print(f"  [X] Error reading notebook: {e}")
