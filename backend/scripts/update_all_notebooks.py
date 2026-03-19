@@ -126,7 +126,7 @@ else:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "google-genai"])
         print("  [OK] Installed! Please re-run this cell.")
         
-    except Exception as e:
+    except OSError as e:
         print(f"  [X] Model verification failed: {e}")
         print(f"   This could mean:")
         print(f"   - Invalid API key")
@@ -231,7 +231,7 @@ def process_notebook(notebook_path, project_root, dry_run=False):
     try:
         with open(notebook_path, encoding='utf-8') as f:
             nb = nbformat.read(f, as_version=4)
-    except Exception as e: # noqa: BLE001
+    except OSError as e:
         print(f"  [X] Error reading notebook: {e}")
         return False
     
@@ -294,7 +294,7 @@ def process_notebook(notebook_path, project_root, dry_run=False):
                 nbformat.write(nb, f)
             print(f"  [OK] Saved changes to {notebook_path.name}")
             return True
-        except Exception as e: # noqa: BLE001
+        except OSError as e:
             print(f"  [X] Error saving notebook: {e}")
             return False
     elif modified and dry_run:
