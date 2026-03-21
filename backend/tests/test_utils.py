@@ -95,34 +95,34 @@ class TestResolveUrls:
 
     def test_basic_url_resolution(self):
         """Basic URLs should be resolved to short form."""
-        urls = [MockSite("http://example.com/a"), MockSite("http://example.com/b")]
+        urls = [MockSite("https://example.com/a"), MockSite("https://example.com/b")]
         result = resolve_urls(urls, id=5)
 
         assert (
-            result["http://example.com/a"]
+            result["https://example.com/a"]
             == "https://vertexaisearch.cloud.google.com/id/5-0"
         )
         assert (
-            result["http://example.com/b"]
+            result["https://example.com/b"]
             == "https://vertexaisearch.cloud.google.com/id/5-1"
         )
 
     def test_duplicate_urls_get_same_short_url(self):
         """Duplicate URLs should map to the same short URL."""
         urls = [
-            MockSite("http://example.com/page"),
-            MockSite("http://example.com/page"),
-            MockSite("http://other.com/page"),
+            MockSite("https://example.com/page"),
+            MockSite("https://example.com/page"),
+            MockSite("https://other.com/page"),
         ]
         result = resolve_urls(urls, id=1)
 
         # First occurrence determines the index
         assert (
-            result["http://example.com/page"]
+            result["https://example.com/page"]
             == "https://vertexaisearch.cloud.google.com/id/1-0"
         )
         assert (
-            result["http://other.com/page"]
+            result["https://other.com/page"]
             == "https://vertexaisearch.cloud.google.com/id/1-2"
         )
 
@@ -133,9 +133,9 @@ class TestResolveUrls:
 
     def test_large_id_value(self):
         """Large ID values should work correctly."""
-        urls = [MockSite("http://example.com/doc")]
+        urls = [MockSite("https://example.com/doc")]
         result = resolve_urls(urls, id=999999)
-        assert "999999-0" in result["http://example.com/doc"]
+        assert "999999-0" in result["https://example.com/doc"]
 
 
 # =============================================================================
@@ -222,12 +222,12 @@ class TestGetCitations:
         """Full flow: extract citations from mock response."""
         segment = MockSegment(start_index=0, end_index=5)
         support = MockSupport(segment=segment, grounding_chunk_indices=[0])
-        chunk = MockChunk(uri="http://example.com/doc", title="Doc.Title.pdf")
+        chunk = MockChunk(uri="https://example.com/doc", title="Doc.Title.pdf")
         candidate = MockCandidate(
             grounding_supports=[support], grounding_chunks=[chunk]
         )
         response = MockResponse(candidates=[candidate])
-        resolved_map = {"http://example.com/doc": "short_url"}
+        resolved_map = {"https://example.com/doc": "short_url"}
 
         citations = get_citations(response, resolved_map)
 
@@ -252,39 +252,39 @@ class TestGetCitations:
     def test_missing_segment_skips_support(self):
         """Support without segment should be skipped."""
         support = MockSupport(segment=None, grounding_chunk_indices=[0])
-        chunk = MockChunk(uri="http://x.com", title="X")
+        chunk = MockChunk(uri="https://x.com", title="X")
         candidate = MockCandidate(
             grounding_supports=[support], grounding_chunks=[chunk]
         )
         response = MockResponse(candidates=[candidate])
 
-        citations = get_citations(response, {"http://x.com": "short"})
+        citations = get_citations(response, {"https://x.com": "short"})
         assert citations == []
 
     def test_missing_end_index_skips_support(self):
         """Segment without end_index should be skipped."""
         segment = MockSegment(start_index=0, end_index=None)
         support = MockSupport(segment=segment, grounding_chunk_indices=[0])
-        chunk = MockChunk(uri="http://x.com", title="X")
+        chunk = MockChunk(uri="https://x.com", title="X")
         candidate = MockCandidate(
             grounding_supports=[support], grounding_chunks=[chunk]
         )
         response = MockResponse(candidates=[candidate])
 
-        citations = get_citations(response, {"http://x.com": "short"})
+        citations = get_citations(response, {"https://x.com": "short"})
         assert citations == []
 
     def test_start_index_defaults_to_zero(self):
         """Missing start_index should default to 0."""
         segment = MockSegment(start_index=None, end_index=10)
         support = MockSupport(segment=segment, grounding_chunk_indices=[0])
-        chunk = MockChunk(uri="http://x.com", title="X.pdf")
+        chunk = MockChunk(uri="https://x.com", title="X.pdf")
         candidate = MockCandidate(
             grounding_supports=[support], grounding_chunks=[chunk]
         )
         response = MockResponse(candidates=[candidate])
 
-        citations = get_citations(response, {"http://x.com": "short"})
+        citations = get_citations(response, {"https://x.com": "short"})
         assert len(citations) == 1
         assert citations[0]["start_index"] == 0
 
@@ -292,13 +292,13 @@ class TestGetCitations:
         """Invalid chunk index should be skipped without error."""
         segment = MockSegment(start_index=0, end_index=5)
         support = MockSupport(segment=segment, grounding_chunk_indices=[99])  # Invalid
-        chunk = MockChunk(uri="http://x.com", title="X")
+        chunk = MockChunk(uri="https://x.com", title="X")
         candidate = MockCandidate(
             grounding_supports=[support], grounding_chunks=[chunk]
         )
         response = MockResponse(candidates=[candidate])
 
-        citations = get_citations(response, {"http://x.com": "short"})
+        citations = get_citations(response, {"https://x.com": "short"})
         # Citation should exist but with empty segments
         assert len(citations) == 1
         assert citations[0]["segments"] == []
@@ -307,7 +307,7 @@ class TestGetCitations:
         """URL not in resolved map should still produce a segment with None short_url."""
         segment = MockSegment(start_index=0, end_index=5)
         support = MockSupport(segment=segment, grounding_chunk_indices=[0])
-        chunk = MockChunk(uri="http://unknown.com", title="Unknown.pdf")
+        chunk = MockChunk(uri="https://unknown.com", title="Unknown.pdf")
         candidate = MockCandidate(
             grounding_supports=[support], grounding_chunks=[chunk]
         )
@@ -323,25 +323,25 @@ class TestGetCitations:
         segment2 = MockSegment(start_index=10, end_index=15)
         support1 = MockSupport(segment=segment1, grounding_chunk_indices=[0])
         support2 = MockSupport(segment=segment2, grounding_chunk_indices=[0])
-        chunk = MockChunk(uri="http://x.com", title="X.pdf")
+        chunk = MockChunk(uri="https://x.com", title="X.pdf")
         candidate = MockCandidate(
             grounding_supports=[support1, support2], grounding_chunks=[chunk]
         )
         response = MockResponse(candidates=[candidate])
 
-        citations = get_citations(response, {"http://x.com": "short"})
+        citations = get_citations(response, {"https://x.com": "short"})
         assert len(citations) == 2
 
     def test_citations_handle_titles_without_dots(self):
         """Titles without dots should be preserved (no IndexError)."""
         segment = MockSegment(start_index=0, end_index=5)
         support = MockSupport(segment=segment, grounding_chunk_indices=[0])
-        chunk = MockChunk(uri="http://google.com", title="Google")
+        chunk = MockChunk(uri="https://google.com", title="Google")
         candidate = MockCandidate(
             grounding_supports=[support], grounding_chunks=[chunk]
         )
         response = MockResponse(candidates=[candidate])
-        resolved_map = {"http://google.com": "short_url"}
+        resolved_map = {"https://google.com": "short_url"}
 
         citations = get_citations(response, resolved_map)
         assert len(citations) == 1

@@ -64,15 +64,15 @@ class TestDeduplication:
             {
                 "query": "query1",
                 "results": [
-                    {"url": "http://example.com/a", "title": "Title A"},
-                    {"url": "http://example.com/b", "title": "Title B"},
+                    {"url": "https://example.com/a", "title": "Title A"},
+                    {"url": "https://example.com/b", "title": "Title B"},
                 ],
             },
             {
                 "query": "query2",
                 "results": [
-                    {"url": "http://example.com/a", "title": "Title A duplicate"},
-                    {"url": "http://example.com/c", "title": "Title C"},
+                    {"url": "https://example.com/a", "title": "Title A duplicate"},
+                    {"url": "https://example.com/c", "title": "Title C"},
                 ],
             },
         ]
@@ -80,11 +80,11 @@ class TestDeduplication:
         result = deduplicate_search_results(search_results)
 
         assert len(result) == 3
-        assert "http://example.com/a" in result
-        assert "http://example.com/b" in result
-        assert "http://example.com/c" in result
+        assert "https://example.com/a" in result
+        assert "https://example.com/b" in result
+        assert "https://example.com/c" in result
         # First occurrence should be kept
-        assert result["http://example.com/a"]["title"] == "Title A"
+        assert result["https://example.com/a"]["title"] == "Title A"
 
     def test_deduplicate_handles_empty_results(self):
         """Should handle empty results gracefully."""
@@ -111,7 +111,7 @@ class TestProcessSearchResults:
         from agent.research_tools import process_search_results
 
         unique_results = {
-            "http://example.com": {
+            "https://example.com": {
                 "title": "Test Title",
                 "content": "Short snippet",
             }
@@ -119,8 +119,8 @@ class TestProcessSearchResults:
 
         result = process_search_results(unique_results)
 
-        assert result["http://example.com"]["content"] == "Short snippet"
-        assert result["http://example.com"]["title"] == "Test Title"
+        assert result["https://example.com"]["content"] == "Short snippet"
+        assert result["https://example.com"]["title"] == "Test Title"
 
     def test_process_truncates_raw_content_without_model(self):
         """Should truncate raw_content when no summarization model."""
@@ -128,7 +128,7 @@ class TestProcessSearchResults:
 
         long_content = "x" * 300000  # Very long content
         unique_results = {
-            "http://example.com": {
+            "https://example.com": {
                 "title": "Test",
                 "content": "Short",
                 "raw_content": long_content,
@@ -137,7 +137,7 @@ class TestProcessSearchResults:
 
         result = process_search_results(unique_results, max_content_length=1000)
 
-        assert len(result["http://example.com"]["content"]) == 1000
+        assert len(result["https://example.com"]["content"]) == 1000
 
     def test_process_handles_empty_input(self):
         """Should handle empty input."""
@@ -155,8 +155,8 @@ class TestFormatSearchOutput:
         from agent.research_tools import format_search_output
 
         summarized_results = {
-            "http://example.com/a": {"title": "Article A", "content": "Summary A"},
-            "http://example.com/b": {"title": "Article B", "content": "Summary B"},
+            "https://example.com/a": {"title": "Article A", "content": "Summary A"},
+            "https://example.com/b": {"title": "Article B", "content": "Summary B"},
         }
 
         result = format_search_output(summarized_results)
@@ -165,7 +165,7 @@ class TestFormatSearchOutput:
         assert "SOURCE 2:" in result
         assert "Article A" in result
         assert "Article B" in result
-        assert "http://example.com/a" in result
+        assert "https://example.com/a" in result
         assert "Summary A" in result
 
     def test_format_handles_empty_results(self):

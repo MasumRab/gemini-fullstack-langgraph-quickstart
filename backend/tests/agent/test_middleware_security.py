@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from agent.app import ContentSizeLimitMiddleware, app
 
 # Initialize TestClient with a trusted host (localhost) to pass TrustedHostMiddleware
-client = TestClient(app, base_url="http://localhost")
+client = TestClient(app, base_url="https://localhost")
 
 
 def test_content_size_limit():

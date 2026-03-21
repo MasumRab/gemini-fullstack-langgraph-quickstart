@@ -361,7 +361,7 @@ def test_require_citations_enforcement(mock_app_config):
     state = {
         "search_query": ["test"],
         "web_research_result": [
-            "Result with citation [Title](http://example.com).",
+            "Result with citation [Title](https://example.com).",
             "Result without citation.",
         ],
     }
@@ -382,7 +382,7 @@ def test_require_citations_enforcement(mock_app_config):
     state = {
         "search_query": ["test"],
         "web_research_result": [
-            "Test result with citation [Title](http://example.com).",
+            "Test result with citation [Title](https://example.com).",
             "Test result without citation.",
         ],
     }

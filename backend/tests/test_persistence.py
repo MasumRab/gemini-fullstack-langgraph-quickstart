@@ -127,7 +127,7 @@ class TestPersistence:
         ]
         artifacts = {
             "summary": "This is a long summary...",
-            "sources": "http://example.com",
+            "sources": "https://example.com",
         }
 
         persistence.save_plan("complex-test", todo_list, artifacts)

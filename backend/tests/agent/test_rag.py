@@ -76,7 +76,7 @@ def test_initialization(rag_classes, mock_config, mock_dependencies):
 def test_ingest_research_results(rag_classes, mock_config, mock_dependencies):
     rag = rag_classes.DeepSearchRAG(config=mock_config)
     documents = [
-        {"content": "Doc 1 content", "url": "http://example.com/1", "score": 0.9}
+        {"content": "Doc 1 content", "url": "https://example.com/1", "score": 0.9}
     ]
     subgoal_id = "sg_1"
 

@@ -12,7 +12,7 @@ from agent.security import RateLimitMiddleware
 # ----------------------------------------------------------------------
 # This confirms the middleware doesn't crash the app and basics work.
 
-client = TestClient(app, base_url="http://localhost")
+client = TestClient(app, base_url="https://localhost")
 
 
 def test_rate_limiter_integration():

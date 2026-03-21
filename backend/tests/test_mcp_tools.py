@@ -9,7 +9,7 @@ from agent.tools_and_schemas import get_tools_from_mcp
 
 @pytest.mark.asyncio
 async def test_get_tools_from_mcp_disabled():
-    config = MCPSettings(enabled=False, endpoint="http://localhost:8000")
+    config = MCPSettings(enabled=False, endpoint="https://localhost:8000")
     tools = await get_tools_from_mcp(config)
     assert tools == []
 
@@ -24,7 +24,7 @@ async def test_get_tools_from_mcp_no_endpoint():
 @pytest.mark.asyncio
 async def test_get_tools_from_mcp_success():
     config = MCPSettings(
-        enabled=True, endpoint="http://localhost:8000/sse", api_key="test-key"
+        enabled=True, endpoint="https://localhost:8000/sse", api_key="test-key"
     )
 
     # Create mock modules for langchain_mcp_adapters
@@ -62,13 +62,13 @@ async def test_get_tools_from_mcp_success():
         # Verify SSEConnection called with correct params
         mock_conn_cls.assert_called_once()
         _, kwargs = mock_conn_cls.call_args
-        assert kwargs["url"] == "http://localhost:8000/sse"
+        assert kwargs["url"] == "https://localhost:8000/sse"
         assert kwargs["headers"] == {"Authorization": "Bearer test-key"}
 
 
 @pytest.mark.asyncio
 async def test_get_tools_from_mcp_exception():
-    config = MCPSettings(enabled=True, endpoint="http://localhost:8000/sse")
+    config = MCPSettings(enabled=True, endpoint="https://localhost:8000/sse")
 
     mock_tools_module = MagicMock()
     mock_sessions_module = MagicMock()

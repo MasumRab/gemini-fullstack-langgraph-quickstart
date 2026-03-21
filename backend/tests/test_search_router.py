@@ -82,7 +82,7 @@ class TestSearchRouter:
         mock_config.search_provider = "google"
 
         expected_results = [
-            SearchResult(title="Title", content="test", url="http://test.com")
+            SearchResult(title="Title", content="test", url="https://test.com")
         ]
         mock_adapters["google"].return_value.search.return_value = expected_results
 
@@ -103,7 +103,7 @@ class TestSearchRouter:
         mock_adapters["google"].side_effect = Exception("Init failed")
 
         expected_results = [
-            SearchResult(title="DDG", content="ddg", url="http://ddg.com")
+            SearchResult(title="DDG", content="ddg", url="https://ddg.com")
         ]
         mock_adapters["duckduckgo"].return_value.search.return_value = expected_results
 
@@ -127,7 +127,7 @@ class TestSearchRouter:
         # First call fails, second succeeds
         provider_mock.search.side_effect = [
             Exception("Tuned failed"),
-            [SearchResult(title="Relaxed", content="relaxed", url="http://test.com")],
+            [SearchResult(title="Relaxed", content="relaxed", url="https://test.com")],
         ]
 
         results = router.search("query")
@@ -153,7 +153,7 @@ class TestSearchRouter:
         google_mock.search.side_effect = [Exception("Fail 1"), Exception("Fail 2")]
         # DDG succeeds
         ddg_mock.search.return_value = [
-            SearchResult(title="Fallback", content="fallback", url="http://ddg.com")
+            SearchResult(title="Fallback", content="fallback", url="https://ddg.com")
         ]
 
         results = router.search("query")
