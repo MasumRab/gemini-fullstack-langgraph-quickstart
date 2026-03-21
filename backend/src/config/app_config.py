@@ -56,7 +56,7 @@ class AppConfig:
         os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
     )
     cors_origins: Tuple[str, ...] = tuple(
-        filter(None, os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","))
+        filter(None, os.getenv("CORS_ORIGINS", "https://localhost:5173").split(","))
     )
     allowed_hosts: Tuple[str, ...] = tuple(
         filter(None, os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(","))
@@ -79,7 +79,7 @@ class AppConfig:
     # Security Configuration
     CORS_ORIGINS: List[str] = field(
         default_factory=lambda: os.getenv(
-            "CORS_ORIGINS", "http://localhost:5173"
+            "CORS_ORIGINS", "https://localhost:5173"
         ).split(",")
     )
 
