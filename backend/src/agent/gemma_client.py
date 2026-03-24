@@ -79,7 +79,7 @@ class OllamaGemmaClient(GemmaClient):
 
         self.requests = requests
         self.base_url = app_config.ollama_base_url
-        self.model_name = app_config.gemma_model_name
+        self.model_name = "gemini-1.5-flash" if app_config.gemma_model_name == "gemma:7b" else app_config.gemma_model_name
         self.generate_url = f"{self.base_url}/api/generate"
         self.timeout = timeout
 
@@ -120,8 +120,48 @@ def get_gemma_client() -> GemmaClient:
         return VertexAIGemmaClient()
     elif provider == "ollama":
         return OllamaGemmaClient()
+    elif provider == "google_genai":
+        return GoogleGenAIGemmaClient()
     else:
         logger.warning(
             f"Unknown or unsupported Gemma provider: {provider}. Defaulting to Ollama."
         )
         return OllamaGemmaClient()
+
+class GoogleGenAIGemmaClient(GemmaClient):
+    """Client for Gemma models using the Google GenAI SDK (requires GEMINI_API_KEY)."""
+
+    def __init__(self):
+        """
+        Initialize Google GenAI client.
+        """
+        try:
+            from google import genai
+            import os
+        except ImportError:
+            logger.error("google-genai not installed.")
+            raise ImportError("Please install 'google-genai' to use GoogleGenAIGemmaClient")
+
+        # Will automatically pick up GEMINI_API_KEY from environment
+        self.client = genai.Client()
+        self.model_name = "gemini-1.5-flash" if app_config.gemma_model_name == "gemma:7b" else app_config.gemma_model_name
+
+        # Basic validation that we have an API key
+        if not os.getenv("GEMINI_API_KEY"):
+            logger.warning("GEMINI_API_KEY not found in environment. Client initialization may fail.")
+
+    def invoke(self, prompt: str, **kwargs) -> str:
+        """
+        Generate text completion using Google GenAI SDK.
+        """
+        try:
+            # We don't want to pass unrecognized kwargs to genai, so we filter out or ignore them
+            # For this simple implementation, we just pass the prompt
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
+            return response.text
+        except Exception as e:
+            logger.error(f"Google GenAI request failed: {e}")
+            raise e
