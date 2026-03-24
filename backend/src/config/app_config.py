@@ -11,6 +11,7 @@ class AppConfig:
 
     # RAG Configuration
     rag_store: str = os.getenv("RAG_STORE", "faiss")
+    rag_embedding_provider: str = os.getenv("RAG_EMBEDDING_PROVIDER", "sentence-transformers")
     dual_write: bool = os.getenv("DUAL_WRITE", "false").lower() == "true"
     chroma_persist_path: str = os.getenv("CHROMA_PERSIST_PATH", "./chroma_db")
 
@@ -55,7 +56,7 @@ class AppConfig:
     model_compression: str = os.getenv("MODEL_COMPRESSION", "gemma-3-27b-it")
 
     # Gemma Integration Configuration
-    gemma_provider: str = os.getenv("GEMMA_PROVIDER", "ollama")  # vertex, ollama, local
+    gemma_provider: str = os.getenv("GEMMA_PROVIDER", "ollama")  # vertex, ollama, local, google_genai
     gemma_model_name: str = os.getenv("GEMMA_MODEL_NAME", "gemma:7b")
     vertex_project_id: str = os.getenv("VERTEX_PROJECT_ID", "")
     vertex_location: str = os.getenv("VERTEX_LOCATION", "us-central1")
