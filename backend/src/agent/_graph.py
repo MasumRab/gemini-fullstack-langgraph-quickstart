@@ -1,5 +1,4 @@
-"""
-Alternative/Experimental Graph Implementation.
+"""Alternative/Experimental Graph Implementation.
 
 This module provides a standalone, multi-provider LangGraph workflow that can be used
 for experimentation or as a fallback. It maintains compatibility with the main graph.py
@@ -12,28 +11,28 @@ Key differences from graph.py:
 - Suitable for CLI/notebook usage
 """
 
-import os
-import time
 import json
-import re
 import logging
-from typing import Dict, Any, List, Optional
+import os
+import re
+import time
+from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import END, START, StateGraph
 
-from agent.state import OverallState, ReflectionState
+from agent import rag_nodes
 from agent.configuration import Configuration
 from agent.prompts import (
-    query_writer_instructions,
-    reflection_instructions,
     answer_instructions,
     get_current_date,
+    query_writer_instructions,
+    reflection_instructions,
 )
-from agent.utils import get_research_topic, LLMFactory
-from agent import rag_nodes
+from agent.state import OverallState, ReflectionState
+from agent.utils import LLMFactory, get_research_topic
 
 # Optional imports with graceful fallback
 try:

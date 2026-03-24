@@ -1,9 +1,10 @@
 import logging
 import threading
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Dict, List
 
-from config.app_config import config, AppConfig
+from config.app_config import AppConfig, config
+
 from .provider import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,7 @@ class SearchProviderType(Enum):
     BING = "bing"
 
 class SearchRouter:
-    """
-    Routes search queries to the appropriate provider with fallback logic.
+    """Routes search queries to the appropriate provider with fallback logic.
     """
 
     def __init__(self, app_config: AppConfig = config):
@@ -26,7 +26,7 @@ class SearchRouter:
         self.providers: Dict[str, SearchProvider] = {}
         self._providers_lock = threading.Lock()
 
-    def _get_provider(self, name: str) -> Optional[SearchProvider]:
+    def _get_provider(self, name: str) -> SearchProvider | None:
         # Quick check without lock
         if name in self.providers:
             return self.providers[name]
@@ -67,11 +67,10 @@ class SearchRouter:
         self,
         query: str,
         max_results: int = 5,
-        provider_name: Optional[str] = None,
+        provider_name: str | None = None,
         attempt_fallback: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search with routing and fallback logic.
+        """Execute search with routing and fallback logic.
 
         Args:
             query: Search query

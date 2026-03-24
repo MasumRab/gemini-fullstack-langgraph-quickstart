@@ -1,7 +1,7 @@
-from typing import List, Dict, Optional, Tuple, Any
 import logging
-import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Tuple
+
 import chromadb
 from chromadb.config import Settings
 
@@ -23,8 +23,7 @@ class EvidenceChunk:
     metadata: Dict = field(default_factory=dict)
 
 class ChromaStore:
-    """
-    ChromaDB implementation of the RAG store.
+    """ChromaDB implementation of the RAG store.
     """
 
     def __init__(
@@ -34,12 +33,11 @@ class ChromaStore:
         embedding_function: Any = None,
         allow_reset: bool = False
     ):
-        """
-        Args:
-            collection_name: Name of the Chroma collection.
-            persist_path: Path to persist the DB.
-            embedding_function: Optional embedding function. If None, uses default (all-MiniLM-L6-v2 compatible).
-            allow_reset: Whether to allow resetting the database (destructive).
+        """Args:
+        collection_name: Name of the Chroma collection.
+        persist_path: Path to persist the DB.
+        embedding_function: Optional embedding function. If None, uses default (all-MiniLM-L6-v2 compatible).
+        allow_reset: Whether to allow resetting the database (destructive).
         """
         self.client = chromadb.PersistentClient(path=persist_path, settings=Settings(allow_reset=allow_reset))
 
@@ -50,9 +48,8 @@ class ChromaStore:
         )
         logger.info(f"Initialized ChromaStore with collection '{collection_name}' at '{persist_path}'")
 
-    def add_evidence(self, evidence_list: List[EvidenceChunk], embeddings: Optional[List[List[float]]] = None):
-        """
-        Add evidence chunks to the store.
+    def add_evidence(self, evidence_list: List[EvidenceChunk], embeddings: List[List[float]] | None = None):
+        """Add evidence chunks to the store.
 
         Args:
             evidence_list: List of EvidenceChunk objects.
@@ -87,12 +84,11 @@ class ChromaStore:
         self,
         query: str,
         top_k: int = 10,
-        subgoal_filter: Optional[str] = None,
+        subgoal_filter: str | None = None,
         min_score: float = 0.0,
-        query_embedding: Optional[List[float]] = None
+        query_embedding: List[float] | None = None
     ) -> List[Tuple[EvidenceChunk, float]]:
-        """
-        Retrieve relevant evidence.
+        """Retrieve relevant evidence.
 
         Args:
             query: Search text.

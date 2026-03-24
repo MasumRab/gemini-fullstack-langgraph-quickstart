@@ -5,8 +5,7 @@ supporting various providers like Vertex AI, Ollama, and local execution.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
-from agent.configuration import Configuration
+
 from config.app_config import config as app_config
 
 logger = logging.getLogger(__name__)
@@ -22,8 +21,7 @@ class VertexAIGemmaClient(GemmaClient):
     """Client for Gemma models deployed on Google Vertex AI."""
 
     def __init__(self):
-        """
-        Initialize Vertex AI client using configuration from app_config.
+        """Initialize Vertex AI client using configuration from app_config.
         """
         try:
             from google.cloud import aiplatform
@@ -48,8 +46,7 @@ class VertexAIGemmaClient(GemmaClient):
         self._Value = Value
 
     def invoke(self, prompt: str, **kwargs) -> str:
-        """
-        Send prediction request to Vertex AI Endpoint.
+        """Send prediction request to Vertex AI Endpoint.
         """
         max_tokens = kwargs.get("max_tokens", 512)
         instance = {"inputs": prompt, "max_tokens": max_tokens}
@@ -68,8 +65,7 @@ class OllamaGemmaClient(GemmaClient):
     """Client for local Gemma models via Ollama API."""
 
     def __init__(self, timeout: int = 120):
-        """
-        Initialize Ollama client.
+        """Initialize Ollama client.
         
         Args:
             timeout: Request timeout in seconds (default: 120).
@@ -82,8 +78,7 @@ class OllamaGemmaClient(GemmaClient):
         self.timeout = timeout
 
     def invoke(self, prompt: str, **kwargs) -> str:
-        """
-        Generate text completion.
+        """Generate text completion.
         """
         # Protect critical payload fields from kwargs override
         PROTECTED_KEYS = {"model", "prompt", "stream"}
@@ -127,12 +122,12 @@ class GoogleGenAIGemmaClient(GemmaClient):
     """Client for Gemma models using the Google GenAI SDK (requires GEMINI_API_KEY)."""
 
     def __init__(self):
-        """
-        Initialize Google GenAI client.
+        """Initialize Google GenAI client.
         """
         try:
-            from google import genai
             import os
+
+            from google import genai
         except ImportError:
             logger.error("google-genai not installed.")
             raise ImportError("Please install 'google-genai' to use GoogleGenAIGemmaClient")
@@ -146,8 +141,7 @@ class GoogleGenAIGemmaClient(GemmaClient):
             logger.warning("GEMINI_API_KEY not found in environment. Client initialization may fail.")
 
     def invoke(self, prompt: str, **kwargs) -> str:
-        """
-        Generate text completion using Google GenAI SDK.
+        """Generate text completion using Google GenAI SDK.
         """
         try:
             # We don't want to pass unrecognized kwargs to genai, so we filter out or ignore them
