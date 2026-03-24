@@ -1,20 +1,23 @@
-from typing import Dict, Any, List
+from typing import Any, Dict
+
 from langchain_core.runnables import RunnableConfig
-from langgraph.graph import StateGraph, START, END
-from agent.state import OverallState, ReflectionState
+from langgraph.graph import END, START, StateGraph
+
 from agent.configuration import Configuration
 from agent.nodes import (
-    load_context,
+    finalize_answer,
     generate_plan,
+    load_context,
     planning_mode,
-    planning_wait,
     planning_router,
-    web_research,
-    validate_web_results,
+    planning_wait,
     reflection,
-    finalize_answer
+    validate_web_results,
+    web_research,
 )
 from agent.registry import graph_registry
+from agent.state import OverallState, ReflectionState
+
 
 # Override evaluate_research to avoid Send (parallelism)
 @graph_registry.describe(

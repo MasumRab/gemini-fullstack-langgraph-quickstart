@@ -1,6 +1,12 @@
 import logging
-from typing import Any, Union, List, Optional
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from typing import Any, List, Union
+
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +21,7 @@ logger = logging.getLogger(__name__)
     reraise=True
 )
 def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
-    """
-    Robustly calls an LLM client, handling different interfaces (invoke vs generate)
+    """Robustly calls an LLM client, handling different interfaces (invoke vs generate)
     and applying retries.
 
     Args:
@@ -58,15 +63,17 @@ def call_llm_robust(llm_client: Any, prompt: str, **kwargs) -> str:
 
 
 class GemmaAdapter:
-    """
-    Adapter for Gemma models to provide a LangChain-like 'invoke' interface
+    """Adapter for Gemma models to provide a LangChain-like 'invoke' interface
     with tool-calling support via manual prompting and parsing.
     """
-    def __init__(self, client: Any, tools: Optional[List[Any]] = None, temperature: float = 0.7):
+    def __init__(self, client: Any, tools: List[Any] | None = None, temperature: float = 0.7):
         self.client = client
         self.tools = tools or []
         self.temperature = temperature
-        from agent.tool_adapter import GEMMA_TOOL_INSTRUCTION, format_tools_to_json_schema
+        from agent.tool_adapter import (
+            GEMMA_TOOL_INSTRUCTION,
+            format_tools_to_json_schema,
+        )
         self.instruction_template = GEMMA_TOOL_INSTRUCTION
         self.tools_schema = format_tools_to_json_schema(self.tools) if self.tools else ""
 

@@ -1,8 +1,8 @@
-import logging
 import contextlib
-from typing import Optional, Any, Dict
+import logging
+from typing import Any, Dict
 
-from observability.config import is_enabled, is_audit_mode
+from observability.config import is_audit_mode, is_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ except ImportError:
     _LANGFUSE_AVAILABLE = False
     observe = None
 
-def get_langfuse_handler(metadata: Optional[Dict[str, Any]] = None) -> Optional[Any]:
+def get_langfuse_handler(metadata: Dict[str, Any] | None = None) -> Any | None:
     """Factory to create a Langfuse CallbackHandler if enabled and available.
 
     Args:
@@ -41,14 +41,18 @@ def get_langfuse_handler(metadata: Optional[Dict[str, Any]] = None) -> Optional[
         # 2. Native package (V2/V3) - Verified working path for 3.10.5
         if LangfuseCallbackHandler is None:
             try:
-                from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
+                from langfuse.langchain import (
+                    CallbackHandler as LangfuseCallbackHandler,
+                )
             except ImportError:
                 pass
 
         # 3. Callback module (Older V2)
         if LangfuseCallbackHandler is None:
              try:
-                 from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
+                 from langfuse.callback import (
+                     CallbackHandler as LangfuseCallbackHandler,
+                 )
              except ImportError:
                  pass
 
@@ -67,7 +71,7 @@ def get_langfuse_handler(metadata: Optional[Dict[str, Any]] = None) -> Optional[
         return None
 
 @contextlib.contextmanager
-def observe_span(name: str, config: Optional[Dict] = None, **kwargs):
+def observe_span(name: str, config: Dict | None = None, **kwargs):
     """Context manager to create a Langfuse span manually.
 
     This is useful for non-LangChain code blocks or when we want explicit control.

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from dataclasses import dataclass
+from typing import List
+
 
 @dataclass
 class SearchResult:
@@ -8,9 +9,9 @@ class SearchResult:
     title: str
     url: str
     content: str
-    raw_content: Optional[str] = None
+    raw_content: str | None = None
     source: str = "unknown"
-    metadata: Optional[dict] = None
+    metadata: dict | None = None
 
 class SearchProvider(ABC):
     """Abstract base class for search providers."""
@@ -20,13 +21,12 @@ class SearchProvider(ABC):
         self,
         query: str,
         max_results: int = 5,
-        region: Optional[str] = None,
-        time_range: Optional[str] = None,
+        region: str | None = None,
+        time_range: str | None = None,
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute a search query.
+        """Execute a search query.
 
         Args:
             query: The search query string.
