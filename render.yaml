@@ -2,7 +2,7 @@ services:
   - type: web
     name: gemini-fullstack-agent
     runtime: python
-    buildCommand: "./scripts/setup_env.sh"
+    buildCommand: "./setup_env.sh"
     startCommand: "cd backend && export PYTHONPATH=$PYTHONPATH:$(pwd)/src && python -m uvicorn agent.app:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: PYTHON_VERSION

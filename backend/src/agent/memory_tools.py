@@ -1,5 +1,8 @@
 from langchain_core.tools import tool
-from agent.persistence import save_plan as persist_save, load_plan as persist_load
+
+from agent.persistence import load_plan as persist_load
+from agent.persistence import save_plan as persist_save
+
 
 @tool
 def save_plan_tool(thread_id: str, todo_list: list, artifacts: dict) -> str:
@@ -15,6 +18,7 @@ def save_plan_tool(thread_id: str, todo_list: list, artifacts: dict) -> str:
         return "Plan saved successfully."
     except Exception as e:
         return f"Error saving plan: {e}"
+
 
 @tool
 def load_plan_tool(thread_id: str) -> str:

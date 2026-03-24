@@ -1,0 +1,10 @@
+{
+    "githubPullRequests.remotes": [
+        "origin",
+        "upstream"
+    ],
+    "githubPullRequests.defaultCreateRemote": "origin",
+    "githubPullRequests.defaultMergeRemote": "origin",
+    "githubPullRequests.pushBranch": "always",
+    "github.gitProtocol": "https"
+}

@@ -91,23 +91,47 @@
 }
 
 /* Animation Delays */
-.animation-delay-200 { animation-delay: 0.2s; }
-.animation-delay-400 { animation-delay: 0.4s; }
-.animation-delay-600 { animation-delay: 0.6s; }
-.animation-delay-800 { animation-delay: 0.8s; }
+.animation-delay-200 {
+  animation-delay: 0.2s;
+}
+.animation-delay-400 {
+  animation-delay: 0.4s;
+}
+.animation-delay-600 {
+  animation-delay: 0.6s;
+}
+.animation-delay-800 {
+  animation-delay: 0.8s;
+}
 
 /* Keyframes */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes fadeInUpSmooth {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Animation Classes */
@@ -134,15 +158,15 @@
 }
 
 /* Subtle scroll bar styling */
-[data-slot="scroll-area-scrollbar"] {
+[data-slot='scroll-area-scrollbar'] {
   opacity: 0.3;
   transition: opacity 0.2s ease;
 }
 
-[data-slot="scroll-area"]:hover [data-slot="scroll-area-scrollbar"] {
+[data-slot='scroll-area']:hover [data-slot='scroll-area-scrollbar'] {
   opacity: 0.6;
 }
 
-[data-slot="scroll-area-thumb"] {
+[data-slot='scroll-area-thumb'] {
   background-color: rgb(115 115 115 / 0.2) !important;
 }

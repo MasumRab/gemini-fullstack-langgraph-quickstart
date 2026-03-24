@@ -27,9 +27,4 @@ describe('useAgentState', () => {
     expect(result.current.planningContext).toBeNull()
     expect(result.current.error).toBeNull()
   })
-
-  // Skip legacy tests until they are updated to match the new SDK-based implementation
-  describe.skip('Legacy tests (skipped due to refactor)', () => {
-    // ... existing tests ...
-  })
 })
