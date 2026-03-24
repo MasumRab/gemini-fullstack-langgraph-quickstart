@@ -141,15 +141,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
             forwarded = request.headers.get("X-Forwarded-For")
             if forwarded and self.trust_proxy_headers:
-                # 🛡️ Sentinel: The leftmost IP (ips[0]) is the original client IP.
-                # Each proxy appends its IP to the right, so ips[-1] would be the nearest proxy.
-                # We use ips[0] to get the original client address for rate limiting.
+                # 🛡️ Sentinel: The rightmost IP (ips[-1]) is the original client IP as appended by the nearest trusted proxy.
+                # Attackers can spoof ips[0], so we trust the last IP added by our infrastructure.
                 try:
                     ips = [ip.strip() for ip in forwarded.split(",")]
-                    client_ip = ips[0]  # Original client IP (leftmost)
+                    client_ip = ips[-1]  # IP appended by the trusted proxy (rightmost)
                 except Exception:
                     # Fallback to simple extraction if parsing fails
-                    client_ip = forwarded.split(",")[0].strip()
+                    client_ip = forwarded.split(",")[-1].strip()
 
                 # Truncate to 100 chars to prevent memory exhaustion attacks
                 client_ip = client_ip[:100]
