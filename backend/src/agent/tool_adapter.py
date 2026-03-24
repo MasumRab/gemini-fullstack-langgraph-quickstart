@@ -159,7 +159,9 @@ def parse_tool_calls(
                 try:
                     arguments = json.loads(arguments)
                 except json.JSONDecodeError:
-                    logger.warning("Could not parse tool arguments as JSON; using raw string")
+                    logger.warning(
+                        "Could not parse tool arguments as JSON; using raw string"
+                    )
 
             call_id = f"call_{uuid.uuid4().hex[:8]}"
 
