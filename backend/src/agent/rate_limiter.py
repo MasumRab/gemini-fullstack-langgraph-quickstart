@@ -156,7 +156,7 @@ class RateLimiter:
                 # Check RPD limit (Hard Fail)
                 if len(self._requests_per_day) >= self.limits["rpd"]:
                     logger.error(f"Daily request limit ({self.limits['rpd']}) reached for {self.model}!")
-                    raise Exception(f"Daily quota exceeded for {self.model}. Resets at midnight Pacific time.")
+                    raise RuntimeError(f"Daily quota exceeded for {self.model}. Resets at midnight Pacific time.")
 
                 if not should_wait:
                     # Proceed: Record this request

@@ -399,7 +399,7 @@ Respond in JSON format:
             result = json.loads(response_text)
             result["evidence_count"] = len(evidence_list)
             return result
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return {"verified": False, "confidence": 0.0, "reason": f"verification_error: {str(e)}"}
 
     def get_context_for_synthesis(self, query: str, max_tokens: int = 4000, subgoal_ids: List[str] | None = None) -> str:
@@ -416,7 +416,7 @@ Respond in JSON format:
                     query_embedding = raw_emb.tolist()
                 else:
                     query_embedding = raw_emb
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.warning(f"Failed to pre-compute embedding: {e}")
 
         if subgoal_ids:

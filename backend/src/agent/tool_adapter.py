@@ -90,7 +90,7 @@ def parse_tool_calls(content: str, allowed_tools: List[str] | None = None) -> Li
                 candidate = content[start:end+1]
                 json.loads(candidate)
                 json_str = candidate
-        except Exception:
+        except json.JSONDecodeError:
             pass
 
     if not json_str:
@@ -153,7 +153,7 @@ def parse_tool_calls(content: str, allowed_tools: List[str] | None = None) -> Li
             if isinstance(arguments, str):
                 try:
                     arguments = json.loads(arguments)
-                except Exception:
+                except json.JSONDecodeError:
                     pass
 
             import uuid
@@ -168,6 +168,6 @@ def parse_tool_calls(content: str, allowed_tools: List[str] | None = None) -> Li
 
     except json.JSONDecodeError as e:
         logger.error(f"JSON decode failed: {e}")
-        pass
+
 
     return tool_calls
