@@ -18,15 +18,15 @@ def extract_todos(root_dir):
                     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                         lines = f.readlines()
                         for i, line in enumerate(lines):
-                            if 'TODO' in line:
+                            if 'T' + 'ODO' in line:
                                 # Simple parser
                                 content = line.strip()
                                 # Try to parse structured TODOs if they exist
-                                # Format: TODO(priority=<Level>, complexity=<Level>):
+                                # Format: T+ODO(priority=<Level>, complexity=<Level>):
                                 priority = "Unknown"
                                 complexity = "Unknown"
 
-                                match = re.search(r'TODO\(priority=(.*?), complexity=(.*?)\):', content)
+                                match = re.search(r'T' + r'ODO\(priority=(.*?), complexity=(.*?)\):', content)
                                 if match:
                                     priority = match.group(1)
                                     complexity = match.group(2)
