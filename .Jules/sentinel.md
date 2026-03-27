@@ -7,8 +7,3 @@
 **Vulnerability:** Even with `trust_proxy_headers=True`, the middleware logic searched backwards for the first "Public" IP to identify the client. This allowed attackers to spoof a public IP (e.g., `8.8.8.8`) at the start of the header, which would be prioritized over a legitimate Private IP (e.g., VPN user `10.0.0.5`) if the real client was on a private network.
 **Learning:** "Public vs Private" IP classification is a dangerous heuristic for client identification when the network topology includes private subnets (VPNs, Intranets).
 **Prevention:** When trusting proxies, rely on the chain of trust (the last IP appended by the trusted proxy) rather than guessing based on IP class.
-
-## 2025-05-23 - Rate Limit Bypass via X-Forwarded-For
-**Vulnerability:** The `RateLimitMiddleware` blindly trusted the `X-Forwarded-For` header, allowing attackers to bypass rate limits by spoofing random IPs in this header.
-**Learning:** Middleware often defaults to "dev-friendly" (trusting headers) which is insecure for production. Implicit trust in headers creates silent vulnerabilities.
-**Prevention:** Always default to NOT trusting `X-Forwarded-For`. Require explicit configuration (`TRUST_PROXY_HEADERS`) to enable it.

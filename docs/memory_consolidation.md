@@ -23,3 +23,9 @@
 - **Review:** "Review and Merge" implies manual maintainer simulation (checkout, test, merge, submit).
 - **Git:** Rebase-only workflow preferred.
 - **Docs:** `docs/tasks/*.md` for execution plans; `docs/reference/` for prompts/examples.
+
+## Repository Workflows & Best Practices
+- **Missing Configurations (e.g., Dependabot, Mergify):**
+  - Do not assume missing configurations (like `.github/dependabot.yml` or `.mergify.yml`) were deleted by an agent or a "memory setting."
+  - Often, the branch being worked on is outdated and the files were simply merged into `main` *after* the PR branch was created.
+  - **Action:** Agents must fetch `main` (`git fetch origin main`) and check its contents (`git ls-tree origin/main .github/`) or use `gh pr list --state all` to verify if these features already exist or have been addressed in other PRs before recreating or modifying them locally.
