@@ -67,9 +67,9 @@ STRATEGIES = {
 
 # File Paths
 # Assuming script is run from project root via python backend/scripts/update_models.py
-# If run directly from backend/scripts/, we need parent parent.
+# If run directly from backend/scripts/, we need parent.parent.parent.
 # But standard usage is from root. However, let's make it robust.
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 BACKEND_DIR = PROJECT_ROOT / "backend/src/agent"
 FRONTEND_FILE = PROJECT_ROOT / "frontend/src/hooks/useAgentState.ts"
 ENV_FILE = PROJECT_ROOT / ".env"
