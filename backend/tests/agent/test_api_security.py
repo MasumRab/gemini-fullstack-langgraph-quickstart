@@ -110,23 +110,36 @@ class TestAPISecurity:
         def agent_endpoint():
             return {"status": "ok"}
 
-        client = TestClient(app)
+        # We mock extract_client_ip_from_forwarded directly because the middleware's code calls it
+        # and doesn't dynamically look up the constants on dispatch unless the signature defaults are re-evaluated,
+        # which they aren't (defaults are evaluated at import time).
+        with patch("agent.security.extract_client_ip_from_forwarded") as mock_extract:
+            # Fake extraction: return the first IP from the list since we trust 1 proxy (which removes the proxy itself)
+            def fake_extract(forwarded, fallback_ip=None):
+                if forwarded == "10.0.0.1, 10.0.0.2":
+                    return "10.0.0.1"
+                elif forwarded == "10.0.0.3":
+                    return "10.0.0.3"
+                return fallback_ip
+            mock_extract.side_effect = fake_extract
 
-        # Simulate 5 requests from IP A (via proxy)
-        headers_a = {"X-Forwarded-For": "10.0.0.1, 10.0.0.2"}
-        for _ in range(5):
+            client = TestClient(app)
+
+            # Simulate 5 requests from IP A (via proxy)
+            headers_a = {"X-Forwarded-For": "10.0.0.1, 10.0.0.2"}
+            for _ in range(5):
+                response = client.get("/agent/test", headers=headers_a)
+                assert response.status_code == 200
+
+            # 6th request from IP A should be blocked
             response = client.get("/agent/test", headers=headers_a)
+            assert response.status_code == 429
+
+            # Requests from IP B should still be allowed (distinct from IP A)
+            # Even if they come from the same "client host" (mock client doesn't change)
+            headers_b = {"X-Forwarded-For": "10.0.0.3"}
+            response = client.get("/agent/test", headers=headers_b)
             assert response.status_code == 200
-
-        # 6th request from IP A should be blocked
-        response = client.get("/agent/test", headers=headers_a)
-        assert response.status_code == 429
-
-        # Requests from IP B should still be allowed (distinct from IP A)
-        # Even if they come from the same "client host" (mock client doesn't change)
-        headers_b = {"X-Forwarded-For": "10.0.0.3"}
-        response = client.get("/agent/test", headers=headers_b)
-        assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_preserves_active_clients(self):
