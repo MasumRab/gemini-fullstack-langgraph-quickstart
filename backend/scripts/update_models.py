@@ -131,9 +131,9 @@ def main():
     # 4. Update .env files
     for env_path in [ENV_FILE, ENV_EXAMPLE]:
         if env_path.exists():
-            update_file(env_path, r'(QUERY_GENERATOR_MODEL=)(.*)', f'\\1{config["query"]}')
-            update_file(env_path, r'(REFLECTION_MODEL=)(.*)', f'\\1{config["reflection"]}')
-            update_file(env_path, r'(ANSWER_MODEL=)(.*)', f'\\1{config["answer"]}')
+            update_file(env_path, r'QUERY_GENERATOR_MODEL=.*', f'\\1{config["query"]}')
+            update_file(env_path, r'REFLECTION_MODEL=.*', f'\\1{config["reflection"]}')
+            update_file(env_path, r'ANSWER_MODEL=.*', f'\\1{config["answer"]}')
 
     # 5. Update Notebooks (Experimental)
     # Replaces common hardcoded patterns in ipynb files

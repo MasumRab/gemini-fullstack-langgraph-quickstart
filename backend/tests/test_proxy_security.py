@@ -37,9 +37,11 @@ async def test_proxy_security_default_secure():
     }
 
     async def mock_send(message):
+        """Mock send."""
         pass
 
     async def mock_receive():
+        """Mock receive."""
         return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
@@ -81,9 +83,11 @@ async def test_proxy_security_trusted_enabled(*args):
     }
 
     async def mock_send(message):
+        """Mock send."""
         pass
 
     async def mock_receive():
+        """Mock receive."""
         return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
@@ -132,9 +136,11 @@ async def test_spoofing_vulnerability(*args):
     }
 
     async def mock_send(message):
+        """Mock send."""
         pass
 
     async def mock_receive():
+        """Mock receive."""
         return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
