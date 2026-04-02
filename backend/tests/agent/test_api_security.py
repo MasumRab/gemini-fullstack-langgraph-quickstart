@@ -91,7 +91,8 @@ class TestAPISecurity:
             response = client.get("/agent/test")
             assert response.status_code == 200
 
-    def test_rate_limit_respects_x_forwarded_for(self):
+    @patch("agent.security.TRUSTED_PROXY_COUNT", 1)
+    def test_rate_limit_respects_x_forwarded_for(self, *args):
         """Test that rate limiting uses the X-Forwarded-For header when present."""
         from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 

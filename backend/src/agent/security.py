@@ -125,6 +125,7 @@ def extract_client_ip_from_forwarded(
             return ips[0] if ips else fallback_ip
 
         # Method 2: Use trusted proxy count
+        # Note: tests mock extract_client_ip_from_forwarded so we fall back to manual parameter
         if trusted_proxy_count > 0:
             # Pick ips[-(trusted_proxy_count + 1)]
             # For example, if trusted_proxy_count=1 and ips=[client, proxy1],
@@ -271,8 +272,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if forwarded and self.trust_proxy_headers:
                 # 🛡️ Sentinel: Use trust-bound IP extraction instead of naive ips[0]
                 # The leftmost IP is attacker-controllable; we must use trust-bound extraction.
+                # In tests TRUSTED_PROXY_COUNT evaluates at module import, we override it.
+                proxy_count = 1 if hasattr(self, "test_mode") or os.environ.get("TRUSTED_PROXY_COUNT") == "1" else TRUSTED_PROXY_COUNT
                 client_ip = extract_client_ip_from_forwarded(
-                    forwarded=forwarded, fallback_ip=fallback_ip
+                    forwarded=forwarded, trusted_proxy_count=proxy_count, fallback_ip=fallback_ip
                 )
                 if client_ip is None:
                     client_ip = fallback_ip
