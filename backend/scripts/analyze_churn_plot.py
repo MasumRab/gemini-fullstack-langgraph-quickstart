@@ -9,6 +9,33 @@ def get_git_log(n=50):
     result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8')
     return result.stdout
 
+def process_log_line(line, current_commit, commits):
+    if line.startswith('commit '):
+        if current_commit and 'files' in current_commit:
+            commits.append(current_commit.copy())
+        current_commit.clear()
+        current_commit.update({'hash': line.split()[1], 'files': []})
+    elif line.startswith('Date:'):
+        # Parse date: Date:   Wed Feb 21 14:02:32 2024 -0500
+        date_str = line[5:].strip()
+        current_commit['date'] = date_str
+    elif not line.startswith('Author:') and not line.startswith('Merge:') and not line.startswith('    ') and '\t' in line:
+        # File diff line (e.g. "3   2   file.txt")
+        parts = line.split('\t')
+        if len(parts) == 3:
+            added = parts[0]
+            removed = parts[1]
+            filename = parts[2]
+
+            # Ignore binary files marked as '-'
+            if added != '-' and removed != '-':
+                current_commit['files'].append({
+                    'filename': filename,
+                    'added': int(added),
+                    'removed': int(removed),
+                    'total': int(added) + int(removed)
+                })
+
 def parse_log(log_output):
     commits = []
     current_commit = {}

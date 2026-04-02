@@ -4,13 +4,16 @@ import json
 import os
 
 # Mapping from old/deprecated models to new standard models
+PRO = "gemini-2.5-pro"
+FLASH = "gemini-2.5-flash"
+
 MODEL_REPLACEMENTS = {
-    "gemini-1.5-flash": "gemini-2.5-flash",
-    "gemini-1.5-pro": "gemini-2.5-pro",
+    "gemini-1.5-flash": FLASH,
+    "gemini-1.5-pro": PRO,
     "gemini-1.0-pro": "gemini-2.5-flash-lite", # Approximation
-    "gemini-ultra": "gemini-2.5-pro",
-    "gemini-pro": "gemini-2.5-pro",
-    "gemini-2.0-flash-exp": "gemini-2.5-flash",
+    "gemini-ultra": PRO,
+    "gemini-pro": PRO,
+    "gemini-2.0-flash-exp": FLASH,
 }
 
 def update_notebook(path):

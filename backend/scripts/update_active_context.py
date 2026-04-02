@@ -1,6 +1,8 @@
 import json
 import os
 import subprocess
+
+DOCS_CONTEXT_FILE = "docs/ACTIVE_CONTEXT.md"
 import sys
 from datetime import UTC, datetime, timezone
 
@@ -42,7 +44,6 @@ def get_repo_info():
             return repo
     except Exception as e:
         print(f"Error getting repo info: {e}")
-        pass
     return None
 
 def fetch_open_prs(repo, token):
@@ -162,7 +163,7 @@ def main():
     if not token:
         print("GITHUB_TOKEN not set. Creating placeholder context.")
         os.makedirs("docs", exist_ok=True)
-        with open("docs/ACTIVE_CONTEXT.md", "w") as f:
+        with open(DOCS_CONTEXT_FILE, "w") as f:
             f.write("# 🧠 Active Development Context\n\n*GitHub Token missing - Context unavailable*")
         return
 
@@ -170,7 +171,7 @@ def main():
     if not repo:
         print("Could not determine repository. Creating placeholder context and exiting.")
         os.makedirs("docs", exist_ok=True)
-        with open("docs/ACTIVE_CONTEXT.md", "w") as f:
+        with open(DOCS_CONTEXT_FILE, "w") as f:
             f.write("# 🧠 Active Development Context\n\n*Repository detection failed - Context unavailable*")
         return
 
@@ -179,7 +180,7 @@ def main():
     md_content = generate_markdown(prs)
 
     os.makedirs("docs", exist_ok=True)
-    with open("docs/ACTIVE_CONTEXT.md", "w") as f:
+    with open(DOCS_CONTEXT_FILE, "w") as f:
         f.write(md_content)
     print("Updated docs/ACTIVE_CONTEXT.md")
 

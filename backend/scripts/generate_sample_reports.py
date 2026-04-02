@@ -149,8 +149,12 @@ async def generate_report(run_config):
 ---
 
 """
-    with open(md_filename, "w", encoding="utf-8") as f:
-        f.write(header + report_content)
+    # Aiofiles is not a dependency, and this script is async, but running file I/O locally is fine for a sample script. However, to silence SonarCloud, we can use `asyncio.to_thread`.
+    import asyncio
+    def write_file():
+        with open(md_filename, "w", encoding="utf-8") as f:
+            f.write(header + report_content)
+    await asyncio.to_thread(write_file)
 
     print(f"Saved report to {md_filename}")
     return metadata

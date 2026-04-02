@@ -224,34 +224,18 @@ def update_or_insert_cell(nb, marker, new_content, position=0):
         return position
 
 
-def process_notebook(notebook_path: Path, project_root: Path, dry_run=False):
-    """Process a single notebook to ensure it has the required cells."""
-    print(f"\n[..] Processing: {notebook_path.name}")
-    
-    try:
-        with open(notebook_path, encoding='utf-8') as f:
-            nb = nbformat.read(f, as_version=4)
-    except Exception as e: # noqa: BLE001
-        print(f"  [X] Error reading notebook: {e}")
-        return False
-    
+COLAB_SETUP_MARKER = "COLAB SETUP"
+
+def process_notebook_steps(nb, colab_setup_content):
     modified = False
     
-    # Calculate relative path for Colab setup
-    try:
-        rel_path = notebook_path.parent.relative_to(project_root)
-    except ValueError:
-        rel_path = Path(".") # Fallback
-
-    colab_setup_content = get_colab_setup_cell(str(rel_path))
-    
     # Step 1: Ensure Colab setup cell
-    if not has_cell_with_marker(nb, "COLAB SETUP"):
-        update_or_insert_cell(nb, "COLAB SETUP", colab_setup_content, 0)
+    if not has_cell_with_marker(nb, COLAB_SETUP_MARKER):
+        update_or_insert_cell(nb, COLAB_SETUP_MARKER, colab_setup_content, 0)
         modified = True
     else:
         # Update existing
-        update_or_insert_cell(nb, "COLAB SETUP", colab_setup_content)
+        update_or_insert_cell(nb, COLAB_SETUP_MARKER, colab_setup_content)
         modified = True
     
     # Step 2: Ensure setup cell exists (Backend setup)

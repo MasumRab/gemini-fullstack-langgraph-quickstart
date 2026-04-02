@@ -18,7 +18,6 @@ def main():
 
     # Define commands based on OS
     is_windows = sys.platform.startswith('win')
-    shell = is_windows  # specialized shell handling for windows
 
     frontend_cmd = "npm run dev"
     backend_cmd = "langgraph dev"

@@ -4,13 +4,8 @@ import json
 from pathlib import Path
 
 
-def update_notebook(notebook_path):
-    """Update a single notebook to use gemma-3-27b-it."""
-    with open(notebook_path, encoding='utf-8') as f:
-        nb = json.load(f)
-    
+def process_notebook_cells(nb):
     modified = False
-    
     for cell in nb.get('cells', []):
         if cell.get('cell_type') == 'code':
             source = cell.get('source', [])
@@ -28,6 +23,14 @@ def update_notebook(notebook_path):
                         modified = True
                     new_source.append(line)
                 cell['source'] = new_source
+    return modified
+
+def update_notebook(notebook_path):
+    """Update a single notebook to use gemma-3-27b-it."""
+    with open(notebook_path, encoding='utf-8') as f:
+        nb = json.load(f)
+
+    modified = process_notebook_cells(nb)
     
     if modified:
         with open(notebook_path, 'w', encoding='utf-8') as f:

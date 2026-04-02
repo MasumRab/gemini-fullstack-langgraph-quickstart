@@ -106,7 +106,10 @@ def main():
         else:
             print(f"   [FAIL] Error: {result}")
             failed_models.append(model)
-    
+
+    print_summary(working_models, failed_models)
+
+def print_summary(working_models, failed_models):
     # Summary
     print("\n" + "=" * 70)
     print(f"\n[OK] Working Models ({len(working_models)}):")

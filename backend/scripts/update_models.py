@@ -13,10 +13,14 @@ import sys
 from pathlib import Path
 
 # Configuration Strategies - Only Gemini 2.5 models (1.5 and 2.0 are deprecated/inaccessible)
+FLASH = "gemini-2.5-flash"
+LITE = "gemini-2.5-flash-lite"
+PRO = "gemini-2.5-pro"
+
 CONSTANTS_MAP = {
-    "gemini-2.5-flash": "GEMINI_FLASH",
-    "gemini-2.5-flash-lite": "GEMINI_FLASH_LITE",
-    "gemini-2.5-pro": "GEMINI_PRO",
+    FLASH: "GEMINI_FLASH",
+    LITE: "GEMINI_FLASH_LITE",
+    PRO: "GEMINI_PRO",
     "gemma-2-27b-it": "GEMMA_2_27B_IT",
     "gemma-3-27b-it": "GEMMA_3_27B_IT",
 }
@@ -24,35 +28,35 @@ CONSTANTS_MAP = {
 STRATEGIES = {
     "flash": {
         "description": "Gemini 2.5 Flash: Best price-performance for all components",
-        "query": "gemini-2.5-flash",
-        "reflection": "gemini-2.5-flash",
-        "answer": "gemini-2.5-flash",
-        "tools": "gemini-2.5-flash",
-        "frontend": "gemini-2.5-flash"
+        "query": FLASH,
+        "reflection": FLASH,
+        "answer": FLASH,
+        "tools": FLASH,
+        "frontend": FLASH
     },
     "flash_lite": {
         "description": "Gemini 2.5 Flash-Lite: Fastest and most cost-efficient",
-        "query": "gemini-2.5-flash-lite",
-        "reflection": "gemini-2.5-flash-lite",
-        "answer": "gemini-2.5-flash-lite",
-        "tools": "gemini-2.5-flash-lite",
-        "frontend": "gemini-2.5-flash-lite"
+        "query": LITE,
+        "reflection": LITE,
+        "answer": LITE,
+        "tools": LITE,
+        "frontend": LITE
     },
     "pro": {
         "description": "Gemini 2.5 Pro: Highest quality reasoning (Flash for queries)",
-        "query": "gemini-2.5-flash",
-        "reflection": "gemini-2.5-flash",
-        "answer": "gemini-2.5-pro",
-        "tools": "gemini-2.5-flash",
-        "frontend": "gemini-2.5-flash"
+        "query": FLASH,
+        "reflection": FLASH,
+        "answer": PRO,
+        "tools": FLASH,
+        "frontend": FLASH
     },
     "balanced": {
         "description": "Balanced: Flash-Lite (query), Flash (reflection), Pro (answer)",
-        "query": "gemini-2.5-flash-lite",
-        "reflection": "gemini-2.5-flash",
-        "answer": "gemini-2.5-pro",
-        "tools": "gemini-2.5-flash",
-        "frontend": "gemini-2.5-flash"
+        "query": LITE,
+        "reflection": FLASH,
+        "answer": PRO,
+        "tools": FLASH,
+        "frontend": FLASH
     },
     "gemma": {
         "description": "Gemma 3: High-quality open weights models",
