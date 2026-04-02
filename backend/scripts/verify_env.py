@@ -1,5 +1,6 @@
 print("Hello from Python")
 import sys
+
 print(sys.executable)
 try:
     import google.generativeai

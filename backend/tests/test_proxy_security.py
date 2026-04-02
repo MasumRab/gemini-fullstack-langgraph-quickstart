@@ -1,4 +1,3 @@
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -18,16 +17,17 @@ async def test_proxy_security_default_secure():
 
     # Initialize middleware with default (trust_proxy_headers=False)
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=False
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=False,
     )
 
     # Simulate request with spoofed header
     # Real IP: 1.2.3.4
     # Spoofed Header: 5.6.7.8
-    headers = [
-        (b"host", b"localhost"),
-        (b"x-forwarded-for", b"5.6.7.8")
-    ]
+    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"5.6.7.8")]
 
     scope = {
         "type": "http",
@@ -36,14 +36,18 @@ async def test_proxy_security_default_secure():
         "headers": headers,
     }
 
-    async def mock_send(message): pass
-    async def mock_receive(): return {"type": "http.request"}
+    async def mock_send(message):
+        pass
+
+    async def mock_receive():
+        return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
 
     # Expectation: The request should be tracked under the Real IP (1.2.3.4), NOT the spoofed one
     assert "1.2.3.4" in middleware.requests
     assert "5.6.7.8" not in middleware.requests
+
 
 @pytest.mark.asyncio
 @patch("agent.security.TRUSTED_PROXY_COUNT", 1)
@@ -57,16 +61,17 @@ async def test_proxy_security_trusted_enabled(*args):
 
     # Initialize middleware with trust_proxy_headers=True
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
-        # Simulate request
+    # Simulate request
     # Real IP: 10.0.0.1 (Proxy)
     # Header: 5.6.7.8 (Client)
-    headers = [
-        (b"host", b"localhost"),
-        (b"x-forwarded-for", b"5.6.7.8")
-    ]
+    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"5.6.7.8")]
 
     scope = {
         "type": "http",
@@ -75,14 +80,18 @@ async def test_proxy_security_trusted_enabled(*args):
         "headers": headers,
     }
 
-    async def mock_send(message): pass
-    async def mock_receive(): return {"type": "http.request"}
+    async def mock_send(message):
+        pass
+
+    async def mock_receive():
+        return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
 
     # Expectation: The request should be tracked under the Client IP (5.6.7.8)
     assert "5.6.7.8" in middleware.requests
     assert "10.0.0.1" not in middleware.requests
+
 
 @pytest.mark.asyncio
 @patch("agent.security.TRUSTED_PROXY_COUNT", 1)
@@ -100,35 +109,42 @@ async def test_spoofing_vulnerability(*args):
 
     # Initialize middleware with trust_proxy_headers=True
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
-        # Scenario:
+    # Scenario:
     # Attacker Real IP (seen by proxy): 10.0.0.5 (Private)
     # Attacker Spoofs Header: "8.8.8.8" (Public)
     # Trusted Proxy appends Real IP.
     # Header: "8.8.8.8, 10.0.0.5"
 
-    headers = [
-        (b"host", b"localhost"),
-        (b"x-forwarded-for", b"8.8.8.8, 10.0.0.5")
-    ]
+    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"8.8.8.8, 10.0.0.5")]
 
     scope = {
         "type": "http",
         "path": "/protected",
-        "client": ("10.0.0.1", 1234), # Connection from Proxy
+        "client": ("10.0.0.1", 1234),  # Connection from Proxy
         "headers": headers,
     }
 
-    async def mock_send(message): pass
-    async def mock_receive(): return {"type": "http.request"}
+    async def mock_send(message):
+        pass
+
+    async def mock_receive():
+        return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
 
     # Expectation: The request should be tracked under the Real IP (10.0.0.5)
     # If vulnerable, it would be under 8.8.8.8
-    assert "10.0.0.5" in middleware.requests or "8.8.8.8" in middleware.requests # We mock proxy to 1 so either could happen depending on setup
+    assert (
+        "10.0.0.5" in middleware.requests or "8.8.8.8" in middleware.requests
+    )  # We mock proxy to 1 so either could happen depending on setup
+
 
 @pytest.mark.asyncio
 async def test_x_forwarded_for_ignored_by_default():
@@ -150,7 +166,7 @@ async def test_x_forwarded_for_ignored_by_default():
     req1 = MagicMock()
     req1.url.path = "/api/test"
     req1.client.host = client_ip
-    req1.headers.get.return_value = None # No X-Forwarded-For
+    req1.headers.get.return_value = None  # No X-Forwarded-For
 
     response1 = await mw.dispatch(req1, call_next)
     assert response1 == "success"
@@ -158,8 +174,8 @@ async def test_x_forwarded_for_ignored_by_default():
     # Request 2: Attacker tries to bypass by spoofing X-Forwarded-For
     req2 = MagicMock()
     req2.url.path = "/api/test"
-    req2.client.host = client_ip # Same real IP
-    req2.headers.get.return_value = "10.0.0.1" # Spoofed IP
+    req2.client.host = client_ip  # Same real IP
+    req2.headers.get.return_value = "10.0.0.1"  # Spoofed IP
 
     response2 = await mw.dispatch(req2, call_next)
 
@@ -169,10 +185,11 @@ async def test_x_forwarded_for_ignored_by_default():
 
     # NOTE: The middleware returns a Response object, checking status_code
     if hasattr(response2, "status_code"):
-         assert response2.status_code == 429, "Rate limit bypassed via X-Forwarded-For!"
+        assert response2.status_code == 429, "Rate limit bypassed via X-Forwarded-For!"
     else:
-         # If it returned "success" string (from call_next default mock), it means it passed
-         pytest.fail("Rate limit bypassed! Response was success instead of 429.")
+        # If it returned "success" string (from call_next default mock), it means it passed
+        pytest.fail("Rate limit bypassed! Response was success instead of 429.")
+
 
 @pytest.mark.asyncio
 @patch("agent.security.TRUSTED_PROXY_COUNT", 1)
@@ -183,7 +200,9 @@ async def test_x_forwarded_for_trusted_when_configured(*args):
     """
     app = AsyncMock()
     # Limit 1 request per window, BUT we trust proxies
-    mw = RateLimitMiddleware(app, limit=1, window=60, protected_paths=["/api"], trust_proxy_headers=True)
+    mw = RateLimitMiddleware(
+        app, limit=1, window=60, protected_paths=["/api"], trust_proxy_headers=True
+    )
 
     # Real Client IP (Load Balancer IP)
     lb_ip = "10.0.0.1"
@@ -195,7 +214,7 @@ async def test_x_forwarded_for_trusted_when_configured(*args):
     req1 = MagicMock()
     req1.url.path = "/api/test"
     req1.client.host = lb_ip
-    req1.headers.get.return_value = "1.2.3.4" # Client A
+    req1.headers.get.return_value = "1.2.3.4"  # Client A
 
     response1 = await mw.dispatch(req1, call_next)
     assert response1 == "success"
@@ -203,8 +222,8 @@ async def test_x_forwarded_for_trusted_when_configured(*args):
     # Request 2: Client B behind LB
     req2 = MagicMock()
     req2.url.path = "/api/test"
-    req2.client.host = lb_ip # Same LB IP
-    req2.headers.get.return_value = "5.6.7.8" # Client B
+    req2.client.host = lb_ip  # Same LB IP
+    req2.headers.get.return_value = "5.6.7.8"  # Client B
 
     response2 = await mw.dispatch(req2, call_next)
 
@@ -216,10 +235,10 @@ async def test_x_forwarded_for_trusted_when_configured(*args):
     req3 = MagicMock()
     req3.url.path = "/api/test"
     req3.client.host = lb_ip
-    req3.headers.get.return_value = "1.2.3.4" # Client A again
+    req3.headers.get.return_value = "1.2.3.4"  # Client A again
 
     response3 = await mw.dispatch(req3, call_next)
     if hasattr(response3, "status_code"):
-         assert response3.status_code == 429
+        assert response3.status_code == 429
     else:
-         pytest.fail("Client A should have been rate limited on second request.")
+        pytest.fail("Client A should have been rate limited on second request.")

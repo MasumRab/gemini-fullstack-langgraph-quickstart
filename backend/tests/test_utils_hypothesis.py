@@ -8,10 +8,11 @@ from agent.utils import insert_citation_markers
 
 pytestmark = pytest.mark.extended
 
+
 @settings(suppress_health_check=[HealthCheck.too_slow])
 @given(
     text=st.text(min_size=1, max_size=500),
-    end_indices=st.lists(st.integers(min_value=0, max_value=500), max_size=5)
+    end_indices=st.lists(st.integers(min_value=0, max_value=500), max_size=5),
 )
 def test_insert_citation_never_raises(text, end_indices):
     """Property test to ensure insert_citation_markers never crashes."""
@@ -26,6 +27,7 @@ def test_insert_citation_never_raises(text, end_indices):
         assert len(result) >= len(text)  # Citations only add text
     except Exception as e:
         pytest.fail(f"insert_citation_markers raised exception: {e}")
+
 
 @given(st.text())
 def test_insert_citation_empty_citations(text):

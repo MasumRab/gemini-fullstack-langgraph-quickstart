@@ -3,6 +3,7 @@
 Tests cover default values, environment variable overrides, type conversions,
 and comprehensive validation.
 """
+
 import pytest
 from pydantic import ValidationError
 
@@ -164,7 +165,7 @@ class TestConfigurationSerialization:
             query_generator_model="test-model",
             max_research_loops=5,
             number_of_initial_queries=2,
-            require_planning_confirmation=True
+            require_planning_confirmation=True,
         )
 
         config_dict = config.model_dump()

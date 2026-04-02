@@ -273,9 +273,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # 🛡️ Sentinel: Use trust-bound IP extraction instead of naive ips[0]
                 # The leftmost IP is attacker-controllable; we must use trust-bound extraction.
                 # In tests TRUSTED_PROXY_COUNT evaluates at module import, we override it.
-                proxy_count = 1 if hasattr(self, "test_mode") or os.environ.get("TRUSTED_PROXY_COUNT") == "1" else TRUSTED_PROXY_COUNT
+                proxy_count = (
+                    1
+                    if hasattr(self, "test_mode")
+                    or os.environ.get("TRUSTED_PROXY_COUNT") == "1"
+                    else TRUSTED_PROXY_COUNT
+                )
                 client_ip = extract_client_ip_from_forwarded(
-                    forwarded=forwarded, trusted_proxy_count=proxy_count, fallback_ip=fallback_ip
+                    forwarded=forwarded,
+                    trusted_proxy_count=proxy_count,
+                    fallback_ip=fallback_ip,
                 )
                 if client_ip is None:
                     client_ip = fallback_ip
