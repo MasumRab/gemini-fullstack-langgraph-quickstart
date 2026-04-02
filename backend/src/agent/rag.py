@@ -537,7 +537,7 @@ class Resource:
 def create_rag_tool(resources):
     """Legacy compatibility stub - returns None.
 
-    TODO(priority=Low, complexity=Medium): [rag:legacy] Replace stub with real implementation
+    TODO(priority=Low, complexity=Medium, owner=maintenance): [rag:legacy] Replace stub with real implementation
     - Migrate callers to use DeepSearchRAG directly
     - Remove this function once all callers are updated
     - Update tests that mock this function
