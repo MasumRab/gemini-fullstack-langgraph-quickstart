@@ -35,6 +35,7 @@ dependencies = [
     "langfuse",
     "numpy<2.0.0",
     "pycares<5.0.0",
+    "aiofiles>=25.1.0",
 ]
 
 

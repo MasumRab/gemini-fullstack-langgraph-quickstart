@@ -1,6 +1,5 @@
-
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Add the src directory to sys.path to allow imports
@@ -11,20 +10,21 @@ project_root = Path(__file__).parent.parent.parent
 src_path = project_root / "examples" / "open_deep_research_example" / "src"
 sys.path.append(str(src_path))
 
+
 def visualize_graph(graph, name):
     if graph is None:
         print(f"Skipping {name} as it was not imported.")
         return
 
-    print(f"\n{'='*20} {name} {'='*20}\n")
+    print(f"\n{'=' * 20} {name} {'=' * 20}\n")
 
     # Mermaid
     try:
         mermaid_code = graph.get_graph().draw_mermaid()
         print(f"\n--- Mermaid Diagram for {name} ---")
         print(mermaid_code)
-        
-        filename = name.lower().replace(' ', '_')
+
+        filename = name.lower().replace(" ", "_")
         with open(f"{filename}.mermaid", "w", encoding="utf-8") as f:
             f.write(mermaid_code)
         print(f"Saved mermaid code to {filename}.mermaid")
@@ -49,6 +49,7 @@ def visualize_graph(graph, name):
         print(f"Error printing ASCII for {name}: {e}")
 
     sys.stdout.flush()
+
 
 print("Starting visualization script...", flush=True)
 
@@ -104,11 +105,14 @@ try:
 
     # Check for required API key before importing
     if "GEMINI_API_KEY" not in os.environ:
-        print("Error: GEMINI_API_KEY environment variable is required for visualization.")
+        print(
+            "Error: GEMINI_API_KEY environment variable is required for visualization."
+        )
         print("Please set GEMINI_API_KEY before running this script.")
         sys.exit(1)
 
     from agent.graph import graph as proposed_graph
+
     print("Successfully imported Proposed Improved Graph", flush=True)
     visualize_graph(proposed_graph, "Proposed Improved Graph")
 except ImportError as e:
