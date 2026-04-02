@@ -31,8 +31,7 @@ def get_remote_branches():
 
 
 def get_diff_stats(branch, default_branch: str = "main"):
-    """
-    Get diff statistics for a branch compared to the default branch.
+    """Get diff statistics for a branch compared to the default branch.
 
     Args:
         branch: The branch to analyze

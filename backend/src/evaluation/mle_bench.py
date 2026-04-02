@@ -1,6 +1,6 @@
 # Fine-grained implementation guide for MLE-bench Evaluation:
 #
-# TODO(priority=High, complexity=Low): [mle_bench:1] Dataset loader
+# TODO(priority=High, complexity=Small): [mle_bench:1] Dataset loader
 # - Define path to MLE-bench dataset (HuggingFace or local)
 # - Implement load_mle_dataset() -> List[Task]
 # - Each Task: {id, prompt, expected_output, metadata}
@@ -15,12 +15,12 @@
 # - Implement exact_match, fuzzy_match, and llm_judge scoring
 # - Return score (0.0-1.0) per task
 #
-# TODO(priority=Medium, complexity=Low): [mle_bench:4] Metrics aggregator
+# TODO(priority=Medium, complexity=Small): [mle_bench:4] Metrics aggregator
 # - Compute Pass@1 (% tasks with score >= threshold)
 # - Compute average score across all tasks
 # - Track latency percentiles (p50, p95, p99)
 #
-# TODO(priority=Low, complexity=Low): [mle_bench:5] Report generator
+# TODO(priority=Low, complexity=Small): [mle_bench:5] Report generator
 # - Output results to JSON and Markdown
 # - Include per-task breakdown and aggregate stats
 #
@@ -29,7 +29,7 @@
 
 def evaluate_mle_bench():
     """Evaluates the agent on MLE-bench tasks."""
-    # TODO(priority=High, complexity=Low): [mle_bench:1] Load dataset
+    # TODO(priority=High, complexity=Small): [mle_bench:1] Load dataset
     dataset = []  # load_mle_dataset()
 
     # TODO(priority=High, complexity=Medium): [mle_bench:2] Run agent
@@ -45,11 +45,11 @@ def evaluate_mle_bench():
     #     score = evaluate_output(result["output"], ...)
     #     scores.append(score)
 
-    # TODO(priority=Medium, complexity=Low): [mle_bench:4] Aggregate
+    # TODO(priority=Medium, complexity=Small): [mle_bench:4] Aggregate
     # pass_at_1 = sum(1 for s in scores if s >= 0.5) / len(scores)
     # avg_score = sum(scores) / len(scores)
 
-    # TODO(priority=Low, complexity=Low): [mle_bench:5] Report
+    # TODO(priority=Low, complexity=Small): [mle_bench:5] Report
     print("MLE-bench evaluation not yet implemented")
 
 

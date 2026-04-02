@@ -5,18 +5,20 @@ using the evaluators defined in backend/tests/evaluators.py.
 """
 
 import asyncio
-import logging
 import json
+import logging
 import os
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from dotenv import load_dotenv
 
 # Load env vars before importing evaluators or agent components
 load_dotenv()
 
 from agent.graph import graph
+
 try:
-    from tests.evaluators import eval_quality, eval_groundedness
+    from tests.evaluators import eval_groundedness, eval_quality
 except ImportError:
     # This might happen if running script directly without module context
     # But usually handled by running as `python -m scripts.benchmark`
@@ -41,7 +43,7 @@ def load_dataset(path: str) -> List[Dict[str, Any]]:
             return []
 
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         logger.error(f"Failed to load dataset: {e}")

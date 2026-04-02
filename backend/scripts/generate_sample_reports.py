@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-import os
-import sys
 import asyncio
 import json
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
 # Ensure backend modules are importable
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BACKEND_SRC = REPO_ROOT / "backend" / "src"
 sys.path.append(str(BACKEND_SRC))
 
 # Import Agent Components
 try:
-    from agent.graph import graph
-    from agent.configuration import Configuration
     from langchain_core.messages import HumanMessage
+
+    from agent.configuration import Configuration
+    from agent.graph import graph
 except ImportError as e:
     print(f"Error importing backend modules: {e}")
     sys.exit(1)

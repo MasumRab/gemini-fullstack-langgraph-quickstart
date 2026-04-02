@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Test which Gemini models are accessible via the google-genai SDK.
+"""Test which Gemini models are accessible via the google-genai SDK.
 """
 
 import os
@@ -14,13 +13,18 @@ if sys.stdout.encoding != 'utf-8':
 from google import genai
 
 # Add backend/src to path to import models
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 if str(BACKEND_SRC) not in sys.path:
     sys.path.append(str(BACKEND_SRC))
 
 try:
-    from agent.models import GEMINI_FLASH, GEMINI_FLASH_LITE, GEMINI_PRO, _DEPRECATED_MODELS
+    from agent.models import (
+        _DEPRECATED_MODELS,
+        GEMINI_FLASH,
+        GEMINI_FLASH_LITE,
+        GEMINI_PRO,
+    )
 except ImportError:
     print("[ERROR] Could not import agent.models. Check backend/src path.")
     sys.exit(1)
@@ -49,12 +53,12 @@ def test_model(client, model_name):
 
 def main():
     # Load .env file manually to handle variable expansion
-    env_path = Path(__file__).parent / ".env"
+    env_path = Path(__file__).parent.parent.parent / ".env"
     api_key = None
     
     if env_path.exists():
         env_vars = {}
-        with open(env_path, 'r', encoding='utf-8') as f:
+        with open(env_path, encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith('#') and '=' in line:

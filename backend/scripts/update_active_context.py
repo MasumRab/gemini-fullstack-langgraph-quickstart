@@ -1,9 +1,11 @@
-import os
-import sys
 import json
-import requests
+import os
 import subprocess
-from datetime import datetime, timezone
+import sys
+from datetime import UTC, datetime, timezone
+
+import requests
+
 
 def get_repo_info():
     """Attempt to get repository 'owner/repo' string."""
@@ -130,7 +132,7 @@ def fetch_open_prs(repo, token):
     return results
 
 def generate_markdown(prs):
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     lines = [
         "# 🧠 Active Development Context",
         f"Last Updated: {timestamp}\n",

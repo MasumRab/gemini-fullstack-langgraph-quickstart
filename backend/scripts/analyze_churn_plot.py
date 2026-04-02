@@ -1,7 +1,8 @@
-import subprocess
 import re
-from datetime import datetime
+import subprocess
 import sys
+from datetime import datetime
+
 
 def get_git_log(n=50):
     cmd = ['git', 'log', '--shortstat', '--date=iso', f'-n{n}', '--pretty=format:%h|%ad|%s']

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Script to update Gemini model configurations across the project.
+"""Script to update Gemini model configurations across the project.
 Usage: python update_models.py [strategy]
 Strategies:
   - flash (default): Gemini 2.5 Flash for all components (Best price-performance)
@@ -9,8 +8,8 @@ Strategies:
   - balanced: Flash-Lite for queries, Flash for reflection, Pro for answers
 """
 
-import sys
 import re
+import sys
 from pathlib import Path
 
 # Configuration Strategies - Only Gemini 2.5 models (1.5 and 2.0 are deprecated/inaccessible)
@@ -69,7 +68,7 @@ STRATEGIES = {
 # Assuming script is run from project root via scripts/update_models.sh or python scripts/update_models.py
 # If run directly from scripts/, we need parent.
 # But standard usage is from root. However, let's make it robust.
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 BACKEND_DIR = PROJECT_ROOT / "backend/src/agent"
 FRONTEND_FILE = PROJECT_ROOT / "frontend/src/hooks/useAgentState.ts"
 ENV_FILE = PROJECT_ROOT / ".env"

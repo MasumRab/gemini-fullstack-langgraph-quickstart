@@ -1,7 +1,7 @@
 
+import glob
 import json
 import os
-import glob
 
 # Mapping from old/deprecated models to new standard models
 MODEL_REPLACEMENTS = {
@@ -14,7 +14,7 @@ MODEL_REPLACEMENTS = {
 }
 
 def update_notebook(path):
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, encoding='utf-8') as f:
         content = f.read()
 
     original_content = content

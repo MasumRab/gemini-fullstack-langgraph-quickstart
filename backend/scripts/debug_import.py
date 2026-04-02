@@ -1,10 +1,10 @@
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Add backend/src to sys.path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 backend_src_path = project_root / "backend" / "src"
 sys.path.append(str(backend_src_path))
 

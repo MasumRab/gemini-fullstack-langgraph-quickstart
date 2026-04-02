@@ -4,7 +4,7 @@ from agent.tools_and_schemas import get_tools_from_mcp
 
 # Fine-grained implementation guide for MCP Tests:
 #
-# TODO(priority=Medium, complexity=Low): [test_mcp:1] Test disabled MCP returns empty list
+# TODO(priority=Medium, complexity=Small): [test_mcp:1] Test disabled MCP returns empty list
 # - Create MCPSettings with enabled=False
 # - Verify get_tools_from_mcp returns []
 #

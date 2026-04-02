@@ -1,11 +1,11 @@
-# TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+# TODO(priority=Low, complexity=Small): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
 #
 # TODO(priority=Medium, complexity=Medium): [SOTA Deep Research] Benchmarking
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: MLE-bench Integration (Evaluate on Kaggle engineering tasks).
 # Subtask: DeepResearch-Bench Setup (Load tasks from muset-ai space).
 
-# TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
+# TODO(priority=Medium, complexity=Large): Investigate and integrate 'deepagents' patterns if applicable.
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: Review 'deepagents' repo for relevant nodes (e.g. hierarchical planning).
 # Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
@@ -151,7 +151,7 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
     If yes -> Generates questions and sets status to 'active' (interrupt).
     If no -> Sets status to 'complete' (proceed).
 
-    TODO(priority=High, complexity=High): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
+    TODO(priority=High, complexity=Large): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     Subtask: Implement `scoping_node` logic: Analyze input query. If ambiguous, generate clarifying questions and interrupt graph.
     """
@@ -1035,7 +1035,7 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
 
     Fine-grained implementation guide:
 
-    TODO(priority=High, complexity=Low): [flow_update:1] Extract current task from state
+    TODO(priority=High, complexity=Small): [flow_update:1] Extract current task from state
     - Read `current_task_idx` and `plan` from state
     - Get the task object being evaluated
 
@@ -1048,12 +1048,12 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     - Parse research results for "unclear", "contradictory", or "insufficient" signals
     - Generate list of follow-up questions if gaps detected
 
-    TODO(priority=Medium, complexity=High): [flow_update:4] DAG expansion logic
+    TODO(priority=Medium, complexity=Large): [flow_update:4] DAG expansion logic
     - If gaps detected: Create new tasks and insert into plan
     - If task complete: Mark status='done' and increment current_task_idx
     - If no more tasks: Set research_complete=True
 
-    TODO(priority=Low, complexity=Low): [flow_update:5] Return updated state
+    TODO(priority=Low, complexity=Small): [flow_update:5] Return updated state
     - Return dict with updated `plan`, `current_task_idx`, `research_complete`
 
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md

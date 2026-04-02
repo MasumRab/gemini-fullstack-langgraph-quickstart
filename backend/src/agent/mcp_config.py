@@ -47,7 +47,7 @@ def validate(settings: MCPSettings) -> None:
 
 # Fine-grained implementation guide for MCP Integration:
 #
-# TODO(priority=High, complexity=Low): [MCP:1] Define SSE client interface
+# TODO(priority=High, complexity=Small): [MCP:1] Define SSE client interface
 # - Create abstract base class for MCP transport
 # - Define methods: connect(), disconnect(), send_message(), receive_stream()
 #
@@ -61,12 +61,12 @@ def validate(settings: MCPSettings) -> None:
 # - Implement health checks and automatic reconnection
 # - Thread-safe connection acquisition/release
 #
-# TODO(priority=Medium, complexity=Low): [MCP:4] Error recovery
+# TODO(priority=Medium, complexity=Small): [MCP:4] Error recovery
 # - Catch and log transport errors
 # - Retry failed tool calls with backoff
 # - Return graceful fallback on persistent failure
 #
-# TODO(priority=Low, complexity=Low): [MCP:5] Metrics and observability
+# TODO(priority=Low, complexity=Small): [MCP:5] Metrics and observability
 # - Track connection latency, success/failure rates
 # - Integrate with Langfuse spans
 class McpConnectionManager:

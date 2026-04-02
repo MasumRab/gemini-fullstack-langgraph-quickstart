@@ -1,7 +1,8 @@
+import json
 import os
 import re
-import json
 from pathlib import Path
+
 
 def extract_todos(root_dir):
     todos = []
@@ -15,7 +16,7 @@ def extract_todos(root_dir):
             if file.endswith(('.py', '.tsx', '.ts', '.js', '.jsx', '.md')):
                 filepath = os.path.join(root, file)
                 try:
-                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                    with open(filepath, encoding='utf-8', errors='ignore') as f:
                         lines = f.readlines()
                         for i, line in enumerate(lines):
                             if 'TODO' in line:
