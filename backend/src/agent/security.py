@@ -1,156 +1,12 @@
 """Security middleware for the agent application."""
 
 import ipaddress
-import logging
-import math
-import os
 import time
 from collections import defaultdict
-from typing import List, Set
+from typing import List
 
 from fastapi import Request, Response
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-
-logger = logging.getLogger(__name__)
-
-# 🛡️ Sentinel: Configurable trusted proxy count for X-Forwarded-For extraction
-# This should be set to the number of trusted proxies between the client and your server.
-# For example, if you have a CDN + load balancer, set this to 2.
-TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
-
-# 🛡️ Sentinel: Optional set of trusted proxy IP addresses
-# If set, we iterate from right to left and skip these IPs to find the first untrusted IP.
-# This is more flexible than TRUSTED_PROXY_COUNT but requires knowing proxy IPs.
-# Format: comma-separated IPs or CIDR ranges, e.g., "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
-TRUSTED_PROXIES_ENV = os.getenv("TRUSTED_PROXIES", "")
-TRUSTED_PROXIES: Set[str] = set()
-if TRUSTED_PROXIES_ENV:
-    TRUSTED_PROXIES = set(
-        ip.strip() for ip in TRUSTED_PROXIES_ENV.split(",") if ip.strip()
-    )
-
-
-def _is_ip_in_trusted_proxies(ip: str) -> bool:
-    """Check if an IP address is in the trusted proxies set.
-
-    Supports both direct IP matching and CIDR range matching.
-    """
-    if not TRUSTED_PROXIES:
-        return False
-
-    try:
-        ip_obj = ipaddress.ip_address(ip.strip())
-        for trusted in TRUSTED_PROXIES:
-            trusted = trusted.strip()
-            if "/" in trusted:
-                # CIDR range
-                try:
-                    network = ipaddress.ip_network(trusted, strict=False)
-                    if ip_obj in network:
-                        return True
-                except ValueError:
-                    continue
-            else:
-                # Direct IP match
-                try:
-                    if ip_obj == ipaddress.ip_address(trusted):
-                        return True
-                except ValueError:
-                    continue
-        return False
-    except ValueError:
-        return False
-
-
-def extract_client_ip_from_forwarded(
-    forwarded: str,
-    trusted_proxy_count: int = TRUSTED_PROXY_COUNT,
-    fallback_ip: str | None = None,
-) -> str | None:
-    """Extract the real client IP from X-Forwarded-For header using trust-bound extraction.
-
-    🛡️ Sentinel: This implements secure IP extraction to prevent IP spoofing attacks.
-
-    The X-Forwarded-For header format is: client, proxy1, proxy2, ...
-    Each proxy appends its IP to the right. However, the leftmost IP is
-    attacker-controllable if the request passed through an untrusted network.
-
-    Trust-bound extraction works by:
-    1. If TRUSTED_PROXIES is configured: iterate from right to left, skip trusted
-       proxy IPs, return the first untrusted IP.
-    2. If only TRUSTED_PROXY_COUNT is set: pick ips[-(trusted_proxy_count + 1)].
-
-    Args:
-        forwarded: The X-Forwarded-For header value.
-        trusted_proxy_count: Number of trusted proxies between client and server.
-        fallback_ip: IP to return if no valid candidate is found.
-
-    Returns:
-        The extracted client IP, or fallback_ip if no valid candidate found.
-    """
-    if not forwarded:
-        return fallback_ip
-
-    try:
-        # Parse and validate all IPs in the chain
-        ips = []
-        for ip_str in forwarded.split(","):
-            ip_str = ip_str.strip()
-            if not ip_str:
-                continue
-            # Validate IP format
-            try:
-                ipaddress.ip_address(ip_str)
-                ips.append(ip_str)
-            except ValueError:
-                # Invalid IP format, skip
-                logger.warning(f"Invalid IP in X-Forwarded-For: {ip_str}")
-                continue
-
-        if not ips:
-            return fallback_ip
-
-        # Method 1: Use trusted proxies list if available (more flexible)
-        if TRUSTED_PROXIES:
-            # Iterate from right to left, skip trusted proxies
-            for ip in reversed(ips):
-                if not _is_ip_in_trusted_proxies(ip):
-                    return ip
-            # All IPs are trusted proxies, return the leftmost (original client)
-            # This shouldn't happen in normal operation
-            logger.warning(
-                "All IPs in X-Forwarded-For are trusted proxies, using leftmost"
-            )
-            return ips[0] if ips else fallback_ip
-
-        # Method 2: Use trusted proxy count
-        if trusted_proxy_count > 0:
-            # Pick ips[-(trusted_proxy_count + 1)]
-            # For example, if trusted_proxy_count=1 and ips=[client, proxy1],
-            # we want ips[-2] = client
-            idx = -(trusted_proxy_count + 1)
-            if abs(idx) <= len(ips):
-                return ips[idx]
-            else:
-                # Not enough IPs in the chain, return leftmost
-                logger.warning(
-                    f"Not enough IPs in X-Forwarded-For for trusted_proxy_count={trusted_proxy_count}, "
-                    f"using leftmost IP"
-                )
-                return ips[0] if ips else fallback_ip
-
-        # No trusted proxies configured - return fallback for safety
-        # This prevents IP spoofing when trust_proxy_headers is True but no proxies are configured
-        logger.warning(
-            "X-Forwarded-For header present but no trusted proxies configured. "
-            "Using fallback IP for security. Set TRUSTED_PROXY_COUNT or TRUSTED_PROXIES."
-        )
-        return fallback_ip
-
-    except Exception as e:
-        logger.warning(f"Error parsing X-Forwarded-For header: {e}")
-        return fallback_ip
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -223,8 +79,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 return str(ipaddress.IPv6Address(masked)) + "/64"
             return str(obj)
         except ValueError:
-            # If not a valid IP, return "unknown" to prevent log injection/key pollution
-            return "unknown"
+            # If not a valid IP, just return as is (could be "unknown" or malformed)
+            return ip
 
     def __init__(
         self,
@@ -232,7 +88,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         limit: int = 100,
         window: int = 60,
         protected_paths: List[str] | None = None,
-        trust_proxy_headers: bool = False,
     ):
         """Initialize the rate limiter.
 
@@ -242,13 +97,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             window: Time window in seconds.
             protected_paths: List of path prefixes to apply rate limiting to.
                              If None, applies to all paths.
-            trust_proxy_headers: Whether to trust X-Forwarded-For headers.
         """
         super().__init__(app)
         self.limit = limit
         self.window = window
         self.protected_paths = protected_paths if protected_paths is not None else []
-        self.trust_proxy_headers = trust_proxy_headers
         self.requests = defaultdict(list)
         # 🛡️ Sentinel: Optimize cleanup frequency to prevent DoS via Iteration attacks
         self.last_cleanup = 0
@@ -258,29 +111,51 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Check rate limit for API endpoints."""
         path = request.url.path
 
-        # Check if path is protected.
-        # If protected_paths is empty, nothing is rate-limited (explicit opt-in).
-        is_protected = any(path.startswith(prefix) for prefix in self.protected_paths)
+        # Check if path is protected
+        is_protected = False
+        if not self.protected_paths:
+            # If no paths specified, protect everything? Or protect nothing?
+            # Usually strict default means protect everything.
+            # But here we want to protect specific API endpoints.
+            # Let's assume if list is empty, we don't limit (or user should provide paths).
+            # To be safe, if protected_paths is None/Empty in __init__, we default to [] which means effectively disabled
+            # unless we change default.
+            # Let's adhere to "explicit is better than implicit". If list is empty, nothing is protected.
+            pass
+        else:
+            for prefix in self.protected_paths:
+                if path.startswith(prefix):
+                    is_protected = True
+                    break
 
         if is_protected:
             # 🛡️ Sentinel: Support X-Forwarded-For for proxies (Render/Load Balancers)
-            # Use trust-bound extraction to prevent IP spoofing attacks.
+            # Prioritize X-Forwarded-For to correctly identify clients behind load balancers.
             forwarded = request.headers.get("X-Forwarded-For")
-            fallback_ip = request.client.host if request.client else "unknown"
-
-            if forwarded and self.trust_proxy_headers:
-                # 🛡️ Sentinel: Use trust-bound IP extraction instead of naive ips[0]
-                # The leftmost IP is attacker-controllable; we must use trust-bound extraction.
-                client_ip = extract_client_ip_from_forwarded(
-                    forwarded=forwarded, fallback_ip=fallback_ip
-                )
-                if client_ip is None:
-                    client_ip = fallback_ip
+            if forwarded:
+                # 🛡️ Sentinel: Prevent spoofing by traversing from the end (trusted proxies)
+                # Proxies (like Render) append the verified client IP to the end.
+                # We traverse backwards to find the first non-private IP to avoid blocking the proxy itself.
+                try:
+                    ips = [ip.strip() for ip in forwarded.split(",")]
+                    client_ip = ips[-1]  # Default to last IP
+                    for ip in reversed(ips):
+                        try:
+                            # Check if IP is public (not private, not loopback)
+                            ip_obj = ipaddress.ip_address(ip)
+                            if not ip_obj.is_private and not ip_obj.is_loopback:
+                                client_ip = ip
+                                break
+                        except ValueError:
+                            continue  # Skip invalid IPs
+                except Exception:
+                    # Fallback to simple extraction if parsing fails
+                    client_ip = forwarded.split(",")[-1].strip()
 
                 # Truncate to 100 chars to prevent memory exhaustion attacks
                 client_ip = client_ip[:100]
             else:
-                client_ip = fallback_ip
+                client_ip = request.client.host if request.client else "unknown"
 
             # 🛡️ Sentinel: Group IPv6 addresses by /64 prefix to prevent subnet rotation attacks
             client_key = self.get_client_key(client_ip)
@@ -295,19 +170,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if len(active_requests) >= self.limit:
                 # Update map with pruned list before returning
                 self.requests[client_key] = active_requests
-
-                # Calculate retry_after
-                oldest_request_time = active_requests[0]
-                reset_time = oldest_request_time + self.window
-                retry_after = max(1, int(math.ceil(reset_time - now)))
-
-                logger.warning(f"Rate limit exceeded for {client_key} on {path}")
-
-                return JSONResponse(
-                    status_code=429,
-                    content={"detail": "Too Many Requests", "retry_after": retry_after},
-                    headers={"Retry-After": str(retry_after)},
-                )
+                return Response("Too Many Requests", status_code=429)
 
             active_requests.append(now)
 
