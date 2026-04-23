@@ -1,15 +1,17 @@
+import os
 from dotenv import load_dotenv
-from langgraph.graph import END, START, StateGraph
 
+from langgraph.graph import StateGraph, START, END
+
+from agent.state import OverallState
 from agent.configuration import Configuration
 from agent.nodes import (
-    continue_to_web_research,
-    finalize_answer,
-    generate_plan,
     load_context,
+    generate_plan,
+    continue_to_web_research,
     web_research,
+    finalize_answer,
 )
-from agent.state import OverallState
 
 load_dotenv()
 
@@ -28,7 +30,9 @@ builder.add_edge("load_context", "generate_plan")
 
 # Fan out to all queries immediately
 builder.add_conditional_edges(
-    "generate_plan", continue_to_web_research, ["web_research"]
+    "generate_plan",
+    continue_to_web_research,
+    ["web_research"]
 )
 
 # Collect results and finalize immediately (No Reflection loop)
