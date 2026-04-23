@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional
 
 
 class GraphRegistry:
@@ -23,8 +23,8 @@ class GraphRegistry:
         name: str,
         *,
         summary: str,
-        tags: List[str] | None = None,
-        outputs: List[str] | None = None,
+        tags: Optional[List[str]] = None,
+        outputs: Optional[List[str]] = None,
     ):
         """Decorator that records metadata for a node without altering wiring."""
 
