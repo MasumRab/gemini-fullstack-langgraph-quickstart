@@ -5,43 +5,40 @@ supporting various providers like Vertex AI, Ollama, and local execution.
 """
 
 import logging
-
+from typing import Any, Dict, List, Optional
+from agent.configuration import Configuration
 from config.app_config import config as app_config
 
 logger = logging.getLogger(__name__)
 
-
 class GemmaClient:
     """Base interface for Gemma clients, conforming to LLMClient standards."""
-
+    
     def invoke(self, prompt: str, **kwargs) -> str:
         """Standard invoke method for compatibility with LangChain-like calls."""
         raise NotImplementedError("Subclasses must implement invoke")
-
 
 class VertexAIGemmaClient(GemmaClient):
     """Client for Gemma models deployed on Google Vertex AI."""
 
     def __init__(self):
-        """Initialize Vertex AI client using configuration from app_config."""
+        """
+        Initialize Vertex AI client using configuration from app_config.
+        """
         try:
             from google.cloud import aiplatform
             from google.protobuf import json_format
             from google.protobuf.struct_pb2 import Value
         except ImportError:
             logger.error("google-cloud-aiplatform not installed.")
-            raise ImportError(
-                "Please install 'google-cloud-aiplatform' to use VertexAIGemmaClient"
-            )
+            raise ImportError("Please install 'google-cloud-aiplatform' to use VertexAIGemmaClient")
 
         self.project_id = app_config.vertex_project_id
         self.location = app_config.vertex_location
         self.endpoint_id = app_config.vertex_endpoint_id
 
         if not all([self.project_id, self.location, self.endpoint_id]):
-            logger.error(
-                "Vertex AI configuration missing: project_id, location, or endpoint_id."
-            )
+            logger.error("Vertex AI configuration missing: project_id, location, or endpoint_id.")
             raise ValueError("Vertex AI configuration missing.")
 
         aiplatform.init(project=self.project_id, location=self.location)
@@ -51,10 +48,12 @@ class VertexAIGemmaClient(GemmaClient):
         self._Value = Value
 
     def invoke(self, prompt: str, **kwargs) -> str:
-        """Send prediction request to Vertex AI Endpoint."""
+        """
+        Send prediction request to Vertex AI Endpoint.
+        """
         max_tokens = kwargs.get("max_tokens", 512)
         instance = {"inputs": prompt, "max_tokens": max_tokens}
-
+        
         try:
             response = self.endpoint.predict(instances=[instance])
             # Vertex AI custom endpoints typically return a list of predictions
@@ -65,18 +64,17 @@ class VertexAIGemmaClient(GemmaClient):
             logger.error(f"Vertex AI prediction failed: {e}")
             raise e
 
-
 class OllamaGemmaClient(GemmaClient):
     """Client for local Gemma models via Ollama API."""
 
     def __init__(self, timeout: int = 120):
-        """Initialize Ollama client.
-
+        """
+        Initialize Ollama client.
+        
         Args:
             timeout: Request timeout in seconds (default: 120).
         """
         import requests
-
         self.requests = requests
         self.base_url = app_config.ollama_base_url
         self.model_name = app_config.gemma_model_name
@@ -84,22 +82,22 @@ class OllamaGemmaClient(GemmaClient):
         self.timeout = timeout
 
     def invoke(self, prompt: str, **kwargs) -> str:
-        """Generate text completion."""
+        """
+        Generate text completion.
+        """
         # Protect critical payload fields from kwargs override
         PROTECTED_KEYS = {"model", "prompt", "stream"}
         filtered_kwargs = {k: v for k, v in kwargs.items() if k not in PROTECTED_KEYS}
-
+        
         payload = {
             "model": self.model_name,
             "prompt": prompt,
             "stream": False,
-            **filtered_kwargs,
+            **filtered_kwargs
         }
 
         try:
-            response = self.requests.post(
-                self.generate_url, json=payload, timeout=self.timeout
-            )
+            response = self.requests.post(self.generate_url, json=payload, timeout=self.timeout)
             response.raise_for_status()
             return response.json().get("response", "")
         except self.requests.exceptions.Timeout:
@@ -112,6 +110,41 @@ class OllamaGemmaClient(GemmaClient):
             logger.error(f"Ollama call failed: {e}")
             raise
 
+class GoogleGenAIGemmaClient(GemmaClient):
+    """Client for Gemma models via Google GenAI API."""
+
+    def __init__(self):
+        """Initialize Google GenAI client."""
+        try:
+            from google import genai
+        except ImportError:
+            logger.error("google-genai not installed.")
+            raise ImportError("Please install 'google-genai' to use GoogleGenAIGemmaClient")
+
+        import os
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        if not self.api_key:
+            logger.error("GEMINI_API_KEY environment variable is missing.")
+            raise ValueError("GEMINI_API_KEY is required for GoogleGenAIGemmaClient")
+
+        self.client = genai.Client(api_key=self.api_key)
+
+        # Use provided model or default to gemini-2.5-flash for free tier if trying to use gemma but not specified correctly
+        self.model_name = app_config.gemma_model_name
+        if not self.model_name or self.model_name == "gemma:7b":
+            self.model_name = "gemini-2.5-flash" # Fallback to gemini if gemma:7b (ollama default) is used
+
+    def invoke(self, prompt: str, **kwargs) -> str:
+        """Generate text completion."""
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+            )
+            return response.text
+        except Exception as e:
+            logger.error(f"Google GenAI generation failed: {e}")
+            raise e
 
 def get_gemma_client() -> GemmaClient:
     """Factory function to get the configured Gemma client."""
@@ -120,8 +153,8 @@ def get_gemma_client() -> GemmaClient:
         return VertexAIGemmaClient()
     elif provider == "ollama":
         return OllamaGemmaClient()
+    elif provider == "google_genai":
+        return GoogleGenAIGemmaClient()
     else:
-        logger.warning(
-            f"Unknown or unsupported Gemma provider: {provider}. Defaulting to Ollama."
-        )
+        logger.warning(f"Unknown or unsupported Gemma provider: {provider}. Defaulting to Ollama.")
         return OllamaGemmaClient()
