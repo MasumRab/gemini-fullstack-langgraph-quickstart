@@ -1,7 +1,5 @@
-from typing import Any, Dict
-
+from typing import Dict, Any
 from agent.state import OverallState
-
 
 def handle_end_plan(state: OverallState) -> Dict[str, Any]:
     return {
@@ -10,23 +8,21 @@ def handle_end_plan(state: OverallState) -> Dict[str, Any]:
         "planning_feedback": ["Planning disabled via /end_plan."],
     }
 
-
 def handle_confirm_plan(state: OverallState) -> Dict[str, Any]:
     return {
         "planning_status": "confirmed",
-        "planning_feedback": ["Plan confirmed. Proceeding to research."],
+        "planning_feedback": ["Plan confirmed. Proceeding to research."]
     }
-
 
 def handle_start_plan(state: OverallState) -> Dict[str, Any]:
     return {
         "planning_status": "awaiting_confirmation",
-        "planning_feedback": ["Planning mode started. Please review the plan."],
+        "planning_feedback": ["Planning mode started. Please review the plan."]
     }
 
-
 def planning_router_logic(user_input: str, state: OverallState) -> str:
-    """Routes planning-related commands to appropriate handlers.
+    """
+    Routes planning-related commands to appropriate handlers.
     Returns the name of the next node.
     """
     user_input = user_input.strip().lower()
@@ -48,7 +44,6 @@ def planning_router_logic(user_input: str, state: OverallState) -> str:
         return "planning_command_handler"
 
     return "continue"
-
 
 # NOTE: The above 'planning_router_logic' is a helper.
 # The actual router in LangGraph needs to return the Node Name.
