@@ -2,8 +2,11 @@
 
 Tests cover search functions, summarization, deduplication, and tool definitions.
 """
+
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from agent.models import GEMINI_FLASH, GEMINI_PRO
 
 
@@ -61,27 +64,27 @@ class TestDeduplication:
             {
                 "query": "query1",
                 "results": [
-                    {"url": "http://example.com/a", "title": "Title A"},
-                    {"url": "http://example.com/b", "title": "Title B"},
-                ]
+                    {"url": "https://example.com/a", "title": "Title A"},
+                    {"url": "https://example.com/b", "title": "Title B"},
+                ],
             },
             {
                 "query": "query2",
                 "results": [
-                    {"url": "http://example.com/a", "title": "Title A duplicate"},
-                    {"url": "http://example.com/c", "title": "Title C"},
-                ]
-            }
+                    {"url": "https://example.com/a", "title": "Title A duplicate"},
+                    {"url": "https://example.com/c", "title": "Title C"},
+                ],
+            },
         ]
 
         result = deduplicate_search_results(search_results)
 
         assert len(result) == 3
-        assert "http://example.com/a" in result
-        assert "http://example.com/b" in result
-        assert "http://example.com/c" in result
+        assert "https://example.com/a" in result
+        assert "https://example.com/b" in result
+        assert "https://example.com/c" in result
         # First occurrence should be kept
-        assert result["http://example.com/a"]["title"] == "Title A"
+        assert result["https://example.com/a"]["title"] == "Title A"
 
     def test_deduplicate_handles_empty_results(self):
         """Should handle empty results gracefully."""
@@ -108,7 +111,7 @@ class TestProcessSearchResults:
         from agent.research_tools import process_search_results
 
         unique_results = {
-            "http://example.com": {
+            "https://example.com": {
                 "title": "Test Title",
                 "content": "Short snippet",
             }
@@ -116,8 +119,8 @@ class TestProcessSearchResults:
 
         result = process_search_results(unique_results)
 
-        assert result["http://example.com"]["content"] == "Short snippet"
-        assert result["http://example.com"]["title"] == "Test Title"
+        assert result["https://example.com"]["content"] == "Short snippet"
+        assert result["https://example.com"]["title"] == "Test Title"
 
     def test_process_truncates_raw_content_without_model(self):
         """Should truncate raw_content when no summarization model."""
@@ -125,7 +128,7 @@ class TestProcessSearchResults:
 
         long_content = "x" * 300000  # Very long content
         unique_results = {
-            "http://example.com": {
+            "https://example.com": {
                 "title": "Test",
                 "content": "Short",
                 "raw_content": long_content,
@@ -134,7 +137,7 @@ class TestProcessSearchResults:
 
         result = process_search_results(unique_results, max_content_length=1000)
 
-        assert len(result["http://example.com"]["content"]) == 1000
+        assert len(result["https://example.com"]["content"]) == 1000
 
     def test_process_handles_empty_input(self):
         """Should handle empty input."""
@@ -152,8 +155,8 @@ class TestFormatSearchOutput:
         from agent.research_tools import format_search_output
 
         summarized_results = {
-            "http://example.com/a": {"title": "Article A", "content": "Summary A"},
-            "http://example.com/b": {"title": "Article B", "content": "Summary B"},
+            "https://example.com/a": {"title": "Article A", "content": "Summary A"},
+            "https://example.com/b": {"title": "Article B", "content": "Summary B"},
         }
 
         result = format_search_output(summarized_results)
@@ -162,7 +165,7 @@ class TestFormatSearchOutput:
         assert "SOURCE 2:" in result
         assert "Article A" in result
         assert "Article B" in result
-        assert "http://example.com/a" in result
+        assert "https://example.com/a" in result
         assert "Summary A" in result
 
     def test_format_handles_empty_results(self):
@@ -241,11 +244,11 @@ class TestTokenLimitDetection:
         from agent.research_tools import is_token_limit_exceeded
 
         cases = [
-            Exception("token limit exceeded"),
-            Exception("Maximum context length is 128000"),
-            Exception("Please reduce the length of your prompt"),
-            Exception("prompt is too long"),
-            Exception("resource exhausted: quota exceeded"),
+            ValueError("token limit exceeded"),
+            ValueError("Maximum context length is 128000"),
+            ValueError("Please reduce the length of your prompt"),
+            ValueError("prompt is too long"),
+            ValueError("resource exhausted: quota exceeded"),
         ]
 
         for exc in cases:
@@ -256,9 +259,9 @@ class TestTokenLimitDetection:
         from agent.research_tools import is_token_limit_exceeded
 
         cases = [
-            Exception("Network error"),
-            Exception("Authentication failed"),
-            Exception("Invalid API key"),
+            ValueError("Network error"),
+            PermissionError("Authentication failed"),
+            ValueError("Invalid API key"),
         ]
 
         for exc in cases:
@@ -288,7 +291,7 @@ class TestModelTokenLimits:
 class TestTavilySearchWithMock:
     """Tests for Tavily search with mocked client."""
 
-    @patch('agent.research_tools.TAVILY_AVAILABLE', False)
+    @patch("agent.research_tools.TAVILY_AVAILABLE", False)
     def test_search_returns_empty_when_tavily_unavailable(self):
         """Should return empty results when Tavily not installed."""
         from agent.research_tools import tavily_search_multiple

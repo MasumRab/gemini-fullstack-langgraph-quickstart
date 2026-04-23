@@ -1,6 +1,5 @@
 import logging
 import re
-import shlex
 import subprocess
 
 logging.basicConfig(level=logging.INFO)
@@ -9,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 def get_remote_branches():
     """Get all remote branches excluding HEAD and main."""
-    # Safe: uses static git command strings only, no user input
     cmd = ["git", "branch", "-r"]
     result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -42,7 +40,6 @@ def get_diff_stats(branch, default_branch: str = "main"):
         Dict with keys: status, summary, changes
     """
     # Check if merged first
-    # Safe: branch/default_branch are controlled by the script, not external input
     cmd_merged = ["git", "rev-list", "--count", f"{default_branch}..{branch}"]
     res_merged = subprocess.run(cmd_merged, capture_output=True, text=True)
 
@@ -56,7 +53,6 @@ def get_diff_stats(branch, default_branch: str = "main"):
         return {"status": "MERGED", "summary": "", "changes": 0}
 
     # Get diff stats
-    # Safe: branch/default_branch are controlled by the script, not external input
     cmd = ["git", "diff", "--shortstat", f"{default_branch}..{branch}"]
     result = subprocess.run(cmd, capture_output=True, text=True)
 

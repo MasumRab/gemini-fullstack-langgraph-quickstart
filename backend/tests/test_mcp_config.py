@@ -1,7 +1,9 @@
 import os
 import unittest
 from unittest import mock
-from agent.mcp_config import load_mcp_settings, validate, MCPSettings
+
+from agent.mcp_config import MCPSettings, load_mcp_settings, validate
+
 
 class TestMCPSettings(unittest.TestCase):
     def test_default_settings(self):
@@ -17,14 +19,14 @@ class TestMCPSettings(unittest.TestCase):
         """Test enabling via env var."""
         env = {
             "MCP_ENABLED": "true",
-            "MCP_ENDPOINT": "http://localhost:8080",
+            "MCP_ENDPOINT": "https://localhost:8080",
             "MCP_TIMEOUT": "60",
-            "MCP_TOOL_WHITELIST": "read_file,write_file"
+            "MCP_TOOL_WHITELIST": "read_file,write_file",
         }
         with mock.patch.dict(os.environ, env):
             settings = load_mcp_settings()
             self.assertTrue(settings.enabled)
-            self.assertEqual(settings.endpoint, "http://localhost:8080")
+            self.assertEqual(settings.endpoint, "https://localhost:8080")
             self.assertEqual(settings.timeout_seconds, 60)
             self.assertEqual(settings.tool_whitelist, ("read_file", "write_file"))
 
@@ -36,5 +38,5 @@ class TestMCPSettings(unittest.TestCase):
 
     def test_validation_success(self):
         """Test that validation passes if enabled and endpoint present."""
-        settings = MCPSettings(enabled=True, endpoint="http://local")
+        settings = MCPSettings(enabled=True, endpoint="https://local")
         validate(settings)
