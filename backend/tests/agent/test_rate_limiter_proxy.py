@@ -36,9 +36,8 @@ async def test_rate_limiter_proxy_logic():
 
     # Create middleware instance with low limit (2 per minute)
     # We use a distinct path prefix to ensure we hit the logic
-    # 🛡️ Sentinel: Explicitly enable trust_proxy_headers for this test as we want to test X-Forwarded-For logic
     middleware = RateLimitMiddleware(
-        mock_app, limit=2, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app, limit=2, window=60, protected_paths=["/protected"]
     )
 
     # Helper to simulate request
@@ -106,9 +105,8 @@ async def test_rate_limiter_truncation():
         response = PlainTextResponse("OK")
         await response(scope, receive, send)
 
-    # 🛡️ Sentinel: Enable proxy trust to test header parsing
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app, limit=10, window=60, protected_paths=["/protected"]
     )
 
     long_ip = "1.2.3.4" + "a" * 1000  # Very long string
@@ -132,5 +130,5 @@ async def test_rate_limiter_truncation():
     # Verify the key in requests is truncated
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
-    # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
-    assert keys[0] == "unknown"
+    assert len(keys[0]) <= 100
+    assert keys[0] == long_ip[:100]
