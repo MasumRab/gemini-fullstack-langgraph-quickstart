@@ -38,7 +38,6 @@ def evaluate_research_linear(state: ReflectionState, config: RunnableConfig) -> 
     # from the list if there are multiple, or just use the follow-up queries.
     return "web_research"
 
-
 # Helper to process queries one by one
 @graph_registry.describe(
     "queue_manager",
@@ -78,7 +77,6 @@ def queue_manager(state: OverallState) -> Dict[str, Any]:
 
     return {}
 
-
 builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("load_context", load_context)
 builder.add_node("generate_plan", generate_plan)
@@ -98,10 +96,14 @@ builder.add_edge("generate_plan", "planning_mode")
 
 # Modified routing for planning
 builder.add_conditional_edges(
-    "planning_mode", planning_router, ["planning_wait", "web_research"]
+    "planning_mode",
+    planning_router,
+    ["planning_wait", "web_research"]
 )
 builder.add_conditional_edges(
-    "planning_wait", planning_router, ["planning_wait", "web_research"]
+    "planning_wait",
+    planning_router,
+    ["planning_wait", "web_research"]
 )
 
 builder.add_edge("web_research", "validate_web_results")
@@ -109,7 +111,9 @@ builder.add_edge("validate_web_results", "reflection")
 
 # Use linear evaluation (returns string "web_research" or "finalize_answer")
 builder.add_conditional_edges(
-    "reflection", evaluate_research_linear, ["web_research", "finalize_answer"]
+    "reflection",
+    evaluate_research_linear,
+    ["web_research", "finalize_answer"]
 )
 
 builder.add_edge("finalize_answer", END)

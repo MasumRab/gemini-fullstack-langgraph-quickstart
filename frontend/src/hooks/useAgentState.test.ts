@@ -27,4 +27,5 @@ describe('useAgentState', () => {
     expect(result.current.planningContext).toBeNull()
     expect(result.current.error).toBeNull()
   })
+
 })

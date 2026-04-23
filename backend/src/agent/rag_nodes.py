@@ -77,9 +77,7 @@ def rag_retrieve(state: Dict[str, Any], config: RunnableConfig) -> Dict[str, Any
 
     try:
         logger.info("Performing RAG search for: %s", research_topic)
-        result = rag_tool.invoke(
-            {"query": research_topic, "max_results": rag_config.max_documents}
-        )
+        result = rag_tool.invoke({"query": research_topic, "max_results": rag_config.max_documents})
     except Exception as exc:
         logger.error("Error during RAG retrieval: %s", exc)
         return {"rag_documents": [], "rag_enabled": True}
@@ -125,16 +123,12 @@ def rag_fallback_to_web(state: Dict[str, Any]) -> str:
     is_continue_research = research_loop_count > 0
 
     if is_continue_research:
-        logger.info(
-            "Continue research iteration – falling back to web search for coverage"
-        )
+        logger.info("Continue research iteration – falling back to web search for coverage")
         return "web_research"
 
     if getattr(rag_config, "enable_fallback", False):
         if rag_documents:
-            logger.info(
-                "RAG docs found, but fallback enabled – performing web search too"
-            )
+            logger.info("RAG docs found, but fallback enabled – performing web search too")
         else:
             logger.info("No RAG docs found, falling back to web research")
         return "web_research"
@@ -149,7 +143,5 @@ def rag_fallback_to_web(state: Dict[str, Any]) -> str:
 
 def continue_research_rag_to_web(_state: Dict[str, Any]) -> str:
     """Routing helper for continue_research iterations that always does web search."""
-    logger.info(
-        "Continue research: performing web search after RAG for comprehensive coverage"
-    )
+    logger.info("Continue research: performing web search after RAG for comprehensive coverage")
     return "web_research"

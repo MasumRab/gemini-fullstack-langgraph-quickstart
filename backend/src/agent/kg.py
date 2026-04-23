@@ -6,7 +6,6 @@ logger = logging.getLogger(__name__)
 # Try to import cognee, fail gracefully
 try:
     import cognee
-
     COGNEE_AVAILABLE = True
 except ImportError:
     COGNEE_AVAILABLE = False
@@ -33,9 +32,7 @@ async def kg_enrich(state: OverallState, config: RunnableConfig) -> OverallState
     if not COGNEE_AVAILABLE:
         return {}
 
-    results = state.get("validated_web_research_result", []) or state.get(
-        "web_research_result", []
-    )
+    results = state.get("validated_web_research_result", []) or state.get("web_research_result", [])
     if not results:
         return {}
 

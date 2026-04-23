@@ -7,7 +7,6 @@ from ..provider import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
 
-
 class DuckDuckGoAdapter(SearchProvider):
     """Adapter for DuckDuckGo Search."""
 
@@ -40,22 +39,20 @@ class DuckDuckGoAdapter(SearchProvider):
 
         try:
             with DDGS() as ddgs:
-                results = list(
-                    ddgs.text(
-                        keywords=query,
-                        region=ddg_region,
-                        safesearch="on" if safe_search else "off",
-                        timelimit=effective_time_range,
-                        max_results=max_results,
-                    )
-                )
+                results = list(ddgs.text(
+                    keywords=query,
+                    region=ddg_region,
+                    safesearch='on' if safe_search else 'off',
+                    timelimit=effective_time_range,
+                    max_results=max_results
+                ))
 
             return [
                 SearchResult(
                     title=r.get("title", ""),
                     url=r.get("href", ""),
                     content=r.get("body", ""),
-                    source="duckduckgo",
+                    source="duckduckgo"
                 )
                 for r in results
             ]

@@ -28,7 +28,9 @@ builder.add_edge("load_context", "generate_plan")
 
 # Fan out to all queries immediately
 builder.add_conditional_edges(
-    "generate_plan", continue_to_web_research, ["web_research"]
+    "generate_plan",
+    continue_to_web_research,
+    ["web_research"]
 )
 
 # Collect results and finalize immediately (No Reflection loop)

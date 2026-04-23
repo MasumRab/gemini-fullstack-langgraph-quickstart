@@ -4,12 +4,7 @@ import os
 def is_enabled() -> bool:
     """Check if Langfuse observability is enabled via environment variables."""
     # Check if explicitly enabled
-    enabled = os.getenv("LANGFUSE_ENABLED", "false").lower() in (
-        "true",
-        "1",
-        "yes",
-        "on",
-    )
+    enabled = os.getenv("LANGFUSE_ENABLED", "false").lower() in ("true", "1", "yes", "on")
     if not enabled:
         return False
 
@@ -19,7 +14,6 @@ def is_enabled() -> bool:
     # Host is optional, defaults to cloud
 
     return bool(public_key and secret_key)
-
 
 def is_audit_mode() -> bool:
     """Check if audit mode is enabled for richer metadata."""

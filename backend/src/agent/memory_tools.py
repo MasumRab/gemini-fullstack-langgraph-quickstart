@@ -19,7 +19,6 @@ def save_plan_tool(thread_id: str, todo_list: list, artifacts: dict) -> str:
     except Exception as e:
         return f"Error saving plan: {e}"
 
-
 @tool
 def load_plan_tool(thread_id: str) -> str:
     """Loads the plan and artifacts from a local file.

@@ -76,29 +76,25 @@ builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
 builder.add_node("web_research", web_research)
 builder.add_node("validate_web_results", validate_web_results)
-builder.add_node("compression_node", compression_node)  # Add Compression
-builder.add_node("kg_enrich", kg_enrich)  # Add KG Pilot
+builder.add_node("compression_node", compression_node) # Add Compression
+builder.add_node("kg_enrich", kg_enrich) # Add KG Pilot
 builder.add_node("reflection", reflection)
 
-builder.add_node("denoising_refiner", denoising_refiner)  # Add TTD-DR Refiner
+builder.add_node("denoising_refiner", denoising_refiner) # Add TTD-DR Refiner
 builder.add_node("update_plan", update_plan)
 builder.add_node("select_next_task", select_next_task)
-builder.add_node("outline_gen", outline_gen)  # Add STORM Outline Gen
-builder.add_node("checklist_verifier", checklist_verifier)  # Add RhinoInsight Verifier
-builder.add_node(
-    "research_subgraph", research_subgraph
-)  # Add GPT Researcher recursive research
+builder.add_node("outline_gen", outline_gen) # Add STORM Outline Gen
+builder.add_node("checklist_verifier", checklist_verifier) # Add RhinoInsight Verifier
+builder.add_node("research_subgraph", research_subgraph) # Add GPT Researcher recursive research
 
 builder.add_edge(START, "load_context")
 builder.add_edge("load_context", "scoping_node")
 
-
 def scoping_router(state: OverallState) -> str:
     """Route based on scoping status."""
     if state.get("scoping_status") == "active":
-        return "planning_wait"  # Reusing planning_wait to pause for user input
+        return "planning_wait" # Reusing planning_wait to pause for user input
     return "outline_gen"
-
 
 builder.add_conditional_edges(
     "scoping_node", scoping_router, ["planning_wait", "outline_gen"]
@@ -108,6 +104,7 @@ builder.add_edge("outline_gen", "generate_plan")
 
 # builder.add_edge("generate_plan", "planning_mode") # Removed as it's destination of router
 builder.add_edge("generate_plan", "planning_mode")
+
 
 
 builder.add_conditional_edges(
@@ -127,7 +124,6 @@ builder.add_edge("compression_node", "kg_enrich")
 builder.add_edge("kg_enrich", "checklist_verifier")
 builder.add_edge("checklist_verifier", "reflection")
 
-
 def reflection_router(state: OverallState) -> list[Send] | str:
     """Route to recursive subgraphs if subtopics were identified."""
     subtopics = state.get("subtopics_to_explore", [])
@@ -135,9 +131,10 @@ def reflection_router(state: OverallState) -> list[Send] | str:
         return [Send("research_subgraph", {"subtopic_query": s}) for s in subtopics]
     return "update_plan"
 
-
 builder.add_conditional_edges(
-    "reflection", reflection_router, ["research_subgraph", "update_plan"]
+    "reflection",
+    reflection_router,
+    ["research_subgraph", "update_plan"]
 )
 
 # research_subgraph results are merged automatically via state reducers
@@ -221,10 +218,8 @@ graph_registry.document_edge(
 
 graph = builder.compile(name="pro-search-agent")
 
-
 def draw_graph_png():
     """Helper to draw the graph as a PNG (for notebooks)."""
     return graph.get_graph().draw_mermaid_png()
-
 
 # Removed stale TODOs for visualization as draw_graph_png is now implemented.

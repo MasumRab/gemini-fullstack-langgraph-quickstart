@@ -8,7 +8,6 @@ from ..provider import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
 
-
 class BraveSearchAdapter(SearchProvider):
     """Adapter for Brave Search."""
 
@@ -16,8 +15,8 @@ class BraveSearchAdapter(SearchProvider):
         """Initialize with API key."""
         self.api_key = api_key or os.getenv("BRAVE_API_KEY")
         if not self.api_key:
-            # We don't raise here to allow instantiation, but search will fail/warn
-            logger.warning("BRAVE_API_KEY not found. Brave Search will fail.")
+             # We don't raise here to allow instantiation, but search will fail/warn
+             logger.warning("BRAVE_API_KEY not found. Brave Search will fail.")
 
     def search(
         self,
@@ -55,14 +54,12 @@ class BraveSearchAdapter(SearchProvider):
             results = []
             if "web" in data and "results" in data["web"]:
                 for item in data["web"]["results"]:
-                    results.append(
-                        SearchResult(
-                            title=item.get("title", ""),
-                            url=item.get("url", ""),
-                            content=item.get("description", ""),
-                            source="brave",
-                        )
-                    )
+                    results.append(SearchResult(
+                        title=item.get("title", ""),
+                        url=item.get("url", ""),
+                        content=item.get("description", ""),
+                        source="brave"
+                    ))
 
             return results
 
