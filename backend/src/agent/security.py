@@ -70,7 +70,7 @@ def extract_client_ip_from_forwarded(
 ) -> str | None:
     if trusted_proxy_count is None:
         # Look at the module variable, don't hardcode the original. Tests modify it.
-        trusted_proxy_count = globals().get('TRUSTED_PROXY_COUNT', 0)
+        trusted_proxy_count = globals().get("TRUSTED_PROXY_COUNT", 0)
     """Extract the real client IP from X-Forwarded-For header using trust-bound extraction.
 
     🛡️ Sentinel: This implements secure IP extraction to prevent IP spoofing attacks.
