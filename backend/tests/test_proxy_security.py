@@ -220,7 +220,7 @@ async def test_x_forwarded_for_ignored_by_default():
          pytest.fail("Rate limit bypassed! Response was success instead of 429.")
 
 @pytest.mark.asyncio
-@patch.dict("os.environ", {"TRUSTED_PROXY_COUNT": "0"})
+@patch.dict("os.environ", {"TRUSTED_PROXY_COUNT": "1"})
 async def test_x_forwarded_for_trusted_when_configured():
     """
     Test that X-Forwarded-For IS respected when trust_proxy_headers is True.

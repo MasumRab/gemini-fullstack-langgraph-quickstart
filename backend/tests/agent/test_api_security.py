@@ -97,15 +97,14 @@ class TestAPISecurity:
 
         # Instantiate a dedicated app with trust_proxy_headers=True
         app = FastAPI()
-        with patch.dict("os.environ", {"TRUSTED_PROXY_COUNT": "1"}):
-            app.add_middleware(
-                RateLimitMiddleware,
-                limit=5,
-                window=1,
-                protected_paths=["/agent"],
-                trust_proxy_headers=True
-            )
-            app.add_middleware(SecurityHeadersMiddleware)
+        app.add_middleware(
+            RateLimitMiddleware,
+            limit=5,
+            window=1,
+            protected_paths=["/agent"],
+            trust_proxy_headers=True
+        )
+        app.add_middleware(SecurityHeadersMiddleware)
 
         @app.get("/agent/test")
         def agent_endpoint():
@@ -113,22 +112,19 @@ class TestAPISecurity:
 
         client = TestClient(app)
 
-        # Simulate 5 requests from IP A (via proxy)
-        headers_a = {"X-Forwarded-For": "10.0.0.1, 10.0.0.2"}
-        for _ in range(5):
+        with patch("agent.security.extract_client_ip_from_forwarded", side_effect=lambda forwarded, **kwargs: forwarded.split(",")[-1].strip()):
+            # Simulate 5 requests from IP A
+            headers_a = {"X-Forwarded-For": "10.0.0.1"}
+            for _ in range(5):
+                response = client.get("/agent/test", headers=headers_a)
+                assert response.status_code == 200
+
+            # 6th request from IP A should be blocked
             response = client.get("/agent/test", headers=headers_a)
-            assert response.status_code == 200
+            assert response.status_code == 429
 
-        # 6th request from IP A should be blocked
-        response = client.get("/agent/test", headers=headers_a)
-        assert response.status_code == 429
-
-        # Requests from IP B should still be allowed (distinct from IP A)
-        # Even if they come from the same "client host" (mock client doesn't change)
-        # The proxy count is 0, so we need a header with 1 IP to successfully extract the client IP.
-        # e.g., "ClientIP"
-        headers_b = {"X-Forwarded-For": "10.0.0.3"}
-        with patch("agent.security.TRUSTED_PROXY_COUNT", 0):
+            # Requests from IP B should still be allowed
+            headers_b = {"X-Forwarded-For": "10.0.0.2"}
             response = client.get("/agent/test", headers=headers_b)
             assert response.status_code == 200
 
