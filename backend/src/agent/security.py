@@ -263,6 +263,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
         return trusted_proxies
 
+    def _get_trusted_proxy_count(self) -> int:
+        return int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
+
     async def dispatch(self, request: Request, call_next):
         """Check rate limit for API endpoints."""
         path = request.url.path
@@ -282,7 +285,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # The leftmost IP is attacker-controllable; we must use trust-bound extraction.
                 client_ip = extract_client_ip_from_forwarded(
                     forwarded=forwarded,
-                    trusted_proxy_count=int(os.getenv("TRUSTED_PROXY_COUNT", "0")),
+                    trusted_proxy_count=self._get_trusted_proxy_count(),
                     trusted_proxies=self._get_trusted_proxies(),
                     fallback_ip=fallback_ip,
                 )
