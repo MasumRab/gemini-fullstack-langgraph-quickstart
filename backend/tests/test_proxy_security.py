@@ -1,8 +1,11 @@
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
 from starlette.responses import PlainTextResponse
+
 from agent.security import RateLimitMiddleware
+
 
 @pytest.mark.asyncio
 async def test_proxy_security_default_secure():
@@ -43,8 +46,10 @@ async def test_proxy_security_default_secure():
     assert "5.6.7.8" not in middleware.requests
 
 @pytest.mark.asyncio
-async def test_proxy_security_trusted_enabled():
+async def test_proxy_security_trusted_enabled(monkeypatch):
     """Verify that when enabled, X-Forwarded-For IS used."""
+    monkeypatch.setattr("agent.security.TRUSTED_PROXY_COUNT", 1)
+    monkeypatch.setattr("agent.security.extract_client_ip_from_forwarded.__defaults__", (1, None))
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -81,12 +86,13 @@ async def test_proxy_security_trusted_enabled():
     assert "10.0.0.1" not in middleware.requests
 
 @pytest.mark.asyncio
-async def test_spoofing_vulnerability():
+async def test_spoofing_vulnerability(monkeypatch):
     """
     Verify that the middleware correctly identifies the client IP even if it's private,
     when it is the last IP in the trusted proxy chain.
     Prevents spoofing by injecting a public IP at the start of X-Forwarded-For.
     """
+    monkeypatch.setattr("agent.security.TRUSTED_PROXIES", {"10.0.0.1"})
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -171,11 +177,13 @@ async def test_x_forwarded_for_ignored_by_default():
          pytest.fail("Rate limit bypassed! Response was success instead of 429.")
 
 @pytest.mark.asyncio
-async def test_x_forwarded_for_trusted_when_configured():
+async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     """
     Test that X-Forwarded-For IS respected when trust_proxy_headers is True.
     This is for legitimate use cases (behind load balancer).
     """
+    monkeypatch.setattr("agent.security.TRUSTED_PROXY_COUNT", 1)
+    monkeypatch.setattr("agent.security.extract_client_ip_from_forwarded.__defaults__", (1, None))
     app = AsyncMock()
     # Limit 1 request per window, BUT we trust proxies
     mw = RateLimitMiddleware(app, limit=1, window=60, protected_paths=["/api"], trust_proxy_headers=True)
