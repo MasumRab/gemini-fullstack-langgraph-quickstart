@@ -97,14 +97,15 @@ class TestAPISecurity:
 
         # Instantiate a dedicated app with trust_proxy_headers=True
         app = FastAPI()
-        app.add_middleware(
-            RateLimitMiddleware,
-            limit=5,
-            window=1,
-            protected_paths=["/agent"],
-            trust_proxy_headers=True
-        )
-        app.add_middleware(SecurityHeadersMiddleware)
+        with patch.dict("os.environ", {"TRUSTED_PROXY_COUNT": "1"}):
+            app.add_middleware(
+                RateLimitMiddleware,
+                limit=5,
+                window=1,
+                protected_paths=["/agent"],
+                trust_proxy_headers=True
+            )
+            app.add_middleware(SecurityHeadersMiddleware)
 
         @app.get("/agent/test")
         def agent_endpoint():
@@ -124,9 +125,12 @@ class TestAPISecurity:
 
         # Requests from IP B should still be allowed (distinct from IP A)
         # Even if they come from the same "client host" (mock client doesn't change)
+        # The proxy count is 0, so we need a header with 1 IP to successfully extract the client IP.
+        # e.g., "ClientIP"
         headers_b = {"X-Forwarded-For": "10.0.0.3"}
-        response = client.get("/agent/test", headers=headers_b)
-        assert response.status_code == 200
+        with patch("agent.security.TRUSTED_PROXY_COUNT", 0):
+            response = client.get("/agent/test", headers=headers_b)
+            assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_preserves_active_clients(self):

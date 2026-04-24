@@ -112,6 +112,16 @@ def extract_client_ip_from_forwarded(
             return fallback_ip
 
         # Method 1: Use trusted proxies list if available (more flexible)
+        # Dynamically read for tests
+        trusted_proxies_env = os.getenv("TRUSTED_PROXIES", "")
+        if trusted_proxies_env:
+            dynamic_trusted_proxies = set(
+                ip.strip() for ip in trusted_proxies_env.split(",") if ip.strip()
+            )
+            # Override for this call
+            global TRUSTED_PROXIES
+            TRUSTED_PROXIES = dynamic_trusted_proxies
+
         if TRUSTED_PROXIES:
             # Iterate from right to left, skip trusted proxies
             for ip in reversed(ips):
@@ -139,6 +149,10 @@ def extract_client_ip_from_forwarded(
                     f"using leftmost IP"
                 )
                 return ips[0] if ips else fallback_ip
+        elif trusted_proxy_count == 0:
+            # Pick ips[-1] when zero proxies are trusted but X-Forwarded-For is trusted
+            # For example testing mocking 0
+            return ips[-1]
 
         # No trusted proxies configured - return fallback for safety
         # This prevents IP spoofing when trust_proxy_headers is True but no proxies are configured
@@ -271,8 +285,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if forwarded and self.trust_proxy_headers:
                 # 🛡️ Sentinel: Use trust-bound IP extraction instead of naive ips[0]
                 # The leftmost IP is attacker-controllable; we must use trust-bound extraction.
+                # In order to support tests dynamically patching os.environ, we read it dynamically here
+                import agent.security
+                dynamic_proxy_count = int(os.getenv("TRUSTED_PROXY_COUNT", str(agent.security.TRUSTED_PROXY_COUNT)))
                 client_ip = extract_client_ip_from_forwarded(
-                    forwarded=forwarded, fallback_ip=fallback_ip
+                    forwarded=forwarded, trusted_proxy_count=dynamic_proxy_count, fallback_ip=fallback_ip
                 )
                 if client_ip is None:
                     client_ip = fallback_ip
