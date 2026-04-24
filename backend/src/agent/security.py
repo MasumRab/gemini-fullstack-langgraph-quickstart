@@ -78,13 +78,14 @@ def extract_client_ip_from_forwarded(
     attacker-controllable if the request passed through an untrusted network.
 
     Trust-bound extraction works by:
-    1. If TRUSTED_PROXIES is configured: iterate from right to left, skip trusted
+    1. If trusted_proxies is configured: iterate from right to left, skip trusted
        proxy IPs, return the first untrusted IP.
-    2. If only TRUSTED_PROXY_COUNT is set: pick ips[-(trusted_proxy_count + 1)].
+    2. If only trusted_proxy_count is set: pick ips[-(trusted_proxy_count + 1)].
 
     Args:
         forwarded: The X-Forwarded-For header value.
         trusted_proxy_count: Number of trusted proxies between client and server.
+        trusted_proxies: Set of trusted proxy IP addresses or CIDR ranges.
         fallback_ip: IP to return if no valid candidate is found.
 
     Returns:
