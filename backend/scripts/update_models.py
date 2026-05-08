@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Script to update Gemini model configurations across the project.
+"""Script to update Gemini model configurations across the project.
 Usage: python update_models.py [strategy]
 Strategies:
   - flash (default): Gemini 2.5 Flash for all components (Best price-performance)
@@ -9,19 +8,11 @@ Strategies:
   - balanced: Flash-Lite for queries, Flash for reflection, Pro for answers
 """
 
-import sys
 import re
+import sys
 from pathlib import Path
 
 # Configuration Strategies - Only Gemini 2.5 models (1.5 and 2.0 are deprecated/inaccessible)
-CONSTANTS_MAP = {
-    "gemini-2.5-flash": "GEMINI_FLASH",
-    "gemini-2.5-flash-lite": "GEMINI_FLASH_LITE",
-    "gemini-2.5-pro": "GEMINI_PRO",
-    "gemma-2-27b-it": "GEMMA_2_27B_IT",
-    "gemma-3-27b-it": "GEMMA_3_27B_IT",
-}
-
 STRATEGIES = {
     "flash": {
         "description": "Gemini 2.5 Flash: Best price-performance for all components",
@@ -110,23 +101,20 @@ def main():
     # Matches: DEFAULT_QUERY_MODEL = ...
     # Replaces with: DEFAULT_QUERY_MODEL = GEMINI_FLASH (or "model_name")
     
-    def get_val(m): 
-        return CONSTANTS_MAP.get(m, f'"{m}"')
-
     update_file(
         models_file,
         r'(DEFAULT_QUERY_MODEL\s*=\s*)(.+)',
-        f'\\1{get_val(config["query"])}'
+        f'\\1"{config["query"]}"'
     )
     update_file(
         models_file,
         r'(DEFAULT_REFLECTION_MODEL\s*=\s*)(.+)',
-        f'\\1{get_val(config["reflection"])}'
+        f'\\1"{config["reflection"]}"'
     )
     update_file(
         models_file,
         r'(DEFAULT_ANSWER_MODEL\s*=\s*)(.+)',
-        f'\\1{get_val(config["answer"])}'
+        f'\\1"{config["answer"]}"'
     )
 
     # 2. Update research_tools.py (writer model)
@@ -143,9 +131,9 @@ def main():
     # 4. Update .env files
     for env_path in [ENV_FILE, ENV_EXAMPLE]:
         if env_path.exists():
-            update_file(env_path, r'(QUERY_GENERATOR_MODEL=)(.*)', f'\\1{config["query"]}')
-            update_file(env_path, r'(REFLECTION_MODEL=)(.*)', f'\\1{config["reflection"]}')
-            update_file(env_path, r'(ANSWER_MODEL=)(.*)', f'\\1{config["answer"]}')
+            update_file(env_path, r'QUERY_GENERATOR_MODEL=.*', f'\\1{config["query"]}')
+            update_file(env_path, r'REFLECTION_MODEL=.*', f'\\1{config["reflection"]}')
+            update_file(env_path, r'ANSWER_MODEL=.*', f'\\1{config["answer"]}')
 
     # 5. Update Notebooks (Experimental)
     # Replaces common hardcoded patterns in ipynb files

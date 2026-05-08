@@ -1,12 +1,13 @@
+import os
+import shlex
+import signal
 import subprocess
 import sys
-import os
-import signal
 import time
 
+
 def main():
-    """
-    Cross-platform dev server launcher.
+    """Cross-platform dev server launcher.
     Starts both frontend (Vite) and backend (LangGraph) servers.
     """
     # Updated to assume this script is in scripts/
@@ -14,11 +15,10 @@ def main():
     frontend_dir = os.path.join(root_dir, "frontend")
     backend_dir = os.path.join(root_dir, "backend")
 
-    print(f"🚀 Starting development servers...")
+    print("🚀 Starting development servers...")
 
     # Define commands based on OS
     is_windows = sys.platform.startswith('win')
-    shell = is_windows  # specialized shell handling for windows
 
     frontend_cmd = "npm run dev"
     backend_cmd = "langgraph dev"
@@ -29,9 +29,9 @@ def main():
         # Start Frontend
         print(f"📦 Starting Frontend in {frontend_dir}...")
         frontend_proc = subprocess.Popen(
-            frontend_cmd,
+            shlex.split(frontend_cmd) if not is_windows else frontend_cmd,
             cwd=frontend_dir,
-            shell=True,
+            shell=False,
             creationflags=subprocess.CREATE_NEW_CONSOLE if is_windows else 0
         )
         processes.append(frontend_proc)
@@ -39,9 +39,9 @@ def main():
         # Start Backend
         print(f"🐍 Starting Backend in {backend_dir}...")
         backend_proc = subprocess.Popen(
-            backend_cmd,
+            shlex.split(backend_cmd) if not is_windows else backend_cmd,
             cwd=backend_dir,
-            shell=True,
+            shell=False,
             creationflags=subprocess.CREATE_NEW_CONSOLE if is_windows else 0
         )
         processes.append(backend_proc)
@@ -66,7 +66,7 @@ def main():
             if p.poll() is None:
                 if is_windows:
                      # Windows kill
-                     subprocess.run(f"taskkill /F /T /PID {p.pid}", shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                     subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)], shell=False, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 else:
                     p.terminate()
         print("👋 execution stopped.")
