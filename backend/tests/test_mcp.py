@@ -4,9 +4,6 @@ import pytest
 
 from agent.tools_and_schemas import get_tools_from_mcp
 
-# Fine-grained implementation guide for MCP Tests:
-#
-# See docs/tasks/01_MCP_TASKS.md
 
 class TestMcpIntegration:
     """Test suite for MCP integration."""
