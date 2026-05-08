@@ -43,8 +43,9 @@ async def test_proxy_security_default_secure():
     assert "5.6.7.8" not in middleware.requests
 
 @pytest.mark.asyncio
-async def test_proxy_security_trusted_enabled():
+async def test_proxy_security_trusted_enabled(monkeypatch):
     """Verify that when enabled, X-Forwarded-For IS used."""
+    monkeypatch.setattr("agent.security.TRUSTED_PROXY_COUNT", 1)
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -81,7 +82,7 @@ async def test_proxy_security_trusted_enabled():
     assert "10.0.0.1" not in middleware.requests
 
 @pytest.mark.asyncio
-async def test_spoofing_vulnerability():
+async def test_spoofing_vulnerability(monkeypatch):
     """
     Verify that the middleware correctly identifies the client IP even if it's private,
     when it is the last IP in the trusted proxy chain.
@@ -103,6 +104,13 @@ async def test_spoofing_vulnerability():
     # Attacker Spoofs Header: "8.8.8.8" (Public)
     # Trusted Proxy appends Real IP.
     # Header: "8.8.8.8, 10.0.0.5"
+
+    # We use monkeypatch to safely alter these module-level globals for this test
+    # If the LB sets X-Forwarded-For to "8.8.8.8, 10.0.0.5", then 10.0.0.5 is the real IP.
+    # The proxy isn't appending *another* proxy to this list.
+    # To get 10.0.0.5 (which is ips[-1]), we need TRUSTED_PROXY_COUNT=0 but with TRUSTED_PROXIES set.
+    monkeypatch.setattr("agent.security.TRUSTED_PROXY_COUNT", 0)
+    monkeypatch.setattr("agent.security.TRUSTED_PROXIES", {"10.0.0.1"})
 
     headers = [
         (b"host", b"localhost"),
@@ -171,11 +179,12 @@ async def test_x_forwarded_for_ignored_by_default():
          pytest.fail("Rate limit bypassed! Response was success instead of 429.")
 
 @pytest.mark.asyncio
-async def test_x_forwarded_for_trusted_when_configured():
+async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     """
     Test that X-Forwarded-For IS respected when trust_proxy_headers is True.
     This is for legitimate use cases (behind load balancer).
     """
+    monkeypatch.setattr("agent.security.TRUSTED_PROXY_COUNT", 1)
     app = AsyncMock()
     # Limit 1 request per window, BUT we trust proxies
     mw = RateLimitMiddleware(app, limit=1, window=60, protected_paths=["/api"], trust_proxy_headers=True)

@@ -14,7 +14,7 @@ if sys.stdout.encoding != 'utf-8':
 from google import genai
 
 # Add backend/src to path to import models
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 if str(BACKEND_SRC) not in sys.path:
     sys.path.append(str(BACKEND_SRC))
@@ -49,7 +49,7 @@ def test_model(client, model_name):
 
 def main():
     # Load .env file manually to handle variable expansion
-    env_path = Path(__file__).parent / ".env"
+    env_path = Path(__file__).parent.parent.parent / ".env"
     api_key = None
     
     if env_path.exists():

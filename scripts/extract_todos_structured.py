@@ -6,12 +6,14 @@ from pathlib import Path
 def extract_todos(root_dir):
     todos = []
     # Exclude directories
-    exclude_dirs = {'.git', 'node_modules', '.jules', 'dist', 'build', '.venv', '__pycache__'}
+    exclude_dirs = {'.git', 'node_modules', '.Jules', 'dist', 'build', '.venv', '__pycache__'}
 
     for root, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
         for file in files:
+            if file == "extract_todos_structured.py":
+                continue
             if file.endswith(('.py', '.tsx', '.ts', '.js', '.jsx', '.md')):
                 filepath = os.path.join(root, file)
                 try:

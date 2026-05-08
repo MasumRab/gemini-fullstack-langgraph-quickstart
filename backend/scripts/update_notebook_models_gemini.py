@@ -30,8 +30,11 @@ def update_notebook(path):
     else:
         print(f"No changes for {path}")
 
+from pathlib import Path
+
 def main():
-    notebooks = glob.glob("notebooks/*.ipynb") + glob.glob("backend/*.ipynb")
+    project_root = Path(__file__).parent.parent.parent.resolve()
+    notebooks = glob.glob(str(project_root / "notebooks/*.ipynb")) + glob.glob(str(project_root / "backend/*.ipynb"))
     for nb in notebooks:
         update_notebook(nb)
 

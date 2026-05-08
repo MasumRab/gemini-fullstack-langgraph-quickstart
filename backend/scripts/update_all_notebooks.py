@@ -315,7 +315,7 @@ def main():
         print("🔍 DRY RUN MODE - No files will be modified\n")
     
     # Find all notebooks
-    project_root = Path(__file__).parent.parent.resolve()
+    project_root = Path(__file__).parent.parent.parent.resolve()
     
     # Define notebook directories to process
     notebook_dirs = [

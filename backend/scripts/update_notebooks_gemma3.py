@@ -35,7 +35,7 @@ def update_notebook(notebook_path):
     return False
 
 if __name__ == "__main__":
-    notebooks_dir = Path(__file__).parent.parent / 'notebooks'
+    notebooks_dir = (Path(__file__).parent.parent.parent / 'notebooks').resolve()
     updated_count = 0
     
     for notebook in notebooks_dir.glob('*.ipynb'):

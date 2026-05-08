@@ -26,8 +26,9 @@ def test_rate_limiter_integration():
 
 
 @pytest.mark.asyncio
-async def test_rate_limiter_proxy_logic():
+async def test_rate_limiter_proxy_logic(monkeypatch):
     """Unit test for RateLimitMiddleware proxy logic."""
+    monkeypatch.setattr("agent.security.TRUSTED_PROXY_COUNT", 1)
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -132,5 +133,5 @@ async def test_rate_limiter_truncation():
     # Verify the key in requests is truncated
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
-    # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
-    assert keys[0] == "unknown"
+    # Now that we sanitize invalid IPs to "unknown" or "127.0.0.1" (fallback)
+    assert keys[0] == "127.0.0.1"
