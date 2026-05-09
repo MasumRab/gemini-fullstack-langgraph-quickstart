@@ -4,20 +4,20 @@ from agent.tools_and_schemas import get_tools_from_mcp
 
 # Fine-grained implementation guide for MCP Tests:
 #
-# TODO(priority=Medium, complexity=Low): [test_mcp:1] Test disabled MCP returns empty list
+# TODO(priority=Medium, complexity=Low, owner=agent): [test_mcp:1] Test disabled MCP returns empty list
 # - Create MCPSettings with enabled=False
 # - Verify get_tools_from_mcp returns []
 #
-# TODO(priority=Medium, complexity=Medium): [test_mcp:2] Test connection error handling
+# TODO(priority=Medium, complexity=Medium, owner=agent): [test_mcp:2] Test connection error handling
 # - Mock SSEConnection to raise ConnectionError
 # - Verify graceful fallback (empty list, logged warning)
 #
-# TODO(priority=Medium, complexity=Medium): [test_mcp:3] Test tool whitelist filtering
+# TODO(priority=Medium, complexity=Medium, owner=agent): [test_mcp:3] Test tool whitelist filtering
 # - Load multiple tools from mock MCP
 # - Set tool_whitelist to subset
 # - Verify only whitelisted tools returned
 #
-# TODO(priority=Low, complexity=Medium): [test_mcp:4] Test tool execution with real MCP server
+# TODO(priority=Low, complexity=Medium, owner=agent): [test_mcp:4] Test tool execution with real MCP server
 # - Skip if MCP_ENDPOINT not set (integration test)
 # - Connect to real server, call a tool, verify response format
 #
