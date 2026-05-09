@@ -12,7 +12,7 @@ def extract_todos(root_dir):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
         for file in files:
-            if file.endswith(('.py', '.tsx', '.ts', '.js', '.jsx', '.md')):
+            if file.endswith(('.py', '.tsx', '.ts', '.js', '.jsx', '.md')) and file != 'extract_todos_structured.py':
                 filepath = os.path.join(root, file)
                 try:
                     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
@@ -22,7 +22,7 @@ def extract_todos(root_dir):
                                 # Simple parser
                                 content = line.strip()
                                 # Try to parse structured TODOs if they exist
-                                # Format: TODO(priority=<Level>, complexity=<Level>):
+                                # Format: TODO(priority=<Level>, complexity=<Level>, owner=<Owner>):
                                 priority = "Unknown"
                                 complexity = "Unknown"
 
