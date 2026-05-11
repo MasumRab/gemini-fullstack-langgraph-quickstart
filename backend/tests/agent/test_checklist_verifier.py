@@ -1,8 +1,10 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
+
 from agent.nodes import checklist_verifier
 from agent.state import OverallState
+
 
 class TestChecklistVerifier(unittest.TestCase):
     def setUp(self):
