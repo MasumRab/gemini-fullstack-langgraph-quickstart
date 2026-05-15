@@ -75,7 +75,7 @@ def check_js_deps():
                         print(
                             f"Stale/Unused JS Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
                         )
-    except (IOError, ValueError, KeyError) as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Error checking JS deps: {e}")
 
 
@@ -128,7 +128,7 @@ def check_py_deps():
                         f"Stale/Unused Py Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
                     )
 
-    except (IOError, ValueError, KeyError) as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Error checking Py deps: {e}")
 
 
