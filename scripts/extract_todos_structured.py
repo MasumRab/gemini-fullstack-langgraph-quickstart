@@ -6,12 +6,14 @@ from pathlib import Path
 def extract_todos(root_dir):
     todos = []
     # Exclude directories
-    exclude_dirs = {'.git', 'node_modules', '.jules', 'dist', 'build', '.venv', '__pycache__'}
+    exclude_dirs = {'.git', 'node_modules', '.jules', '.Jules', 'dist', 'build', '.venv', '__pycache__'}
 
     for root, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
         for file in files:
+            if file == 'extract_todos_structured.py':
+                continue
             if file.endswith(('.py', '.tsx', '.ts', '.js', '.jsx', '.md')):
                 filepath = os.path.join(root, file)
                 try:
@@ -22,11 +24,13 @@ def extract_todos(root_dir):
                                 # Simple parser
                                 content = line.strip()
                                 # Try to parse structured TODOs if they exist
-                                # Format: TODO(priority=<Level>, complexity=<Level>):
+                                # Format: TODO(priority=<Level>, complexity=<Level>, owner=agent):
                                 priority = "Unknown"
                                 complexity = "Unknown"
 
-                                match = re.search(r'TODO\(priority=(.*?), complexity=(.*?)\):', content)
+                                match = re.search(r'TODO\(priority=(.*?), complexity=(.*?), owner=(.*?)\):', content)
+                                if not match:
+                                    match = re.search(r'TODO\(priority=(.*?), complexity=(.*?)\):', content)
                                 if match:
                                     priority = match.group(1)
                                     complexity = match.group(2)
