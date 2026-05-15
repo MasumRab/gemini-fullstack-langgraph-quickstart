@@ -34,19 +34,19 @@ def extract_todos(root_dir):
                                     match = re.search(r'TODO\(priority=(.*?), complexity=(.*?)\):', content)
                                 if match:
                                     priority = match.group(1)
+                                    complexity = match.group(2)
                                     if match.lastindex and match.lastindex >= 3:
                                         owner = match.group(3)
-                                    complexity = match.group(2)
 
-                                todos.append({
-                                    'file': filepath,
-                                    'line': i + 1,
-                                    'content': content,
-                                    'priority': priority,
-                                    'complexity': complexity,
-                                    'owner': owner
-                                })
-                except Exception as e:
+                                    todos.append({
+                                        'file': filepath,
+                                        'line': i + 1,
+                                        'content': content,
+                                        'priority': priority,
+                                        'complexity': complexity,
+                                        'owner': owner
+                                    })
+                except Exception as e:  # noqa: BLE001
                     print(f"Error reading {filepath}: {e}")
     return todos
 
