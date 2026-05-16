@@ -1,10 +1,15 @@
 
+import os
+os.environ["TRUSTED_PROXY_COUNT"] = "1"
+
 import time
 from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
+
+
 
 
 class TestAPISecurity:

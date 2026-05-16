@@ -215,7 +215,7 @@ class DeepSearchRAG:
             doc = item["doc"]
             embedding = embeddings[i]
             # Use same UUID for both stores to maintain consistency
-            chunk_id_str = f"{subgoal_id}_{uuid.uuid4()}"
+            chunk_id_str = f"{subgoal_id}_{int(time.time())}_{i}_{uuid.uuid4().hex[:8]}"
 
             # FAISS Logic
             if self.use_faiss:

@@ -111,7 +111,7 @@ class FilesystemMCPServer:
             def __init__(self, name, description, parameters, handler):
                 self.name = name
                 self.description = description
-                self.inputSchema = parameters  # using inputSchema to match MCP spec
+                self.args_schema = parameters  # using args_schema to match LangChain StructuredTool spec
                 self.handler = handler
 
         return SimpleTool(name, description, parameters, handler)
