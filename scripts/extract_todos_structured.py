@@ -3,6 +3,9 @@ import re
 import json
 from pathlib import Path
 
+# Get the script's own filename for robust self-exclusion
+SCRIPT_NAME = Path(__file__).name
+
 def extract_todos(root_dir):
     todos = []
     # Exclude directories
@@ -13,7 +16,7 @@ def extract_todos(root_dir):
 
         for file in files:
             # Skip the script itself to prevent false positives when searching for TODOs
-            if file == "extract_todos_structured.py":
+            if file == SCRIPT_NAME:
                 continue
 
             if file.endswith(('.py', '.tsx', '.ts', '.js', '.jsx', '.md')):
