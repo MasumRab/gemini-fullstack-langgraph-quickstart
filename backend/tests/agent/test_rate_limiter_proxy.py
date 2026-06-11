@@ -64,8 +64,8 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
 
         sent_messages = []
 
-        async def mock_send(message):
-            sent_messages.append(message)
+        async def mock_send(_message):
+            sent_messages.append(_message)
 
         async def mock_receive():
             return {"type": "http.request"}
@@ -135,7 +135,7 @@ async def test_rate_limiter_truncation(monkeypatch):
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():

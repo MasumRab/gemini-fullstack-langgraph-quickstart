@@ -36,7 +36,7 @@ async def test_proxy_security_default_secure():
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():
@@ -81,7 +81,7 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():
@@ -134,7 +134,7 @@ async def test_spoofing_vulnerability(monkeypatch):
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():
@@ -161,7 +161,7 @@ async def test_x_forwarded_for_ignored_by_default():
     # Real Client IP
     client_ip = "192.168.0.2"
 
-    async def call_next(request):
+    async def call_next(_request):
         return "success"
 
     # Request 1: Normal request
@@ -210,7 +210,7 @@ async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     # Real Client IP (Load Balancer IP)
     lb_ip = "192.168.0.1"
 
-    async def call_next(request):
+    async def call_next(_request):
         return "success"
 
     # Request 1: Client A behind LB
