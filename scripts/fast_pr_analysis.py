@@ -75,7 +75,7 @@ def main():
 
 ## Jules Repair Prompt
 
-{f'''**Priority:** CRITICAL
+{'''**Priority:** CRITICAL
 **Issue:** Merge conflicts with base branch `main`
 
 **Recovery Actions:**

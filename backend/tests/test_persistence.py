@@ -3,8 +3,10 @@
 Tests cover save/load operations, edge cases, and error handling.
 Uses temporary directories to avoid touching real filesystem.
 """
+
 import json
 import os
+
 import pytest
 
 
@@ -88,7 +90,9 @@ class TestPersistence:
         assert new_dir.exists()
         assert (new_dir / "test-id.json").exists()
 
-    def test_load_plan_with_corrupted_json_returns_none(self, tmp_path, monkeypatch, capsys):
+    def test_load_plan_with_corrupted_json_returns_none(
+        self, tmp_path, monkeypatch, capsys
+    ):
         """Corrupted JSON should return None and not raise."""
         from agent import persistence
 
