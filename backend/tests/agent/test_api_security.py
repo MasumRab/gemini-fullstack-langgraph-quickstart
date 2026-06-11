@@ -160,7 +160,7 @@ class TestAPISecurity:
             "type": "http",
             "path": "/",
             "headers": [],
-            "client": ("10.2.0.1", 8000),
+            "client": ("127.0.0.2", 8000),
             "method": "GET",
             "scheme": "http",
         }
@@ -187,7 +187,7 @@ class TestAPISecurity:
 
         assert "10.0.0.0" not in mw.requests  # Stale IP (i=0) should be gone
         assert "10.1.0.0" in mw.requests  # Active IP (i=0) should be present
-        assert "10.2.0.1" in mw.requests  # New client should be present
+        assert "127.0.0.2" in mw.requests  # New client should be present
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_throttled(self):
@@ -210,7 +210,7 @@ class TestAPISecurity:
             "type": "http",
             "path": "/",
             "headers": [],
-            "client": ("10.2.0.1", 8000),
+            "client": ("127.0.0.2", 8000),
             "method": "GET",
             "scheme": "http",
         }
@@ -247,4 +247,4 @@ class TestAPISecurity:
 
         # Should be cleaned: 10001 stale removed. 1 new added.
         assert len(mw.requests) == 1
-        assert "10.2.0.1" in mw.requests
+        assert "127.0.0.2" in mw.requests

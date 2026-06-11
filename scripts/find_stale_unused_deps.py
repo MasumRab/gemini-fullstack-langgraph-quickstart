@@ -30,7 +30,7 @@ def get_git_blame_date(file_path, line_number):
 
 
 def check_js_deps():
-    print("Checking JS dependencies in frontend/package.json...")
+    # print("Checking JS dependencies in frontend/package.json...")
     try:
         with open("frontend/package.json", "r") as f:
             package_json = json.load(f)
@@ -72,15 +72,15 @@ def check_js_deps():
                             check=True,
                         )
                     except subprocess.CalledProcessError:
-                        print(
+                        # print(
                             f"Stale/Unused JS Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
                         )
     except Exception as e:  # noqa: BLE001
-        print(f"Error checking JS deps: {e}")
+        # print(f"Error checking JS deps: {e}")
 
 
 def check_py_deps():
-    print("\nChecking Python dependencies in backend/pyproject.toml...")
+    # print("\nChecking Python dependencies in backend/pyproject.toml...")
     try:
         with open("backend/pyproject.toml", "r") as f:
             lines = f.readlines()
@@ -125,12 +125,12 @@ def check_py_deps():
                         check=True,
                     )
                 except subprocess.CalledProcessError:
-                    print(
+                    # print(
                         f"Stale/Unused Py Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
                     )
 
     except Exception as e:  # noqa: BLE001
-        print(f"Error checking Py deps: {e}")
+        # print(f"Error checking Py deps: {e}")
 
 
 if __name__ == "__main__":
