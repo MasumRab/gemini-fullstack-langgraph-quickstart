@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Script to update Gemini model configurations across the project.
+"""Script to update Gemini model configurations across the project.
 Usage: python update_models.py [strategy]
 Strategies:
   - flash (default): Gemini 2.5 Flash for all components (Best price-performance)
@@ -9,9 +8,16 @@ Strategies:
   - balanced: Flash-Lite for queries, Flash for reflection, Pro for answers
 """
 
-import sys
 import re
+import sys
 from pathlib import Path
+
+# Model name constants
+GEMINI_FLASH = "gemini-2.5-flash"
+GEMINI_FLASH_LITE = "gemini-2.5-flash-lite"
+GEMINI_PRO = "gemini-2.5-pro"
+GEMMA_2_27B_IT = "gemma-2-27b-it"
+GEMMA_3_27B_IT = "gemma-3-27b-it"
 
 # Configuration Strategies - Only Gemini 2.5 models (1.5 and 2.0 are deprecated/inaccessible)
 CONSTANTS_MAP = {
@@ -25,43 +31,43 @@ CONSTANTS_MAP = {
 STRATEGIES = {
     "flash": {
         "description": "Gemini 2.5 Flash: Best price-performance for all components",
-        "query": "gemini-2.5-flash",
-        "reflection": "gemini-2.5-flash",
-        "answer": "gemini-2.5-flash",
-        "tools": "gemini-2.5-flash",
-        "frontend": "gemini-2.5-flash"
+        "query": GEMINI_FLASH,
+        "reflection": GEMINI_FLASH,
+        "answer": GEMINI_FLASH,
+        "tools": GEMINI_FLASH,
+        "frontend": GEMINI_FLASH
     },
     "flash_lite": {
         "description": "Gemini 2.5 Flash-Lite: Fastest and most cost-efficient",
-        "query": "gemini-2.5-flash-lite",
-        "reflection": "gemini-2.5-flash-lite",
-        "answer": "gemini-2.5-flash-lite",
-        "tools": "gemini-2.5-flash-lite",
-        "frontend": "gemini-2.5-flash-lite"
+        "query": GEMINI_FLASH_LITE,
+        "reflection": GEMINI_FLASH_LITE,
+        "answer": GEMINI_FLASH_LITE,
+        "tools": GEMINI_FLASH_LITE,
+        "frontend": GEMINI_FLASH_LITE
     },
     "pro": {
         "description": "Gemini 2.5 Pro: Highest quality reasoning (Flash for queries)",
-        "query": "gemini-2.5-flash",
-        "reflection": "gemini-2.5-flash",
-        "answer": "gemini-2.5-pro",
-        "tools": "gemini-2.5-flash",
-        "frontend": "gemini-2.5-flash"
+        "query": GEMINI_FLASH,
+        "reflection": GEMINI_FLASH,
+        "answer": GEMINI_PRO,
+        "tools": GEMINI_FLASH,
+        "frontend": GEMINI_FLASH
     },
     "balanced": {
         "description": "Balanced: Flash-Lite (query), Flash (reflection), Pro (answer)",
-        "query": "gemini-2.5-flash-lite",
-        "reflection": "gemini-2.5-flash",
-        "answer": "gemini-2.5-pro",
-        "tools": "gemini-2.5-flash",
-        "frontend": "gemini-2.5-flash"
+        "query": GEMINI_FLASH_LITE,
+        "reflection": GEMINI_FLASH,
+        "answer": GEMINI_PRO,
+        "tools": GEMINI_FLASH,
+        "frontend": GEMINI_FLASH
     },
     "gemma": {
         "description": "Gemma 3: High-quality open weights models",
-        "query": "gemma-3-27b-it",
-        "reflection": "gemma-3-27b-it",
-        "answer": "gemma-3-27b-it",
-        "tools": "gemma-3-27b-it",
-        "frontend": "gemma-3-27b-it"
+        "query": GEMMA_3_27B_IT,
+        "reflection": GEMMA_3_27B_IT,
+        "answer": GEMMA_3_27B_IT,
+        "tools": GEMMA_3_27B_IT,
+        "frontend": GEMMA_3_27B_IT
     }
 }
 
@@ -76,7 +82,7 @@ ENV_FILE = PROJECT_ROOT / ".env"
 ENV_EXAMPLE = PROJECT_ROOT / ".env.example"
 NOTEBOOKS_DIR = PROJECT_ROOT / "notebooks"
 
-def update_file(file_path: Path, pattern: str, replacement: str):
+def update_file(file_path: Path, pattern: str, replacement: str) -> bool:
     """Update a file using regex pattern."""
     if not file_path.exists():
         print(f"Warning: File not found: {file_path}")
@@ -91,7 +97,7 @@ def update_file(file_path: Path, pattern: str, replacement: str):
         return True
     return False
 
-def main():
+def main() -> None:
     strategy_name = sys.argv[1] if len(sys.argv) > 1 else "flash"
 
     if strategy_name not in STRATEGIES:
