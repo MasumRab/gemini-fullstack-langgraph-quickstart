@@ -43,14 +43,14 @@ class TestGraphNodes:
     @patch("agent.nodes.get_context_manager")
     @patch("agent.nodes.plan_writer_instructions")
     def test_generate_plan_success(
-        self, mock_instructions, mock_get_cm, MockLLM, mock_state, mock_config
+        self, mock_instructions, mock_get_cm, mock_llm, mock_state, mock_config
     ):
         # Mock prompts
         mock_get_cm.return_value.truncate_to_fit.return_value = "Mock Prompt"
         mock_instructions.format.return_value = "Mock Prompt"
 
         # Mock LLM instance and response
-        mock_instance = MockLLM.return_value
+        mock_instance = mock_llm.return_value
         mock_instance.with_structured_output.return_value.invoke.return_value = Mock(
             plan=[
                 Mock(title="query1", description="desc", status="pending"),
@@ -107,8 +107,8 @@ class TestGraphNodes:
         assert "Search failed for query 'test query'" in result["validation_notes"][0]
 
     @patch("agent.nodes.ChatGoogleGenerativeAI")
-    def test_reflection_sufficient(self, MockLLM, mock_state, mock_config):
-        mock_instance = MockLLM.return_value
+    def test_reflection_sufficient(self, _MockLLM, mock_state, mock_config):
+        mock_instance = _MockLLM.return_value
         mock_instance.with_structured_output.return_value.invoke.return_value = Mock(
             is_sufficient=True, knowledge_gap="None", follow_up_queries=[]
         )
@@ -121,9 +121,9 @@ class TestGraphNodes:
         assert result["research_loop_count"] == 1
 
     @patch("agent.nodes.ChatGoogleGenerativeAI")
-    def test_denoising_refiner(self, MockLLM, mock_state, mock_config):
+    def test_denoising_refiner(self, _MockLLM, mock_state, mock_config):
         # denoising_refiner makes 3 calls: Draft 1, Draft 2, Refine
-        mock_instance = MockLLM.return_value
+        mock_instance = _MockLLM.return_value
         mock_instance.invoke.side_effect = [
             AIMessage(content="Draft 1"),
             AIMessage(content="Draft 2"),

@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from starlette.responses import PlainTextResponse
 
-from agent.security import RateLimitMiddleware
 import agent.security
+from agent.security import RateLimitMiddleware
 
 
 @pytest.mark.asyncio
@@ -37,7 +37,7 @@ async def test_proxy_security_default_secure():
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():
@@ -82,7 +82,7 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():
@@ -134,7 +134,7 @@ async def test_spoofing_vulnerability(monkeypatch):
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():

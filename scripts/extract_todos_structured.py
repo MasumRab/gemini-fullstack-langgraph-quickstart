@@ -26,7 +26,7 @@ def extract_todos(root_dir):
                                 priority = "Unknown"
                                 complexity = "Unknown"
 
-                                match = re.search(r'TODO\(priority=(.*?), complexity=(.*?)\):', content)
+                                match = re.search(r'TODO\(priority=(.*?), complexity=(.*?)(?:,.*)?\):', content)
                                 if match:
                                     priority = match.group(1)
                                     complexity = match.group(2)

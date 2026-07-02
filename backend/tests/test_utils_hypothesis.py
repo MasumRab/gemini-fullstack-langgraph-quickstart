@@ -21,12 +21,10 @@ def test_insert_citation_never_raises(text, end_indices):
 
     citations = [{"end_index": idx, "segments": []} for idx in valid_indices]
 
-    try:
-        result = insert_citation_markers(text, citations)
-        assert isinstance(result, str)
-        assert len(result) >= len(text)  # Citations only add text
-    except Exception as e:
-        pytest.fail(f"insert_citation_markers raised exception: {e}")
+    # This shouldn't raise any exceptions
+    result = insert_citation_markers(text, citations)
+    assert isinstance(result, str)
+    assert len(result) >= len(text)  # Citations only add text
 
 
 @given(st.text())

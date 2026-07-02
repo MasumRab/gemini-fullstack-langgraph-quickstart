@@ -132,11 +132,11 @@ async def run_benchmark():
             results.append(result_entry)
 
             logger.info(
-                f"Result for '{question}': Q={result_entry['quality_score']}, G={result_entry['groundedness_score']}"
+                "Result for '%s': Q=%s, G=%s", question, result_entry['quality_score'], result_entry['groundedness_score']
             )
 
         except Exception as e:
-            logger.error(f"Agent failed for '{question}': {e}", exc_info=True)
+            logger.error("Agent failed for '%s': %s", question, e, exc_info=True)
             continue
 
     # Report Generation

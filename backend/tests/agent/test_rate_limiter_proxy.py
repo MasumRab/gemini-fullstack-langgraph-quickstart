@@ -4,9 +4,9 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.responses import PlainTextResponse
 
+import agent.security
 from agent.app import app
 from agent.security import RateLimitMiddleware
-import agent.security
 
 # ----------------------------------------------------------------------
 # 1. Integration Test with FastAPI App

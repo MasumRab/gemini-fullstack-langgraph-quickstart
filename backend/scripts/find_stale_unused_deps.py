@@ -32,7 +32,7 @@ def get_git_blame_date(file_path, line_number):
 def check_js_deps():
     print("Checking JS dependencies in frontend/package.json...")
     try:
-        with open("frontend/package.json") as f:
+        with open("frontend/package.json", encoding="utf-8") as f:
             package_json = json.load(f)
 
         deps = list(package_json.get("dependencies", {}).keys()) + list(
@@ -40,7 +40,7 @@ def check_js_deps():
         )
 
         # Read the file again to find line numbers
-        with open("frontend/package.json") as f:
+        with open("frontend/package.json", encoding="utf-8") as f:
             lines = f.readlines()
 
         stale_threshold = datetime.now() - timedelta(days=90)
@@ -82,7 +82,7 @@ def check_js_deps():
 def check_py_deps():
     print("\nChecking Python dependencies in backend/pyproject.toml...")
     try:
-        with open("backend/pyproject.toml") as f:
+        with open("backend/pyproject.toml", encoding="utf-8") as f:
             lines = f.readlines()
 
         deps = []
