@@ -167,7 +167,7 @@ class TestAPISecurity:
         }
         request = Request(scope)  # noqa: F841
 
-        async def call_next(_request):
+        async def call_next(*args, **kwargs):
             return Response("ok")
 
         # 🛡️ Sentinel: Manually reset last_cleanup to ensure logic triggers
@@ -217,7 +217,7 @@ class TestAPISecurity:
         }
         request = Request(scope)  # noqa: F841
 
-        async def call_next(_request):
+        async def call_next(*args, **kwargs):
             return Response("ok")
 
         # Dispatch should SKIP cleanup
