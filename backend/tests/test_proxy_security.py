@@ -60,7 +60,7 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
         await response(scope, receive, send)
 
     # Initialize middleware with trust_proxy_headers=True
-    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
 
     middleware = RateLimitMiddleware(
         mock_app,
@@ -109,7 +109,7 @@ async def test_spoofing_vulnerability(monkeypatch):
         await response(scope, receive, send)
 
     # Initialize middleware with trust_proxy_headers=True
-    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 0)
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 0)
 
     middleware = RateLimitMiddleware(
         mock_app,
@@ -201,7 +201,7 @@ async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     """
     app = AsyncMock()
     # Limit 1 request per window, BUT we trust proxies
-    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
 
     mw = RateLimitMiddleware(
         app, limit=1, window=60, protected_paths=["/api"], trust_proxy_headers=True

@@ -97,7 +97,7 @@ class TestAPISecurity:
         import agent.security
         from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 
-        monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
+        monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
 
         # Instantiate a dedicated app with trust_proxy_headers=True
         app = FastAPI()

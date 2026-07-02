@@ -132,7 +132,10 @@ async def run_benchmark():
             results.append(result_entry)
 
             logger.info(
-                "Result for '%s': Q=%s, G=%s", question, result_entry['quality_score'], result_entry['groundedness_score']
+                "Result for '%s': Q=%s, G=%s",
+                question,
+                result_entry["quality_score"],
+                result_entry["groundedness_score"],
             )
 
         except Exception as e:

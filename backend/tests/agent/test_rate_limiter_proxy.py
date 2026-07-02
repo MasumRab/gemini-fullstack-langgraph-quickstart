@@ -37,7 +37,7 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
         response = PlainTextResponse("OK")
         await response(scope, receive, send)
 
-    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
 
     # Create middleware instance with low limit (2 per minute)
     # We use a distinct path prefix to ensure we hit the logic
@@ -115,7 +115,7 @@ async def test_rate_limiter_truncation(monkeypatch):
         response = PlainTextResponse("OK")
         await response(scope, receive, send)
 
-    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
 
     # 🛡️ Sentinel: Enable proxy trust to test header parsing
     middleware = RateLimitMiddleware(
