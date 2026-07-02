@@ -6,7 +6,7 @@ from pathlib import Path
 def extract_todos(root_dir):
     todos = []
     # Exclude directories
-    exclude_dirs = {'.git', 'node_modules', '.jules', 'dist', 'build', '.venv', '__pycache__'}
+    exclude_dirs = {'.git', 'node_modules', '.jules', '.Jules', 'dist', 'build', '.venv', '__pycache__'}
 
     for root, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
