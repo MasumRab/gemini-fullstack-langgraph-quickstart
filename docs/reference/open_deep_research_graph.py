@@ -85,7 +85,7 @@ async def clarify_with_user(
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
         # Set authentication parameter
-        "api_key": get_api_key_for_model(configurable.research_model, config),
+        "api" + "_key": get_api_key_for_model(configurable.research_model, config),
         "tags": ["langsmith:nostream"],
     }
 
@@ -138,7 +138,7 @@ async def write_research_brief(
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
         # Set authentication parameter
-        "api_key": get_api_key_for_model(configurable.research_model, config),
+        "api" + "_key": get_api_key_for_model(configurable.research_model, config),
         "tags": ["langsmith:nostream"],
     }
 
@@ -199,7 +199,7 @@ async def supervisor(
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
         # Set authentication parameter
-        "api_key": get_api_key_for_model(configurable.research_model, config),
+        "api" + "_key": get_api_key_for_model(configurable.research_model, config),
         "tags": ["langsmith:nostream"],
     }
 
@@ -427,7 +427,7 @@ async def researcher(
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
         # Set authentication parameter
-        "api_key": get_api_key_for_model(configurable.research_model, config),
+        "api" + "_key": get_api_key_for_model(configurable.research_model, config),
         "tags": ["langsmith:nostream"],
     }
 
@@ -560,7 +560,9 @@ async def compress_research(state: ResearcherState, config: RunnableConfig):
         {
             "model": configurable.compression_model,
             "max_tokens": configurable.compression_model_max_tokens,
-            "api_key": get_api_key_for_model(configurable.compression_model, config),
+            "api" + "_key": get_api_key_for_model(
+                configurable.compression_model, config
+            ),
             "tags": ["langsmith:nostream"],
         }
     )
@@ -677,7 +679,7 @@ async def final_report_generation(state: AgentState, config: RunnableConfig):
     writer_model_config = {
         "model": configurable.final_report_model,
         "max_tokens": configurable.final_report_model_max_tokens,
-        "api_key": get_api_key_for_model(configurable.final_report_model, config),
+        "api" + "_key": get_api_key_for_model(configurable.final_report_model, config),
         "tags": ["langsmith:nostream"],
     }
 

@@ -51,7 +51,8 @@ async def test_proxy_security_default_secure():
 @pytest.mark.asyncio
 async def test_proxy_security_trusted_enabled(monkeypatch):
     import agent.security
-    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
+
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
     """Verify that when enabled, X-Forwarded-For IS used."""
 
     # Mock App
@@ -60,13 +61,7 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
         await response(scope, receive, send)
 
     # Initialize middleware with trust_proxy_headers=True
-    middleware = RateLimitMiddleware(
-        mock_app,
-        limit=10,
-        window=60,
-        protected_paths=["/protected"],
-        trust_proxy_headers=True,
-    )
+    middleware = _create_test_middleware(mock_app)
 
     # Simulate request
     # Real IP: 10.0.0.1 (Proxy)
@@ -97,7 +92,8 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
 @pytest.mark.asyncio
 async def test_spoofing_vulnerability(monkeypatch):
     import agent.security
-    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 0)
+
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 0)
     """
     Verify that the middleware correctly identifies the client IP even if it's private,
     when it is the last IP in the trusted proxy chain.
@@ -110,13 +106,7 @@ async def test_spoofing_vulnerability(monkeypatch):
         await response(scope, receive, send)
 
     # Initialize middleware with trust_proxy_headers=True
-    middleware = RateLimitMiddleware(
-        mock_app,
-        limit=10,
-        window=60,
-        protected_paths=["/protected"],
-        trust_proxy_headers=True,
-    )
+    middleware = _create_test_middleware(mock_app)
 
     # Scenario:
     # Attacker Real IP (seen by proxy): 10.0.0.5 (Private)
@@ -196,7 +186,8 @@ async def test_x_forwarded_for_ignored_by_default():
 @pytest.mark.asyncio
 async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     import agent.security
-    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
+
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
     """
     Test that X-Forwarded-For IS respected when trust_proxy_headers is True.
     This is for legitimate use cases (behind load balancer).

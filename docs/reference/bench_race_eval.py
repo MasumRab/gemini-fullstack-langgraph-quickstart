@@ -71,6 +71,24 @@ def format_criteria_list(criteria_data):
         raise ValueError(f"Failed to serialize criteria to JSON: {e}")
 
 
+def _validate_task_data(task_id, prompt, target_map, ref_map, criteria_map):
+    """Validate task data exists in all maps."""
+    if prompt not in target_map:
+        logger.warning("Target article not found")
+        return {"id": task_id, "prompt": prompt, "error": "Target article not found"}
+    if prompt not in ref_map:
+        logger.warning("Reference article not found")
+        return {"id": task_id, "prompt": prompt, "error": "Reference article not found"}
+    if prompt not in criteria_map:
+        logger.warning("Evaluation criteria not found")
+        return {
+            "id": task_id,
+            "prompt": prompt,
+            "error": "Evaluation criteria not found",
+        }
+    return None
+
+
 def process_single_item(
     task_data,
     target_articles_map,
@@ -87,27 +105,13 @@ def process_single_item(
     prompt = task_data.get("prompt")
 
     # Data retrieval and validation
-    if prompt not in target_articles_map:
-        logger.warning("Target article not found")
+    err_res = _validate_task_data(
+        task_id, prompt, target_articles_map, reference_articles_map, criteria_map
+    )
+    if err_res:
         with lock:
             pbar.update(1)
-        return {"id": task_id, "prompt": prompt, "error": "Target article not found"}
-
-    if prompt not in reference_articles_map:
-        logger.warning("Reference article not found")
-        with lock:
-            pbar.update(1)
-        return {"id": task_id, "prompt": prompt, "error": "Reference article not found"}
-
-    if prompt not in criteria_map:
-        logger.warning("Evaluation criteria not found")
-        with lock:
-            pbar.update(1)
-        return {
-            "id": task_id,
-            "prompt": prompt,
-            "error": "Evaluation criteria not found",
-        }
+        return err_res
 
     target_article_data = target_articles_map[prompt]
     reference_article_data = reference_articles_map[prompt]
