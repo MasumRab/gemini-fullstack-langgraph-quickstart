@@ -88,19 +88,19 @@ def process_single_item(
 
     # Data retrieval and validation
     if prompt not in target_articles_map:
-        logger.error(f"Target article not found for ID {task_id}")
+        logger.warning("Target article not found")
         with lock:
             pbar.update(1)
         return {"id": task_id, "prompt": prompt, "error": "Target article not found"}
 
     if prompt not in reference_articles_map:
-        logger.error(f"Reference article not found for ID {task_id}")
+        logger.warning("Reference article not found")
         with lock:
             pbar.update(1)
         return {"id": task_id, "prompt": prompt, "error": "Reference article not found"}
 
     if prompt not in criteria_map:
-        logger.error(f"Evaluation criteria not found for ID {task_id}")
+        logger.warning("Evaluation criteria not found")
         with lock:
             pbar.update(1)
         return {
@@ -120,7 +120,7 @@ def process_single_item(
     try:
         criteria_list_str = format_criteria_list(criteria_data)
     except ValueError as e:
-        logger.error(f"ID {task_id}: {e!s}")
+        logger.exception("Formatting error")
         with lock:
             pbar.update(1)
         return {
@@ -234,7 +234,7 @@ def process_single_item(
                 normalized_dims[dim] = 0
 
     except Exception as e:
-        logger.error(f"ID {task_id}: Error calculating scores - {e!s}")
+        logger.exception("Error calculating scores")
         with lock:
             pbar.update(1)
         return {
@@ -290,7 +290,7 @@ def process_language_data(
         )
         cleaning_success = True
     except Exception as e:
-        logger.error(f"Article cleaning failed for {target_model}: {e}")
+        logger.exception("Article cleaning failed")
         cleaning_success = False
 
     if not cleaning_success:
@@ -370,7 +370,7 @@ def process_language_data(
         logger.info(f"Processing {len(tasks_to_process)} {language} tasks...")
 
     except Exception as e:
-        logger.error(f"Error loading data: {e!s}")
+        logger.exception("Error loading data")
         return None
 
     # Step 3: Process each task and generate scores
@@ -733,7 +733,7 @@ def main():
                     f.write(f"Overall Score: {overall_avg:.4f}\n")
 
         except IOError as e:
-            logger.error(f"Failed to write results to {output_file}: {e}")
+            logger.exception("Failed to write results")
     else:
         logger.warning("No results to save.")
 

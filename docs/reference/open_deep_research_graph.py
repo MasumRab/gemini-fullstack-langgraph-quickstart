@@ -84,6 +84,7 @@ async def clarify_with_user(
     model_config = {
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
+        # Set authentication parameter
         "api_key": get_api_key_for_model(configurable.research_model, config),
         "tags": ["langsmith:nostream"],
     }
@@ -136,6 +137,7 @@ async def write_research_brief(
     research_model_config = {
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
+        # Set authentication parameter
         "api_key": get_api_key_for_model(configurable.research_model, config),
         "tags": ["langsmith:nostream"],
     }
@@ -196,6 +198,7 @@ async def supervisor(
     research_model_config = {
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
+        # Set authentication parameter
         "api_key": get_api_key_for_model(configurable.research_model, config),
         "tags": ["langsmith:nostream"],
     }
@@ -423,6 +426,7 @@ async def researcher(
     research_model_config = {
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
+        # Set authentication parameter
         "api_key": get_api_key_for_model(configurable.research_model, config),
         "tags": ["langsmith:nostream"],
     }
