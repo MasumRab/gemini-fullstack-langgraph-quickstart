@@ -1,4 +1,4 @@
-clarify_with_user_instructions="""
+clarify_with_user_instructions = """
 These are the messages that have been exchanged so far from the user asking for the report:
 <Messages>
 {messages}
@@ -88,7 +88,7 @@ REMEMBER:
 Make sure the research brief is in the SAME language as the human messages in the message history.
 """
 
-research_agent_prompt =  """You are a research assistant conducting research on the user's input topic. For context, today's date is {date}.
+research_agent_prompt = """You are a research assistant conducting research on the user's input topic. For context, today's date is {date}.
 
 <Task>
 Your job is to use tools to gather information about the user's input topic.
