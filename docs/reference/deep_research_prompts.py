@@ -400,10 +400,10 @@ For each section of the report, do the following:
 - Each section should follow the Helpfulness Rules.
 
 <Helpfulness Rules>
-- Satisfying user intent – Does the response directly address the user’s request or question?
-- Ease of understanding – Is the response fluent, coherent, and logically structured?
-- Accuracy – Are the facts, reasoning, and explanations correct?
-- Appropriate language – Is the tone suitable and professional, without unnecessary jargon or confusing phrasing?
+- Satisfying user intent - Does the response directly address the user's request or question?
+- Ease of understanding - Is the response fluent, coherent, and logically structured?
+- Accuracy - Are the facts, reasoning, and explanations correct?
+- Appropriate language - Is the tone suitable and professional, without unnecessary jargon or confusing phrasing?
 </Helpfulness Rules>
 
 REMEMBER:

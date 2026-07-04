@@ -1091,8 +1091,8 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
                 updated_plan = parsed_data["plan"]
                 return {"plan": updated_plan}
 
-        except Exception as e:
-            logger.error(f"Error in flow_update: {e}")
+        except Exception:
+            logger.exception("Error in flow_update")
 
         # [flow_update:5] Return updated state fallback
         return {"plan": current_plan}
