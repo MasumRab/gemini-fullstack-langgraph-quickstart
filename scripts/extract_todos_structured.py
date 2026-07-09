@@ -3,13 +3,13 @@ import re
 import json
 from pathlib import Path
 
+TODO_PATTERN = re.compile(r'TODO\(priority=(.*?), complexity=(.*?), owner=(.*?)\):')
+TODO_OLD_PATTERN = re.compile(r'TODO\(priority=(.*?), complexity=(.*?)\):')
+
 def extract_todos(root_dir):
     todos = []
     # Exclude directories
     exclude_dirs = {'.git', 'node_modules', '.jules', '.Jules', 'dist', 'build', '.venv', '__pycache__'}
-
-    todo_pattern = re.compile(r'TODO\(priority=(.*?), complexity=(.*?), owner=(.*?)\):')
-    todo_old_pattern = re.compile(r'TODO\(priority=(.*?), complexity=(.*?)\):')
 
     for root, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
@@ -33,14 +33,14 @@ def extract_todos(root_dir):
                                 complexity = "Unknown"
                                 owner = "Unknown"
 
-                                match = todo_pattern.search(content)
+                                match = TODO_PATTERN.search(content)
                                 if match:
                                     priority = match.group(1)
                                     complexity = match.group(2)
                                     owner = match.group(3)
                                 else:
                                     # Fallback for old format
-                                    match_old = todo_old_pattern.search(content)
+                                    match_old = TODO_OLD_PATTERN.search(content)
                                     if match_old:
                                         priority = match_old.group(1)
                                         complexity = match_old.group(2)
