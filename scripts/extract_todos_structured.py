@@ -3,8 +3,8 @@ import re
 import json
 from pathlib import Path
 
-TODO_PATTERN = re.compile(r'TODO\(priority=(.*?), complexity=(.*?), owner=(.*?)\):')
-TODO_OLD_PATTERN = re.compile(r'TODO\(priority=(.*?), complexity=(.*?)\):')
+TODO_PATTERN = re.compile(r'TODO\(priority=([^,]+), complexity=([^,]+), owner=([^)]+)\):')
+TODO_OLD_PATTERN = re.compile(r'TODO\(priority=([^,]+), complexity=([^)]+)\):')
 
 def extract_todos(root_dir):
     todos = []
