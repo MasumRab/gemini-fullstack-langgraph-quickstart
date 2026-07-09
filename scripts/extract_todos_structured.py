@@ -10,16 +10,17 @@ def extract_todos(root_dir):
     todos = []
     # Exclude directories
     exclude_dirs = {'.git', 'node_modules', '.jules', '.Jules', 'dist', 'build', '.venv', '__pycache__'}
+    this_file = Path(__file__).resolve()
 
     for root, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
         for file in files:
-            if file == "extract_todos_structured.py":
-                continue
-
             if file.endswith(('.py', '.tsx', '.ts', '.js', '.jsx', '.md')):
                 filepath = os.path.join(root, file)
+                if Path(filepath).resolve() == this_file:
+                    continue
+
                 try:
                     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                         lines = f.readlines()
