@@ -8,6 +8,9 @@ def extract_todos(root_dir):
     # Exclude directories
     exclude_dirs = {'.git', 'node_modules', '.jules', '.Jules', 'dist', 'build', '.venv', '__pycache__'}
 
+    todo_pattern = re.compile(r'TODO\(priority=(.*?), complexity=(.*?), owner=(.*?)\):')
+    todo_old_pattern = re.compile(r'TODO\(priority=(.*?), complexity=(.*?)\):')
+
     for root, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
@@ -30,14 +33,14 @@ def extract_todos(root_dir):
                                 complexity = "Unknown"
                                 owner = "Unknown"
 
-                                match = re.search(r'TODO\(priority=(.*?), complexity=(.*?), owner=(.*?)\):', content)
+                                match = todo_pattern.search(content)
                                 if match:
                                     priority = match.group(1)
                                     complexity = match.group(2)
                                     owner = match.group(3)
                                 else:
                                     # Fallback for old format
-                                    match_old = re.search(r'TODO\(priority=(.*?), complexity=(.*?)\):', content)
+                                    match_old = todo_old_pattern.search(content)
                                     if match_old:
                                         priority = match_old.group(1)
                                         complexity = match_old.group(2)
