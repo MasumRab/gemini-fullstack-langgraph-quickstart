@@ -1,13 +1,13 @@
 name: Jules Address Review Comments
 
-# Posts a single @jules comment with full review context.
-# Jules's existing session integration picks up the @jules mention,
-# addresses each review comment, and pushes fixes to the PR branch.
-# No new Jules session is created by this workflow.
+# Auto-triggered on new review comments. Checks if the PR has an existing
+# Jules session (author is jules or head ref starts with jules-), then
+# posts @jules on each unresolved review thread to address them.
+# No new Jules session is created — @jules uses the existing one.
 
 on:
-  pull_request:
-    types: [labeled]
+  pull_request_review_comment:
+    types: [created]
 
 concurrency:
   group: jules-address-${{ github.event.pull_request.number }}
@@ -15,27 +15,19 @@ concurrency:
 
 jobs:
   address:
-    if: github.event.label.name == 'jules-address'
+    if: github.event.comment.user.login != 'jules' && (startsWith(github.event.pull_request.head.ref, 'jules-') || github.event.pull_request.user.login == 'jules')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
       contents: read
     steps:
-      - name: Consume label
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.removeLabel({
-              owner: context.repo.owner, repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              name: 'jules-address',
-            }).catch(() => {});
 
       - name: Build prompt from review context
         uses: actions/github-script@v7
         with:
           script: |
-            const pr = context.payload.pull_request;
+            // For pull_request_review_comment, the PR info is in issue or pull_request
+            const pr = context.payload.pull_request || context.payload.issue;
             const prNumber = pr.number;
 
             // 1. Fetch unresolved review comments with code context
