@@ -24,7 +24,16 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
             const baseRef = pr.base.ref;
+            const headRef = pr.head.ref;
+            const headSha = pr.head.sha;
             const body = pr.body || '';
+            const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
+
+            if (isFork) {
+              core.setOutput('skip', 'true');
+              return;
+            }
+
             const match = body.match(/^Target:\s*(\S+)/m);
             const target = (match ? match[1] : baseRef);
 
@@ -93,7 +102,8 @@ jobs:
               `---`,
               `Repository: ${context.repo.owner}/${context.repo.repo}`,
               `Target branch: ${target}`,
-              `PR head branch: ${pr.head.ref}`,
+              `PR head branch: ${headRef}`,
+              `PR head SHA: ${headSha}`,
               `Files changed: ${fileCount} (${totalChanges} +/-)`,
               ``,
               `## Changed files (names only, no content)`,
@@ -110,7 +120,8 @@ jobs:
                 ``,
               ] : []),
               `## Strategy`,
-              `The repo is cloned in your sandbox. Do NOT request the full diff at once.`,
+              `The repo is cloned in your sandbox with the PR head branch (${headRef}) checked out.`,
+              `Do NOT request the full diff at once.`,
               `1. Review the file list above — identify relevant files`,
               `2. Read existing PR/review comments above — build on prior context`,
               `3. For each relevant file: run git diff ${target} -- <filepath>`,
@@ -138,19 +149,28 @@ jobs:
             core.info(`Payload written to /tmp/jules-payload.json`);
 
       - name: Invoke Jules via API
+        if: steps.prepare.outputs.skip != 'true'
         shell: bash
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
           echo "Creating Jules session..."
-          RESPONSE=$(curl -s -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+          RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
             -d @/tmp/jules-payload.json)
 
-          if echo "$RESPONSE" | jq -e '.id' > /dev/null 2>&1; then
-            echo "Session created: $(echo "$RESPONSE" | jq -r '.id') (state: $(echo "$RESPONSE" | jq -r '.state'))"
-          else
+          SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
+          SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
+
+          if [ -z "$SESSION_NAME" ] && [ -z "$SESSION_ID" ]; then
             echo "Error: $RESPONSE"
             exit 1
           fi
+
+          echo "Session created: ${SESSION_NAME:-sessions/${SESSION_ID}}"
+
+      - name: Skip (fork)
+        if: steps.prepare.outputs.skip == 'true'
+        shell: bash
+        run: echo "Skipped — fork PR (no secret access)"

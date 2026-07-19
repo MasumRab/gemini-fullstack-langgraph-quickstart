@@ -24,6 +24,14 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
             const baseRef = pr.base.ref;
+            const headRef = pr.head.ref;
+            const headSha = pr.head.sha;
+            const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
+
+            if (isFork) {
+              core.setOutput('skip', 'true');
+              return;
+            }
 
             const { data: files } = await github.rest.pulls.listFiles({
               owner: context.repo.owner,
@@ -58,7 +66,7 @@ jobs:
               direction: 'desc',
             });
 
-            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->'];
+            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->', '<!-- jules-walkthrough -->'];
             const priorFeedback = issueComments
               .filter(c => !skipMarkers.some(m => c.body?.includes(m)))
               .slice(0, 10)
@@ -79,6 +87,8 @@ jobs:
               `Repository: ${context.repo.owner}/${context.repo.repo}`,
               `Title: ${pr.title}`,
               `Target branch: ${baseRef}`,
+              `PR head branch: ${headRef}`,
+              `PR head SHA: ${headSha}`,
               `Files changed: ${files.length} files (${files.reduce((s, f) => s + f.additions + f.deletions, 0)} +/-)`,
               ``,
               `## Changed files (names only)`,
@@ -111,73 +121,80 @@ jobs:
               prompt,
               sourceContext: {
                 source: `sources/github/${context.repo.owner}/${context.repo.repo}`,
-                githubRepoContext: { startingBranch: baseRef },
+                githubRepoContext: { startingBranch: headRef },
               },
-              automationMode: 'AUTO_CREATE_PR',
             }));
             core.setOutput('base_ref', baseRef);
+            core.setOutput('head_sha', headSha);
             core.info(`Payload written`);
 
       - name: Create Jules session
+        if: steps.build.outputs.skip != 'true'
         id: create
         shell: bash
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
-          RESPONSE=$(curl -s -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+          RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
             -d @/tmp/jules-walkthrough-payload.json)
 
+          SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
           STATE=$(echo "$RESPONSE" | jq -r '.state // empty')
 
-          if [ -z "$SESSION_ID" ]; then
+          if [ -z "$SESSION_NAME" ] && [ -z "$SESSION_ID" ]; then
             echo "Error: $RESPONSE"
             exit 1
           fi
 
+          echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
           echo "state=$STATE" >> "$GITHUB_OUTPUT"
-          echo "Session created: $SESSION_ID"
+          echo "Session created: $SESSION_NAME"
 
       - name: Poll for completion
+        if: steps.build.outputs.skip != 'true'
         id: poll
         shell: bash
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          SESSION_NAME: ${{ steps.create.outputs.session_name }}
+          SESSION_ID: ${{ steps.create.outputs.session_id }}
         run: |
-          SESSION_ID="${{ steps.create.outputs.session_id }}"
-          MAX_ATTEMPTS=40
+          SESSION_RESOURCE="${SESSION_NAME:-sessions/${SESSION_ID}}"
+          MAX_ATTEMPTS=60
 
           for i in $(seq 1 $MAX_ATTEMPTS); do
             sleep 15
 
-            RESPONSE=$(curl -s "https://jules.googleapis.com/v1alpha/${SESSION_ID}?view=FULL" \
+            RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
+              "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}?view=FULL" \
               -H "X-Goog-Api-Key: ${JULES_API_KEY}")
 
             STATE=$(echo "$RESPONSE" | jq -r '.state // "UNKNOWN"')
 
             if [ "$STATE" = "COMPLETED" ] || [ "$STATE" = "FAILED" ]; then
-              echo "Session finished ($STATE)"
               echo "session_state=$STATE" >> "$GITHUB_OUTPUT"
 
-              # Fetch last agent message
-              ACTS=$(curl -s "https://jules.googleapis.com/v1alpha/${SESSION_ID}/activities?pageSize=10" \
+              ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
+                "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
                 -H "X-Goog-Api-Key: ${JULES_API_KEY}")
 
-              echo "$ACTS" | jq -r '[.activities[] | select(.type == "agentMessaged")][-1].message // "No message"' > /tmp/jules-walkthrough-output.txt
+              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Walkthrough unavailable"' > /tmp/jules-walkthrough-output.txt
+              echo "Session finished ($STATE)"
               exit 0
             fi
 
             echo "Attempt $i/$MAX_ATTEMPTS — state: $STATE"
           done
 
-          echo "Timed out."
           echo "session_state=TIMEOUT" >> "$GITHUB_OUTPUT"
           echo "Walkthrough timed out." > /tmp/jules-walkthrough-output.txt
 
       - name: Post walkthrough comment
+        if: steps.build.outputs.skip != 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -187,15 +204,16 @@ jobs:
 
             const body = [
               `<!-- jules-walkthrough -->`,
-              `## 🤖 PR Walkthrough`,
+              `## PR Walkthrough`,
               ``,
               message,
             ].join('\n');
 
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
+              per_page: 100,
             });
 
             const existing = comments.find(c => c.body?.includes('<!-- jules-walkthrough -->'));
@@ -218,7 +236,13 @@ jobs:
               core.info(`Posted new walkthrough comment`);
             }
 
+      - name: Skip (fork)
+        if: steps.build.outputs.skip == 'true'
+        shell: bash
+        run: echo "Skipped — fork PR (no secret access)"
+
       - name: Remove jules-walkthrough label
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
@@ -227,4 +251,4 @@ jobs:
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
               name: 'jules-walkthrough',
-            });
+            }).catch(() => core.warning('Label already removed'));

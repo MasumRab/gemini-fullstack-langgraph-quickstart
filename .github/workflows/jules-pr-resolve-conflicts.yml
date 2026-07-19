@@ -24,20 +24,23 @@ jobs:
 
       - name: Fetch base branch
         shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          BASE_REF="${{ github.event.pull_request.base.ref }}"
           git fetch origin "$BASE_REF"
 
       - name: Check for merge conflicts
         id: conflict-check
         shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          BASE_REF="${{ github.event.pull_request.base.ref }}"
-          if git merge-tree HEAD "origin/$BASE_REF" 2>/dev/null | grep -q "^@@"; then
-            echo "has_conflicts=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
-          fi
+          git merge-tree --write-tree HEAD "origin/$BASE_REF"
+          case $? in
+            0) echo "has_conflicts=false" >> "$GITHUB_OUTPUT" ;;
+            1) echo "has_conflicts=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "has_conflicts=error" >> "$GITHUB_OUTPUT"; exit 1 ;;
+          esac
 
       - name: No conflicts — notify
         if: steps.conflict-check.outputs.has_conflicts == 'false'
@@ -132,19 +135,20 @@ jobs:
         if: steps.conflict-check.outputs.has_conflicts == 'true'
         id: recheck
         shell: bash
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          HEAD_REF="${{ github.event.pull_request.head.ref }}"
-          BASE_REF="${{ github.event.pull_request.base.ref }}"
-
           git fetch origin "$HEAD_REF"
           git reset --hard "origin/$HEAD_REF"
           git fetch origin "$BASE_REF"
 
-          if git merge-tree HEAD "origin/$BASE_REF" 2>/dev/null | grep -q "^@@"; then
-            echo "has_conflicts=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
-          fi
+          git merge-tree --write-tree HEAD "origin/$BASE_REF"
+          case $? in
+            0) echo "has_conflicts=false" >> "$GITHUB_OUTPUT" ;;
+            1) echo "has_conflicts=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "has_conflicts=error" >> "$GITHUB_OUTPUT"; exit 1 ;;
+          esac
 
       - name: Conflicts resolved — no session needed
         if: steps.recheck.outputs.has_conflicts == 'false'
@@ -267,18 +271,20 @@ jobs:
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
-          RESPONSE=$(curl -s -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+          RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
             -d @/tmp/jules-resolve-payload.json)
 
+          SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
-          if [ -z "$SESSION_ID" ]; then
+          if [ -z "$SESSION_NAME" ] && [ -z "$SESSION_ID" ]; then
             echo "Error: $RESPONSE"
             exit 1
           fi
+          echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
-          echo "Session created: $SESSION_ID"
+          echo "Session created: ${SESSION_NAME:-sessions/${SESSION_ID}}"
 
       - name: Update resolution notice with session info
         if: steps.recheck.outputs.has_conflicts == 'true'

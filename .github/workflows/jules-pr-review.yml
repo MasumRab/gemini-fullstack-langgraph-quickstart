@@ -106,12 +106,14 @@ jobs:
               .map(c => `- ${c.path}:${c.line} — ${c.body.slice(0, 300)}`)
               .join('\n');
 
-            const prompt = [
+             const prompt = [
               `## Code Review Request`,
               ``,
               `Repository: ${context.repo.owner}/${context.repo.repo}`,
               `Title: ${pr.title}`,
               `Target branch: ${baseRef}`,
+              `PR head branch: ${pr.head.ref}`,
+              `PR head SHA: ${headSha}`,
               `Files changed: ${files.length} (${files.reduce((s, f) => s + f.additions + f.deletions, 0)} +/-)`,
               ``,
               `## Changed files (names only — no content)`,
@@ -122,7 +124,7 @@ jobs:
               `## Your task`,
               `Review the code changes using the file-list-first approach:`,
               `1. Review the file list above — identify relevant files`,
-              `2. For each relevant file, run: git diff ${baseRef} -- <filepath>`,
+              `2. For each relevant file, run: git diff origin/${baseRef}...HEAD -- <filepath>`,
               `3. Read existing PR/review comments above — build on prior context`,
               `4. Examine logic, security, edge cases, and consistency`,
               ``,
@@ -153,9 +155,8 @@ jobs:
               prompt,
               sourceContext: {
                 source: `sources/github/${context.repo.owner}/${context.repo.repo}`,
-                githubRepoContext: { startingBranch: baseRef },
+                githubRepoContext: { startingBranch: pr.head.ref },
               },
-              automationMode: 'AUTO_CREATE_PR',
             };
 
             const fs = require('fs');
@@ -175,21 +176,23 @@ jobs:
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
-          RESPONSE=$(curl -s -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+          RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
             -d @/tmp/jules-review-payload.json)
 
+          SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
           STATE=$(echo "$RESPONSE" | jq -r '.state // empty')
 
-          if [ -z "$SESSION_ID" ]; then
+          if [ -z "$SESSION_NAME" ] && [ -z "$SESSION_ID" ]; then
             echo "Error: $RESPONSE"
             exit 1
           fi
 
+          echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
-          echo "Session created: $SESSION_ID (state: $STATE)"
+          echo "Session created: $SESSION_NAME (state: $STATE)"
 
       - name: Poll for completion
         if: steps.prepare.outputs.skip != 'true'
@@ -197,21 +200,25 @@ jobs:
         shell: bash
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          SESSION_NAME: ${{ steps.create.outputs.session_name }}
+          SESSION_ID: ${{ steps.create.outputs.session_id }}
         run: |
-          SESSION_ID="${{ steps.create.outputs.session_id }}"
+          SESSION_RESOURCE="${SESSION_NAME:-sessions/${SESSION_ID}}"
           MAX_ATTEMPTS=60
 
           for i in $(seq 1 $MAX_ATTEMPTS); do
             sleep 15
-            RESPONSE=$(curl -s "https://jules.googleapis.com/v1alpha/${SESSION_ID}?view=FULL" \
+            RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
+              "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}?view=FULL" \
               -H "X-Goog-Api-Key: ${JULES_API_KEY}")
             STATE=$(echo "$RESPONSE" | jq -r '.state // "UNKNOWN"')
 
             if [ "$STATE" = "COMPLETED" ] || [ "$STATE" = "FAILED" ]; then
               echo "session_state=$STATE" >> "$GITHUB_OUTPUT"
-              ACTS=$(curl -s "https://jules.googleapis.com/v1alpha/${SESSION_ID}/activities?pageSize=10" \
+              ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
+                "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
                 -H "X-Goog-Api-Key: ${JULES_API_KEY}")
-              echo "$ACTS" | jq -r '[.activities[] | select(.type == "agentMessaged")][-1].message // "Review unavailable"' > /tmp/jules-review-output.txt
+              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Review unavailable"' > /tmp/jules-review-output.txt
               echo "Session finished ($STATE)"
               exit 0
             fi
@@ -236,18 +243,24 @@ jobs:
             const verdictMatch = reviewText.match(/VERDICT:\s*(approve|comment|block)/i);
             const verdict = verdictMatch ? verdictMatch[1].toLowerCase() : null;
 
-            // Determine commit status
-            let statusState = 'success';
-            let statusDesc = 'Review complete';
-            if (sessionState === 'FAILED') {
+            // Determine commit status — fail closed
+            let statusState = 'failure';
+            let statusDesc = 'Review failed';
+            if (sessionState === 'COMPLETED' && verdict === 'approve') {
+              statusState = 'success';
+              statusDesc = 'Approved';
+            } else if (sessionState === 'COMPLETED' && verdict === 'comment') {
+              statusState = 'success';
+              statusDesc = 'Comments provided';
+            } else if (sessionState === 'COMPLETED' && verdict === 'block') {
+              statusState = 'failure';
+              statusDesc = 'Blocking issues found';
+            } else if (sessionState === 'FAILED') {
               statusState = 'failure';
               statusDesc = 'Jules session failed';
             } else if (sessionState === 'TIMEOUT') {
               statusState = 'failure';
               statusDesc = 'Review timed out';
-            } else if (verdict === 'block') {
-              statusState = 'failure';
-              statusDesc = 'Blocking issues found';
             }
 
             // Set jules/review commit status
