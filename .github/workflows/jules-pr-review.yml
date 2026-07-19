@@ -183,11 +183,16 @@ jobs:
               ``,
               `<!-- verdict: approve | comment | block -->`,
               ``,
-              `<!-- meta-prompt implementation="batch" -->`,
+              '<details>',
+              '<summary>🤖 Prompt for AI Agents — implement all changes</summary>',
+              ``,
               `Describe what this entire review addressed (e.g., "Found 3 security issues`,
               `in auth module and 2 performance issues in data pipeline.")`,
-              `To implement all changes: apply the jules-fix label to create a PR with all fixes.`,
-              `<!-- /meta-prompt -->`,
+              ``,
+              `To implement all changes: apply the jules-fix label to this PR for an automated fix PR.`,
+              `Or copy the suggestion blocks above and apply them individually.`,
+              ``,
+              '</details>',
             ].join('\n');
 
             const payload = {
@@ -316,21 +321,51 @@ jobs:
               core.warning(`Failed to set commit status: ${e.message}`);
             }
 
-            // Post PR review as a pull request review (not issue comment)
+            // Parse per-line findings from Jules output
+            const findingRegex = /<!--\s*FINDING\s+severity="([^"]+)"\s+file="([^"]+)"\s+line="?(\d+)"?(?:\s+reason="([^"]*)")?\s*-->/gi;
+            const comments = [];
+            let findingMatch;
+            const seen = new Set();
+            while ((findingMatch = findingRegex.exec(reviewText)) !== null) {
+              const [, severity, file, line, reason] = findingMatch;
+              const key = `${file}:${line}`;
+              if (seen.has(key)) continue;
+              seen.add(key);
+
+              // Extract the finding body between the heading and the FINDING comment
+              const heading = `### ${severity === 'critical' ? '🔴' : severity === 'high' ? '🟠' : severity === 'medium' ? '🟡' : '🟢'} ${severity.charAt(0).toUpperCase() + severity.slice(1)} - ${file}:${line}`;
+              const startIdx = reviewText.indexOf(heading);
+              const endIdx = reviewText.indexOf('<!-- FINDING', startIdx + 1);
+              const findingBody = startIdx !== -1
+                ? reviewText.slice(startIdx, endIdx !== -1 ? endIdx : undefined).trim()
+                : '';
+
+              comments.push({
+                path: file,
+                line: parseInt(line),
+                body: findingBody || `${heading}\n\nSee review summary for details.`,
+              });
+            }
+
+            // Post PR review with per-line comments if any, plus overall body
             const body = `<!-- jules-pr-reviewer -->\n\n${reviewText}`;
 
             try {
-              await github.rest.pulls.createReview({
+              const reviewParams = {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: prNumber,
                 commit_id: headSha,
                 event: 'COMMENT',
                 body,
-              });
-              core.info('Review posted as PR review');
+              };
+              if (comments.length > 0) {
+                reviewParams.comments = comments;
+              }
+              await github.rest.pulls.createReview(reviewParams);
+              core.info(`Review posted with ${comments.length} per-line comments`);
             } catch (e) {
-              core.warning(`PR review failed, falling back to issue comment: ${e.message}`);
+              core.warning(`PR review failed, falling back to batch comment: ${e.message}`);
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
