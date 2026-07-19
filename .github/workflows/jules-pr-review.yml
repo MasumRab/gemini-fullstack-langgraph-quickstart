@@ -118,6 +118,20 @@ jobs:
               } catch (e) { /* file is optional */ }
             }
 
+            // Check for existing walkthrough/summary from any tool
+            const walkthroughMarkers = [
+              '<!-- jules-walkthrough -->',
+              '<!-- walkthrough_start -->',
+              '<!-- This is an auto-generated comment: summarize by',
+              'sourcery-ai',
+              '## Review Guide',
+            ];
+            const hasWalkthrough = issueComments.some(c =>
+              walkthroughMarkers.some(m => c.body?.includes(m))
+            ) || reviewComments.some(c =>
+              walkthroughMarkers.some(m => c.body?.includes(m))
+            );
+
             // Linked issue analysis
             let linkedIssue = '';
             const issueMatch = pr.body?.match(/(?:Fixes|Closes|Resolves|Fix|Close|Resolve)\s+#(\d+)/i);
@@ -162,6 +176,21 @@ jobs:
               `   - JavaScript: \`eslint .\` (eslint is pre-installed)`,
               `   - Include any security findings classified by severity`,
               `7. Examine logic, edge cases, and consistency`,
+              ...(hasWalkthrough ? [] : [
+                ``,
+                `## Bonus: PR Walkthrough`,
+                `No walkthrough exists for this PR. After completing the review above,`,
+                `add a walkthrough section after the REVIEW block. Include:`,
+                `1. **Narrative summary** — what changed and why (2-3 paragraphs)`,
+                `2. **Key architectural decisions** — why this approach was chosen`,
+                `3. **Diagrams** — \`\`\`mermaid blocks where applicable`,
+                `4. **Thematic groupings** — group changed files by area`,
+                `Separate the walkthrough from the review with:`,
+                `<!-- walkthrough_start -->`,
+                `## Walkthrough`,
+                `(walkthrough content here)`,
+                `<!-- walkthrough_end -->`,
+              ]),
               ``,
               `## Output format`,
               `Produce a review with these sections. Use HTML comments`,
@@ -309,8 +338,8 @@ jobs:
             const headSha = '${{ steps.prepare.outputs.head_sha }}';
             const sessionState = '${{ steps.poll.outputs.session_state }}';
 
-            // Parse verdict from structured output
-            const verdictMatch = reviewText.match(/\[VERDICT\]:\s*(approve|comment|block)|<!--\s*verdict:\s*(approve|comment|block)\s*-->/i);
+            // Parse verdict from structured output (review portion only)
+            const verdictMatch = mainReview.match(/\[VERDICT\]:\s*(approve|comment|block)|<!--\s*verdict:\s*(approve|comment|block)\s*-->/i);
             const verdict = verdictMatch ? (verdictMatch[1] || verdictMatch[2]).toLowerCase() : null;
 
             // Determine commit status — fail closed
@@ -347,23 +376,36 @@ jobs:
               core.warning(`Failed to set commit status: ${e.message}`);
             }
 
+            // Split walkthrough from review if present
+            const wtStart = '<!-- walkthrough_start -->';
+            const wtEnd = '<!-- walkthrough_end -->';
+            const reviewTextParts = reviewText.split(wtStart);
+            const mainReview = reviewTextParts[0].trim();
+            let walkthroughText = '';
+            if (reviewTextParts.length > 1) {
+              const afterStart = reviewTextParts[1];
+              const endIdx = afterStart.indexOf(wtEnd);
+              walkthroughText = endIdx !== -1
+                ? afterStart.slice(0, endIdx).trim()
+                : afterStart.trim();
+            }
+
             // Parse per-line findings from Jules output
             const findingRegex = /<!--\s*FINDING\s+severity="([^"]+)"\s+file="([^"]+)"\s+line="?(\d+)"?(?:\s+reason="([^"]*)")?\s*-->/gi;
             const comments = [];
             let findingMatch;
             const seen = new Set();
-            while ((findingMatch = findingRegex.exec(reviewText)) !== null) {
+            while ((findingMatch = findingRegex.exec(mainReview)) !== null) {
               const [, severity, file, line, reason] = findingMatch;
               const key = `${file}:${line}`;
               if (seen.has(key)) continue;
               seen.add(key);
 
-              // Extract the finding body between the heading and the FINDING comment
               const heading = `### ${severity === 'critical' ? '🔴' : severity === 'high' ? '🟠' : severity === 'medium' ? '🟡' : '🟢'} ${severity.charAt(0).toUpperCase() + severity.slice(1)} - ${file}:${line}`;
-              const startIdx = reviewText.indexOf(heading);
-              const endIdx = reviewText.indexOf('<!-- FINDING', startIdx + 1);
+              const startIdx = mainReview.indexOf(heading);
+              const endIdx = mainReview.indexOf('<!-- FINDING', startIdx + 1);
               const findingBody = startIdx !== -1
-                ? reviewText.slice(startIdx, endIdx !== -1 ? endIdx : undefined).trim()
+                ? mainReview.slice(startIdx, endIdx !== -1 ? endIdx : undefined).trim()
                 : '';
 
               comments.push({
@@ -373,8 +415,8 @@ jobs:
               });
             }
 
-            // Post PR review with per-line comments if any, plus overall body
-            const body = `<!-- jules-pr-reviewer -->\n\n${reviewText}`;
+            // Post PR review (review portion only) with per-line comments
+            const body = `<!-- jules-pr-reviewer -->\n\n${mainReview}`;
 
             try {
               const reviewParams = {
@@ -398,4 +440,19 @@ jobs:
                 issue_number: prNumber,
                 body,
               });
+            }
+
+            // Post walkthrough as separate issue comment if generated
+            if (walkthroughText) {
+              try {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: `<!-- jules-walkthrough -->\n\n${walkthroughText}`,
+                });
+                core.info('Walkthrough posted as issue comment');
+              } catch (e) {
+                core.warning(`Failed to post walkthrough: ${e.message}`);
+              }
             }
