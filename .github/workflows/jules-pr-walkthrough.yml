@@ -117,6 +117,7 @@ jobs:
               ...(reviewRules ? [``, `## Repository-specific instructions`, reviewRules] : []),
               ``,
               `## Your task`,
+              `This is a read-only walkthrough. Do NOT create any pull requests or modify code.`,
               `Write a "Reviewer's Guide" walkthrough for this PR. Include:`,
               `1. **Narrative summary** — what changed and why (2-3 paragraphs)`,
               `2. **Key architectural decisions** — why this approach was chosen`,

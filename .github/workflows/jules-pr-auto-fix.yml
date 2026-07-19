@@ -104,7 +104,7 @@ jobs:
             }
 
             const prompt = [
-              `Fix the issue described in this PR:`,
+              `Fix the issue described in this PR. You will create a new PR with the fix.`,
               ...(reviewRules ? [``, `## Repository-specific instructions`, reviewRules] : []),
               ``,
               `## ${pr.title}`,
@@ -151,7 +151,7 @@ jobs:
                 source: `sources/github/${context.repo.owner}/${context.repo.repo}`,
                 githubRepoContext: { startingBranch: target },
               },
-              automationMode: 'AUTO_CREATE_PR',
+              automationMode: 'AUTO_CREATE_PR',  // creates a new PR with the fix
             };
 
             // Write payload to file for the curl step

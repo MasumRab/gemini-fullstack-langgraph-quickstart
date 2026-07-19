@@ -248,6 +248,7 @@ jobs:
               ...(reviewRules ? ['', '## Repository-specific instructions', reviewRules] : []),
               '',
               '## Your task',
+              'You will re-implement changes and create a new PR targeting ' + baseRef + '.',
               'The source branch ' + headRef + ' (SHA: ' + headSha + ') has conflicts with the current state of ' + baseRef + '.',
               '1. Checkout ' + baseRef,
               '2. Review each changed file — understand what the PR intended to change',
