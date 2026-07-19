@@ -1,14 +1,11 @@
 name: Jules PR Rebuild
 
 # Two-session workflow for messy PRs that drifted from their intended purpose.
-# Session 1: Comment-only analysis from base — identifies valuable changes vs noise,
-# recommends architectural shifts, and produces a plan for the rebuild.
-# Session 2: Reads the analysis comment, starts from PR head, bisects the diff,
-# removes noise, keeps valuable changes, and pushes cleanup to the PR branch.
-#
-# Trigger: apply label "jules-rebuild" to any PR.
-# Consumes 2 sessions if both phases run. Session 2 only runs if Session 1
-# posted a plan comment.
+# Session 1: Comment-only analysis from base — identifies valuable vs noise,
+# recommends architectural shifts, produces a broadened PR description.
+# Session 2: Starts from PR head, reads Session 1's analysis, bisects the diff,
+# removes noise, keeps valuable changes, and pushes directly to the PR branch
+# (no new PR created — preserves existing PR history and discussion).
 
 on:
   pull_request:
@@ -26,8 +23,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Analysis session — comment-only
-        id: analyze
+      - name: Build analysis payload
+        id: build
         uses: actions/github-script@v7
         with:
           script: |
@@ -36,7 +33,6 @@ jobs:
             const headRef = pr.head.ref;
             const headSha = pr.head.sha;
             const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
-
             if (isFork) { core.setOutput('skip', 'true'); return; }
 
             const { data: files } = await github.rest.pulls.listFiles({
@@ -46,9 +42,9 @@ jobs:
               path: f.filename, status: f.status,
               additions: f.additions, deletions: f.deletions,
             }));
-            const reviewRules = '';
+
             const prompt = [
-              '## PR Rebuild Analysis (read-only)',
+              '## PR Rebuild Analysis',
               '',
               'Repository: ' + context.repo.owner + '/' + context.repo.repo,
               'Title: ' + pr.title,
@@ -61,55 +57,45 @@ jobs:
               JSON.stringify(fileSummary, null, 2),
               '',
               '## Your task',
-              'This PR has drifted from its intended purpose. The diff is large and may contain',
-              'noise, violations of repo rules, or architectural drift alongside legitimate improvements.',
-              '',
-              'Start from ' + baseRef + ' and analyze each changed file:',
+              'This PR has drifted from its intended purpose. Analyze each changed file:',
               '1. Use `git diff origin/' + baseRef + '...origin/' + headRef + ' -- <filepath>`',
               '2. Classify each change as:',
               '   - VALUABLE — legitimate improvement worth preserving',
               '   - NOISE — formatting drift, unused code, experimental changes',
               '   - VIOLATION — breaks repo rules or project conventions',
-              '   - ARCHITECTURAL_SHIFT — changes the structure in a way that needs broader scope',
-              '3. Group findings by file with reasoning',
+              '   - ARCHITECTURAL_SHIFT — changes structure in a way that needs broader scope',
               '',
-              'This is a read-only analysis session. Do NOT create any pull requests or modify code.',
+              'This is a read-only analysis session. Do NOT create any pull requests.',
               '',
               '## Output format',
-              '<PLAN>',
               '## Summary',
-              'Overall assessment: how much of this PR is valuable vs noise.',
               '',
-              '## Valuable changes to preserve',
-              '- file:line — what to keep and why',
+              '## Changes to preserve',
+              '- file:line — why valuable',
               '',
-              '## Noise to discard',
-              '- file:line — what to remove and why',
+              '## Changes to discard',
+              '- file:line — why noise/violation',
               '',
-              '## Concerns / violations',
-              '- file:line — description of the issue',
+              '## Architectural concerns',
               '',
-              '## Recommended approach',
-              'Describe how the rebuild session should proceed.',
+              '## Recommended approach for rebuild session',
+              'Specific instructions the rebuild session should follow.',
               '',
               '## Broadened PR description',
-              'A new PR description that accurately covers all actual changes.',
-              '</PLAN>',
+              'A new PR description that accurately reflects the actual changes.',
             ].join('\n');
 
             const fs = require('fs');
-            fs.writeFileSync('/tmp/jules-rebuild-analysis-payload.json', JSON.stringify({
+            fs.writeFileSync('/tmp/jules-rebuild-analyze-payload.json', JSON.stringify({
               prompt,
               sourceContext: {
                 source: 'sources/github/' + context.repo.owner + '/' + context.repo.repo,
                 githubRepoContext: { startingBranch: baseRef },
               },
             }));
-            core.setOutput('head_sha', headSha);
-            core.info('Analysis payload written');
 
       - name: Create analysis session
-        if: steps.analyze.outputs.skip != 'true'
+        if: steps.build.outputs.skip != 'true'
         id: create-analysis
         shell: bash
         env:
@@ -118,7 +104,7 @@ jobs:
           RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
-            -d @/tmp/jules-rebuild-analysis-payload.json)
+            -d @/tmp/jules-rebuild-analyze-payload.json)
           SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
           if [ -z "$SESSION_NAME" ] && [ -z "$SESSION_ID" ]; then echo "Error: $RESPONSE"; exit 1; fi
@@ -126,7 +112,7 @@ jobs:
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
 
       - name: Poll analysis session
-        if: steps.analyze.outputs.skip != 'true'
+        if: steps.build.outputs.skip != 'true'
         id: poll-analysis
         shell: bash
         env:
@@ -146,29 +132,34 @@ jobs:
               ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
                 "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
                 -H "X-Goog-Api-Key: ${JULES_API_KEY}")
-              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Analysis unavailable"' > /tmp/jules-rebuild-plan.txt
+              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Analysis unavailable"' > /tmp/jules-rebuild-analysis.txt
               exit 0
             fi
           done
           echo "session_state=TIMEOUT" >> "$GITHUB_OUTPUT"
-          echo "Analysis timed out." > /tmp/jules-rebuild-plan.txt
+          echo "Analysis timed out." > /tmp/jules-rebuild-analysis.txt
 
-      - name: Post analysis plan as comment
-        if: steps.analyze.outputs.skip != 'true'
+      - name: Post analysis comment
+        if: steps.build.outputs.skip != 'true'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const plan = fs.readFileSync('/tmp/jules-rebuild-plan.txt', 'utf8');
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+            const analysis = fs.readFileSync('/tmp/jules-rebuild-analysis.txt', 'utf8');
+            const body = '<!-- jules-rebuild -->\n\n## 🔄 PR Rebuild Analysis\n\n' + analysis;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
-              body: '<!-- jules-rebuild-analysis -->\n\n' + plan,
             });
+            const existing = comments.find(c => c.body?.includes('<!-- jules-rebuild -->'));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.payload.pull_request.number, body });
+            }
 
       - name: Skip (fork)
-        if: steps.analyze.outputs.skip == 'true'
+        if: steps.build.outputs.skip == 'true'
         shell: bash
         run: echo "Skipped — fork PR"
 
@@ -203,55 +194,51 @@ jobs:
               additions: f.additions, deletions: f.deletions,
             }));
 
-            // Fetch the analysis plan comment posted by the analysis job
+            // Fetch the analysis plan
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner, repo: context.repo.repo,
               issue_number: pr.number,
             });
-            const analysisComment = comments.find(c => c.body?.includes('<!-- jules-rebuild-analysis -->'));
-            const plan = analysisComment ? analysisComment.body.replace('<!-- jules-rebuild-analysis -->\n\n', '') : '';
+            const analysisComment = comments.find(c => c.body?.includes('<!-- jules-rebuild -->'));
+            const analysis = analysisComment ? analysisComment.body.replace('<!-- jules-rebuild -->\n\n## 🔄 PR Rebuild Analysis\n\n', '') : '';
+            const ghToken = process.env.GITHUB_TOKEN;
 
             const prompt = [
-              '## PR Rebuild',
+              '## PR Rebuild — Clean In Place',
               '',
               'Repository: ' + context.repo.owner + '/' + context.repo.repo,
               'Title: ' + pr.title,
               'Base branch: ' + baseRef,
               'PR head branch: ' + headRef,
               'PR head SHA: ' + headSha,
-              'Files changed: ' + files.length + ' (' + files.reduce((s, f) => s + f.additions + f.deletions, 0) + ' +/-)',
               '',
-              '## Changed files',
-              JSON.stringify(fileSummary, null, 2),
-              '',
-              '## Analysis plan (from prior session)',
-              plan || '(No prior analysis found — proceed with caution)',
+              '## Analysis findings (from prior session)',
+              analysis || '(No prior analysis — proceed with caution)',
               '',
               '## Your task',
-              'This is the rebuild phase. The analysis above identifies what to keep vs discard.',
-              'Your job is to bisect through the PR head branch and clean it up:',
+              'This is the rebuild phase. Your job is to clean up the PR head branch in-place:',
               '1. Start from HEAD (' + headRef + ')',
-              '2. For each file identified as VALUABLE in the analysis: keep it, verify it works',
-              '3. For NOISE or VIOLATION files: revert or remove those changes',
-              '4. For ARCHITECTURAL_SHIFT files: adjust the implementation to be compatible',
-              '5. Commit the cleaned result with a message that references this PR',
-              '6. Push to origin/' + headRef + '',
+              '2. For VALUABLE changes: verify they work and keep them',
+              '3. For NOISE or VIOLATION changes: revert or remove them',
+              '4. For ARCHITECTURAL_SHIFT: adjust for compatibility',
+              '5. Commit the cleaned result',
+              '6. Push directly: `git push https://x-access-token:' + (ghToken || '${GITHUB_TOKEN}') + '@github.com/' + context.repo.owner + '/' + context.repo.repo + '.git HEAD:' + headRef + '`',
               '',
               '## Constraints',
-              '- Preserve the valuable changes — do not rewrite working code',
-              '- Remove noise cleanly — no partial reverts that leave broken state',
-              '- If the PR description no longer matches the changes, update it',
-              '- Do NOT change model seeds, architectures, or data split ratios',
+              '- Do NOT create a new PR — push directly to ' + headRef + '',
+              '- Preserve VALUABLE changes — do not rewrite working code',
+              '- Remove NOISE cleanly — no partial reverts that break state',
+              '- Update the PR title/description if it no longer matches the changes',
+              '- If assessment was wrong, keep the valuable code and note the correction',
             ].join('\n');
 
             const fs = require('fs');
-            fs.writeFileSync('/tmp/jules-rebuild-payload.json', JSON.stringify({
+            fs.writeFileSync('/tmp/jules-rebuild-action-payload.json', JSON.stringify({
               prompt,
               sourceContext: {
                 source: 'sources/github/' + context.repo.owner + '/' + context.repo.repo,
                 githubRepoContext: { startingBranch: headRef },
               },
-              automationMode: 'AUTO_CREATE_PR',
             }));
 
       - name: Create rebuild session
@@ -263,25 +250,25 @@ jobs:
           RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
-            -d @/tmp/jules-rebuild-payload.json)
+            -d @/tmp/jules-rebuild-action-payload.json)
           SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           if [ -z "$SESSION_NAME" ]; then echo "Error: $RESPONSE"; exit 1; fi
           echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"
-          echo "Session created: $SESSION_NAME"
 
       - name: Post rebuild notice
         uses: actions/github-script@v7
         with:
           script: |
             const sessionName = '${{ steps.create.outputs.session_name }}';
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
-              body: [
-                '<!-- jules-rebuild -->',
-                '🔧 **Rebuilding PR based on analysis...**',
-                'Session: `' + sessionName + '`',
-                'The rebuild session is cleaning up this PR per the analysis plan.',
-              ].join('\n'),
             });
+            const existing = comments.find(c => c.body?.includes('<!-- jules-rebuild -->'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id,
+                body: existing.body + '\n\n---\n🔧 **Rebuild session started:** `' + sessionName + '`',
+              });
+            }
