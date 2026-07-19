@@ -116,6 +116,10 @@ jobs:
               `3. For each relevant file: run git diff ${target} -- <filepath>`,
               `4. Process files one at a time`,
               `5. Only diff files actually needed for the fix`,
+              `6. After making and committing the fix locally, check for late commits:`,
+              `   run \`git fetch origin ${target} && git log --oneline HEAD..origin/${target}\``,
+              `   If new commits arrived: \`git rebase origin/${target}\`, resolve new conflicts,`,
+              `   verify the fix still works, and amend if needed.`,
             ].join('\n');
 
             const payload = {

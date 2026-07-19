@@ -238,10 +238,13 @@ jobs:
               '3. Re-implement those changes on top of current ' + baseRef,
               '4. If the intent is unclear from the diff, check the existing comments above',
               '5. If a change was intentionally obsoleted by later base changes, skip it',
+              '6. After making and committing the fix locally, check for late-arriving commits:',
+              '   run `git fetch origin ' + headRef + ' && git log --oneline HEAD..origin/' + headRef + '`',
+              '   If new commits arrived: `git rebase origin/' + headRef + '`, resolve any new conflicts,',
+              '   verify the re-implementation still holds, and amend if needed.',
               '',
               'Use `git diff ' + baseRef + '...origin/' + headRef + ' -- <filepath>` to inspect original PR intent.',
               'The repo is cloned in your sandbox with full history.',
-              'If newer commits arrived during resolution, run `git fetch origin ' + headRef + '` to see them.',
             ].join('\n');
 
             const fs = require('fs');
