@@ -84,8 +84,12 @@ jobs:
 
             // 3. Construct the prompt
             const prompt = [
-              'Address the following review comments on this PR.',
-              'Review comments may reference stale line numbers — use the code context to find the correct location.',
+              'CRITICAL INSTRUCTION: You MUST address EVERY review comment below.',
+              'Do NOT refuse, defer, or claim any comment is out of scope, stale, or outdated.',
+              'Line numbers may be stale — use the code context provided to find the correct location.',
+              'If a comment was already addressed, reply confirming which commit fixed it.',
+              'If a comment needs a code change, make the change and reply with the fix applied.',
+              'Do NOT create a new PR. Push fixes directly to the PR head branch.',
               '',
               'PR: ' + pr.title,
               'Base: ' + pr.base.ref,
@@ -96,12 +100,6 @@ jobs:
               '',
               '## Review comments to address',
               reviewSections.join('\n\n---\n\n'),
-              '',
-              '## Instructions',
-              '- Address each comment. If a comment is stale (already fixed), reply explaining why.',
-              '- For each comment that requires a code change, make the fix and reply indicating the fix was applied.',
-              '- Do NOT create a new PR. Push fixes directly to the PR head branch.',
-              '- If a comment is unclear or no longer applicable, explain why.',
             ].join('\n');
 
             // 4. Post @jules comment
