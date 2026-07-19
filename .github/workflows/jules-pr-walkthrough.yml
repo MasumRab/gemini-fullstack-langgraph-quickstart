@@ -97,6 +97,7 @@ jobs:
               .join('\n');
 
             // Load repo-specific instructions if present
+            const fs = require('fs');
             let reviewRules = '';
             for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
               try {
@@ -144,7 +145,6 @@ jobs:
               `Output the entire walkthrough as your final message.`,
             ].join('\n');
 
-            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-walkthrough-payload.json', JSON.stringify({
               prompt,
               sourceContext: {
@@ -210,7 +210,7 @@ jobs:
                 "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
                 -H "X-Goog-Api-Key: ${JULES_API_KEY}")
 
-              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Walkthrough unavailable"' > /tmp/jules-walkthrough-output.txt
+              echo "$ACTS" | jq -r '[(.activities // [])[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Walkthrough unavailable"' > /tmp/jules-walkthrough-output.txt
               echo "Session finished ($STATE)"
               exit 0
             fi
