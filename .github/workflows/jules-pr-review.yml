@@ -142,9 +142,9 @@ jobs:
               `4. Examine logic, security, edge cases, and consistency`,
               ``,
               `## Output format`,
-              `Produce a review with these sections. Each finding must be wrapped in XML`,
-              `tags for machine parsing. The overall review must end with a REVIEW block`,
-              `containing a meta-prompt for batch implementation.`,
+              `Produce a review with these sections. Use HTML comments`,
+              `(<!-- ... -->) for structured metadata (agents parse these).`,
+              `Use markdown for human-readable content.`,
               ``,
               `## Summary`,
               `(1-2 paragraphs — what this PR does and whether it's sound)`,
@@ -153,9 +153,7 @@ jobs:
               `- What's done well (point form)`,
               ``,
               `## Findings`,
-              `Wrap each finding in a FINDING block. Syntax:`,
-              ``,
-              '<FINDING severity="critical|high|medium|low" file="path/to/file.py" line="42">',
+              `For each issue, use this format:`,
               ``,
               `### 🔴 Critical - path/file.ext:line — description`,
               `(1-2 sentences explaining the issue. If a code change is suggested, add):`,
@@ -166,32 +164,30 @@ jobs:
               '````',
               ``,
               '<details>',
-              '<summary><ai-prompt reason="security|correctness|performance|style">🤖 AI reasoning</ai-prompt></summary>',
+              '<summary>🤖 AI reasoning</summary>',
               ``,
-              `Brief explanation of the logic/reasoning that produced this finding.`,
-              `This helps agents understand the thought process behind the suggestion.`,
+              `Brief explanation of the logic that produced this finding.`,
               ``,
               '</details>',
-              `</FINDING>`,
               ``,
-              `Repeat for each severity level — always wrap each in FINDING tags:`,
+              `<!-- FINDING severity="critical" file="src/auth.py" line="42" reason="security" -->`,
+              ``,
+              `Repeat for each severity level:`,
               `### 🔴 Critical — must fix before merge`,
               `### 🟠 High — should fix before merge`,
               `### 🟡 Medium — deviation from best practices, consider fixing`,
               `### 🟢 Low — minor, stylistic, typos, author's discretion`,
               ``,
               `## Verdict`,
-              `<VERDICT>approve | comment | block</VERDICT>`,
+              `[VERDICT]: approve`,
               ``,
-              `<REVIEW>`,
-
-              `<meta-prompt implementation="batch">`,
+              `<!-- verdict: approve | comment | block -->`,
+              ``,
+              `<!-- meta-prompt implementation="batch" -->`,
               `Describe what this entire review addressed (e.g., "Found 3 security issues`,
               `in auth module and 2 performance issues in data pipeline.")`,
-              `This meta-prompt is consumed by agents to implement all fixes in batch.`,
               `To implement all changes: apply the jules-fix label to create a PR with all fixes.`,
-              `</meta-prompt>`,
-              `</REVIEW>`,
+              `<!-- /meta-prompt -->`,
             ].join('\n');
 
             const payload = {
@@ -283,8 +279,8 @@ jobs:
             const sessionState = '${{ steps.poll.outputs.session_state }}';
 
             // Parse verdict from structured output
-            const verdictMatch = reviewText.match(/<VERDICT>\s*(approve|comment|block)\s*<\/VERDICT>/i);
-            const verdict = verdictMatch ? verdictMatch[1].toLowerCase() : null;
+            const verdictMatch = reviewText.match(/\[VERDICT\]:\s*(approve|comment|block)|<!--\s*verdict:\s*(approve|comment|block)\s*-->/i);
+            const verdict = verdictMatch ? (verdictMatch[1] || verdictMatch[2]).toLowerCase() : null;
 
             // Determine commit status — fail closed
             let statusState = 'failure';
