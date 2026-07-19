@@ -1,0 +1,123 @@
+name: Jules Address Review Comments
+
+# Auto-triggered on new review comments. Checks if the PR has an existing
+# Jules session (author is jules or head ref starts with jules-), then
+# posts @jules on each unresolved review thread to address them.
+# No new Jules session is created — @jules uses the existing one.
+
+on:
+  pull_request_review_comment:
+    types: [created]
+
+concurrency:
+  group: jules-address-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  address:
+    if: github.event.comment.user.login != 'jules' && (startsWith(github.event.pull_request.head.ref, 'jules-') || github.event.pull_request.user.login == 'jules')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+
+      - name: Build prompt from review context
+        id: build
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // For pull_request_review_comment, the PR info is in issue or pull_request
+            const pr = context.payload.pull_request || context.payload.issue;
+            const prNumber = pr.number;
+
+            // 1. Fetch unresolved review comments with code context
+            const { data: reviewComments } = await github.rest.pulls.listReviewComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              pull_number: prNumber, per_page: 100, direction: 'desc',
+            });
+            const pendingComments = reviewComments.filter(rc => rc.state === 'PENDING');
+
+            // Get diff context for each pending comment
+            const reviewSections = [];
+            for (const rc of pendingComments) {
+              const diffContext = rc.diff_hunk ? '```\n' + rc.diff_hunk.slice(0, 500) + '\n```' : '(no diff context)';
+              const resolved = rc.state === 'PENDING' ? 'UNRESOLVED' : 'RESOLVED';
+              reviewSections.push([
+                '### Review by ' + rc.user.login + ' on ' + rc.path + ':' + rc.original_line,
+                'Status: ' + resolved,
+                'Comment: ' + rc.body.slice(0, 1000),
+                'Code context:',
+                diffContext,
+              ].join('\n'));
+            }
+
+            if (reviewSections.length === 0) {
+              core.info('No pending review comments found');
+              core.setOutput('no_comments', 'true');
+              return;
+            }
+
+            // 2. Fetch PR description, issue comments, walkthroughs
+            const { data: issueComments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: prNumber, per_page: 100, direction: 'desc',
+            });
+            const walkthrough = issueComments.find(c =>
+              c.body?.includes('<!-- walkthrough_start -->') ||
+              c.body?.includes('jules-walkthrough') ||
+              c.body?.includes('Sourcery') ||
+              c.body?.includes('coderabbit')
+            );
+            const priorDiscussion = issueComments
+              .filter(c => !c.body?.includes('jules-address') && !c.body?.includes('jules-pr-reviewer'))
+              .slice(0, 5)
+              .map(c => '- ' + c.user.login + ': ' + c.body?.slice(0, 300))
+              .join('\n');
+
+            // 3. Post @jules on each unresolved review thread
+            let posted = 0;
+            for (const rc of pendingComments) {
+              const threadPrompt = [
+                'CRITICAL INSTRUCTION: You MUST address this review comment.',
+                'Do NOT refuse, defer, or claim it is out of scope, stale, or outdated.',
+                'Line numbers may be stale — use the code context provided.',
+                'If already addressed, reply confirming which commit fixed it.',
+                'If a code change is needed, make the change and reply indicating the fix.',
+                '',
+                'PR: ' + pr.title,
+                'Base: ' + pr.base.ref,
+                'Head: ' + pr.head.ref,
+                '',
+                '## Original comment',
+                'By ' + rc.user.login + ' on ' + rc.path + ':' + rc.original_line,
+                rc.body.slice(0, 1000),
+                '',
+                '## Code context',
+                '```',
+                (rc.diff_hunk || '').slice(0, 500),
+                '```',
+              ].join('\n');
+
+              const body = '@jules\n\n' + threadPrompt;
+              // Reply directly on the review thread
+              try {
+                await github.rest.pulls.createReviewComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  body: '@jules ' + threadPrompt,
+                  in_reply_to: rc.id,
+                });
+                posted++;
+              } catch (e) {
+                core.warning('Failed to reply on comment ' + rc.id + ': ' + e.message);
+              }
+            }
+
+            core.info('Tagged @jules on ' + posted + ' of ' + pendingComments.length + ' unresolved review threads');
+
+      - name: No comments to address
+        if: steps.build.outputs.no_comments == 'true'
+        shell: bash
+        run: echo "No pending review comments — label removed, no action needed"

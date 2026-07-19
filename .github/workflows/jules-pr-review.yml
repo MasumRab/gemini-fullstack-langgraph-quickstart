@@ -193,60 +193,73 @@ jobs:
               ]),
               ``,
               `## Output format`,
-              `Produce a review with these sections. Use HTML comments`,
-              `(<!-- ... -->) for structured metadata (agents parse these).`,
-              `Use markdown for human-readable content.`,
+              `Produce the review EXACTLY in this structure. Keep every element shown below`,
+              `including HTML comments and XML-like tags — they are required for parsing.`,
+              `Replace placeholders (e.g. <description>) with your analysis.`,
               ``,
-              `## Summary`,
-              `(1-2 paragraphs — what this PR does and whether it's sound)`,
-              ``,
-              `## Strengths`,
-              `- What's done well (point form)`,
-              ``,
-              `## Findings`,
-              `For each issue, use this format:`,
-              ``,
-              `### 🔴 Critical - path/file.ext:line — description`,
-              `(1-2 sentences explaining the issue. If a code change is suggested, add):`,
+              '## Summary',
+              '<1-2 paragraphs — what this PR does and whether it is sound>',
+              '',
+              '## Strengths',
+              '- <point form: what is done well>',
+              '',
+              '## Findings',
+              'If no issues found, write: "No significant findings."',
+              '',
+              '### 🔴 Critical - <path/file.ext:line> — <description>',
+              '<MUST fix before merge — production failure, security breach, data corruption. If suggestion:>',
               '````',
-              "```suggestion",
-              "<replacement code>",
+              '```suggestion',
+              '<replacement code>',
               '```',
               '````',
-              ``,
               '<details>',
               '<summary>🤖 AI reasoning</summary>',
-              ``,
-              `Brief explanation of the logic that produced this finding.`,
-              ``,
+              '<brief explanation of the logic that produced this finding>',
               '</details>',
-              ``,
-              `<!-- FINDING severity="critical" file="src/auth.py" line="42" reason="security" -->`,
-              ``,
-              `Repeat for each severity level:`,
-              `### 🔴 Critical — must fix before merge`,
-              `### 🟠 High — should fix before merge`,
-              `### 🟡 Medium — deviation from best practices, consider fixing`,
-              `### 🟢 Low — minor, stylistic, typos, author's discretion`,
-              ``,
-              `## Verdict`,
-              `[VERDICT]: approve`,
-              ``,
-              `<!-- verdict: approve | comment | block -->`,
-              ``,
+              '<!-- FINDING severity="critical" file="src/auth.py" line="42" reason="security" -->',
+              '',
+              '### 🟠 High - <path/file.ext:line> — <description>',
+              '<should fix — significant problems, bugs, performance degradation. If suggestion:>',
+              '````',
+              '```suggestion',
+              '<code>',
+              '```',
+              '````',
+              '<details><summary>🤖 AI reasoning</summary><explanation></details>',
+              '<!-- FINDING severity="high" file="..." line="..." reason="..." -->',
+              '',
+              '### 🟡 Medium - <path/file.ext:line> — <description>',
+              '<deviation from best practices, technical debt. Consider fixing.>',
+              '<!-- FINDING severity="medium" file="..." line="..." -->',
+              '',
+              '### 🟢 Low - <path/file.ext:line> — <description>',
+              '<minor, stylistic, typos, docs. Author discretion.>',
+              '<!-- FINDING severity="low" file="..." line="..." -->',
+              '',
+              '## Truncation',
+              'If nearing timeout or output exceeds length limits, truncate gracefully.',
+              'Summarize remaining issues. Set verdict block if critical remain, comment if minor.',
+              'Add: <!-- meta-prompt: truncated due to limits -->',
+              '',
+              '## Verdict',
+              '[VERDICT]: approve',
+              '',
+              '<!-- verdict: approve | comment | block -->',
+              '',
               '<details>',
               '<summary>🤖 Prompt for AI Agents — implement all per-line changes</summary>',
-              ``,
-              `This PR review identified findings that need to be addressed.`,
-              `Each per-line comment above includes a specific issue with a code suggestion.`,
-              `To implement all changes:`,
-              `1. Read each per-line comment with its \`\`\`suggestion block`,
-              `2. Apply each suggestion at the specified file and line`,
-              `3. Verify no regressions are introduced`,
-              `4. Commit and push the fixes`,
-              ``,
-              `Or apply the jules-fix label to this PR for an automated fix PR.`,
-              ``,
+              '',
+              'This PR review identified findings that need to be addressed.',
+              'Each per-line comment above includes a specific issue with a code suggestion.',
+              'To implement all changes:',
+              '1. Read each per-line comment with its ```suggestion block',
+              '2. Apply each suggestion at the specified file and line',
+              '3. Verify no regressions are introduced',
+              '4. Commit and push the fixes',
+              '',
+              'Or apply the jules-fix label to this PR for an automated fix PR.',
+              '',
               '</details>',
             ].join('\n');
 
@@ -258,7 +271,6 @@ jobs:
               },
             };
 
-            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-review-payload.json', JSON.stringify(payload));
             core.setOutput('head_sha', headSha);
             core.info(`Payload written for PR #${pr.number}`);
@@ -317,7 +329,7 @@ jobs:
               ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
                 "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
                 -H "X-Goog-Api-Key: ${JULES_API_KEY}")
-              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Review unavailable"' > /tmp/jules-review-output.txt
+              echo "$ACTS" | jq -r '[(.activities // [])[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Review unavailable"' > /tmp/jules-review-output.txt
               echo "Session finished ($STATE)"
               exit 0
             fi
@@ -337,6 +349,20 @@ jobs:
             const prNumber = context.payload.pull_request.number;
             const headSha = '${{ steps.prepare.outputs.head_sha }}';
             const sessionState = '${{ steps.poll.outputs.session_state }}';
+
+            // Split walkthrough from review before parsing
+            const wtStart = '<!-- walkthrough_start -->';
+            const wtEnd = '<!-- walkthrough_end -->';
+            const reviewTextParts = reviewText.split(wtStart);
+            const mainReview = reviewTextParts[0].trim();
+            let walkthroughText = '';
+            if (reviewTextParts.length > 1) {
+              const afterStart = reviewTextParts[1];
+              const endIdx = afterStart.indexOf(wtEnd);
+              walkthroughText = endIdx !== -1
+                ? afterStart.slice(0, endIdx).trim()
+                : afterStart.trim();
+            }
 
             // Parse verdict from structured output (review portion only)
             const verdictMatch = mainReview.match(/\[VERDICT\]:\s*(approve|comment|block)|<!--\s*verdict:\s*(approve|comment|block)\s*-->/i);
@@ -374,20 +400,6 @@ jobs:
               });
             } catch (e) {
               core.warning(`Failed to set commit status: ${e.message}`);
-            }
-
-            // Split walkthrough from review if present
-            const wtStart = '<!-- walkthrough_start -->';
-            const wtEnd = '<!-- walkthrough_end -->';
-            const reviewTextParts = reviewText.split(wtStart);
-            const mainReview = reviewTextParts[0].trim();
-            let walkthroughText = '';
-            if (reviewTextParts.length > 1) {
-              const afterStart = reviewTextParts[1];
-              const endIdx = afterStart.indexOf(wtEnd);
-              walkthroughText = endIdx !== -1
-                ? afterStart.slice(0, endIdx).trim()
-                : afterStart.trim();
             }
 
             // Parse per-line findings from Jules output
