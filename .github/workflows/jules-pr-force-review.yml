@@ -1,0 +1,395 @@
+name: Jules PR Force Review
+
+# Same reviewer logic as jules-pr-review but manually triggered via label.
+# Unlike the auto-reviewer, this one does NOT skip Jules-created PRs —
+# if someone applies jules-force-review, they want a review regardless.
+
+on:
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: jules-force-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    if: github.event.label.name == 'jules-force-review'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+      statuses: write
+    steps:
+      - name: Consume label — prevent duplicate sessions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              name: 'jules-force-review',
+            }).catch(() => core.info('Label already consumed'));
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare review prompt
+        id: prepare
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const baseRef = pr.base.ref;
+            const headSha = pr.head.sha;
+            const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
+
+            if (isFork) {
+              core.setOutput('skip', 'true');
+              return;
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const fileSummary = files.map(f => ({
+              path: f.filename, status: f.status,
+              additions: f.additions, deletions: f.deletions,
+            }));
+
+            const { data: reviewComments } = await github.rest.pulls.listReviewComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 20,
+              direction: 'desc',
+            });
+            const { data: issueComments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              per_page: 20,
+              direction: 'desc',
+            });
+
+            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->', '<!-- jules-walkthrough -->'];
+            const priorFeedback = issueComments
+              .filter(c => !skipMarkers.some(m => c.body?.includes(m)))
+              .slice(0, 10)
+              .map(c => {
+                const who = c.user?.type === 'User' ? c.user.login : `[${c.user?.login}]`;
+                return `${who}: ${c.body?.slice(0, 300)}`;
+              })
+              .join('\n\n');
+
+            const priorReviews = reviewComments
+              .slice(0, 10)
+              .map(c => `- ${c.path}:${c.line} — ${c.body.slice(0, 300)}`)
+              .join('\n');
+
+            // Load repo-specific instructions if present
+            let reviewRules = '';
+            for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
+              try {
+                if (fs.existsSync(path)) {
+                  reviewRules = fs.readFileSync(path, 'utf8');
+                  break;
+                }
+              } catch (e) { /* file is optional */ }
+            }
+
+            // Linked issue analysis
+            let linkedIssue = '';
+            const issueMatch = pr.body?.match(/(?:Fixes|Closes|Resolves|Fix|Close|Resolve)\s+#(\d+)/i);
+            if (issueMatch) {
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(issueMatch[1]),
+                });
+                linkedIssue = `## Linked Issue\n\n#${issue.number}: ${issue.title}\n${issue.body?.slice(0, 1000) || ''}`;
+              } catch (e) { /* issue may be private or deleted */ }
+            }
+
+            const prompt = [
+              `## Code Review Request (Force Review)`,
+              ``,
+              `Repository: ${context.repo.owner}/${context.repo.repo}`,
+              `Title: ${pr.title}`,
+              `Target branch: ${baseRef}`,
+              `PR head branch: ${pr.head.ref}`,
+              `PR head SHA: ${headSha}`,
+              `Files changed: ${files.length} (${files.reduce((s, f) => s + f.additions + f.deletions, 0)} +/-)`,
+              ``,
+              `## Changed files (names only — no content)`,
+              JSON.stringify(fileSummary, null, 2),
+              ...(priorFeedback ? [``, `## Existing PR comments`, priorFeedback] : []),
+              ...(priorReviews ? [``, `## Existing review comments`, priorReviews] : []),
+               ...(reviewRules ? [``, `## Repository-specific instructions`, reviewRules] : []),
+               ...(linkedIssue ? [``, linkedIssue] : []),
+              ``,
+              `## Your task`,
+              `This is a read-only code review. Do NOT create any pull requests or modify code.`,
+              `Review the code changes using the file-list-first approach:`,
+              `1. Review the file list above — identify relevant files`,
+              `2. Group them by directory or thematic area (e.g., API, Database, Frontend)`,
+              `3. For each relevant file, run: git diff origin/${baseRef}...HEAD -- <filepath>`,
+              `4. Read existing PR/review comments above — build on prior context`,
+              `5. If a linked issue is provided, assess whether this PR addresses it`,
+              `6. Run security analysis using pre-installed tools:`,
+              `   - Python: \`ruff check --select ALL .\` (ruff is pre-installed)`,
+              `   - JavaScript: \`eslint .\` (eslint is pre-installed)`,
+              `   - Include any security findings classified by severity`,
+              `7. Examine logic, edge cases, and consistency`,
+              ``,
+              `## Output format`,
+              `Produce a review with these sections. Use HTML comments`,
+              `(<!-- ... -->) for structured metadata (agents parse these).`,
+              `Use markdown for human-readable content.`,
+              ``,
+              `## Summary`,
+              `(1-2 paragraphs — what this PR does and whether it's sound)`,
+              ``,
+              `## Strengths`,
+              `- What's done well (point form)`,
+              ``,
+              `## Findings`,
+              `For each issue, use this format:`,
+              ``,
+              `### 🔴 Critical - path/file.ext:line — description`,
+              `(1-2 sentences explaining the issue. If a code change is suggested, add):`,
+              '````',
+              "```suggestion",
+              "<replacement code>",
+              '```',
+              '````',
+              ``,
+              '<details>',
+              '<summary>🤖 AI reasoning</summary>',
+              ``,
+              `Brief explanation of the logic that produced this finding.`,
+              ``,
+              '</details>',
+              ``,
+              `<!-- FINDING severity="critical" file="src/auth.py" line="42" reason="security" -->`,
+              ``,
+              `Repeat for each severity level:`,
+              `### 🔴 Critical — must fix before merge`,
+              `### 🟠 High — should fix before merge`,
+              `### 🟡 Medium — deviation from best practices, consider fixing`,
+              `### 🟢 Low — minor, stylistic, typos, author's discretion`,
+              ``,
+              `## Verdict`,
+              `[VERDICT]: approve`,
+              ``,
+              `<!-- verdict: approve | comment | block -->`,
+              ``,
+              '<details>',
+              '<summary>🤖 Prompt for AI Agents — implement all per-line changes</summary>',
+              ``,
+              `This PR review identified findings that need to be addressed.`,
+              `Each per-line comment above includes a specific issue with a code suggestion.`,
+              `To implement all changes:`,
+              `1. Read each per-line comment with its \`\`\`suggestion block`,
+              `2. Apply each suggestion at the specified file and line`,
+              `3. Verify no regressions are introduced`,
+              `4. Commit and push the fixes`,
+              ``,
+              `Or apply the jules-fix label to this PR for an automated fix PR.`,
+              ``,
+              '</details>',
+            ].join('\n');
+
+            const payload = {
+              prompt,
+              sourceContext: {
+                source: `sources/github/${context.repo.owner}/${context.repo.repo}`,
+                githubRepoContext: { startingBranch: pr.head.ref },
+              },
+            };
+
+            const fs = require('fs');
+            fs.writeFileSync('/tmp/jules-force-review-payload.json', JSON.stringify(payload));
+            core.setOutput('head_sha', headSha);
+            core.info(`Force-review payload written for PR #${pr.number}`);
+
+      - name: Skip (fork)
+        if: steps.prepare.outputs.skip == 'true'
+        shell: bash
+        run: echo "Skipped — fork PR (no secret access)"
+
+      - name: Create Jules session
+        if: steps.prepare.outputs.skip != 'true'
+        id: create
+        shell: bash
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+            -H "Content-Type: application/json" \
+            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+            -d @/tmp/jules-force-review-payload.json)
+
+          SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
+          SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
+          STATE=$(echo "$RESPONSE" | jq -r '.state // empty')
+
+          if [ -z "$SESSION_NAME" ] && [ -z "$SESSION_ID" ]; then
+            echo "Error: $RESPONSE"
+            exit 1
+          fi
+
+          echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
+          echo "Session created: $SESSION_NAME (state: $STATE)"
+
+      - name: Poll for completion
+        if: steps.prepare.outputs.skip != 'true'
+        id: poll
+        shell: bash
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          SESSION_NAME: ${{ steps.create.outputs.session_name }}
+          SESSION_ID: ${{ steps.create.outputs.session_id }}
+        run: |
+          SESSION_RESOURCE="${SESSION_NAME:-sessions/${SESSION_ID}}"
+          MAX_ATTEMPTS=60
+
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            sleep 15
+            RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
+              "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}?view=FULL" \
+              -H "X-Goog-Api-Key: ${JULES_API_KEY}")
+            STATE=$(echo "$RESPONSE" | jq -r '.state // "UNKNOWN"')
+
+            if [ "$STATE" = "COMPLETED" ] || [ "$STATE" = "FAILED" ]; then
+              echo "session_state=$STATE" >> "$GITHUB_OUTPUT"
+              ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
+                "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
+                -H "X-Goog-Api-Key: ${JULES_API_KEY}")
+              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Review unavailable"' > /tmp/jules-force-review-output.txt
+              echo "Session finished ($STATE)"
+              exit 0
+            fi
+            echo "Attempt $i/$MAX_ATTEMPTS — state: $STATE"
+          done
+
+          echo "session_state=TIMEOUT" >> "$GITHUB_OUTPUT"
+          echo "Force-review timed out." > /tmp/jules-force-review-output.txt
+
+      - name: Post review and set commit status
+        if: steps.prepare.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reviewText = fs.readFileSync('/tmp/jules-force-review-output.txt', 'utf8');
+            const prNumber = context.payload.pull_request.number;
+            const headSha = '${{ steps.prepare.outputs.head_sha }}';
+            const sessionState = '${{ steps.poll.outputs.session_state }}';
+
+            const verdictMatch = reviewText.match(/\[VERDICT\]:\s*(approve|comment|block)|<!--\s*verdict:\s*(approve|comment|block)\s*-->/i);
+            const verdict = verdictMatch ? (verdictMatch[1] || verdictMatch[2]).toLowerCase() : null;
+
+            // Determine commit status — fail closed
+            let statusState = 'failure';
+            let statusDesc = 'Review failed';
+            if (sessionState === 'COMPLETED' && verdict === 'approve') {
+              statusState = 'success';
+              statusDesc = 'Approved';
+            } else if (sessionState === 'COMPLETED' && verdict === 'comment') {
+              statusState = 'success';
+              statusDesc = 'Comments provided';
+            } else if (sessionState === 'COMPLETED' && verdict === 'block') {
+              statusState = 'failure';
+              statusDesc = 'Blocking issues found';
+            } else if (sessionState === 'FAILED') {
+              statusState = 'failure';
+              statusDesc = 'Jules session failed';
+            } else if (sessionState === 'TIMEOUT') {
+              statusState = 'failure';
+              statusDesc = 'Review timed out';
+            }
+
+            try {
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: headSha,
+                state: statusState,
+                context: 'jules/review',
+                description: statusDesc,
+              });
+            } catch (e) {
+              core.warning(`Failed to set commit status: ${e.message}`);
+            }
+
+            // Parse per-line findings from Jules output
+            const findingRegex = /<!--\s*FINDING\s+severity="([^"]+)"\s+file="([^"]+)"\s+line="?(\d+)"?(?:\s+reason="([^"]*)")?\s*-->/gi;
+            const comments = [];
+            let findingMatch;
+            const seen = new Set();
+            while ((findingMatch = findingRegex.exec(reviewText)) !== null) {
+              const [, severity, file, line, reason] = findingMatch;
+              const key = `${file}:${line}`;
+              if (seen.has(key)) continue;
+              seen.add(key);
+
+              const severityEmoji = severity === 'critical' ? '🔴' : severity === 'high' ? '🟠' : severity === 'medium' ? '🟡' : '🟢';
+              const heading = `### ${severityEmoji} ${severity.charAt(0).toUpperCase() + severity.slice(1)} - ${file}:${line}`;
+              const startIdx = reviewText.indexOf(heading);
+              const endIdx = reviewText.indexOf('<!-- FINDING', startIdx + 1);
+              const findingBody = startIdx !== -1
+                ? reviewText.slice(startIdx, endIdx !== -1 ? endIdx : undefined).trim()
+                : '';
+
+              comments.push({
+                path: file,
+                line: parseInt(line),
+                body: findingBody || `${heading}\n\nSee review summary for details.`,
+              });
+            }
+
+            const body = `<!-- jules-pr-reviewer -->\n\n${reviewText}`;
+
+            try {
+              const reviewParams = {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                commit_id: headSha,
+                event: 'COMMENT',
+                body,
+              };
+              if (comments.length > 0) {
+                reviewParams.comments = comments;
+              }
+              await github.rest.pulls.createReview(reviewParams);
+              core.info(`Review posted with ${comments.length} per-line comments`);
+            } catch (e) {
+              core.warning(`PR review failed, falling back to issue comment: ${e.message}`);
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
+
+      - name: Remove jules-force-review label
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              name: 'jules-force-review',
+            }).catch(() => core.warning('Label already removed'));
