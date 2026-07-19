@@ -118,6 +118,20 @@ jobs:
               } catch (e) { /* file is optional */ }
             }
 
+            // Linked issue analysis
+            let linkedIssue = '';
+            const issueMatch = pr.body?.match(/(?:Fixes|Closes|Resolves|Fix|Close|Resolve)\s+#(\d+)/i);
+            if (issueMatch) {
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(issueMatch[1]),
+                });
+                linkedIssue = `## Linked Issue\n\n#${issue.number}: ${issue.title}\n${issue.body?.slice(0, 1000) || ''}`;
+              } catch (e) { /* issue may be private or deleted */ }
+            }
+
             const prompt = [
               `## Code Review Request`,
               ``,
@@ -133,13 +147,16 @@ jobs:
               ...(priorFeedback ? [``, `## Existing PR comments`, priorFeedback] : []),
               ...(priorReviews ? [``, `## Existing review comments`, priorReviews] : []),
               ...(reviewRules ? [``, `## Repository-specific review rules`, reviewRules] : []),
+              ...(linkedIssue ? [``, linkedIssue] : []),
               ``,
               `## Your task`,
               `Review the code changes using the file-list-first approach:`,
               `1. Review the file list above — identify relevant files`,
-              `2. For each relevant file, run: git diff origin/${baseRef}...HEAD -- <filepath>`,
-              `3. Read existing PR/review comments above — build on prior context`,
-              `4. Examine logic, security, edge cases, and consistency`,
+              `2. Group them by directory or thematic area (e.g., API, Database, Frontend)`,
+              `3. For each relevant file, run: git diff origin/${baseRef}...HEAD -- <filepath>`,
+              `4. Read existing PR/review comments above — build on prior context`,
+              `5. If a linked issue is provided, assess whether this PR addresses it`,
+              `6. Examine logic, security, edge cases, and consistency`,
               ``,
               `## Output format`,
               `Produce a review with these sections. Use HTML comments`,
