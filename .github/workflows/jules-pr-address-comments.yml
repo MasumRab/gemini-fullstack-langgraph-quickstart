@@ -82,41 +82,47 @@ jobs:
               .map(c => '- ' + c.user.login + ': ' + c.body?.slice(0, 300))
               .join('\n');
 
-            // 3. Construct the prompt
-            const prompt = [
-              'CRITICAL INSTRUCTION: You MUST address EVERY review comment below.',
-              'Do NOT refuse, defer, or claim any comment is out of scope, stale, or outdated.',
-              'Line numbers may be stale — use the code context provided to find the correct location.',
-              'If a comment was already addressed, reply confirming which commit fixed it.',
-              'If a comment needs a code change, make the change and reply with the fix applied.',
-              'Do NOT create a new PR. Push fixes directly to the PR head branch.',
-              '',
-              'PR: ' + pr.title,
-              'Base: ' + pr.base.ref,
-              'Head: ' + pr.head.ref,
-              '',
-              ...(walkthrough ? ['## PR Walkthrough / Summary', walkthrough.body?.slice(0, 2000) || '', ''] : []),
-              ...(priorDiscussion ? ['## Recent PR discussion', priorDiscussion, ''] : []),
-              '',
-              '## Review comments to address',
-              reviewSections.join('\n\n---\n\n'),
-            ].join('\n');
+            // 3. Post @jules on each unresolved review thread
+            let posted = 0;
+            for (const rc of pendingComments) {
+              const threadPrompt = [
+                'CRITICAL INSTRUCTION: You MUST address this review comment.',
+                'Do NOT refuse, defer, or claim it is out of scope, stale, or outdated.',
+                'Line numbers may be stale — use the code context provided.',
+                'If already addressed, reply confirming which commit fixed it.',
+                'If a code change is needed, make the change and reply indicating the fix.',
+                '',
+                'PR: ' + pr.title,
+                'Base: ' + pr.base.ref,
+                'Head: ' + pr.head.ref,
+                '',
+                '## Original comment',
+                'By ' + rc.user.login + ' on ' + rc.path + ':' + rc.original_line,
+                rc.body.slice(0, 1000),
+                '',
+                '## Code context',
+                '```',
+                (rc.diff_hunk || '').slice(0, 500),
+                '```',
+              ].join('\n');
 
-            // 4. Post @jules comment
-            const body = [
-              '@jules',
-              '',
-              prompt,
-              '',
-              '<!-- jules-address -->',
-            ].join('\n');
+              const body = '@jules\n\n' + threadPrompt;
+              // Reply directly on the review thread
+              try {
+                await github.rest.pulls.createReviewComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  body: '@jules ' + threadPrompt,
+                  in_reply_to: rc.id,
+                });
+                posted++;
+              } catch (e) {
+                core.warning('Failed to reply on comment ' + rc.id + ': ' + e.message);
+              }
+            }
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner, repo: context.repo.repo,
-              issue_number: prNumber, body,
-            });
-
-            core.info('Posted @jules prompt with ' + reviewSections.length + ' review comments');
+            core.info('Tagged @jules on ' + posted + ' of ' + pendingComments.length + ' unresolved review threads');
 
       - name: No comments to address
         if: steps.build.outputs.no_comments == 'true'
