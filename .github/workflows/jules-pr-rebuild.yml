@@ -50,6 +50,18 @@ jobs:
             const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
             if (isFork) { core.setOutput('skip', 'true'); return; }
 
+            // Load repo-specific instructions if present
+            const fs = require('fs');
+            let reviewRules = '';
+            for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
+              try {
+                if (fs.existsSync(path)) {
+                  reviewRules = fs.readFileSync(path, 'utf8');
+                  break;
+                }
+              } catch (e) { /* file is optional */ }
+            }
+
             const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number,
             });
@@ -70,6 +82,7 @@ jobs:
               '',
               '## Changed files',
               JSON.stringify(fileSummary, null, 2),
+              ...(reviewRules ? ['', '## Repository-specific instructions', reviewRules] : []),
               '',
               '## Your task',
               'This PR has drifted from its intended purpose. Analyze each changed file:',
@@ -217,6 +230,19 @@ jobs:
             });
             const analysisComment = comments.find(c => c.body?.includes('<!-- jules-rebuild -->'));
             const analysis = analysisComment ? analysisComment.body.replace('<!-- jules-rebuild -->\n\n## 🔄 PR Rebuild Analysis\n\n', '') : '';
+
+            // Load repo-specific instructions if present
+            const fs = require('fs');
+            let reviewRules = '';
+            for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
+              try {
+                if (fs.existsSync(path)) {
+                  reviewRules = fs.readFileSync(path, 'utf8');
+                  break;
+                }
+              } catch (e) { /* file is optional */ }
+            }
+
             const prompt = [
               '## PR Rebuild — Clean In Place',
               '',
@@ -225,6 +251,7 @@ jobs:
               'Base branch: ' + baseRef,
               'PR head branch: ' + headRef,
               'PR head SHA: ' + headSha,
+              ...(reviewRules ? ['', '## Repository-specific instructions', reviewRules] : []),
               '',
               '## Analysis findings (from prior session)',
               analysis || '(No prior analysis — proceed with caution)',
