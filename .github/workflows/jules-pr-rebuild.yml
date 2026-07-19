@@ -50,7 +50,7 @@ jobs:
             const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
             if (isFork) { core.setOutput('skip', 'true'); return; }
 
-            const { data: files } = await github.rest.pulls.listFiles({
+            const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number,
             });
             const fileSummary = files.map(f => ({
@@ -201,8 +201,9 @@ jobs:
             const headRef = pr.head.ref;
             const headSha = pr.head.sha;
 
-            const { data: files } = await github.rest.pulls.listFiles({
+            const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number,
+              per_page: 100,
             });
             const fileSummary = files.map(f => ({
               path: f.filename, status: f.status,

@@ -194,7 +194,7 @@ jobs:
             const headRef = pr.head.ref;
             const headSha = '${{ steps.watch.outputs.head_sha }}';
 
-            const { data: files } = await github.rest.pulls.listFiles({
+            const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: pr.number,
