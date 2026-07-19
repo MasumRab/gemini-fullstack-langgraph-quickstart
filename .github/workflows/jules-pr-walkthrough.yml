@@ -81,6 +81,17 @@ jobs:
               .map(c => `- ${c.path}:${c.line} — ${c.body.slice(0, 300)}`)
               .join('\n');
 
+            // Load repo-specific instructions if present
+            let reviewRules = '';
+            for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
+              try {
+                if (fs.existsSync(path)) {
+                  reviewRules = fs.readFileSync(path, 'utf8');
+                  break;
+                }
+              } catch (e) { /* file is optional */ }
+            }
+
             const prompt = [
               `## PR Walkthrough`,
               ``,
@@ -103,6 +114,7 @@ jobs:
                 `## Existing review comments`,
                 priorReviews,
               ] : []),
+              ...(reviewRules ? [``, `## Repository-specific instructions`, reviewRules] : []),
               ``,
               `## Your task`,
               `Write a "Reviewer's Guide" walkthrough for this PR. Include:`,

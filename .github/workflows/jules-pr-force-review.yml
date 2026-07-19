@@ -77,6 +77,17 @@ jobs:
               .map(c => `- ${c.path}:${c.line} — ${c.body.slice(0, 300)}`)
               .join('\n');
 
+            // Load repo-specific instructions if present
+            let reviewRules = '';
+            for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
+              try {
+                if (fs.existsSync(path)) {
+                  reviewRules = fs.readFileSync(path, 'utf8');
+                  break;
+                }
+              } catch (e) { /* file is optional */ }
+            }
+
             const prompt = [
               `## Code Review Request (Force Review)`,
               ``,
@@ -91,6 +102,7 @@ jobs:
               JSON.stringify(fileSummary, null, 2),
               ...(priorFeedback ? [``, `## Existing PR comments`, priorFeedback] : []),
               ...(priorReviews ? [``, `## Existing review comments`, priorReviews] : []),
+              ...(reviewRules ? [``, `## Repository-specific instructions`, reviewRules] : []),
               ``,
               `## Your task`,
               `Review the code changes using the file-list-first approach:`,

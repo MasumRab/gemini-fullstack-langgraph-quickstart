@@ -92,8 +92,20 @@ jobs:
               })
               .join('\n\n');
 
+            // Load repo-specific instructions if present
+            let reviewRules = '';
+            for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
+              try {
+                if (fs.existsSync(path)) {
+                  reviewRules = fs.readFileSync(path, 'utf8');
+                  break;
+                }
+              } catch (e) { /* file is optional */ }
+            }
+
             const prompt = [
               `Fix the issue described in this PR:`,
+              ...(reviewRules ? [``, `## Repository-specific instructions`, reviewRules] : []),
               ``,
               `## ${pr.title}`,
               ``,
