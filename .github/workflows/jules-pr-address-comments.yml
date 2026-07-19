@@ -38,15 +38,16 @@ jobs:
             const pr = context.payload.pull_request;
             const prNumber = pr.number;
 
-            // 1. Fetch pending review comments with code context
+            // 1. Fetch unresolved review comments with code context
             const { data: reviewComments } = await github.rest.pulls.listReviewComments({
               owner: context.repo.owner, repo: context.repo.repo,
               pull_number: prNumber, per_page: 100, direction: 'desc',
             });
+            const pendingComments = reviewComments.filter(rc => rc.state === 'PENDING');
 
-            // Get diff context for each review comment
+            // Get diff context for each pending comment
             const reviewSections = [];
-            for (const rc of reviewComments) {
+            for (const rc of pendingComments) {
               const diffContext = rc.diff_hunk ? '```\n' + rc.diff_hunk.slice(0, 500) + '\n```' : '(no diff context)';
               const resolved = rc.state === 'PENDING' ? 'UNRESOLVED' : 'RESOLVED';
               reviewSections.push([
