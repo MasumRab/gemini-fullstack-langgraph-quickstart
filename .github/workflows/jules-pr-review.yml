@@ -258,7 +258,6 @@ jobs:
               },
             };
 
-            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-review-payload.json', JSON.stringify(payload));
             core.setOutput('head_sha', headSha);
             core.info(`Payload written for PR #${pr.number}`);
@@ -317,7 +316,7 @@ jobs:
               ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
                 "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
                 -H "X-Goog-Api-Key: ${JULES_API_KEY}")
-              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Review unavailable"' > /tmp/jules-review-output.txt
+              echo "$ACTS" | jq -r '[(.activities // [])[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Review unavailable"' > /tmp/jules-review-output.txt
               echo "Session finished ($STATE)"
               exit 0
             fi
@@ -337,6 +336,20 @@ jobs:
             const prNumber = context.payload.pull_request.number;
             const headSha = '${{ steps.prepare.outputs.head_sha }}';
             const sessionState = '${{ steps.poll.outputs.session_state }}';
+
+            // Split walkthrough from review before parsing
+            const wtStart = '<!-- walkthrough_start -->';
+            const wtEnd = '<!-- walkthrough_end -->';
+            const reviewTextParts = reviewText.split(wtStart);
+            const mainReview = reviewTextParts[0].trim();
+            let walkthroughText = '';
+            if (reviewTextParts.length > 1) {
+              const afterStart = reviewTextParts[1];
+              const endIdx = afterStart.indexOf(wtEnd);
+              walkthroughText = endIdx !== -1
+                ? afterStart.slice(0, endIdx).trim()
+                : afterStart.trim();
+            }
 
             // Parse verdict from structured output (review portion only)
             const verdictMatch = mainReview.match(/\[VERDICT\]:\s*(approve|comment|block)|<!--\s*verdict:\s*(approve|comment|block)\s*-->/i);
@@ -374,20 +387,6 @@ jobs:
               });
             } catch (e) {
               core.warning(`Failed to set commit status: ${e.message}`);
-            }
-
-            // Split walkthrough from review if present
-            const wtStart = '<!-- walkthrough_start -->';
-            const wtEnd = '<!-- walkthrough_end -->';
-            const reviewTextParts = reviewText.split(wtStart);
-            const mainReview = reviewTextParts[0].trim();
-            let walkthroughText = '';
-            if (reviewTextParts.length > 1) {
-              const afterStart = reviewTextParts[1];
-              const endIdx = afterStart.indexOf(wtEnd);
-              walkthroughText = endIdx !== -1
-                ? afterStart.slice(0, endIdx).trim()
-                : afterStart.trim();
             }
 
             // Parse per-line findings from Jules output

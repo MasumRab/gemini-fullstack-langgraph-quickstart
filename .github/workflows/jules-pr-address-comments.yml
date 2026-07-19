@@ -23,6 +23,7 @@ jobs:
     steps:
 
       - name: Build prompt from review context
+        id: build
         uses: actions/github-script@v7
         with:
           script: |

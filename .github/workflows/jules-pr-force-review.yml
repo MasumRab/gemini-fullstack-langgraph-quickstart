@@ -93,6 +93,7 @@ jobs:
               .join('\n');
 
             // Load repo-specific instructions if present
+            const fs = require('fs');
             let reviewRules = '';
             for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
               try {
@@ -214,7 +215,6 @@ jobs:
               },
             };
 
-            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-force-review-payload.json', JSON.stringify(payload));
             core.setOutput('head_sha', headSha);
             core.info(`Force-review payload written for PR #${pr.number}`);
@@ -273,7 +273,7 @@ jobs:
               ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
                 "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
                 -H "X-Goog-Api-Key: ${JULES_API_KEY}")
-              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Review unavailable"' > /tmp/jules-force-review-output.txt
+              echo "$ACTS" | jq -r '[(.activities // [])[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Review unavailable"' > /tmp/jules-force-review-output.txt
               echo "Session finished ($STATE)"
               exit 0
             fi

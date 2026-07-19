@@ -147,7 +147,7 @@ jobs:
               ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
                 "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
                 -H "X-Goog-Api-Key: ${JULES_API_KEY}")
-              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Analysis unavailable"' > /tmp/jules-rebuild-analysis.txt
+              echo "$ACTS" | jq -r '[(.activities // [])[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Analysis unavailable"' > /tmp/jules-rebuild-analysis.txt
               exit 0
             fi
           done
