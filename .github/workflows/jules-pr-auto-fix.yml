@@ -1,0 +1,152 @@
+name: Jules Auto-Fix
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  fix:
+    if: github.event.label.name == 'jules-fix'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 1
+
+      - name: Prepare prompt and payload
+        id: prepare
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const baseRef = pr.base.ref;
+            const body = pr.body || '';
+            const match = body.match(/^Target:\s*(\S+)/m);
+            const target = (match ? match[1] : baseRef);
+
+            if (match && target !== baseRef) {
+              core.warning(`PR body says "${target}" but PR targets "${baseRef}"`);
+            }
+
+            // Fetch changed file list (names only)
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const fileSummary = files.map(f => ({
+              path: f.filename, status: f.status,
+              additions: f.additions, deletions: f.deletions,
+            }));
+            const fileCount = files.length;
+            const totalChanges = files.reduce((s, f) => s + f.additions + f.deletions, 0);
+
+            if (totalChanges > 2000) {
+              core.warning(`Large diff (${totalChanges} lines) — instructing selective git diff`);
+            }
+
+            // Fetch existing PR comments (newest-first, capped)
+            const { data: reviewComments } = await github.rest.pulls.listReviewComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 20,
+              direction: 'desc',
+            });
+            const { data: issueComments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              per_page: 20,
+              direction: 'desc',
+            });
+
+            // Priority 1: review comments (line-level, actionable) — newest 10
+            const priorReviews = reviewComments
+              .slice(0, 10)
+              .map(c => `- ${c.path}:${c.line} — ${c.body.slice(0, 300)}`)
+              .join('\n');
+
+            // Priority 2: issue comments — include humans + walkthroughs, skip circular reviews
+            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->'];
+            const priorFeedback = issueComments
+              .filter(c => !skipMarkers.some(m => c.body?.includes(m)))
+              .slice(0, 10)
+              .map(c => {
+                const who = c.user?.type === 'User' ? c.user.login : `[${c.user?.login}]`;
+                return `${who}: ${c.body?.slice(0, 300)}`;
+              })
+              .join('\n\n');
+
+            const prompt = [
+              `Fix the issue described in this PR:`,
+              ``,
+              `## ${pr.title}`,
+              ``,
+              body,
+              ``,
+              `---`,
+              `Repository: ${context.repo.owner}/${context.repo.repo}`,
+              `Target branch: ${target}`,
+              `PR head branch: ${pr.head.ref}`,
+              `Files changed: ${fileCount} (${totalChanges} +/-)`,
+              ``,
+              `## Changed files (names only, no content)`,
+              JSON.stringify(fileSummary, null, 2),
+              ``,
+              ...(priorFeedback ? [
+                `## Existing PR comments`,
+                priorFeedback,
+                ``,
+              ] : []),
+              ...(priorReviews ? [
+                `## Existing review comments`,
+                priorReviews,
+                ``,
+              ] : []),
+              `## Strategy`,
+              `The repo is cloned in your sandbox. Do NOT request the full diff at once.`,
+              `1. Review the file list above — identify relevant files`,
+              `2. Read existing PR/review comments above — build on prior context`,
+              `3. For each relevant file: run git diff ${target} -- <filepath>`,
+              `4. Process files one at a time`,
+              `5. Only diff files actually needed for the fix`,
+            ].join('\n');
+
+            const payload = {
+              prompt,
+              sourceContext: {
+                source: `sources/github/${context.repo.owner}/${context.repo.repo}`,
+                githubRepoContext: { startingBranch: target },
+              },
+              automationMode: 'AUTO_CREATE_PR',
+            };
+
+            // Write payload to file for the curl step
+            const fs = require('fs');
+            fs.writeFileSync('/tmp/jules-payload.json', JSON.stringify(payload));
+            core.setOutput('target_branch', target);
+            core.info(`Payload written to /tmp/jules-payload.json`);
+
+      - name: Invoke Jules via API
+        shell: bash
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          echo "Creating Jules session..."
+          RESPONSE=$(curl -s -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+            -H "Content-Type: application/json" \
+            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+            -d @/tmp/jules-payload.json)
+
+          if echo "$RESPONSE" | jq -e '.id' > /dev/null 2>&1; then
+            echo "Session created: $(echo "$RESPONSE" | jq -r '.id') (state: $(echo "$RESPONSE" | jq -r '.state'))"
+          else
+            echo "Error: $RESPONSE"
+            exit 1
+          fi

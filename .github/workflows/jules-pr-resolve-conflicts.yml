@@ -1,0 +1,180 @@
+name: Jules PR Conflict Resolution
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  resolve:
+    if: github.event.label.name == 'jules-resolve'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Check for merge conflicts
+        id: conflict-check
+        shell: bash
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          git fetch origin "$BASE_REF"
+
+          if git merge-tree HEAD "origin/$BASE_REF" 2>/dev/null | grep -q "^@@"; then
+            echo "has_conflicts=true" >> "$GITHUB_OUTPUT"
+            echo "Conflicts detected."
+          else
+            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
+            echo "No conflicts."
+          fi
+
+      - name: Build payload with full PR context
+        if: steps.conflict-check.outputs.has_conflicts == 'true'
+        id: build
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const baseRef = pr.base.ref;
+            const headRef = pr.head.ref;
+
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const fileSummary = files.map(f => ({
+              path: f.filename, status: f.status,
+              additions: f.additions, deletions: f.deletions,
+            }));
+
+            // Fetch all PR comments for context
+            const { data: reviewComments } = await github.rest.pulls.listReviewComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 20,
+              direction: 'desc',
+            });
+            const { data: issueComments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              per_page: 20,
+              direction: 'desc',
+            });
+
+            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->'];
+            const priorFeedback = issueComments
+              .filter(c => !skipMarkers.some(m => c.body?.includes(m)))
+              .slice(0, 10)
+              .map(c => {
+                const who = c.user?.type === 'User' ? c.user.login : `[${c.user?.login}]`;
+                return `${who}: ${c.body?.slice(0, 300)}`;
+              })
+              .join('\n\n');
+
+            const priorReviews = reviewComments
+              .slice(0, 10)
+              .map(c => `- ${c.path}:${c.line} — ${c.body.slice(0, 300)}`)
+              .join('\n');
+
+            const prompt = [
+              `## PR Conflict Resolution`,
+              ``,
+              `Repository: ${context.repo.owner}/${context.repo.repo}`,
+              `Title: ${pr.title}`,
+              `Source branch (has conflicts): ${headRef}`,
+              `Target branch (current): ${baseRef}`,
+              `Files changed: ${files.length} (${files.reduce((s, f) => s + f.additions + f.deletions, 0)} +/-)`,
+              ``,
+              `## Changed files`,
+              JSON.stringify(fileSummary, null, 2),
+              ``,
+              ...(priorFeedback ? [
+                `## Existing PR discussion`,
+                priorFeedback,
+                ``,
+              ] : []),
+              ...(priorReviews ? [
+                `## Existing review comments`,
+                priorReviews,
+                ``,
+              ] : []),
+              `## Your task`,
+              `The source branch ${headRef} has conflicts with the current state of ${baseRef}.`,
+              `1. Checkout ${baseRef}`,
+              `2. Review each changed file — understand what the PR intended to change`,
+              `3. Re-implement those changes on top of current ${baseRef}`,
+              `4. If the intent is unclear from the diff, check the existing comments above`,
+              `5. If a change was intentionally obsoleted by later base changes, skip it`,
+              ``,
+              `Use \`git diff ${baseRef}...origin/${headRef} -- <filepath>\` to inspect original PR intent.`,
+              `The repo is cloned in your sandbox with full history.`,
+            ].join('\n');
+
+            const fs = require('fs');
+            const payload = {
+              prompt,
+              sourceContext: {
+                source: `sources/github/${context.repo.owner}/${context.repo.repo}`,
+                githubRepoContext: { startingBranch: baseRef },
+              },
+              automationMode: 'AUTO_CREATE_PR',
+            };
+            fs.writeFileSync('/tmp/jules-resolve-payload.json', JSON.stringify(payload));
+            core.info(`Payload written`);
+
+      - name: Create Jules session
+        if: steps.conflict-check.outputs.has_conflicts == 'true'
+        shell: bash
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          RESPONSE=$(curl -s -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+            -H "Content-Type: application/json" \
+            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+            -d @/tmp/jules-resolve-payload.json)
+
+          SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
+          if [ -z "$SESSION_ID" ]; then
+            echo "Error: $RESPONSE"
+            exit 1
+          fi
+          echo "Session created: $SESSION_ID"
+          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Post resolution notice
+        if: steps.conflict-check.outputs.has_conflicts == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sessionId = '${{ steps.create.outputs.session_id }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: [
+                `<!-- jules-resolve -->`,
+                `🔄 **Jules is resolving conflicts.**`,
+                `Session: \`${sessionId}\``,
+                `A new PR with the resolved changes will be created when complete.`,
+              ].join('\n'),
+            });
+
+      - name: No conflicts — notify
+        if: steps.conflict-check.outputs.has_conflicts == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '✅ No merge conflicts detected.',
+            });
