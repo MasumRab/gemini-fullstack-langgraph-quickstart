@@ -133,25 +133,31 @@ jobs:
               ] : []),
               `## Strategy`,
               `The repo is cloned in your sandbox with the PR head branch (${headRef}) checked out.`,
+              `The goal is to apply the requested fix on top of the existing PR code, not rewrite it.`,
               `Do NOT request the full diff at once.`,
               `1. Review the file list above — identify relevant files`,
               `2. Read existing PR/review comments above — build on prior context`,
-              `3. For each relevant file: run git diff ${target} -- <filepath>`,
+              `3. Run: git diff origin/${target}...HEAD -- <filepath>`,
+
               `4. Process files one at a time`,
               `5. Only diff files actually needed for the fix`,
               `6. After making and committing the fix locally, check for late commits:`,
               `   run \`git fetch origin ${target} && git log --oneline HEAD..origin/${target}\``,
               `   If new commits arrived: \`git rebase origin/${target}\`, resolve new conflicts,`,
               `   verify the fix still works, and amend if needed.`,
+              `7. When creating the PR:`,
+              `   - Reference the source PR/issue in the description using "Fixes #${pr.number}"`,
+              `   - Include a clear description of what was fixed and why`,
+              `   - Ensure CI checks pass — fix any test failures`,
             ].join('\n');
 
             const payload = {
               prompt,
               sourceContext: {
                 source: `sources/github/${context.repo.owner}/${context.repo.repo}`,
-                githubRepoContext: { startingBranch: target },
+                githubRepoContext: { startingBranch: headRef },
               },
-              automationMode: 'AUTO_CREATE_PR',  // creates a new PR with the fix
+              automationMode: 'AUTO_CREATE_PR',  // creates a new PR with the fix on top
             };
 
             // Write payload to file for the curl step
