@@ -10,6 +10,8 @@ name: Jules PR Rebuild
 on:
   pull_request:
     types: [labeled]
+  issue_comment:
+    types: [created]
 
 concurrency:
   group: jules-rebuild-${{ github.event.pull_request.number }}
@@ -17,13 +19,21 @@ concurrency:
 
 jobs:
   analyze:
-    if: github.event.label.name == 'jules-rebuild'
+    if: >
+      github.event.label.name == 'jules-rebuild' ||
+      (github.event_name == 'issue_comment' &&
+       startsWith(github.event.comment.body, '/jules-rebuild'))
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      skip: ${{ steps.build.outputs.skip }}
+      session_state: ${{ steps.poll-analysis.outputs.session_state }}
     permissions:
       pull-requests: write
       contents: read
     steps:
       - name: Consume label — prevent duplicate sessions
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -34,21 +44,48 @@ jobs:
               name: 'jules-rebuild',
             }).catch(() => core.info('Label already consumed'));
 
+      - name: Parse slash command context
+        if: github.event_name == 'issue_comment'
+        id: parse
+        shell: bash
+        run: |
+          CUSTOM=$(echo "${{ github.event.comment.body }}" | sed 's|^/jules-rebuild ||')
+          echo "custom_instructions=$CUSTOM" >> "$GITHUB_OUTPUT"
+
+      - name: Fork check
+        id: fork-check
+        shell: bash
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.fork-check.outputs.skip != 'true'
         with:
           fetch-depth: 0
 
       - name: Build analysis payload
         id: build
+        env:
+          CUSTOM_INSTRUCTIONS: ${{ steps.parse.outputs.custom_instructions }}
         uses: actions/github-script@v7
         with:
           script: |
+            if ('${{ steps.fork-check.outputs.skip }}' === 'true') {
+              core.setOutput('skip', 'true');
+              return;
+            }
+
             const pr = context.payload.pull_request;
             const baseRef = pr.base.ref;
             const headRef = pr.head.ref;
             const headSha = pr.head.sha;
-            const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
-            if (isFork) { core.setOutput('skip', 'true'); return; }
 
             // Load repo-specific instructions if present
             const fs = require('fs');
@@ -113,7 +150,6 @@ jobs:
               'A new PR description that accurately reflects the actual changes.',
             ].join('\n');
 
-            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-rebuild-analyze-payload.json', JSON.stringify({
               prompt,
               sourceContext: {
@@ -129,18 +165,43 @@ jobs:
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
-          RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+          set +e
+          RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
             -d @/tmp/jules-rebuild-analyze-payload.json)
+          CURL_EXIT=$?
+          set -e
+          if [ $CURL_EXIT -ne 0 ]; then
+            ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
+            ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
+            if [ "$ERROR_CODE" = "429" ] || [ "$ERROR_CODE" = "403" ] || echo "$ERROR_MSG" | grep -qiE 'quota|limit|exceeded|capacity|daily'; then
+              echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+              echo "⚠️ Session cap reached — no analysis session created."
+              exit 0
+            fi
+            echo "Error: $RESPONSE"; exit 1
+          fi
           SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
           if [ -z "$SESSION_NAME" ] && [ -z "$SESSION_ID" ]; then echo "Error: $RESPONSE"; exit 1; fi
           echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
 
+      - name: Notify analysis session cap reached
+        if: steps.create-analysis.outputs.quota_exhausted == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '⚠️ **Jules session cap reached (15/day).**\n\nRebuild analysis cannot run today. Re-apply the `jules-rebuild` label tomorrow to retry.\n\n<!-- jules-quota-exhausted -->',
+            });
+
       - name: Poll analysis session
-        if: steps.build.outputs.skip != 'true'
+        if: steps.build.outputs.skip != 'true' && steps.create-analysis.outputs.quota_exhausted != 'true'
         id: poll-analysis
         shell: bash
         env:
@@ -168,7 +229,7 @@ jobs:
           echo "Analysis timed out." > /tmp/jules-rebuild-analysis.txt
 
       - name: Post analysis comment
-        if: steps.build.outputs.skip != 'true'
+        if: steps.build.outputs.skip != 'true' && steps.create-analysis.outputs.quota_exhausted != 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -192,14 +253,29 @@ jobs:
         run: echo "Skipped — fork PR"
 
   rebuild:
-    if: github.event.label.name == 'jules-rebuild'
+    if: needs.analyze.outputs.skip != 'true' && needs.analyze.outputs.session_state == 'COMPLETED'
     needs: analyze
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
     steps:
+      - name: Fork check
+        id: fork-check
+        shell: bash
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.fork-check.outputs.skip != 'true'
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
@@ -209,6 +285,10 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            if ('${{ steps.fork-check.outputs.skip }}' === 'true') {
+              core.setOutput('skip', 'true');
+              return;
+            }
             const pr = context.payload.pull_request;
             const baseRef = pr.base.ref;
             const headRef = pr.head.ref;
@@ -274,7 +354,6 @@ jobs:
               '- If assessment was wrong, keep the valuable code and note the correction',
             ].join('\n');
 
-            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-rebuild-action-payload.json', JSON.stringify({
               prompt,
               sourceContext: {
@@ -289,15 +368,53 @@ jobs:
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
-          RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+          set +e
+          RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
             -d @/tmp/jules-rebuild-action-payload.json)
+          CURL_EXIT=$?
+          set -e
+          if [ $CURL_EXIT -ne 0 ]; then
+            ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
+            ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
+            if [ "$ERROR_CODE" = "429" ] || [ "$ERROR_CODE" = "403" ] || echo "$ERROR_MSG" | grep -qiE 'quota|limit|exceeded|capacity|daily'; then
+              echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+              echo "⚠️ Session cap reached — no rebuild session created."
+              exit 0
+            fi
+            echo "Error: $RESPONSE"; exit 1
+          fi
           SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           if [ -z "$SESSION_NAME" ]; then echo "Error: $RESPONSE"; exit 1; fi
           echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Notify rebuild session cap reached
+        if: steps.create.outputs.quota_exhausted == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number, per_page: 100,
+            });
+            const existing = comments.find(c => c.body?.includes('<!-- jules-rebuild -->'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id,
+                body: existing.body + '\n\n---\n⚠️ **Rebuild action session cap reached (15/day).** Analysis was posted but rebuild cannot run today. Re-apply `jules-rebuild` tomorrow to retry the rebuild phase.\n\n<!-- jules-quota-exhausted -->',
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: '⚠️ **Jules session cap reached (15/day).**\n\nRebuild cannot run today. Re-apply the `jules-rebuild` label tomorrow to retry.\n\n<!-- jules-quota-exhausted -->',
+              });
+            }
+
       - name: Post rebuild notice
+        if: steps.create.outputs.quota_exhausted != 'true'
         uses: actions/github-script@v7
         with:
           script: |

@@ -28,12 +28,27 @@ jobs:
   review:
     if: ${{ !startsWith(github.event.pull_request.head.ref, 'jules-') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       pull-requests: write
       contents: read
       statuses: write
     steps:
+      - name: Fork check
+        id: fork-check
+        shell: bash
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.fork-check.outputs.skip != 'true'
         with:
           fetch-depth: 0
 
@@ -42,16 +57,15 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const pr = context.payload.pull_request;
-            const baseRef = pr.base.ref;
-            const headSha = pr.head.sha;
-            const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
-
-            // Skip forks — no secret access
-            if (isFork) {
+            // Propagate fork skip from the fork-check step
+            if ('${{ steps.fork-check.outputs.skip }}' === 'true') {
               core.setOutput('skip', 'true');
               return;
             }
+
+            const pr = context.payload.pull_request;
+            const baseRef = pr.base.ref;
+            const headSha = pr.head.sha;
 
             // Check bypass label
             const { data: labels } = await github.rest.issues.listLabelsOnIssue({
@@ -83,13 +97,13 @@ jobs:
               per_page: 20,
               direction: 'desc',
             });
-            const { data: issueComments } = await github.rest.issues.listComments({
+            const allIssueComments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr.number,
-              per_page: 20,
-              direction: 'desc',
+              per_page: 100,
             });
+            const issueComments = allIssueComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
             const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->', '<!-- jules-walkthrough -->'];
             const priorFeedback = issueComments
@@ -287,10 +301,25 @@ jobs:
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
-          RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+          set +e
+          RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
             -d @/tmp/jules-review-payload.json)
+          CURL_EXIT=$?
+          set -e
+
+          if [ $CURL_EXIT -ne 0 ]; then
+            ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
+            ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
+            if [ "$ERROR_CODE" = "429" ] || [ "$ERROR_CODE" = "403" ] || echo "$ERROR_MSG" | grep -qiE 'quota|limit|exceeded|capacity|daily'; then
+              echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+              echo "⚠️ Session cap reached — no session created."
+              exit 0
+            fi
+            echo "Error: $RESPONSE"
+            exit 1
+          fi
 
           SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
@@ -305,8 +334,20 @@ jobs:
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
           echo "Session created: $SESSION_NAME (state: $STATE)"
 
+      - name: Notify session cap reached
+        if: steps.create.outputs.quota_exhausted == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '⚠️ **Jules session cap reached (15/day).**\n\nNo review was created for this PR. Re-open or sync the PR tomorrow to trigger auto-review again.\n\n<!-- jules-quota-exhausted -->',
+            });
+
       - name: Poll for completion
-        if: steps.prepare.outputs.skip != 'true'
+        if: steps.prepare.outputs.skip != 'true' && steps.create.outputs.quota_exhausted != 'true'
         id: poll
         shell: bash
         env:
@@ -340,7 +381,7 @@ jobs:
           echo "Review timed out after $((MAX_ATTEMPTS * 15)) seconds." > /tmp/jules-review-output.txt
 
       - name: Post review and set commit status
-        if: steps.prepare.outputs.skip != 'true'
+        if: always() && steps.prepare.conclusion == 'success' && steps.create.outputs.quota_exhausted != 'true'
         uses: actions/github-script@v7
         with:
           script: |

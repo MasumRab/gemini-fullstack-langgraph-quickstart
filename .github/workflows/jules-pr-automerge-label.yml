@@ -12,6 +12,7 @@ on:
 jobs:
   label:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       pull-requests: write
       contents: read
@@ -19,7 +20,7 @@ jobs:
       - uses: actions/github-script@v7
         with:
           script: |
-            const { data: prs } = await github.rest.pulls.list({
+            const allPrs = await github.paginate(github.rest.pulls.list, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
@@ -27,9 +28,12 @@ jobs:
             });
 
             let labeled = 0;
-            for (const pr of prs) {
-              // Label PRs created by Jules or on jules-* branches
-              if (pr.user.login === 'jules' || pr.head.ref.startsWith('jules-')) {
+            const sameRepo = context.repo.owner + '/' + context.repo.repo;
+            for (const pr of allPrs) {
+              // Only label PRs from the Jules bot account in the same repository.
+              // Branch-name matching is rejected as a spoof vector — a fork author
+              // controls their branch name and can trivially create a jules-* branch.
+              if (pr.user.login === 'jules' && pr.head.repo.full_name === sameRepo) {
                 const { data: labels } = await github.rest.issues.listLabelsOnIssue({
                   owner: context.repo.owner,
                   repo: context.repo.repo,

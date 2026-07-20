@@ -8,6 +8,8 @@ name: Jules PR Conflict Resolution
 on:
   pull_request:
     types: [labeled]
+  issue_comment:
+    types: [created]
 
 concurrency:
   group: jules-resolve-${{ github.event.pull_request.number }}
@@ -15,13 +17,18 @@ concurrency:
 
 jobs:
   resolve:
-    if: github.event.label.name == 'jules-resolve'
+    if: >
+      github.event.label.name == 'jules-resolve' ||
+      (github.event_name == 'issue_comment' &&
+       startsWith(github.event.comment.body, '/jules-resolve'))
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       pull-requests: write
       contents: write
     steps:
       - name: Consume label — prevent duplicate sessions
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -32,12 +39,35 @@ jobs:
               name: 'jules-resolve',
             }).catch(() => core.info('Label already consumed'));
 
+      - name: Parse slash command context
+        if: github.event_name == 'issue_comment'
+        id: parse
+        shell: bash
+        run: |
+          CUSTOM=$(echo "${{ github.event.comment.body }}" | sed 's|^/jules-resolve ||')
+          echo "custom_instructions=$CUSTOM" >> "$GITHUB_OUTPUT"
+
+      - name: Fork check
+        id: fork-check
+        shell: bash
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.fork-check.outputs.skip != 'true'
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
       - name: Fetch base branch
+        if: steps.fork-check.outputs.skip != 'true'
         shell: bash
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
@@ -50,12 +80,15 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          git merge-tree --write-tree HEAD "origin/$BASE_REF"
-          case $? in
-            0) echo "has_conflicts=false" >> "$GITHUB_OUTPUT" ;;
-            1) echo "has_conflicts=true" >> "$GITHUB_OUTPUT" ;;
-            *) echo "has_conflicts=error" >> "$GITHUB_OUTPUT"; exit 1 ;;
-          esac
+          if git merge-tree --write-tree HEAD "origin/$BASE_REF"; then
+            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            rc=$?
+            case $rc in
+              1) echo "has_conflicts=true" >> "$GITHUB_OUTPUT" ;;
+              *) echo "has_conflicts=error" >> "$GITHUB_OUTPUT"; exit 1 ;;
+            esac
+          fi
 
       - name: No conflicts — notify
         if: steps.conflict-check.outputs.has_conflicts == 'false'
@@ -70,7 +103,7 @@ jobs:
             });
 
       - name: Watch source PR for stability before resolving
-        if: steps.conflict-check.outputs.has_conflicts == 'true'
+        if: steps.fork-check.outputs.skip != 'true' && steps.conflict-check.outputs.has_conflicts == 'true'
         id: watch
         uses: actions/github-script@v7
         with:
@@ -147,7 +180,7 @@ jobs:
             core.setOutput('head_sha', lastSha);
 
       - name: Fetch latest and re-check conflicts
-        if: steps.conflict-check.outputs.has_conflicts == 'true'
+        if: steps.fork-check.outputs.skip != 'true' && steps.conflict-check.outputs.has_conflicts == 'true'
         id: recheck
         shell: bash
         env:
@@ -158,12 +191,15 @@ jobs:
           git reset --hard "origin/$HEAD_REF"
           git fetch origin "$BASE_REF"
 
-          git merge-tree --write-tree HEAD "origin/$BASE_REF"
-          case $? in
-            0) echo "has_conflicts=false" >> "$GITHUB_OUTPUT" ;;
-            1) echo "has_conflicts=true" >> "$GITHUB_OUTPUT" ;;
-            *) echo "has_conflicts=error" >> "$GITHUB_OUTPUT"; exit 1 ;;
-          esac
+          if git merge-tree --write-tree HEAD "origin/$BASE_REF"; then
+            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            rc=$?
+            case $rc in
+              1) echo "has_conflicts=true" >> "$GITHUB_OUTPUT" ;;
+              *) echo "has_conflicts=error" >> "$GITHUB_OUTPUT"; exit 1 ;;
+            esac
+          fi
 
       - name: Conflicts resolved — no session needed
         if: steps.recheck.outputs.has_conflicts == 'false'
@@ -186,9 +222,16 @@ jobs:
       - name: Build payload with full PR context
         if: steps.recheck.outputs.has_conflicts == 'true'
         id: build
+        env:
+          CUSTOM_INSTRUCTIONS: ${{ steps.parse.outputs.custom_instructions }}
         uses: actions/github-script@v7
         with:
           script: |
+            if ('${{ steps.fork-check.outputs.skip }}' === 'true') {
+              core.setOutput('skip', 'true');
+              return;
+            }
+
             const pr = context.payload.pull_request;
             const baseRef = pr.base.ref;
             const headRef = pr.head.ref;
@@ -212,13 +255,13 @@ jobs:
               per_page: 20,
               direction: 'desc',
             });
-            const { data: issueComments } = await github.rest.issues.listComments({
+            const allIssueComments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr.number,
-              per_page: 20,
-              direction: 'desc',
+              per_page: 100,
             });
+            const issueComments = allIssueComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
             const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->'];
             const priorFeedback = issueComments
@@ -235,6 +278,8 @@ jobs:
               .map(c => '- ' + c.path + ':' + c.line + ' — ' + (c.body.slice(0, 300) || ''))
               .join('\n');
 
+            const fs = require('fs');
+
             // Load repo-specific instructions if present
             let reviewRules = '';
             for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
@@ -246,7 +291,9 @@ jobs:
               } catch (e) { /* file is optional */ }
             }
 
+            const customInstr = process.env.CUSTOM_INSTRUCTIONS || '';
             let prompt = [
+              ...(customInstr ? ['## User instructions', customInstr, ''] : []),
               '## PR Conflict Resolution',
               '',
               'Repository: ' + context.repo.owner + '/' + context.repo.repo,
@@ -294,7 +341,6 @@ jobs:
             ].join('\n');
             prompt += '\n\n' + prCreateCmd;
 
-            const fs = require('fs');
             const payload = {
               prompt,
               sourceContext: {
@@ -313,10 +359,25 @@ jobs:
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
-          RESPONSE=$(curl -sS --fail-with-body -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+          set +e
+          RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
             -d @/tmp/jules-resolve-payload.json)
+          CURL_EXIT=$?
+          set -e
+
+          if [ $CURL_EXIT -ne 0 ]; then
+            ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
+            ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
+            if [ "$ERROR_CODE" = "429" ] || [ "$ERROR_CODE" = "403" ] || echo "$ERROR_MSG" | grep -qiE 'quota|limit|exceeded|capacity|daily'; then
+              echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+              echo "⚠️ Session cap reached — no session created."
+              exit 0
+            fi
+            echo "Error: $RESPONSE"
+            exit 1
+          fi
 
           SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
@@ -328,8 +389,27 @@ jobs:
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
           echo "Session created: ${SESSION_NAME:-sessions/${SESSION_ID}}"
 
+      - name: Notify session cap reached
+        if: steps.create.outputs.quota_exhausted == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commentId = Number('${{ steps.watch.outputs.comment_id }}');
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: commentId,
+              body: [
+                '<!-- jules-resolve -->',
+                '⚠️ **Jules session cap reached (15/day).**',
+                'Re-apply the `jules-resolve` label tomorrow to retry.',
+                '',
+                '<!-- jules-quota-exhausted -->',
+              ].join('\n'),
+            });
+
       - name: Update resolution notice with session info
-        if: steps.recheck.outputs.has_conflicts == 'true'
+        if: steps.recheck.outputs.has_conflicts == 'true' && steps.create.outputs.quota_exhausted != 'true'
         uses: actions/github-script@v7
         with:
           script: |
