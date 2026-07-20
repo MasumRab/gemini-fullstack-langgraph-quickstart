@@ -3,9 +3,16 @@
 Unit tests for backend/examples/kaggle_integration.py
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from examples.kaggle_integration import KaggleModelLoader, KaggleHuggingFaceClient, SimpleReActAgent, BaseLLMClient
+
+from examples.kaggle_integration import (
+    BaseLLMClient,
+    KaggleHuggingFaceClient,
+    KaggleModelLoader,
+    SimpleReActAgent,
+)
 
 # =============================================================================
 # Tests for KaggleModelLoader

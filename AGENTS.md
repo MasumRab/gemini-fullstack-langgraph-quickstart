@@ -37,3 +37,7 @@ These agents are configured for cloud execution in environments with the followi
 - `jules`: Remote agent session management.
 - `tavily`: Web research integration (requires API key).
 - `google-search`: Primary research tool.
+
+## Agent Workflows
+To avoid duplicate work on automated repository tasks:
+- **Check Open Pull Requests**: Before initiating a repository-wide refactor, dependency update, or mass formatting, agents MUST check for open Pull Requests addressing the same issue. Use `curl -s "https://api.github.com/repos/MasumRab/gemini-fullstack-langgraph-quickstart/pulls?state=open"` or the GitHub CLI (`gh pr list`). If an existing unmerged PR is addressing the target intent, agents should verify whether the intended local changes are already covered there before duplicating effort locally.

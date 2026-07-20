@@ -8,11 +8,11 @@ from pydantic import ValidationError
 
 from agent.configuration import Configuration
 from agent.models import (
-    TEST_MODEL,
-    GEMINI_PRO,
+    DEFAULT_ANSWER_MODEL,
     DEFAULT_QUERY_MODEL,
     DEFAULT_REFLECTION_MODEL,
-    DEFAULT_ANSWER_MODEL,
+    GEMINI_PRO,
+    TEST_MODEL,
 )
 
 

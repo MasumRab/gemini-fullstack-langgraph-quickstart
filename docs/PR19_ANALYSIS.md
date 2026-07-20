@@ -136,8 +136,8 @@ chunk_id_str = f"{subgoal_id}_{int(time())}_{i}_{uuid.uuid4().hex[:8]}"
 
 **TODOs Added**:
 ```python
-# TODO: Phase 2 - Rename 'generate_query' to 'generate_plan'
-# TODO: Future - Insert 'save_plan' step here to persist the generated plan automatically
+# TODO(priority=Medium, complexity=Low): Phase 2 - Rename 'generate_query' to 'generate_plan'
+# TODO(priority=Low, complexity=Medium): Future - Insert 'save_plan' step here to persist the generated plan automatically
 ```
 
 **Concerns**:
