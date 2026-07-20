@@ -136,18 +136,20 @@ jobs:
               })
               .join('\n\n');
 
-            const fs = require('fs');
-
-            // Load repo-specific instructions if present
+            // Load repo-specific instructions from base branch (trusted)
             let reviewRules = '';
             for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
               try {
-                if (fs.existsSync(path)) {
-                  reviewRules = fs.readFileSync(path, 'utf8');
-                  break;
-                }
+                const { data } = await github.rest.repos.getContent({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  path, ref: baseRef,
+                });
+                reviewRules = Buffer.from(data.content, 'base64').toString('utf8');
+                break;
               } catch (e) { /* file is optional */ }
             }
+
+            const fs = require('fs');
 
             const customInstr = process.env.CUSTOM_INSTRUCTIONS || '';
             let prompt = [

@@ -41,11 +41,11 @@ jobs:
             const prNumber = pr.number;
 
             // 1. Fetch issue comments — check for prior Jules session markers
-            const { data: issueComments } = await github.rest.issues.listComments({
+            const allIssueComments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner, repo: context.repo.repo,
-              issue_number: prNumber, per_page: 100, direction: 'desc',
+              issue_number: prNumber, per_page: 100,
             });
-            const hasJulesSession = issueComments.some(c =>
+            const hasJulesSession = allIssueComments.some(c =>
               JULES_MARKERS.some(m => c.body?.includes(m))
             );
             if (!hasJulesSession) {
@@ -54,19 +54,52 @@ jobs:
               return;
             }
 
-            // 2. Use the triggering review comment directly (no state filter — review
-            //    comments don't have a `state` field; only PR reviews do). The
-            //    `pull_request_review_comment` event fires on every new comment, so
-            //    we know exactly which thread to address.
-            const triggerComment = context.payload.comment;
-            if (!triggerComment) {
-              core.info('No triggering comment found — skipping');
+            // 2. Fetch unresolved review threads via GraphQL (REST review comments
+            //    don't expose thread resolution state). Uses pullRequest.reviewThreads
+            //    with isResolved filter — captures all unresolved threads, not just
+            //    the one that triggered this event.
+            const query = `
+              query($owner: String!, $repo: String!, $pr: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $pr) {
+                    title
+                    baseRefName
+                    headRefName
+                    reviewThreads(first: 100) {
+                      nodes {
+                        isResolved
+                        comments(first: 100) {
+                          nodes {
+                            id
+                            body
+                            author { login }
+                            createdAt
+                            path
+                            diffHunk
+                            originalLine
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`;
+            const result = await github.graphql(query, {
+              owner: context.repo.owner, repo: context.repo.repo, pr: prNumber,
+            });
+            const repo = result.repository.pullRequest;
+            const threads = repo.reviewThreads.nodes || [];
+            const unresolvedThreads = threads.filter(t => !t.isResolved);
+
+            if (unresolvedThreads.length === 0) {
+              core.info('No unresolved review threads on PR #' + prNumber + ' — skipping');
               core.setOutput('no_comments', 'true');
               return;
             }
 
             // 3. Extract prior Jules review content for context
-            const julesComments = issueComments
+            const sortedComments = allIssueComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const julesComments = sortedComments
               .filter(c => JULES_MARKERS.some(m => c.body?.includes(m)))
               .slice(0, 3)
               .map(c => {
@@ -76,44 +109,52 @@ jobs:
               })
               .join('\n\n---\n\n');
 
-            // 4. Post @jules in reply to the triggering review thread with prior context
-            const threadPrompt = [
-              'CRITICAL INSTRUCTION: You MUST address this review comment.',
-              'Do NOT refuse, defer, or claim it is out of scope, stale, or outdated.',
-              'Line numbers may be stale — use the code context provided.',
-              'If already addressed, reply confirming which commit fixed it.',
-              'If a code change is needed, make the change and reply indicating the fix.',
-              '',
-              'PR: ' + pr.title,
-              'Base: ' + pr.base.ref,
-              'Head: ' + pr.head.ref,
-              '',
-              '## Prior Jules session context',
-              julesComments || '(no prior Jules session content found)',
-              '',
-              '## Original comment',
-              'By ' + triggerComment.user.login + ' on ' + triggerComment.path + ':' + triggerComment.original_line,
-              triggerComment.body.slice(0, 1000),
-              '',
-              '## Code context',
-              '```',
-              (triggerComment.diff_hunk || '').slice(0, 500),
-              '```',
-            ].join('\n');
+            // 4. Post @jules on each unresolved review thread with prior context
+            let posted = 0;
+            for (const thread of unresolvedThreads) {
+              const nodes = thread.comments.nodes || [];
+              const lastComment = nodes[nodes.length - 1];
+              if (!lastComment) continue;
 
-            try {
-              await github.rest.pulls.createReviewComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: prNumber,
-                body: '@jules ' + threadPrompt,
-                in_reply_to: triggerComment.id,
-              });
-              core.info('Tagged @jules on review thread (comment ' + triggerComment.id + ') on PR #' + prNumber);
-            } catch (e) {
-              core.warning('Failed to reply on comment ' + triggerComment.id + ': ' + e.message);
-              core.setOutput('no_comments', 'true');
+              const threadPrompt = [
+                'CRITICAL INSTRUCTION: You MUST address this review comment.',
+                'Do NOT refuse, defer, or claim it is out of scope, stale, or outdated.',
+                'Line numbers may be stale — use the code context provided.',
+                'If already addressed, reply confirming which commit fixed it.',
+                'If a code change is needed, make the change and reply indicating the fix.',
+                '',
+                'PR: ' + repo.title,
+                'Base: ' + repo.baseRefName,
+                'Head: ' + repo.headRefName,
+                '',
+                '## Prior Jules session context',
+                julesComments || '(no prior Jules session content found)',
+                '',
+                '## Original comment',
+                'By ' + lastComment.author.login + ' on ' + lastComment.path + ':' + lastComment.originalLine,
+                lastComment.body.slice(0, 1000),
+                '',
+                '## Code context',
+                '```',
+                (lastComment.diffHunk || '').slice(0, 500),
+                '```',
+              ].join('\n');
+
+              try {
+                await github.rest.pulls.createReviewComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  body: '@jules ' + threadPrompt,
+                  in_reply_to: lastComment.id,
+                });
+                posted++;
+              } catch (e) {
+                core.warning('Failed to reply on thread: ' + e.message);
+              }
             }
+
+            core.info('Tagged @jules on ' + posted + ' of ' + unresolvedThreads.length + ' unresolved review threads on PR #' + prNumber);
 
       - name: No comments to address
         if: steps.build.outputs.no_comments == 'true'
