@@ -13,7 +13,7 @@ jobs:
     if: github.event.label.name == 'jules-fix'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
     steps:
       - name: Consume label — prevent duplicate sessions
@@ -117,7 +117,7 @@ jobs:
               } catch (e) { /* file is optional */ }
             }
 
-            const prompt = [
+            let prompt = [
               `Fix the issue described in this PR. You will create a new PR with the fix.`,
               ...(reviewRules ? [``, `## Repository-specific instructions`, reviewRules] : []),
               ``,
@@ -155,15 +155,27 @@ jobs:
 
               `4. Process files one at a time`,
               `5. Only diff files actually needed for the fix`,
-              `6. After making and committing the fix locally, check for late commits:`,
-              `   run \`git fetch origin ${target} && git log --oneline HEAD..origin/${target}\``,
-              `   If new commits arrived: \`git rebase origin/${target}\`, resolve new conflicts,`,
-              `   verify the fix still works, and amend if needed.`,
-              `7. When creating the PR:`,
-              `   - Reference the source PR/issue in the description using "Fixes #${pr.number}"`,
-              `   - Include a clear description of what was fixed and why`,
-              `   - Ensure CI checks pass — fix any test failures`,
+               `6. After making and committing the fix locally, check for late commits:`,
+               `   run \`git fetch origin ${target} && git log --oneline HEAD..origin/${target}\``,
+               `   If new commits arrived: \`git rebase origin/${target}\`, resolve new conflicts,`,
+               `   verify the fix still works, and amend if needed.`,
+             ].join('\n');
+
+            const prCreateCmd = [
+              '7. Create a new PR with gh (no AUTO_CREATE_PR — you do it):',
+              '   - Push your branch: git push origin HEAD',
+              '   - Then run:',
+              '     gh pr create \\',
+              `       --base ${target} \\`,
+              `       --head "$(git rev-parse --abbrev-ref HEAD)" \\`,
+              `       --title "fix: ${pr.title.replace(/"/g, '\\"')}" \\`,
+              `       --body "Fixes #${pr.number}\n\n[Describe the fix]" \\`,
+              `       --label jules-auto-fix`,
+              '   - Verify the label was applied: gh pr view --json labels',
+              '   - Ensure CI checks pass',
             ].join('\n');
+
+            prompt += '\n\n' + prCreateCmd;
 
             const payload = {
               prompt,
@@ -171,7 +183,6 @@ jobs:
                 source: `sources/github/${context.repo.owner}/${context.repo.repo}`,
                 githubRepoContext: { startingBranch: headRef },
               },
-              automationMode: 'AUTO_CREATE_PR',  // creates a new PR with the fix on top
             };
 
             // Write payload to file for the curl step
