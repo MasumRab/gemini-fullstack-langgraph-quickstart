@@ -38,8 +38,10 @@ jobs:
         if: github.event_name == 'issue_comment'
         id: parse
         shell: bash
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          CUSTOM=$(echo "${{ github.event.comment.body }}" | sed 's|^/jules-walkthrough ||')
+          CUSTOM=$(echo "$COMMENT_BODY" | sed 's|^/jules-walkthrough ||')
           echo "custom_instructions=$CUSTOM" >> "$GITHUB_OUTPUT"
 
       - name: Fork check
@@ -178,6 +180,7 @@ jobs:
               `Output the entire walkthrough as your final message.`,
             ].join('\n');
 
+            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-walkthrough-payload.json', JSON.stringify({
               prompt,
               sourceContext: {

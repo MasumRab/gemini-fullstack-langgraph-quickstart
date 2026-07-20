@@ -48,8 +48,10 @@ jobs:
         if: github.event_name == 'issue_comment'
         id: parse
         shell: bash
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          CUSTOM=$(echo "${{ github.event.comment.body }}" | sed 's|^/jules-rebuild ||')
+          CUSTOM=$(echo "$COMMENT_BODY" | sed 's|^/jules-rebuild ||')
           echo "custom_instructions=$CUSTOM" >> "$GITHUB_OUTPUT"
 
       - name: Fork check

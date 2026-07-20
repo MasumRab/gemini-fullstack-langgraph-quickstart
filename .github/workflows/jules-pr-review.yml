@@ -286,6 +286,7 @@ jobs:
               },
             };
 
+            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-review-payload.json', JSON.stringify(payload));
             core.setOutput('head_sha', headSha);
             core.info(`Payload written for PR #${pr.number}`);
@@ -382,7 +383,7 @@ jobs:
           echo "Review timed out after $((MAX_ATTEMPTS * 15)) seconds." > /tmp/jules-review-output.txt
 
       - name: Post review and set commit status
-        if: always() && steps.prepare.conclusion == 'success' && steps.create.outputs.quota_exhausted != 'true'
+        if: always() && steps.prepare.conclusion == 'success' && steps.prepare.outputs.skip != 'true' && steps.create.outputs.quota_exhausted != 'true'
         uses: actions/github-script@v7
         with:
           script: |
