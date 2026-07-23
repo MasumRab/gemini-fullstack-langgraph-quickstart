@@ -1,8 +1,8 @@
 # Jules GitHub Workflow Review and Repair Plan
 
-Date: 2026-07-19  
+Date: 2026-07-20  
 Representative repository: `MasumRab/gemini-fullstack-langgraph-quickstart`  
-Status: review and implementation plan only; no workflow repairs have been applied
+Status: evolved-workflow regression audit and revised implementation plan; no workflow repairs have been applied by this review
 
 ## 1. Objective and scope
 
@@ -15,27 +15,30 @@ Review the recently added Jules pull-request workflows for:
 - duplicate-session, fork, pagination, timeout, and prompt-injection risks;
 - consistency across repositories that received the shared workflow set.
 
-The first-pass scope is the five shared workflows in this repository:
+The original first-pass scope was five shared workflows. The evolved scope is all eight Jules workflows now deployed in the representative repository:
 
-1. `.github/workflows/jules-pr-auto-fix.yml`
-2. `.github/workflows/jules-pr-force-review.yml`
-3. `.github/workflows/jules-pr-resolve-conflicts.yml`
-4. `.github/workflows/jules-pr-review.yml`
-5. `.github/workflows/jules-pr-walkthrough.yml`
+1. `.github/workflows/jules-pr-address-comments.yml`
+2. `.github/workflows/jules-pr-auto-fix.yml`
+3. `.github/workflows/jules-pr-automerge-label.yml`
+4. `.github/workflows/jules-pr-force-review.yml`
+5. `.github/workflows/jules-pr-rebuild.yml`
+6. `.github/workflows/jules-pr-resolve-conflicts.yml`
+7. `.github/workflows/jules-pr-review.yml`
+8. `.github/workflows/jules-pr-walkthrough.yml`
 
-The review and force-review workflows are treated as one behavior family. Auto-fix, conflict resolution, and walkthrough are reviewed separately because they have different branch and output requirements.
+The review and force-review workflows are treated as one behavior family. Auto-fix, conflict resolution, walkthrough, rebuild, address-comments, and automerge-label are reviewed separately because they have different branch, trust, mutation, and output requirements.
 
 ## 2. Repository inventory and propagation scope
 
-The following workflow files are byte-for-byte identical in `gemini-fullstack-langgraph-quickstart`, `gemini-cli-prompt-library`, and `kaggle-notebooks-analysis`:
+The current deployed eight-file sets are byte-for-byte identical in:
 
-- `jules-pr-auto-fix.yml`
-- `jules-pr-force-review.yml`
-- `jules-pr-resolve-conflicts.yml`
-- `jules-pr-review.yml`
-- `jules-pr-walkthrough.yml`
+- `EmailIntelligence`;
+- `gemini-fullstack-langgraph-quickstart`;
+- `kaggle-notebooks-analysis`.
 
-`EmailIntelligence` currently shares identical copies of auto-fix and conflict resolution, but its review and other automation differ. The representative fixes should therefore be validated here first, copied to the other two identical sets only after validation, and selectively ported to `EmailIntelligence` after a separate diff-based review.
+`gemini-cli-prompt-library` is not in that family: it currently has only the original five workflow names, all five have uncommitted edits, and its current `jules-pr-review.yml` contains a duplicate lexical `const fs` declaration that prevents the GitHub Script from compiling. It must not receive a blind copy while those user edits are unresolved.
+
+There is also a newer template/documentation family under `jules/docs/actions/workflows` and staged copies under `EmailIntelligence/docs/actions/workflows` and `kaggle-notebooks-analysis/docs/actions/workflows`. These add session-cap handling and bounded create requests, and fix the deployed rebuild file's duplicate declarations, but they are not byte-identical to the deployed workflows. They still retain several logic defects documented in Section 11. A template is therefore not considered canonical merely because it is newer.
 
 ## 3. Evidence used
 
@@ -464,3 +467,203 @@ Use a disposable PR and labels, not a production change:
 - Fork and duplicate-trigger behavior is explicit and safe.
 - Failure states cannot be reported as successful reviews.
 - Representative smoke tests pass before byte-identical propagation to the other repositories.
+
+## 11. Evolved-workflow regression audit (2026-07-20)
+
+This section supersedes any historical “current verdict” above. The earlier sections are retained to show which defect each change was intended to repair and why the custom architecture exists.
+
+### 11.1 Design evidence and changed decisions
+
+`jules/docs/actions/workflows/CHANGELOG.md` confirms that the following are deliberate product behavior, not deviations to normalize back to Google/community examples:
+
+- file-list-first inspection exists to avoid the community reviewer's 80 KB full-diff truncation;
+- recent PR discussion and review comments are intended to be bounded prompt context;
+- workflow markers are intended to prevent circular agent context;
+- force review must not inherit automatic review's Jules-branch exclusion;
+- walkthrough is analysis-only and maintains one marker comment;
+- conflict resolution waits for a stable source PR, spends no session if conflicts disappear, and reimplements still-valid intent on the current base;
+- auto-fix and conflict resolution are intended to survive late changes while conserving sessions.
+
+Subsequent git history also records intentional evolution beyond the original changelog:
+
+- commit `bec95a6` changed auto-fix from base/target start to PR-head start so fixes layer on the implementation under review;
+- commit `771be25` separated read-only prompts from mutating prompts;
+- mutating workflows now omit `AUTO_CREATE_PR` and explicitly instruct Jules to push/create a PR (or, for rebuild, push the existing branch). This is compatible with the current Jules API: omitted `automationMode` means no automatic PR.
+
+These changes resolve the old ambiguity in Sections 4.4 and 8: PR-head auto-fix is now the documented implementation decision and should be preserved. The conflict resolver's base-start reconstruction is also intentional. However, documenting “rebase onto the source head” does not make that command correct: the source head is not the ancestor of the reconstructed branch, so the command cannot distinguish original source commits from late commits and can reintroduce the conflict.
+
+### 11.2 Current official API contract
+
+The official Jules REST reference remains available at `https://developers.google.com/jules/api/reference/rest/v1alpha/sessions` and confirms:
+
+- `POST /v1alpha/sessions` returns `name: "sessions/{session}"` and a bare `id`;
+- get-session is `/v1alpha/sessions/{session}`;
+- activities are `/v1alpha/sessions/{session}/activities`;
+- agent text is represented by `agentMessaged.agentMessage`;
+- `githubRepoContext.startingBranch` is required;
+- omitted or unspecified `automationMode` defaults to no automation;
+- `AUTO_CREATE_PR` automatically creates a PR only when a final patch is generated.
+
+The endpoint is therefore not currently deprecated in the way suspected for the separate Gemini endpoint. No Jules workflow should be removed or reverted on that basis.
+
+### 11.3 Regression matrix
+
+| Previously identified defect                 | Current status                               | Evidence and interpretation                                                                                                                                                                                    |
+| -------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Malformed session polling/activity URLs      | **Fixed**                                    | Pollers use `.name`, fall back to `sessions/${id}`, and call `/v1alpha/${SESSION_RESOURCE}`.                                                                                                                   |
+| Wrong activity schema                        | **Fixed**                                    | Pollers select `.agentMessaged.agentMessage` and tolerate a missing activities array.                                                                                                                          |
+| Review/walkthrough missing PR-head code      | **Fixed**                                    | Review, force-review, walkthrough, and auto-fix now start from `pr.head.ref`/`headRef`.                                                                                                                        |
+| Broken conflict detector                     | **Resurfaced in a new form**                 | `merge-tree --write-tree` is correct, but Actions invokes Bash with `-e`; exit 1 terminates before `case $?` writes `has_conflicts=true`. A local exact-shell reproduction exited 1 without reaching the case. |
+| Read-only workflows use `AUTO_CREATE_PR`     | **Fixed**                                    | Review, force-review, walkthrough, and rebuild analysis omit it; official API default is no automatic PR.                                                                                                      |
+| First-30-files truncation                    | **Fixed**                                    | All changed-file inventory paths use `github.paginate`.                                                                                                                                                        |
+| HTTP errors become long `UNKNOWN` loops      | **Partially fixed**                          | Poll GETs use `--fail-with-body` and bounds, but one transient error terminates the step and prevents terminal reporting.                                                                                      |
+| Duplicate label sessions                     | **Partially fixed**                          | Concurrency and early label removal were added, but every removal error is swallowed; a duplicate/rerun can continue into another non-idempotent POST.                                                         |
+| Fork handling                                | **Partially fixed**                          | Several builders detect forks, but auto-fix/walkthrough check only after checkout; conflict resolution has no fork guard; rebuild's second job is not gated by the first job's skip.                           |
+| Shell injection through event refs           | **Partially fixed**                          | Runner shell steps now use quoted `env` values. Prompt-generated shell commands still interpolate unvalidated refs and titles.                                                                                 |
+| Circular marker filtering                    | **Partially fixed**                          | Walkthrough's own marker was added where needed, but marker sets omit newer `jules-rebuild`, `jules-quota-exhausted`, and other workflow outputs or differ by file.                                            |
+| Wrong newest-comment selection               | **Resurfaced / not fixed**                   | `issues.listComments` does not support `direction`; returned comments remain oldest-first before `.slice(0, 10)`. Review-comment ordering is separate and valid.                                               |
+| Late-commit/start-branch mismatch            | **Partially fixed**                          | Auto-fix now starts on the PR head and checks target drift, but does not pin/check source-head drift. Conflict resolution still tells a base reconstruction to rebase onto the original conflicting source.    |
+| Missing bounded HTTP calls                   | **Partially fixed**                          | Deployed session-creation POSTs remain unbounded; newer templates add POST bounds. No family has explicit job `timeout-minutes`.                                                                               |
+| Missing concurrency/idempotency              | **Partially fixed**                          | PR-scoped concurrency exists, but there is no durable pre-POST marker/session guard.                                                                                                                           |
+| Fail-open verdict behavior                   | **Partially fixed, with a new contract bug** | Missing/unknown verdict defaults to failure, but the prompt's required literal example is `[VERDICT]: approve`; the parser accepts the first marker, so unchanged template text can approve a review.          |
+| Untrusted PR content treated as instructions | **Resurfaced / not fixed**                   | PR bodies, comments, review comments, and PR-head rule files enter privileged prompts without author filtering or explicit data boundaries.                                                                    |
+
+### 11.4 New blockers introduced by the evolved workflows
+
+#### A. Deployed rebuild cannot compile
+
+The deployed `jules-pr-rebuild.yml` declares `const fs = require('fs')` twice in each of its two GitHub Script payload builders. JavaScript rejects both functions before execution. A local `AsyncFunction` compilation check reproduced both failures.
+
+Options:
+
+- **A — recommended:** remove the second declaration in each function and reuse the first binding.
+- **B:** move one declaration to the top of each function. This is equivalent but creates a larger diff.
+
+The newer documentation/template copy already implements option A. That correction should be ported to the deployed family after the broader patch is validated.
+
+#### B. Address-comments is a no-op
+
+`pulls.listReviewComments` returns review-comment records, not review-thread state. Those records do not have `state: PENDING`; that state belongs to pull-request review records. Filtering every comment with `rc.state === 'PENDING'` therefore produces an empty list and the workflow never tags Jules.
+
+Options:
+
+- **A — recommended:** use GitHub GraphQL `pullRequest.reviewThreads`, paginate threads/comments, filter `isResolved == false`, and reply once to the relevant unresolved thread.
+- **B:** react only to the triggering `pull_request_review_comment` event without trying to infer resolution. This is smaller but can re-address already-resolved or superseded threads and does not satisfy the stated “all unresolved threads” design.
+- **C:** process all REST review comments. Reject because REST comments cannot reliably represent thread resolution and can duplicate replies.
+
+The newer template adds prior Jules marker context but retains the invalid `rc.state` filter, so it does not fix the blocker.
+
+#### C. Automerge trusts a branch-name convention as identity
+
+The hourly workflow adds `automerge` when either the author login equals `jules` or the head branch begins `jules-`. A fork author controls their branch name and can satisfy the second test. If Mergify or repository rules trust this label, the workflow elevates an untrusted naming convention into merge authorization. It also reads only the first 100 open PRs.
+
+Options:
+
+- **A — recommended minimum:** paginate open PRs, require a same-repository head, and require a trusted Jules bot/app identity or a trusted provenance label written by a privileged workflow.
+- **B:** require only the trusted Jules account/app identity and remove branch-prefix trust. This is safest if all valid Jules PRs have stable author identity.
+- **C:** retain branch-prefix matching but require same-repository head. This blocks fork spoofing but still lets any repository writer create a matching branch, so it is weaker than A/B.
+
+#### D. Rebuild write phase is not gated by valid analysis
+
+The analysis poll exits successfully for both `COMPLETED` and `FAILED`, and timeout also leaves a text file. The second job has no dependency condition for fork skip or successful analysis. Once the syntax blocker is removed, it can start a write session using “Analysis unavailable” or timeout text, and can reach a fork-incompatible checkout.
+
+Options:
+
+- **A — recommended:** expose `skip` and `session_state` as analyze-job outputs and require same-repository PR plus `session_state == COMPLETED` before the rebuild job. Reject empty/placeholder analysis.
+- **B:** collapse both phases into one job so step outputs directly gate the write phase. This simplifies gating but is a larger structural change and loses intentional two-job separation.
+
+#### E. Repository rules silently fail to load in auto-fix and conflict resolution
+
+Both scripts call `fs.existsSync` before a later lexical `const fs` declaration. The resulting temporal-dead-zone `ReferenceError` is swallowed by the optional-file `catch`, so the workflow runs but silently omits repository rules. The divergent `gemini-cli-prompt-library` review copy has a more severe duplicate declaration and cannot compile.
+
+Options:
+
+- **A — minimum contract repair:** move `const fs = require('fs')` before first use and remove the later declaration.
+- **B — recommended trust repair:** read rule files from the trusted PR base SHA/ref via the GitHub API, preserving file priority. This avoids treating a PR-head policy file as privileged instructions.
+
+#### F. Review prompt can manufacture an approval
+
+Review and force-review tell Jules to reproduce a template containing the literal line `[VERDICT]: approve`, then parse the first matching verdict marker. This is not a neutral example: a model that follows the template without replacing the value can approve despite findings.
+
+Options:
+
+- **A — recommended:** use `[VERDICT]: <approve|comment|block>`, define the decision criteria, parse exactly one marker from the `## Verdict` section, and fail on zero or multiple markers.
+- **B:** require a small JSON output object and parse it strictly. This is more robust but changes the human-readable output contract and requires careful separation from the posted review.
+
+### 11.5 Validation evidence
+
+- PyYAML parsed every current deployed workflow in all four repositories.
+- `actionlint v1.7.7` found no Actions YAML/expression error in the representative eight-file set or newer template set; it reported only one unused loop variable warning in rebuild and one redirect style warning in walkthrough. Actions-aware YAML validation alone does not compile embedded GitHub Script JavaScript.
+- A separate Node `AsyncFunction` compile check found both deployed rebuild duplicate declarations and the divergent `gemini-cli-prompt-library` review duplicate declaration.
+- A temporary conflicting git fixture confirmed `git merge-tree --write-tree` returns 1 and prints `CONFLICT`; running the workflow's exact command/case sequence under `bash --noprofile --norc -e -o pipefail` exits before the case.
+- CodeRabbit CLI `0.6.5` reviewed the evolved committed eight-file family from `2a6d8a8` and returned 19 findings. It independently confirmed automerge trust/pagination, label idempotency, fork timing, trusted rules loading, POST timeouts, auto-fix's `fs` ordering, issue-comment ordering, rebuild syntax/gating, and address-comments' nonexistent `state` field. It did not catch the `bash -e` conflict regression, so that local reproduction remains necessary evidence.
+
+## 12. Revised implementation plan
+
+No workflow edits should be propagated until Phase 1 passes deterministic validation. Every change below preserves the custom architecture and is classified as contract repair, intent repair, or safety hardening—not a return to Google/community defaults.
+
+### Phase 1 — restore executable core paths
+
+1. Repair both conflict checks using `if git merge-tree ...; then ... else rc=$? ... fi`; reject unexpected statuses. Prefer this to broad `set +e` because it suppresses `errexit` only for the expected status-producing command.
+2. Remove both duplicate `fs` declarations in deployed rebuild.
+3. Move/fetch `fs` correctly for auto-fix and conflict resolution; use trusted-base GitHub API loading if included in the same patch.
+4. Replace address-comments' REST `state` filter with paginated GraphQL review threads.
+5. Neutralize the verdict template and make parser cardinality/section checks fail closed.
+
+Acceptance checks:
+
+- all GitHub Script bodies compile as async JavaScript;
+- conflict fixture maps exit 0 to clean, 1 to conflict, and all other values to failure;
+- address-comments fixtures distinguish resolved and unresolved threads;
+- verdict fixtures reject zero, duplicate, contradictory, and placeholder markers.
+
+### Phase 2 — make mutation and trust boundaries explicit
+
+1. Harden automerge provenance and paginate open PRs.
+2. Gate rebuild write phase on same-repository PR and completed, non-placeholder analysis.
+3. Move fork classification before checkout in auto-fix and walkthrough; add it to conflict resolution; propagate it across rebuild jobs.
+4. Treat only trusted repository-role feedback as instructions for mutating workflows. Keep other PR text as clearly delimited untrusted evidence.
+5. Load repository policy from the trusted base, not the PR head.
+6. Validate branch refs before placing them into generated shell examples; avoid interpolating PR titles into executable command text.
+
+### Phase 3 — correct ordering, drift, markers, and idempotency
+
+1. Paginate issue comments, sort by `created_at` descending, then filter and slice.
+2. Align marker sets per workflow purpose, including rebuild and quota markers, while intentionally allowing walkthrough context only where the changelog requires it.
+3. Make label removal an atomic claim: continue on successful removal; treat 404 as already consumed and skip; rethrow other errors.
+4. Add a durable pre-POST marker/session guard for mutating workflows. Do not retry non-idempotent session creation blindly.
+5. Pin the auto-fix source head SHA and detect both source-head and target movement.
+6. Replace conflict resolution's source-head rebase with a pinned-SHA comparison. If the source moved, stop/restart reconstruction rather than replaying the original conflicting branch onto reconstructed work.
+
+### Phase 4 — bounded transport and terminal reporting
+
+1. Port bounded POST calls from the newer templates to deployed workflows.
+2. Add explicit job `timeout-minutes` appropriate to watch plus poll duration.
+3. Retry only idempotent GET/list operations for bounded transient failures.
+4. Run review/force-review final reporting under `always()` after a non-skip prepare, derive status from create/poll state, and make required commit-status write failures visible.
+5. Paginate activities or explicitly verify the API's page-order/limit guarantee before relying on the last item of the first 100.
+
+### Phase 5 — validate one family, then reconcile repositories
+
+1. Apply and validate the patch first in `gemini-fullstack-langgraph-quickstart`.
+2. Run PyYAML, `actionlint`, embedded-JavaScript compilation, shell fixtures, prompt/verdict fixtures, and `git diff --check`.
+3. Run CodeRabbit on the resulting diff and manually disposition each finding; do not execute reviewer-supplied commands automatically.
+4. Smoke-test with disposable same-repository PRs: review, forced review, walkthrough, real merge conflict, address-comment thread, rebuild failure gating, relabel/rerun, and fork skip.
+5. After validation, copy the same deployed files to `EmailIntelligence` and `kaggle-notebooks-analysis`, then verify checksums.
+6. Reconcile `gemini-cli-prompt-library` separately against its five uncommitted files. Preserve user changes, add the three missing workflows only after repository policy is confirmed, and never overwrite its worktree wholesale.
+7. Promote the validated deployed files back into `jules/docs/actions/workflows`; then update staged documentation copies so there is one traceable template family rather than competing “newer” copies.
+
+### Revised definition of done
+
+- The eight intended workflows are present where policy requires them and have a documented checksum/version map.
+- Current official Jules resources, states, and activities are handled without relying on obsolete fields.
+- Every embedded GitHub Script compiles before deployment.
+- Real conflicts enter the stability/reconstruction path under Actions' actual Bash flags.
+- Read-only sessions cannot create PRs; write sessions use their explicitly documented manual push/PR behavior.
+- Address-comments operates on unresolved review threads rather than nonexistent REST state.
+- Automerge cannot be granted from a spoofed fork branch name.
+- Rebuild cannot write after skipped, failed, timed-out, or empty analysis.
+- Verdict/status parsing cannot approve from example text or malformed output.
+- Recent context is actually recent, marker filtering matches each workflow's intent, and untrusted content is data rather than policy.
+- Fork, label replay, rerun, API failure, and late-commit behavior are deterministic and observable.
+- Representative smoke tests pass before cross-repository propagation.

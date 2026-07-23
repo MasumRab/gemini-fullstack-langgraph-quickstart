@@ -1,10 +1,16 @@
 name: Jules Address Review Comments
 
 # Auto-triggered on new review comments. Checks if the PR has prior Jules
-# activity (any comment containing a jules-* HTML marker: jules-pr-reviewer,
-# jules-walkthrough, jules-rebuild, jules-resolve, jules-auto-fix), then
-# posts @jules on each unresolved review thread with prior context.
-# No new Jules session is created — @jules responds via the GitHub App.
+# activity (markers in issue comments OR PR review bodies), then posts a
+# single @jules PR comment summarising all unresolved review threads with
+# prior Jules session context.
+#
+# The @jules mention is posted as a PR comment (issue comment), NOT as a
+# review thread reply, because the Jules GitHub App's server-side @jules
+# feature processes issue_comment events — review thread replies
+# (pull_request_review_comment) are not seen by the Jules App.
+# Posting as a PR comment also avoids a self-triggering loop (review
+# comment replies fire new pull_request_review_comment events).
 
 on:
   pull_request_review_comment:
@@ -16,7 +22,7 @@ concurrency:
 
 jobs:
   address:
-    if: github.event.comment.user.login != 'jules'
+    if: github.event.comment.user.login != 'google-labs-jules[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -40,19 +46,30 @@ jobs:
             const pr = context.payload.pull_request || context.payload.issue;
             const prNumber = pr.number;
 
-            // 1. Fetch issue comments — check for prior Jules session markers
+            // 1. @jules only works on Jules-created PRs — the Jules GitHub App
+            //    routes @jules mentions to the session that created the PR.
+            //    Skip human-created PRs immediately (no session to route to).
+            if (pr.user.login !== 'google-labs-jules[bot]') {
+              core.info('PR #' + prNumber + ' not created by Jules (author: ' + pr.user.login + ') — @jules has no session to route to, skipping');
+              core.setOutput('no_comments', 'true');
+              return;
+            }
+
+            // 1b. Fetch issue comments and reviews for context extraction.
+            //     No marker check needed — the PR being Jules-created IS the
+            //     evidence of a Jules session. The self-hosted review workflow
+            //     skips Jules-authored branches (startsWith head.ref 'jules-'),
+            //     so Jules-created PRs typically don't have our custom HTML
+            //     markers. A marker check here would block the very PRs this
+            //     workflow is designed to serve.
             const allIssueComments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner, repo: context.repo.repo,
               issue_number: prNumber, per_page: 100,
             });
-            const hasJulesSession = allIssueComments.some(c =>
-              JULES_MARKERS.some(m => c.body?.includes(m))
-            );
-            if (!hasJulesSession) {
-              core.info('No prior Jules session detected on PR #' + prNumber + ' — skipping');
-              core.setOutput('no_comments', 'true');
-              return;
-            }
+            const allReviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              pull_number: prNumber, per_page: 100,
+            });
 
             // 2. Fetch unresolved review threads via GraphQL (REST review comments
             //    don't expose thread resolution state). Uses pullRequest.reviewThreads
@@ -109,52 +126,83 @@ jobs:
               })
               .join('\n\n---\n\n');
 
-            // 4. Post @jules on each unresolved review thread with prior context
-            let posted = 0;
+            // 3b. Also extract Jules review content (review bodies with markers)
+            const julesReviews = allReviews
+              .filter(r => JULES_MARKERS.some(m => r.body?.includes(m)))
+              .slice(-3)
+              .map(r => {
+                const marker = JULES_MARKERS.find(m => r.body?.includes(m));
+                return '[' + marker.replace('<!-- ', '').replace(' -->', '') + ']\n' +
+                       (r.body || '').replace(/<!--.*?-->/g, '').trim().slice(0, 1500);
+              })
+              .join('\n\n---\n\n');
+            const allJulesContext = [julesComments, julesReviews].filter(Boolean).join('\n\n---\n\n');
+
+            // 4. Post a single @jules PR comment (issue comment) with all
+            //    unresolved thread context. The Jules GitHub App processes
+            //    @jules mentions from PR comments (issue_comment events),
+            //    not from review thread replies. Posting as an issue comment
+            //    also avoids re-triggering this workflow (review comment
+            //    replies would fire new pull_request_review_comment events).
+            const threadSummaries = [];
             for (const thread of unresolvedThreads) {
               const nodes = thread.comments.nodes || [];
               const lastComment = nodes[nodes.length - 1];
               if (!lastComment) continue;
-
-              const threadPrompt = [
-                'CRITICAL INSTRUCTION: You MUST address this review comment.',
-                'Do NOT refuse, defer, or claim it is out of scope, stale, or outdated.',
-                'Line numbers may be stale — use the code context provided.',
-                'If already addressed, reply confirming which commit fixed it.',
-                'If a code change is needed, make the change and reply indicating the fix.',
-                '',
-                'PR: ' + repo.title,
-                'Base: ' + repo.baseRefName,
-                'Head: ' + repo.headRefName,
-                '',
-                '## Prior Jules session context',
-                julesComments || '(no prior Jules session content found)',
-                '',
-                '## Original comment',
-                'By ' + lastComment.author.login + ' on ' + lastComment.path + ':' + lastComment.originalLine,
+              threadSummaries.push([
+                '### Thread ' + (threadSummaries.length + 1) + ': ' + lastComment.path + ':' + lastComment.originalLine,
+                '**Comment by @' + lastComment.author.login + ':**',
                 lastComment.body.slice(0, 1000),
                 '',
-                '## Code context',
+                '<details><summary>Code context</summary>',
+                '',
                 '```',
                 (lastComment.diffHunk || '').slice(0, 500),
                 '```',
-              ].join('\n');
-
-              try {
-                await github.rest.pulls.createReviewComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: prNumber,
-                  body: '@jules ' + threadPrompt,
-                  in_reply_to: lastComment.id,
-                });
-                posted++;
-              } catch (e) {
-                core.warning('Failed to reply on thread: ' + e.message);
-              }
+                '',
+                '</details>',
+              ].join('\n'));
             }
 
-            core.info('Tagged @jules on ' + posted + ' of ' + unresolvedThreads.length + ' unresolved review threads on PR #' + prNumber);
+            if (threadSummaries.length === 0) {
+              core.info('No actionable unresolved review threads on PR #' + prNumber + ' — skipping');
+              core.setOutput('no_comments', 'true');
+              return;
+            }
+
+            const julesMention = [
+              '@jules',
+              '',
+              'The following unresolved review comments on **' + repo.title + '** need your attention:',
+              'Base: `' + repo.baseRefName + '` | Head: `' + repo.headRefName + '`',
+              '',
+              ...threadSummaries,
+              '',
+              '## Prior Jules session context',
+              allJulesContext || '(no prior Jules session content found)',
+              '',
+              '## Instructions',
+              'CRITICAL: You MUST address each review comment above.',
+              'You may disagree with a comment, but ONLY with specific technical reasoning.',
+              'Do NOT dismiss comments as "out of scope", "stale", or "unnecessary" without',
+              'providing a thorough justification that explains WHY the comment is not valid.',
+              'Line numbers may be stale — use the code context provided to locate the relevant code.',
+              'If already addressed, reply confirming which commit fixed it.',
+              'If a code change is needed, make the change and reply indicating the fix.',
+              'If you believe a comment is wrong, explain the error with specific evidence —',
+              'do not simply state it is incorrect or irrelevant.',
+              '',
+              '<!-- jules-address-comments -->',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: julesMention,
+            });
+
+            core.info('Posted @jules PR comment on #' + prNumber + ' with ' + threadSummaries.length + ' unresolved review threads');
 
       - name: No comments to address
         if: steps.build.outputs.no_comments == 'true'

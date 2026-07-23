@@ -2,7 +2,9 @@ name: Jules PR Auto-Merge Label
 
 # Periodically labels Jules-created PRs for auto-merge.
 # Avoids per-session polling which would burn billable action minutes.
-# Relies on Mergify (EI, GCPL) or GitHub auto-merge rules to complete the merge.
+# Relies on GitHub's built-in auto-merge (no Mergify on this repo).
+# Calls enablePullRequestAutoMerge GraphQL mutation after labeling.
+# Requires: Settings > General > Pull Requests > Allow auto-merge
 
 on:
   schedule:
@@ -33,7 +35,7 @@ jobs:
               // Only label PRs from the Jules bot account in the same repository.
               // Branch-name matching is rejected as a spoof vector — a fork author
               // controls their branch name and can trivially create a jules-* branch.
-              if (pr.user.login === 'jules' && pr.head.repo.full_name === sameRepo) {
+              if (pr.user.login === 'google-labs-jules[bot]' && pr.head.repo.full_name === sameRepo) {
                 const { data: labels } = await github.rest.issues.listLabelsOnIssue({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -48,6 +50,20 @@ jobs:
                     labels: ['automerge'],
                   });
                   labeled++;
+                }
+
+                // Enable GitHub's built-in auto-merge (idempotent — safe to call repeatedly).
+                // Requires auto-merge enabled in repo settings.
+                try {
+                  await github.graphql(`
+                    mutation EnableAutoMerge($pullRequestId: ID!) {
+                      enablePullRequestAutoMerge(input: {pullRequestId: $pullRequestId}) {
+                        pullRequest { number }
+                      }
+                    }
+                  `, { pullRequestId: pr.node_id });
+                } catch (e) {
+                  core.info(`Auto-merge not enabled for PR #${pr.number}: ${e.message}`);
                 }
               }
             }

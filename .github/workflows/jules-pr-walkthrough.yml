@@ -113,7 +113,7 @@ jobs:
             });
             const issueComments = allIssueComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->', '<!-- jules-walkthrough -->'];
+            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->', '<!-- jules-walkthrough -->', '<!-- jules-rebuild -->', '<!-- jules-quota-exhausted -->', '<!-- jules-address-comments -->'];
             const priorFeedback = issueComments
               .filter(c => !skipMarkers.some(m => c.body?.includes(m)))
               .slice(0, 10)

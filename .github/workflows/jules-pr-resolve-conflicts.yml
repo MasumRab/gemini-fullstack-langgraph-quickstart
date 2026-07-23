@@ -82,6 +82,11 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
+          if ! git rev-parse -q --verify "refs/remotes/origin/$BASE_REF" >/dev/null 2>&1; then
+            echo "::error::Base ref 'origin/$BASE_REF' not found after fetch"
+            echo "has_conflicts=error" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
           if git merge-tree --write-tree HEAD "origin/$BASE_REF"; then
             echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
           else
@@ -193,6 +198,11 @@ jobs:
           git reset --hard "origin/$HEAD_REF"
           git fetch origin "$BASE_REF"
 
+          if ! git rev-parse -q --verify "refs/remotes/origin/$BASE_REF" >/dev/null 2>&1; then
+            echo "::error::Base ref 'origin/$BASE_REF' not found after re-fetch"
+            echo "has_conflicts=error" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
           if git merge-tree --write-tree HEAD "origin/$BASE_REF"; then
             echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
           else
@@ -265,7 +275,7 @@ jobs:
             });
             const issueComments = allIssueComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->'];
+            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->', '<!-- jules-rebuild -->', '<!-- jules-quota-exhausted -->', '<!-- jules-address-comments -->'];
             const priorFeedback = issueComments
               .filter(c => !skipMarkers.some(m => c.body?.includes(m)))
               .slice(0, 10)

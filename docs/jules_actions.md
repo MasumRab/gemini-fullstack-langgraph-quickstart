@@ -1,9 +1,9 @@
 # Jules Actions Traceability: gemini-fullstack-langgraph-quickstart
 
-Date: 2026-07-08
+Date: 2026-07-21 (updated from 2026-07-08)
 Repo: `MasumRab/gemini-fullstack-langgraph-quickstart`
 Local repo name checked: `gemini-fullstack-langgraph-quickstart`
-Status: recommendation record; workflows not yet installed by this document.
+Status: **workflows installed and active** (8-workflow stack deployed).
 
 ## Existing local evidence
 
@@ -20,23 +20,30 @@ Relevant existing files found locally:
 - `scripts/jules_tools/jules_pr_triage.py`
 - Current workflows: `pr-check.yml`, `push-check.yml`, `validate-env.yml`, `dependabot-auto-merge.yml`.
 
-No dedicated `jules_actions.md`, `.github/jules-review-rules.md`, or Jules GitHub Actions workflows were found during inspection.
-
 ## Suitability assessment
 
 This repo is a strong fit for Jules PR review and targeted Jules invocation. It has frontend/backend integration, Gemini/LangGraph behavior, environment validation, upstream drift risk, and existing Jules task/journaling conventions.
 
 The repo already uses `pull_request_target` for Dependabot auto-merge. Jules workflows should not copy that pattern; Jules review should use `pull_request` and skip forks by default.
 
-## Recommended Jules Actions
+## Installed Jules Actions workflows
 
-| Action/workflow | Recommendation | Purpose |
-|---|---:|---|
-| Advanced Jules PR Reviewer | Adopt | Semantic fullstack review, env/secrets review, API-contract review. |
-| Backlog/stale PR sweep | Adopt weekly/manual | Classify stale agent/Jules/cleanup branches and upstream-drift risk. |
-| Jules Invoke | Adopt | Manual/label-gated CI repair, upstream sync, test generation, env validation fixes. |
-| Jules PR Comment / metadata | Optional/adopt if Jules PRs are common | Publish session context on Jules-authored PRs. |
-| Send Feedback to Jules | Adopt if Jules-authored PRs are common | Send human reviews back to existing Jules sessions. |
+All 8 workflows are deployed in `.github/workflows/`:
+
+| Workflow file | Trigger | Session type | Purpose |
+|---|---|---|---|
+| `jules-pr-review.yml` | `pull_request` (auto) | Analytical | Automatic PR review on every PR. Posts review comment + `jules/review` status. |
+| `jules-pr-force-review.yml` | `jules-force-review` label / `/jules-force-review` slash | Analytical | Manual re-review on demand. Same logic as auto-review. |
+| `jules-pr-walkthrough.yml` | `jules-walkthrough` label / `/jules-walkthrough` slash | Analytical | Narrative walkthrough comment for PR understanding. |
+| `jules-pr-auto-fix.yml` | `jules-fix` label / `/jules-fix` slash | Mutating | Creates session, pushes repair commit to PR branch. |
+| `jules-pr-resolve-conflicts.yml` | `jules-resolve` label / `/jules-resolve` slash | Mutating | Resolves merge conflicts and pushes to PR branch. |
+| `jules-pr-rebuild.yml` | `jules-rebuild` label / `/jules-rebuild` slash | 2 sessions (analysis + rebuild) | Cleans messy PRs in-place: analysis session identifies valuable vs noise, rebuild session cleans up. |
+| `jules-pr-address-comments.yml` | `pull_request_review_comment` (auto) | No session | Posts `@jules` comment with unresolved review thread context. Only on Jules-authored PRs. |
+| `jules-pr-automerge-label.yml` | Hourly cron | No session | Labels Jules-created PRs with `automerge`. Calls `enablePullRequestAutoMerge` GraphQL mutation (no Mergify on this repo). |
+
+## Auto-merge configuration
+
+This repo does **not** use Mergify. The `jules-pr-automerge-label.yml` workflow calls the GitHub GraphQL `enablePullRequestAutoMerge` mutation after adding the `automerge` label. Requires auto-merge enabled in repo settings: Settings > General > Pull Requests > Allow auto-merge.
 
 ## Review focus
 
@@ -51,15 +58,6 @@ A repo-specific Jules review should focus on:
 - tests for changed behavior,
 - `.env.example` correctness without real secrets.
 
-## Recommended workflow files
-
-- `.github/workflows/jules-pr-review.yml`
-- `.github/workflows/jules-backlog-review.yml` optional but useful
-- `.github/workflows/jules-invoke.yml`
-- `.github/workflows/jules-feedback.yml` if Jules-authored PRs are common
-- `.github/workflows/jules-pr-metadata.yml` if Jules-authored PRs are common
-- `.github/jules-review-rules.md`
-
 ## Safeguards
 
 - Use `pull_request`, not `pull_request_target`, for Jules review.
@@ -70,16 +68,12 @@ A repo-specific Jules review should focus on:
 - If syncing upstream, isolate upstream changes from local customizations.
 - Use `fail_on: blocking` rather than `any`.
 
-## Suggested first implementation order
+## Implementation status
 
-1. Add `.github/jules-review-rules.md`.
-2. Add advisory `jules-pr-review.yml`.
-3. Add manual `jules-invoke.yml`.
-4. Add metadata/feedback workflows only if Jules-authored PRs are frequent.
-5. Add backlog sweep if stale PR count remains high.
+All 8 workflows are installed and active. The `JULES_API_KEY` secret is configured. GitHub built-in auto-merge is used (no Mergify). Ensure auto-merge is enabled in repo settings.
 
-## Open questions
+## Resolved questions
 
-- Should Jules review be required by branch protection or advisory only?
-- Which local scripts should Jules be allowed to run during backlog triage?
-- Which maintainers should be in `feedback_users`?
+- **Should Jules review be required by branch protection or advisory only?** — Currently advisory; `jules/review` status is posted but not required by branch protection.
+- **Which local scripts should Jules be allowed to run during backlog triage?** — Not yet implemented; backlog triage is a future enhancement.
+- **Which maintainers should be in `feedback_users`?** — The address-comments workflow skips non-Jules PRs; feedback allowlist is not needed.

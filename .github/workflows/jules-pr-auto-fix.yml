@@ -128,7 +128,7 @@ jobs:
               .join('\n');
 
             // Priority 2: issue comments — include humans + walkthroughs, skip circular reviews
-            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->'];
+            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->', '<!-- jules-rebuild -->', '<!-- jules-quota-exhausted -->', '<!-- jules-address-comments -->'];
             const priorFeedback = issueComments
               .filter(c => !skipMarkers.some(m => c.body?.includes(m)))
               .slice(0, 10)
