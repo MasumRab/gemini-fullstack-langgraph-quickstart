@@ -1,3 +1,4 @@
+"""Search router module for handling multiple search providers."""
 import logging
 import threading
 from enum import Enum
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class SearchProviderType(Enum):
+    """Enumeration of supported search providers."""
     GOOGLE = "google"
     DUCKDUCKGO = "duckduckgo"
     BRAVE = "brave"
@@ -28,6 +30,7 @@ class SearchRouter:
         self._providers_lock = threading.Lock()
 
     def _get_provider(self, name: str) -> SearchProvider | None:
+        """Lazily initialize and return a search provider instance."""
         # Quick check without lock
         if name in self.providers:
             return self.providers[name]
@@ -40,23 +43,18 @@ class SearchRouter:
             try:
                 if name == SearchProviderType.GOOGLE.value:
                     from .providers.google_adapter import GoogleSearchAdapter
-
                     self.providers[name] = GoogleSearchAdapter()
                 elif name == SearchProviderType.BRAVE.value:
                     from .providers.brave_adapter import BraveSearchAdapter
-
                     self.providers[name] = BraveSearchAdapter()
                 elif name == SearchProviderType.DUCKDUCKGO.value:
                     from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-
                     self.providers[name] = DuckDuckGoAdapter()
                 elif name == SearchProviderType.TAVILY.value:
                     from .providers.tavily_adapter import TavilyAdapter
-
                     self.providers[name] = TavilyAdapter()
                 elif name == SearchProviderType.BING.value:
                     from .providers.bing_adapter import BingAdapter
-
                     self.providers[name] = BingAdapter()
             except Exception as e:
                 logger.debug(f"Provider {name} failed to init: {e}")
@@ -117,8 +115,6 @@ class SearchRouter:
                     fallback_provider = self._get_provider(fallback_name)
                     if fallback_provider:
                         # Fallback gets the same retry logic or just a single shot?
-                        # For simplicity, fallback is usually single shot untuned or standard.
-                        # Let's try standard (tuned=True default)
                         return fallback_provider.search(query, max_results=max_results)
 
                 # If we get here, all attempts failed
