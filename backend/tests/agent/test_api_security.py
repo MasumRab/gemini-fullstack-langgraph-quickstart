@@ -3,6 +3,7 @@ import time
 from unittest.mock import patch
 
 import pytest
+import agent.security
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
@@ -91,8 +92,9 @@ class TestAPISecurity:
             response = client.get("/agent/test")
             assert response.status_code == 200
 
-    def test_rate_limit_respects_x_forwarded_for(self):
+    def test_rate_limit_respects_x_forwarded_for(self, monkeypatch):
         """Test that rate limiting uses the X-Forwarded-For header when present."""
+        monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
         from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 
         # Instantiate a dedicated app with trust_proxy_headers=True

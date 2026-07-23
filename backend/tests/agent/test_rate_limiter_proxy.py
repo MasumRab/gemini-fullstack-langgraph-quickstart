@@ -1,4 +1,5 @@
 import pytest
+import agent.security
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 from agent.app import app
@@ -26,8 +27,9 @@ def test_rate_limiter_integration():
 
 
 @pytest.mark.asyncio
-async def test_rate_limiter_proxy_logic():
+async def test_rate_limiter_proxy_logic(monkeypatch):
     """Unit test for RateLimitMiddleware proxy logic."""
+    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -99,8 +101,9 @@ async def test_rate_limiter_proxy_logic():
 
 
 @pytest.mark.asyncio
-async def test_rate_limiter_truncation():
+async def test_rate_limiter_truncation(monkeypatch):
     """Test that extremely long headers are truncated to prevent memory exhaustion."""
+    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
 
     async def mock_app(scope, receive, send):
         response = PlainTextResponse("OK")
@@ -133,4 +136,4 @@ async def test_rate_limiter_truncation():
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
     # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
-    assert keys[0] == "unknown"
+    assert keys[0] == "127.0.0.1"

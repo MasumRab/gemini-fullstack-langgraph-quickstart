@@ -1,11 +1,11 @@
-# TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
+# TODO(priority=Low, complexity=Low, owner=agent): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
 #
-# TODO(priority=Medium, complexity=Medium): [SOTA Deep Research] Benchmarking
+# TODO(priority=Medium, complexity=Medium, owner=agent): [SOTA Deep Research] Benchmarking
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: MLE-bench Integration (Evaluate on Kaggle engineering tasks).
 # Subtask: DeepResearch-Bench Setup (Load tasks from muset-ai space).
 
-# TODO(priority=Medium, complexity=High): Investigate and integrate 'deepagents' patterns if applicable.
+# TODO(priority=Medium, complexity=High, owner=agent): Investigate and integrate 'deepagents' patterns if applicable.
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: Review 'deepagents' repo for relevant nodes (e.g. hierarchical planning).
 # Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
@@ -151,7 +151,7 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
     If yes -> Generates questions and sets status to 'active' (interrupt).
     If no -> Sets status to 'complete' (proceed).
 
-    TODO(priority=High, complexity=High): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
+    TODO(priority=High, complexity=High, owner=agent): [SOTA Deep Research] Verify full alignment with Open Deep Research (Clarification Loop).
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     Subtask: Implement `scoping_node` logic: Analyze input query. If ambiguous, generate clarifying questions and interrupt graph.
     """
@@ -192,14 +192,14 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
                 )
                 assessment = parser.parse(content)
             except Exception as e:
-                logger.error(f"Scoping LLM failed (Gemma): {e}")
+                logger.exception("Scoping LLM failed (Gemma):")
                 return {"scoping_status": "complete"}
         else:
             structured_llm = llm.with_structured_output(ScopingAssessment)
             try:
                 assessment = structured_llm.invoke(prompt)
             except Exception as e:
-                logger.error(f"Scoping LLM failed: {e}")
+                logger.exception("Scoping LLM failed:")
                 return {"scoping_status": "complete"}  # Fail open
 
         if assessment.is_ambiguous:
@@ -414,7 +414,7 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                     plan_todos.append(todo)
                     search_queries.append(item.title)
             except Exception as e:
-                logger.error(f"Failed to generate plan: {e}")
+                logger.exception("Failed to generate plan:")
                 # Fallback to single query based on research topic
                 topic = get_research_topic(state["messages"])
                 todo = {
@@ -511,7 +511,7 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
                     "web_research_result": [combined_result],
                 }
             except Exception as e:
-                logger.error(f"Web research failed: {e}")
+                logger.exception("Web research failed:")
                 return {
                     "sources_gathered": [],
                     "search_query": [query],
@@ -874,7 +874,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                                 plan_todos.append(todo)
                         break
             except Exception as e:
-                logger.error(f"Gemma plan update failed: {e}")
+                logger.exception("Gemma plan update failed:")
                 # Fallback: keep existing plan to avoid data loss, with normalized structure
                 plan_todos = [_normalize_task(t) for t in current_plan]
 
@@ -892,7 +892,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                     }
                     plan_todos.append(todo)
             except Exception as e:
-                logger.error(f"Failed to update plan (Gemini): {e}")
+                logger.exception("Failed to update plan (Gemini):")
                 plan_todos = [_normalize_task(t) for t in current_plan]
 
         # Safety Fallback: Ensure the executed task is actually marked as done in the new plan
@@ -995,7 +995,7 @@ def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
 
             return {"outline": outline_data}
         except Exception as e:
-            logger.error(f"Outline generation failed: {e}")
+            logger.exception("Outline generation failed:")
             # Return a simple default outline to keep the graph moving
             return {
                 "outline": {
@@ -1035,25 +1035,25 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
 
     Fine-grained implementation guide:
 
-    TODO(priority=High, complexity=Low): [flow_update:1] Extract current task from state
+    TODO(priority=High, complexity=Low, owner=agent): [flow_update:1] Extract current task from state
     - Read `current_task_idx` and `plan` from state
     - Get the task object being evaluated
 
-    TODO(priority=High, complexity=Medium): [flow_update:2] Analyze task completion
+    TODO(priority=High, complexity=Medium, owner=agent): [flow_update:2] Analyze task completion
     - Compare task query against `web_research_result`
     - Use fuzzy matching or LLM to determine if task is adequately answered
     - Return completion_score (0.0-1.0)
 
-    TODO(priority=High, complexity=Medium): [flow_update:3] Identify knowledge gaps
+    TODO(priority=High, complexity=Medium, owner=agent): [flow_update:3] Identify knowledge gaps
     - Parse research results for "unclear", "contradictory", or "insufficient" signals
     - Generate list of follow-up questions if gaps detected
 
-    TODO(priority=Medium, complexity=High): [flow_update:4] DAG expansion logic
+    TODO(priority=Medium, complexity=High, owner=agent): [flow_update:4] DAG expansion logic
     - If gaps detected: Create new tasks and insert into plan
     - If task complete: Mark status='done' and increment current_task_idx
     - If no more tasks: Set research_complete=True
 
-    TODO(priority=Low, complexity=Low): [flow_update:5] Return updated state
+    TODO(priority=Low, complexity=Low, owner=agent): [flow_update:5] Return updated state
     - Return dict with updated `plan`, `current_task_idx`, `research_complete`
 
     See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
@@ -1135,7 +1135,7 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
                                 }
                             )
             except Exception as e:
-                logger.error(f"Content Reader (Gemma) failed: {e}")
+                logger.exception("Content Reader (Gemma) failed:")
 
         else:
             # Gemini Structured Output
@@ -1152,12 +1152,12 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
                             }
                         )
             except Exception as e:
-                logger.error(f"Content Reader (Gemini) failed: {e}")
+                logger.exception("Content Reader (Gemini) failed:")
 
         return {"evidence_bank": extracted_evidence}
 
 
-# TODO(priority=High, complexity=Medium): [SOTA Deep Research] Recursive Trigger
+# TODO(priority=High, complexity=Medium, owner=agent): [SOTA Deep Research] Recursive Trigger
 # Implement logic in reflection or a new 'router' node to decide when to call 'research_subgraph'.
 # This should happen when a complex sub-topic is identified that requires its own full research loop.
 def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
@@ -1230,7 +1230,7 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
             }
 
         except Exception as e:
-            logger.error(f"Recursive research failed for {subtopic_query}: {e}")
+            logger.exception("Recursive research failed for {subtopic_query}:")
             return {
                 "validation_notes": [
                     f"Recursive research failed for {subtopic_query}: {e}"
@@ -1301,8 +1301,8 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
             report = response.content if hasattr(response, "content") else str(response)
             return {"validation_notes": [report]}
         except Exception as e:
-            logger.error(f"Checklist verification failed: {e}")
-            return {"validation_notes": [f"Checklist verification failed: {e}"]}
+            logger.exception("Checklist verification failed:")
+            return {"validation_notes": ["Checklist verification failed."]}
 
 
 @graph_registry.describe(
@@ -1728,7 +1728,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
                 )
                 result = parser.parse(content)
             except Exception as e:
-                logger.error(f"Reflection LLM failed (Gemma): {e}")
+                logger.exception("Reflection LLM failed (Gemma):")
                 # Fallback to sufficient to avoid infinite loops on error
                 return {
                     "is_sufficient": True,
