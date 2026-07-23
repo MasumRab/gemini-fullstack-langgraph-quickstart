@@ -258,7 +258,7 @@ jobs:
               'Add: <!-- meta-prompt: truncated due to limits -->',
               '',
               '## Verdict',
-              '[VERDICT]: approve',
+              '[VERDICT]: comment',
               '',
               '<!-- verdict: approve | comment | block -->',
               '',

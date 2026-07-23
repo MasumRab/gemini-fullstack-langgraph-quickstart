@@ -42,7 +42,7 @@ jobs:
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
               name: 'jules-rebuild',
-            }).catch(() => core.info('Label already consumed'));
+            }).catch(e => { if (e.status !== 404) throw e; core.info('Label already consumed'); });
 
       - name: Parse slash command context
         if: github.event_name == 'issue_comment'
@@ -89,17 +89,20 @@ jobs:
             const headRef = pr.head.ref;
             const headSha = pr.head.sha;
 
-            // Load repo-specific instructions if present
-            const fs = require('fs');
+            // Load repo-specific instructions from base branch (trusted)
             let reviewRules = '';
             for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
               try {
-                if (fs.existsSync(path)) {
-                  reviewRules = fs.readFileSync(path, 'utf8');
-                  break;
-                }
+                const { data } = await github.rest.repos.getContent({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  path, ref: baseRef,
+                });
+                reviewRules = Buffer.from(data.content, 'base64').toString('utf8');
+                break;
               } catch (e) { /* file is optional */ }
             }
+
+            const fs = require('fs');
 
             const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number,
