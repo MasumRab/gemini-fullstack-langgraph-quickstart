@@ -2,8 +2,9 @@
 
 Tests cover filtering logic, edge cases, and fallback behavior.
 """
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 from langchain_core.runnables import RunnableConfig
 
 from agent.nodes import validate_web_results
