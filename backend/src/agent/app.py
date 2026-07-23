@@ -42,24 +42,26 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
             # 🛡️ Sentinel: Reject 'Transfer-Encoding: chunked' to prevent Content-Length bypass (Request Smuggling/DoS)
             transfer_encoding = request.headers.get("transfer-encoding", "").lower()
             if "chunked" in transfer_encoding:
-                logger.warning("Request blocked: Chunked encoding not allowed")
+                logger.warning("Rejected chunked transfer encoding (DoS protection)")
                 return Response("Chunked encoding not allowed", status_code=411)
 
             content_length = request.headers.get("content-length")
             if not content_length:
                 # 🛡️ Sentinel: Enforce Content-Length for state-changing methods to prevent streaming DoS
-                logger.warning("Request blocked: Content-Length required")
+                logger.warning("Rejected request missing Content-Length (DoS protection)")
                 return Response("Content-Length required", status_code=411)
 
             try:
                 # 🛡️ Sentinel: Prevent 500 crashes from malformed Content-Length headers
                 if int(content_length) > self.max_upload_size:
                     logger.warning(
-                        f"Request blocked: Request entity too large ({content_length} > {self.max_upload_size})"
+                        f"Rejected request with content length {content_length} > {self.max_upload_size}"
                     )
                     return Response("Request entity too large", status_code=413)
             except ValueError:
-                logger.warning("Request blocked: Invalid Content-Length")
+                logger.warning(
+                    f"Rejected request with invalid content length: {content_length}"
+                )
                 return Response("Invalid Content-Length", status_code=400)
         return await call_next(request)
 
@@ -149,7 +151,11 @@ app.add_middleware(
     limit=100,
     window=60,
     protected_paths=["/agent", "/threads"],
+<<<<<<< HEAD
     trust_proxy_headers=app_config.trust_proxy_headers,
+=======
+    trust_proxy_headers=app_config.trust_proxy_headers
+>>>>>>> dc0cbcc (feat(security): add logging for rejected requests in middleware)
 )
 
 # Add Security Headers (OUTERMOST - added last)
