@@ -2,6 +2,7 @@
 
 Tests cover search functions, summarization, deduplication, and tool definitions.
 """
+
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from agent.models import GEMINI_FLASH, GEMINI_PRO
@@ -63,15 +64,15 @@ class TestDeduplication:
                 "results": [
                     {"url": "http://example.com/a", "title": "Title A"},
                     {"url": "http://example.com/b", "title": "Title B"},
-                ]
+                ],
             },
             {
                 "query": "query2",
                 "results": [
                     {"url": "http://example.com/a", "title": "Title A duplicate"},
                     {"url": "http://example.com/c", "title": "Title C"},
-                ]
-            }
+                ],
+            },
         ]
 
         result = deduplicate_search_results(search_results)
@@ -288,7 +289,7 @@ class TestModelTokenLimits:
 class TestTavilySearchWithMock:
     """Tests for Tavily search with mocked client."""
 
-    @patch('agent.research_tools.TAVILY_AVAILABLE', False)
+    @patch("agent.research_tools.TAVILY_AVAILABLE", False)
     def test_search_returns_empty_when_tavily_unavailable(self):
         """Should return empty results when Tavily not installed."""
         from agent.research_tools import tavily_search_multiple

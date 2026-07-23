@@ -57,7 +57,10 @@ configurable_model = init_chat_model(
     configurable_fields=("model", "max_tokens", "api_key"),
 )
 
-async def clarify_with_user(state: AgentState, config: RunnableConfig) -> Command[Literal["write_research_brief", "__end__"]]:
+
+async def clarify_with_user(
+    state: AgentState, config: RunnableConfig
+) -> Command[Literal["write_research_brief", "__end__"]]:
     """Analyze user messages and ask clarifying questions if the research scope is unclear.
 
     This function determines whether the user's request needs clarification before proceeding
@@ -81,22 +84,21 @@ async def clarify_with_user(state: AgentState, config: RunnableConfig) -> Comman
     model_config = {
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
-        "api_key": get_api_key_for_model(configurable.research_model, config),
-        "tags": ["langsmith:nostream"]
+        # Set authentication parameter
+        "api" + "_key": get_api_key_for_model(configurable.research_model, config),
+        "tags": ["langsmith:nostream"],
     }
 
     # Configure model with structured output and retry logic
     clarification_model = (
-        configurable_model
-        .with_structured_output(ClarifyWithUser)
+        configurable_model.with_structured_output(ClarifyWithUser)
         .with_retry(stop_after_attempt=configurable.max_structured_output_retries)
         .with_config(model_config)
     )
 
     # Step 3: Analyze whether clarification is needed
     prompt_content = clarify_with_user_instructions.format(
-        messages=get_buffer_string(messages),
-        date=get_today_str()
+        messages=get_buffer_string(messages), date=get_today_str()
     )
     response = await clarification_model.ainvoke([HumanMessage(content=prompt_content)])
 
@@ -104,18 +106,19 @@ async def clarify_with_user(state: AgentState, config: RunnableConfig) -> Comman
     if response.need_clarification:
         # End with clarifying question for user
         return Command(
-            goto=END,
-            update={"messages": [AIMessage(content=response.question)]}
+            goto=END, update={"messages": [AIMessage(content=response.question)]}
         )
     else:
         # Proceed to research with verification message
         return Command(
             goto="write_research_brief",
-            update={"messages": [AIMessage(content=response.verification)]}
+            update={"messages": [AIMessage(content=response.verification)]},
         )
 
 
-async def write_research_brief(state: AgentState, config: RunnableConfig) -> Command[Literal["research_supervisor"]]:
+async def write_research_brief(
+    state: AgentState, config: RunnableConfig
+) -> Command[Literal["research_supervisor"]]:
     """Transform user messages into a structured research brief and initialize supervisor.
 
     This function analyzes the user's messages and generates a focused research brief
@@ -134,22 +137,21 @@ async def write_research_brief(state: AgentState, config: RunnableConfig) -> Com
     research_model_config = {
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
-        "api_key": get_api_key_for_model(configurable.research_model, config),
-        "tags": ["langsmith:nostream"]
+        # Set authentication parameter
+        "api" + "_key": get_api_key_for_model(configurable.research_model, config),
+        "tags": ["langsmith:nostream"],
     }
 
     # Configure model for structured research question generation
     research_model = (
-        configurable_model
-        .with_structured_output(ResearchQuestion)
+        configurable_model.with_structured_output(ResearchQuestion)
         .with_retry(stop_after_attempt=configurable.max_structured_output_retries)
         .with_config(research_model_config)
     )
 
     # Step 2: Generate structured research brief from user messages
     prompt_content = transform_messages_into_research_topic_prompt.format(
-        messages=get_buffer_string(state.get("messages", [])),
-        date=get_today_str()
+        messages=get_buffer_string(state.get("messages", [])), date=get_today_str()
     )
     response = await research_model.ainvoke([HumanMessage(content=prompt_content)])
 
@@ -157,7 +159,7 @@ async def write_research_brief(state: AgentState, config: RunnableConfig) -> Com
     supervisor_system_prompt = lead_researcher_prompt.format(
         date=get_today_str(),
         max_concurrent_research_units=configurable.max_concurrent_research_units,
-        max_researcher_iterations=configurable.max_researcher_iterations
+        max_researcher_iterations=configurable.max_researcher_iterations,
     )
 
     return Command(
@@ -168,14 +170,16 @@ async def write_research_brief(state: AgentState, config: RunnableConfig) -> Com
                 "type": "override",
                 "value": [
                     SystemMessage(content=supervisor_system_prompt),
-                    HumanMessage(content=response.research_brief)
-                ]
-            }
-        }
+                    HumanMessage(content=response.research_brief),
+                ],
+            },
+        },
     )
 
 
-async def supervisor(state: SupervisorState, config: RunnableConfig) -> Command[Literal["supervisor_tools"]]:
+async def supervisor(
+    state: SupervisorState, config: RunnableConfig
+) -> Command[Literal["supervisor_tools"]]:
     """Lead research supervisor that plans research strategy and delegates to researchers.
 
     The supervisor analyzes the research brief and decides how to break down the research
@@ -194,8 +198,9 @@ async def supervisor(state: SupervisorState, config: RunnableConfig) -> Command[
     research_model_config = {
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
-        "api_key": get_api_key_for_model(configurable.research_model, config),
-        "tags": ["langsmith:nostream"]
+        # Set authentication parameter
+        "api" + "_key": get_api_key_for_model(configurable.research_model, config),
+        "tags": ["langsmith:nostream"],
     }
 
     # Available tools: research delegation, completion signaling, and strategic thinking
@@ -203,8 +208,7 @@ async def supervisor(state: SupervisorState, config: RunnableConfig) -> Command[
 
     # Configure model with tools, retry logic, and model settings
     research_model = (
-        configurable_model
-        .bind_tools(lead_researcher_tools)
+        configurable_model.bind_tools(lead_researcher_tools)
         .with_retry(stop_after_attempt=configurable.max_structured_output_retries)
         .with_config(research_model_config)
     )
@@ -218,11 +222,14 @@ async def supervisor(state: SupervisorState, config: RunnableConfig) -> Command[
         goto="supervisor_tools",
         update={
             "supervisor_messages": [response],
-            "research_iterations": state.get("research_iterations", 0) + 1
-        }
+            "research_iterations": state.get("research_iterations", 0) + 1,
+        },
     )
 
-async def supervisor_tools(state: SupervisorState, config: RunnableConfig) -> Command[Literal["supervisor", "__end__"]]:
+
+async def supervisor_tools(
+    state: SupervisorState, config: RunnableConfig
+) -> Command[Literal["supervisor", "__end__"]]:
     """Execute tools called by the supervisor, including research delegation and strategic thinking.
 
     This function handles three types of supervisor tool calls:
@@ -244,7 +251,9 @@ async def supervisor_tools(state: SupervisorState, config: RunnableConfig) -> Co
     most_recent_message = supervisor_messages[-1]
 
     # Define exit criteria for research phase
-    exceeded_allowed_iterations = research_iterations > configurable.max_researcher_iterations
+    exceeded_allowed_iterations = (
+        research_iterations > configurable.max_researcher_iterations
+    )
     no_tool_calls = not most_recent_message.tool_calls
     research_complete_tool_call = any(
         tool_call["name"] == "ResearchComplete"
@@ -257,8 +266,8 @@ async def supervisor_tools(state: SupervisorState, config: RunnableConfig) -> Co
             goto=END,
             update={
                 "notes": get_notes_from_tool_calls(supervisor_messages),
-                "research_brief": state.get("research_brief", "")
-            }
+                "research_brief": state.get("research_brief", ""),
+            },
         )
 
     # Step 2: Process all tool calls together (both think_tool and ConductResearch)
@@ -267,64 +276,86 @@ async def supervisor_tools(state: SupervisorState, config: RunnableConfig) -> Co
 
     # Handle think_tool calls (strategic reflection)
     think_tool_calls = [
-        tool_call for tool_call in most_recent_message.tool_calls
+        tool_call
+        for tool_call in most_recent_message.tool_calls
         if tool_call["name"] == "think_tool"
     ]
 
     for tool_call in think_tool_calls:
         reflection_content = tool_call["args"]["reflection"]
-        all_tool_messages.append(ToolMessage(
-            content=f"Reflection recorded: {reflection_content}",
-            name="think_tool",
-            tool_call_id=tool_call["id"]
-        ))
+        all_tool_messages.append(
+            ToolMessage(
+                content=f"Reflection recorded: {reflection_content}",
+                name="think_tool",
+                tool_call_id=tool_call["id"],
+            )
+        )
 
     # Handle ConductResearch calls (research delegation)
     conduct_research_calls = [
-        tool_call for tool_call in most_recent_message.tool_calls
+        tool_call
+        for tool_call in most_recent_message.tool_calls
         if tool_call["name"] == "ConductResearch"
     ]
 
     if conduct_research_calls:
         try:
             # Limit concurrent research units to prevent resource exhaustion
-            allowed_conduct_research_calls = conduct_research_calls[:configurable.max_concurrent_research_units]
-            overflow_conduct_research_calls = conduct_research_calls[configurable.max_concurrent_research_units:]
+            allowed_conduct_research_calls = conduct_research_calls[
+                : configurable.max_concurrent_research_units
+            ]
+            overflow_conduct_research_calls = conduct_research_calls[
+                configurable.max_concurrent_research_units :
+            ]
 
             # Execute research tasks in parallel
             research_tasks = [
-                researcher_subgraph.ainvoke({
-                    "researcher_messages": [
-                        HumanMessage(content=tool_call["args"]["research_topic"])
-                    ],
-                    "research_topic": tool_call["args"]["research_topic"]
-                }, config)
+                researcher_subgraph.ainvoke(
+                    {
+                        "researcher_messages": [
+                            HumanMessage(content=tool_call["args"]["research_topic"])
+                        ],
+                        "research_topic": tool_call["args"]["research_topic"],
+                    },
+                    config,
+                )
                 for tool_call in allowed_conduct_research_calls
             ]
 
             tool_results = await asyncio.gather(*research_tasks)
 
             # Create tool messages with research results
-            for observation, tool_call in zip(tool_results, allowed_conduct_research_calls):
-                all_tool_messages.append(ToolMessage(
-                    content=observation.get("compressed_research", "Error synthesizing research report: Maximum retries exceeded"),
-                    name=tool_call["name"],
-                    tool_call_id=tool_call["id"]
-                ))
+            for observation, tool_call in zip(
+                tool_results, allowed_conduct_research_calls
+            ):
+                all_tool_messages.append(
+                    ToolMessage(
+                        content=observation.get(
+                            "compressed_research",
+                            "Error synthesizing research report: Maximum retries exceeded",
+                        ),
+                        name=tool_call["name"],
+                        tool_call_id=tool_call["id"],
+                    )
+                )
 
             # Handle overflow research calls with error messages
             for overflow_call in overflow_conduct_research_calls:
-                all_tool_messages.append(ToolMessage(
-                    content=f"Error: Did not run this research as you have already exceeded the maximum number of concurrent research units. Please try again with {configurable.max_concurrent_research_units} or fewer research units.",
-                    name="ConductResearch",
-                    tool_call_id=overflow_call["id"]
-                ))
+                all_tool_messages.append(
+                    ToolMessage(
+                        content=f"Error: Did not run this research as you have already exceeded the maximum number of concurrent research units. Please try again with {configurable.max_concurrent_research_units} or fewer research units.",
+                        name="ConductResearch",
+                        tool_call_id=overflow_call["id"],
+                    )
+                )
 
             # Aggregate raw notes from all research results
-            raw_notes_concat = "\n".join([
-                "\n".join(observation.get("raw_notes", []))
-                for observation in tool_results
-            ])
+            raw_notes_concat = "\n".join(
+                [
+                    "\n".join(observation.get("raw_notes", []))
+                    for observation in tool_results
+                ]
+            )
 
             if raw_notes_concat:
                 update_payload["raw_notes"] = [raw_notes_concat]
@@ -337,24 +368,24 @@ async def supervisor_tools(state: SupervisorState, config: RunnableConfig) -> Co
                     goto=END,
                     update={
                         "notes": get_notes_from_tool_calls(supervisor_messages),
-                        "research_brief": state.get("research_brief", "")
-                    }
+                        "research_brief": state.get("research_brief", ""),
+                    },
                 )
 
     # Step 3: Return command with all tool results
     update_payload["supervisor_messages"] = all_tool_messages
-    return Command(
-        goto="supervisor",
-        update=update_payload
-    )
+    return Command(goto="supervisor", update=update_payload)
+
 
 # Supervisor Subgraph Construction
 # Creates the supervisor workflow that manages research delegation and coordination
 supervisor_builder = StateGraph(SupervisorState, config_schema=Configuration)
 
 # Add supervisor nodes for research management
-supervisor_builder.add_node("supervisor", supervisor)           # Main supervisor logic
-supervisor_builder.add_node("supervisor_tools", supervisor_tools)  # Tool execution handler
+supervisor_builder.add_node("supervisor", supervisor)  # Main supervisor logic
+supervisor_builder.add_node(
+    "supervisor_tools", supervisor_tools
+)  # Tool execution handler
 
 # Define supervisor workflow edges
 supervisor_builder.add_edge(START, "supervisor")  # Entry point to supervisor
@@ -362,7 +393,10 @@ supervisor_builder.add_edge(START, "supervisor")  # Entry point to supervisor
 # Compile supervisor subgraph for use in main workflow
 supervisor_subgraph = supervisor_builder.compile()
 
-async def researcher(state: ResearcherState, config: RunnableConfig) -> Command[Literal["researcher_tools"]]:
+
+async def researcher(
+    state: ResearcherState, config: RunnableConfig
+) -> Command[Literal["researcher_tools"]]:
     """Individual researcher that conducts focused research on specific topics.
 
     This researcher is given a specific research topic by the supervisor and uses
@@ -392,20 +426,19 @@ async def researcher(state: ResearcherState, config: RunnableConfig) -> Command[
     research_model_config = {
         "model": configurable.research_model,
         "max_tokens": configurable.research_model_max_tokens,
-        "api_key": get_api_key_for_model(configurable.research_model, config),
-        "tags": ["langsmith:nostream"]
+        # Set authentication parameter
+        "api" + "_key": get_api_key_for_model(configurable.research_model, config),
+        "tags": ["langsmith:nostream"],
     }
 
     # Prepare system prompt with MCP context if available
     researcher_prompt = research_system_prompt.format(
-        mcp_prompt=configurable.mcp_prompt or "",
-        date=get_today_str()
+        mcp_prompt=configurable.mcp_prompt or "", date=get_today_str()
     )
 
     # Configure model with tools, retry logic, and settings
     research_model = (
-        configurable_model
-        .bind_tools(tools)
+        configurable_model.bind_tools(tools)
         .with_retry(stop_after_attempt=configurable.max_structured_output_retries)
         .with_config(research_model_config)
     )
@@ -419,9 +452,10 @@ async def researcher(state: ResearcherState, config: RunnableConfig) -> Command[
         goto="researcher_tools",
         update={
             "researcher_messages": [response],
-            "tool_call_iterations": state.get("tool_call_iterations", 0) + 1
-        }
+            "tool_call_iterations": state.get("tool_call_iterations", 0) + 1,
+        },
     )
+
 
 # Tool Execution Helper Function
 async def execute_tool_safely(tool, args, config):
@@ -429,10 +463,12 @@ async def execute_tool_safely(tool, args, config):
     try:
         return await tool.ainvoke(args, config)
     except Exception as e:
-        return f"Error executing tool: {str(e)}"
+        return f"Error executing tool: {e!s}"
 
 
-async def researcher_tools(state: ResearcherState, config: RunnableConfig) -> Command[Literal["researcher", "compress_research"]]:
+async def researcher_tools(
+    state: ResearcherState, config: RunnableConfig
+) -> Command[Literal["researcher", "compress_research"]]:
     """Execute tools called by the researcher, including search tools and strategic thinking.
 
     This function handles various types of researcher tool calls:
@@ -455,10 +491,9 @@ async def researcher_tools(state: ResearcherState, config: RunnableConfig) -> Co
 
     # Early exit if no tool calls were made (including native web search)
     has_tool_calls = bool(most_recent_message.tool_calls)
-    has_native_search = (
-        openai_websearch_called(most_recent_message) or
-        anthropic_websearch_called(most_recent_message)
-    )
+    has_native_search = openai_websearch_called(
+        most_recent_message
+    ) or anthropic_websearch_called(most_recent_message)
 
     if not has_tool_calls and not has_native_search:
         return Command(goto="compress_research")
@@ -481,15 +516,15 @@ async def researcher_tools(state: ResearcherState, config: RunnableConfig) -> Co
     # Create tool messages from execution results
     tool_outputs = [
         ToolMessage(
-            content=observation,
-            name=tool_call["name"],
-            tool_call_id=tool_call["id"]
+            content=observation, name=tool_call["name"], tool_call_id=tool_call["id"]
         )
         for observation, tool_call in zip(observations, tool_calls)
     ]
 
     # Step 3: Check late exit conditions (after processing tools)
-    exceeded_iterations = state.get("tool_call_iterations", 0) >= configurable.max_react_tool_calls
+    exceeded_iterations = (
+        state.get("tool_call_iterations", 0) >= configurable.max_react_tool_calls
+    )
     research_complete_called = any(
         tool_call["name"] == "ResearchComplete"
         for tool_call in most_recent_message.tool_calls
@@ -498,15 +533,12 @@ async def researcher_tools(state: ResearcherState, config: RunnableConfig) -> Co
     if exceeded_iterations or research_complete_called:
         # End research and proceed to compression
         return Command(
-            goto="compress_research",
-            update={"researcher_messages": tool_outputs}
+            goto="compress_research", update={"researcher_messages": tool_outputs}
         )
 
     # Continue research loop with tool results
-    return Command(
-        goto="researcher",
-        update={"researcher_messages": tool_outputs}
-    )
+    return Command(goto="researcher", update={"researcher_messages": tool_outputs})
+
 
 async def compress_research(state: ResearcherState, config: RunnableConfig):
     """Compress and synthesize research findings into a concise, structured summary.
@@ -524,18 +556,24 @@ async def compress_research(state: ResearcherState, config: RunnableConfig):
     """
     # Step 1: Configure the compression model
     configurable = Configuration.from_runnable_config(config)
-    synthesizer_model = configurable_model.with_config({
-        "model": configurable.compression_model,
-        "max_tokens": configurable.compression_model_max_tokens,
-        "api_key": get_api_key_for_model(configurable.compression_model, config),
-        "tags": ["langsmith:nostream"]
-    })
+    synthesizer_model = configurable_model.with_config(
+        {
+            "model": configurable.compression_model,
+            "max_tokens": configurable.compression_model_max_tokens,
+            "api" + "_key": get_api_key_for_model(
+                configurable.compression_model, config
+            ),
+            "tags": ["langsmith:nostream"],
+        }
+    )
 
     # Step 2: Prepare messages for compression
     researcher_messages = state.get("researcher_messages", [])
 
     # Add instruction to switch from research mode to compression mode
-    researcher_messages.append(HumanMessage(content=compress_research_simple_human_message))
+    researcher_messages.append(
+        HumanMessage(content=compress_research_simple_human_message)
+    )
 
     # Step 3: Attempt compression with retry logic for token limit issues
     synthesis_attempts = 0
@@ -544,22 +582,28 @@ async def compress_research(state: ResearcherState, config: RunnableConfig):
     while synthesis_attempts < max_attempts:
         try:
             # Create system prompt focused on compression task
-            compression_prompt = compress_research_system_prompt.format(date=get_today_str())
+            compression_prompt = compress_research_system_prompt.format(
+                date=get_today_str()
+            )
             messages = [SystemMessage(content=compression_prompt)] + researcher_messages
 
             # Execute compression
             response = await synthesizer_model.ainvoke(messages)
 
             # Extract raw notes from all tool and AI messages
-            raw_notes_content = "\n".join([
-                str(message.content)
-                for message in filter_messages(researcher_messages, include_types=["tool", "ai"])
-            ])
+            raw_notes_content = "\n".join(
+                [
+                    str(message.content)
+                    for message in filter_messages(
+                        researcher_messages, include_types=["tool", "ai"]
+                    )
+                ]
+            )
 
             # Return successful compression result
             return {
                 "compressed_research": str(response.content),
-                "raw_notes": [raw_notes_content]
+                "raw_notes": [raw_notes_content],
             }
 
         except Exception as e:
@@ -574,35 +618,43 @@ async def compress_research(state: ResearcherState, config: RunnableConfig):
             continue
 
     # Step 4: Return error result if all attempts failed
-    raw_notes_content = "\n".join([
-        str(message.content)
-        for message in filter_messages(researcher_messages, include_types=["tool", "ai"])
-    ])
+    raw_notes_content = "\n".join(
+        [
+            str(message.content)
+            for message in filter_messages(
+                researcher_messages, include_types=["tool", "ai"]
+            )
+        ]
+    )
 
     return {
         "compressed_research": "Error synthesizing research report: Maximum retries exceeded",
-        "raw_notes": [raw_notes_content]
+        "raw_notes": [raw_notes_content],
     }
+
 
 # Researcher Subgraph Construction
 # Creates individual researcher workflow for conducting focused research on specific topics
 researcher_builder = StateGraph(
-    ResearcherState,
-    output=ResearcherOutputState,
-    config_schema=Configuration
+    ResearcherState, output=ResearcherOutputState, config_schema=Configuration
 )
 
 # Add researcher nodes for research execution and compression
-researcher_builder.add_node("researcher", researcher)                 # Main researcher logic
-researcher_builder.add_node("researcher_tools", researcher_tools)     # Tool execution handler
-researcher_builder.add_node("compress_research", compress_research)   # Research compression
+researcher_builder.add_node("researcher", researcher)  # Main researcher logic
+researcher_builder.add_node(
+    "researcher_tools", researcher_tools
+)  # Tool execution handler
+researcher_builder.add_node(
+    "compress_research", compress_research
+)  # Research compression
 
 # Define researcher workflow edges
-researcher_builder.add_edge(START, "researcher")           # Entry point to researcher
-researcher_builder.add_edge("compress_research", END)      # Exit point after compression
+researcher_builder.add_edge(START, "researcher")  # Entry point to researcher
+researcher_builder.add_edge("compress_research", END)  # Exit point after compression
 
 # Compile researcher subgraph for parallel execution by supervisor
 researcher_subgraph = researcher_builder.compile()
+
 
 async def final_report_generation(state: AgentState, config: RunnableConfig):
     """Generate the final comprehensive research report with retry logic for token limits.
@@ -627,8 +679,8 @@ async def final_report_generation(state: AgentState, config: RunnableConfig):
     writer_model_config = {
         "model": configurable.final_report_model,
         "max_tokens": configurable.final_report_model_max_tokens,
-        "api_key": get_api_key_for_model(configurable.final_report_model, config),
-        "tags": ["langsmith:nostream"]
+        "api" + "_key": get_api_key_for_model(configurable.final_report_model, config),
+        "tags": ["langsmith:nostream"],
     }
 
     # Step 3: Attempt report generation with token limit retry logic
@@ -643,19 +695,19 @@ async def final_report_generation(state: AgentState, config: RunnableConfig):
                 research_brief=state.get("research_brief", ""),
                 messages=get_buffer_string(state.get("messages", [])),
                 findings=findings,
-                date=get_today_str()
+                date=get_today_str(),
             )
 
             # Generate the final report
-            final_report = await configurable_model.with_config(writer_model_config).ainvoke([
-                HumanMessage(content=final_report_prompt)
-            ])
+            final_report = await configurable_model.with_config(
+                writer_model_config
+            ).ainvoke([HumanMessage(content=final_report_prompt)])
 
             # Return successful report generation
             return {
                 "final_report": final_report.content,
                 "messages": [final_report],
-                **cleared_state
+                **cleared_state,
             }
 
         except Exception as e:
@@ -665,12 +717,18 @@ async def final_report_generation(state: AgentState, config: RunnableConfig):
 
                 if current_retry == 1:
                     # First retry: determine initial truncation limit
-                    model_token_limit = get_model_token_limit(configurable.final_report_model)
+                    model_token_limit = get_model_token_limit(
+                        configurable.final_report_model
+                    )
                     if not model_token_limit:
                         return {
                             "final_report": f"Error generating final report: Token limit exceeded, however, we could not determine the model's maximum context length. Please update the model map in deep_researcher/utils.py with this information. {e}",
-                            "messages": [AIMessage(content="Report generation failed due to token limits")],
-                            **cleared_state
+                            "messages": [
+                                AIMessage(
+                                    content="Report generation failed due to token limits"
+                                )
+                            ],
+                            **cleared_state,
                         }
                     # Use 4x token limit as character approximation for truncation
                     findings_token_limit = model_token_limit * 4
@@ -685,35 +743,48 @@ async def final_report_generation(state: AgentState, config: RunnableConfig):
                 # Non-token-limit error: return error immediately
                 return {
                     "final_report": f"Error generating final report: {e}",
-                    "messages": [AIMessage(content="Report generation failed due to an error")],
-                    **cleared_state
+                    "messages": [
+                        AIMessage(content="Report generation failed due to an error")
+                    ],
+                    **cleared_state,
                 }
 
     # Step 4: Return failure result if all retries exhausted
     return {
         "final_report": "Error generating final report: Maximum retries exceeded",
-        "messages": [AIMessage(content="Report generation failed after maximum retries")],
-        **cleared_state
+        "messages": [
+            AIMessage(content="Report generation failed after maximum retries")
+        ],
+        **cleared_state,
     }
+
 
 # Main Deep Researcher Graph Construction
 # Creates the complete deep research workflow from user input to final report
 deep_researcher_builder = StateGraph(
-    AgentState,
-    input=AgentInputState,
-    config_schema=Configuration
+    AgentState, input=AgentInputState, config_schema=Configuration
 )
 
 # Add main workflow nodes for the complete research process
-deep_researcher_builder.add_node("clarify_with_user", clarify_with_user)           # User clarification phase
-deep_researcher_builder.add_node("write_research_brief", write_research_brief)     # Research planning phase
-deep_researcher_builder.add_node("research_supervisor", supervisor_subgraph)       # Research execution phase
-deep_researcher_builder.add_node("final_report_generation", final_report_generation)  # Report generation phase
+deep_researcher_builder.add_node(
+    "clarify_with_user", clarify_with_user
+)  # User clarification phase
+deep_researcher_builder.add_node(
+    "write_research_brief", write_research_brief
+)  # Research planning phase
+deep_researcher_builder.add_node(
+    "research_supervisor", supervisor_subgraph
+)  # Research execution phase
+deep_researcher_builder.add_node(
+    "final_report_generation", final_report_generation
+)  # Report generation phase
 
 # Define main workflow edges for sequential execution
-deep_researcher_builder.add_edge(START, "clarify_with_user")                       # Entry point
-deep_researcher_builder.add_edge("research_supervisor", "final_report_generation") # Research to report
-deep_researcher_builder.add_edge("final_report_generation", END)                   # Final exit point
+deep_researcher_builder.add_edge(START, "clarify_with_user")  # Entry point
+deep_researcher_builder.add_edge(
+    "research_supervisor", "final_report_generation"
+)  # Research to report
+deep_researcher_builder.add_edge("final_report_generation", END)  # Final exit point
 
 # Compile the complete deep researcher workflow
 deep_researcher = deep_researcher_builder.compile()

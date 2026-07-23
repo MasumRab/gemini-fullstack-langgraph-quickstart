@@ -2,6 +2,9 @@
 
 ## Status: 🟡 In Progress (Significant Progress)
 
+*See the companion status report: [04_SOTA_DEEP_RESEARCH_STATUS.md](04_SOTA_DEEP_RESEARCH_STATUS.md), sources/roadmap: [04_SOTA_DEEP_RESEARCH_SOTA_SOURCES.md](04_SOTA_DEEP_RESEARCH_SOTA_SOURCES.md), and frontend plan: [04_SOTA_DEEP_RESEARCH_FRONTEND_PLAN.md](04_SOTA_DEEP_RESEARCH_FRONTEND_PLAN.md) for detailed implementation gaps, benchmark integration plans, and UI control specifications.*
+
+
 This task list tracks the integration of features from verified state-of-the-art (SOTA) research agents: **Open Deep Research**, **STORM**, **FlowSearch**, **ManuSearch**, and **GPT Researcher**.
 
 ## 1. Scoping & Clarification (Open Deep Research)
@@ -19,7 +22,7 @@ This task list tracks the integration of features from verified state-of-the-art
     - [x] **Input**: Refined user query + initial context.
     - [x] **Logic**: Generate a hierarchical `Outline` (Sections -> Subsections).
     - [x] **Output**: Populate `OverallState.outline`.
-- [x] **Implement `flow_update` Node (FlowSearch)**
+- [ ] **Implement `flow_update` Node (FlowSearch)** *(Note: Scaffolding exists, but logic raises NotImplementedError)*
     - [x] **Input**: Current `todo_list` + `web_research_results`.
     - [x] **Logic**: Analyze findings. Decide to (a) Mark task done, (b) Add new tasks (DAG expansion), (c) Refine existing tasks.
     - [x] **Output**: Updated `todo_list` (Implemented as `update_plan`).
@@ -35,7 +38,7 @@ This task list tracks the integration of features from verified state-of-the-art
 ## 4. Recursive Research (GPT Researcher)
 *Goal: Handle depth by allowing the agent to "dive deep".*
 
-- [ ] **Implement `research_subgraph` Node**
+- [~] **Implement `research_subgraph` Node** *(Note: Node exists, needs dynamic graph wiring)*
     - [ ] **Input**: A sub-topic query.
     - [ ] **Logic**: Compile and run a fresh instance of the `ResearchGraph` (recursive call).
     - [ ] **Output**: A summarized markdown report for that sub-topic.
@@ -67,3 +70,12 @@ This task list tracks the integration of features from verified state-of-the-art
         - Instruct the model to output tool calls as strict JSON in markdown blocks.
         - Manually parse the text response into `AIMessage.tool_calls` for downstream compatibility.
     - [x] **Usage**: Applied in `generate_query` node to support `SearchQueryList` structured output and MCP tools.
+
+
+## 9. Frontend Integration
+*Goal: Build a data-driven control surface for technique reproduction.*
+
+- [ ] **Implement Research Mode Selector**
+- [ ] **Implement Technique Reproduction Mode Selector (Profile Registry)**
+- [ ] **Implement Effective Config Preview**
+- [ ] **Implement Capability-State Badges (Implemented/Planned/Partial)**
