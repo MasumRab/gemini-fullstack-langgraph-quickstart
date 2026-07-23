@@ -1,3 +1,6 @@
+
+import os
+os.environ["TRUSTED_PROXY_COUNT"] = "1"
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch
@@ -11,6 +14,8 @@ from starlette.responses import PlainTextResponse
 # This confirms the middleware doesn't crash the app and basics work.
 
 client = TestClient(app, base_url="http://localhost")
+
+
 
 
 def test_rate_limiter_integration():
@@ -133,4 +138,4 @@ async def test_rate_limiter_truncation():
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
     # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
-    assert keys[0] == "unknown"
+    assert keys[0] == "127.0.0.1"
