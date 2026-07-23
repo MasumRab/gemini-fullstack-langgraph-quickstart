@@ -26,13 +26,13 @@ def extract_todos(root_dir):
                                 complexity = "Unknown"
                                 owner = "Unknown"
 
-                                match_with_owner = re.search(r'TODO\(priority=(.*?), complexity=(.*?), owner=(.*?)\):', content)
+                                match_with_owner = re.search(r'TODO\(priority=([^,]+), complexity=([^,]+), owner=([^)]+)\):', content)
                                 if match_with_owner:
                                     priority = match_with_owner.group(1)
                                     complexity = match_with_owner.group(2)
                                     owner = match_with_owner.group(3)
                                 else:
-                                    match = re.search(r'TODO\(priority=(.*?), complexity=(.*?)\):', content)
+                                    match = re.search(r'TODO\(priority=([^,]+), complexity=([^)]+)\):', content)
                                     if match:
                                         priority = match.group(1)
                                         complexity = match.group(2)

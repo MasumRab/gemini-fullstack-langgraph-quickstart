@@ -21,7 +21,10 @@ class TestNotebookLogic(unittest.TestCase):
         os.environ.update(self.original_env)
 
     @patch("langchain_google_genai.ChatGoogleGenerativeAI")
+    @patch.dict("os.environ", clear=False)
     def test_agent_initialization_with_gemma(self, mock_llm_class):
+        import os
+
         """Verify that the agent initializes with the gemma-3 model based on notebook logic."""
 
         # Simulate the notebook's model selection logic
@@ -33,6 +36,7 @@ class TestNotebookLogic(unittest.TestCase):
             SELECTED_MODEL = "wrong-model"
 
         # Set Env vars as notebook does
+
         os.environ["QUERY_GENERATOR_MODEL"] = SELECTED_MODEL
         os.environ["REFLECTION_MODEL"] = SELECTED_MODEL
         os.environ["ANSWER_MODEL"] = SELECTED_MODEL

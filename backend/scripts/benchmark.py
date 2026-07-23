@@ -136,7 +136,7 @@ async def run_benchmark():
             )
 
         except Exception as e:
-            logger.error(f"Agent failed for '{question}': {e}", exc_info=True)
+            logger.error(f"Agent failed for '{question}'", exc_info=True)
             continue
 
     # Report Generation
