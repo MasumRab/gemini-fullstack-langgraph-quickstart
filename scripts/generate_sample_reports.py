@@ -113,7 +113,7 @@ async def generate_report(run_config):
         final_state = await graph.ainvoke(inputs, runnable_config)
 
         # Extract Final Answer
-        if "messages" in final_state and final_state["messages"]:
+        if final_state.get("messages"):
             last_msg = final_state["messages"][-1]
             report_content = last_msg.content
         else:
@@ -130,7 +130,7 @@ async def generate_report(run_config):
 
     except Exception as e:
         print(f"Error generating report for {name}: {e}")
-        report_content = f"Error generating report: {str(e)}"
+        report_content = f"Error generating report: {e!s}"
         import traceback
         traceback.print_exc()
 

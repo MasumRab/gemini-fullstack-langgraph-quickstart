@@ -58,7 +58,7 @@ def main():
     print("PR CONTEXT SUMMARY")
     print("=" * 60)
 
-    print(f"\n[PR INFO]")
+    print("\n[PR INFO]")
     print(f"Title: {pr_info.get('title')}")
     print(f"Branch: {pr_info.get('headRefName')}")
     print(f"Base: {pr_info.get('baseRefName')}")
@@ -67,13 +67,13 @@ def main():
     print(f"Files Changed: {pr_info.get('changedFiles')}")
     print(f"Additions: +{pr_info.get('additions')} | Deletions: -{pr_info.get('deletions')}")
 
-    print(f"\n[CI CHECKS]")
+    print("\n[CI CHECKS]")
     if checks:
         print(checks)
     else:
         print("No CI checks or all passing")
 
-    print(f"\n[URL]")
+    print("\n[URL]")
     print(f"https://github.com/{REPO}/pull/{args.pr_number}")
 
 
