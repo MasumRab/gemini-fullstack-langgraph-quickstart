@@ -2,7 +2,7 @@
 
 Date: 2026-07-20  
 Representative repository: `MasumRab/gemini-fullstack-langgraph-quickstart`  
-Status: evolved-workflow regression audit and revised implementation plan; no workflow repairs have been applied by this review
+Status: evolved-workflow regression audit (re-audited 2026-07-23). Most P0/P1 issues fixed. Remaining: verdict template approval, untrusted PR content, late-commit rebase contradiction, label removal error swallowing. See section 11.3 for current status of each defect.
 
 ## 1. Objective and scope
 
@@ -506,89 +506,68 @@ The official Jules REST reference remains available at `https://developers.googl
 
 The endpoint is therefore not currently deprecated in the way suspected for the separate Gemini endpoint. No Jules workflow should be removed or reverted on that basis.
 
-### 11.3 Regression matrix
+### 11.3 Regression matrix (re-audited 2026-07-23)
 
-| Previously identified defect                 | Current status                               | Evidence and interpretation                                                                                                                                                                                    |
+| Previously identified defect                 | Current status (2026-07-23)                  | Evidence and interpretation                                                                                                                                                                                    |
 | -------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Malformed session polling/activity URLs      | **Fixed**                                    | Pollers use `.name`, fall back to `sessions/${id}`, and call `/v1alpha/${SESSION_RESOURCE}`.                                                                                                                   |
 | Wrong activity schema                        | **Fixed**                                    | Pollers select `.agentMessaged.agentMessage` and tolerate a missing activities array.                                                                                                                          |
 | Review/walkthrough missing PR-head code      | **Fixed**                                    | Review, force-review, walkthrough, and auto-fix now start from `pr.head.ref`/`headRef`.                                                                                                                        |
-| Broken conflict detector                     | **Resurfaced in a new form**                 | `merge-tree --write-tree` is correct, but Actions invokes Bash with `-e`; exit 1 terminates before `case $?` writes `has_conflicts=true`. A local exact-shell reproduction exited 1 without reaching the case. |
+| Broken conflict detector                     | **Fixed**                                    | Both checks use `if git merge-tree --write-tree ...; then ... else rc=$?; case $rc in ...` — the `if` captures exit status without `set -e` killing the process. Base ref verification added before merge-tree. |
 | Read-only workflows use `AUTO_CREATE_PR`     | **Fixed**                                    | Review, force-review, walkthrough, and rebuild analysis omit it; official API default is no automatic PR.                                                                                                      |
 | First-30-files truncation                    | **Fixed**                                    | All changed-file inventory paths use `github.paginate`.                                                                                                                                                        |
 | HTTP errors become long `UNKNOWN` loops      | **Partially fixed**                          | Poll GETs use `--fail-with-body` and bounds, but one transient error terminates the step and prevents terminal reporting.                                                                                      |
 | Duplicate label sessions                     | **Partially fixed**                          | Concurrency and early label removal were added, but every removal error is swallowed; a duplicate/rerun can continue into another non-idempotent POST.                                                         |
-| Fork handling                                | **Partially fixed**                          | Several builders detect forks, but auto-fix/walkthrough check only after checkout; conflict resolution has no fork guard; rebuild's second job is not gated by the first job's skip.                           |
+| Fork handling                                | **Fixed**                                    | All workflows now have fork checks before checkout. Rebuild's second job is gated by `needs.analyze.outputs.skip != 'true'`.                                                                                   |
 | Shell injection through event refs           | **Partially fixed**                          | Runner shell steps now use quoted `env` values. Prompt-generated shell commands still interpolate unvalidated refs and titles.                                                                                 |
-| Circular marker filtering                    | **Partially fixed**                          | Walkthrough's own marker was added where needed, but marker sets omit newer `jules-rebuild`, `jules-quota-exhausted`, and other workflow outputs or differ by file.                                            |
-| Wrong newest-comment selection               | **Resurfaced / not fixed**                   | `issues.listComments` does not support `direction`; returned comments remain oldest-first before `.slice(0, 10)`. Review-comment ordering is separate and valid.                                               |
-| Late-commit/start-branch mismatch            | **Partially fixed**                          | Auto-fix now starts on the PR head and checks target drift, but does not pin/check source-head drift. Conflict resolution still tells a base reconstruction to rebase onto the original conflicting source.    |
-| Missing bounded HTTP calls                   | **Partially fixed**                          | Deployed session-creation POSTs remain unbounded; newer templates add POST bounds. No family has explicit job `timeout-minutes`.                                                                               |
-| Missing concurrency/idempotency              | **Partially fixed**                          | PR-scoped concurrency exists, but there is no durable pre-POST marker/session guard.                                                                                                                           |
-| Fail-open verdict behavior                   | **Partially fixed, with a new contract bug** | Missing/unknown verdict defaults to failure, but the prompt's required literal example is `[VERDICT]: approve`; the parser accepts the first marker, so unchanged template text can approve a review.          |
-| Untrusted PR content treated as instructions | **Resurfaced / not fixed**                   | PR bodies, comments, review comments, and PR-head rule files enter privileged prompts without author filtering or explicit data boundaries.                                                                    |
+| Circular marker filtering                    | **Fixed**                                    | All workflows now include `jules-rebuild`, `jules-quota-exhausted`, `jules-address-comments` in skipMarkers arrays. Walkthrough includes its own marker.                                                       |
+| Wrong newest-comment selection               | **Fixed**                                    | `github.paginate` fetches all comments, then `.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))` before `.slice(0, 10)`.                                                                        |
+| Late-commit/start-branch mismatch            | **Not fixed**                                | Conflict resolution still instructs Jules to `git rebase origin/${headRef}` after reimplementing from base (lines 335-337). Can reintroduce the original conflict.                                              |
+| Missing bounded HTTP calls                   | **Fixed**                                    | All session-creation POSTs now use `--connect-timeout 10 --max-time 60`. All jobs have explicit `timeout-minutes`.                                                                                              |
+| Missing concurrency/idempotency              | **Partially fixed**                          | PR-scoped concurrency exists for all workflows. Early label removal present. No durable pre-POST marker/session guard.                                                                                         |
+| Fail-open verdict behavior                   | **Not fixed**                                | Prompt still contains literal `[VERDICT]: approve` as example text (line 261). Parser accepts first match — unchanged template text can approve. Missing/unknown verdict defaults to failure (fail closed).   |
+| Untrusted PR content treated as instructions | **Not fixed**                                | PR bodies, comments, review comments, and PR-head rule files enter privileged prompts without author filtering or explicit data boundaries.                                                                    |
+| Rebuild write phase not gated                | **Fixed**                                    | Rebuild job now requires `needs.analyze.outputs.session_state == 'COMPLETED'` (line 258). TIMEOUT and FAILED no longer proceed to write phase.                                                                  |
+| Rebuild duplicate `const fs`                  | **Fixed**                                    | Second declaration removed; single `const fs = require('fs')` at line 93.                                                                                                                                     |
+| `fs` ordering in auto-fix/conflict resolution| **Fixed**                                    | `const fs = require('fs')` moved before first use. Trusted-base API loading used in resolve-conflicts (line 297-304) and rebuild (line 318-327).                                                               |
+| Automerge branch-name spoofing               | **Fixed**                                    | Now checks `pr.user.login === 'google-labs-jules[bot]'` and same-repo head. Branch-name prefix matching removed.                                                                                               |
+| Address-comments marker check blocking Jules PRs | **Fixed**                                | Jules-author check moved before marker check. Marker check removed entirely — PR being Jules-created IS the evidence of a session.                                                                            |
+| Address-comments was a no-op (REST `state` filter) | **Fixed**                               | Now uses GraphQL `pullRequest.reviewThreads` with `isResolved` filter.                                                                                                                                         |
+| Address-comments instructions too permissive | **Fixed**                                    | Now requires specific technical reasoning for disagreements, not blanket dismissals.                                                                                                                          |
 
-### 11.4 New blockers introduced by the evolved workflows
+### 11.4 New blockers introduced by the evolved workflows (re-audited 2026-07-23)
 
-#### A. Deployed rebuild cannot compile
+#### A. Deployed rebuild cannot compile — **FIXED**
 
-The deployed `jules-pr-rebuild.yml` declares `const fs = require('fs')` twice in each of its two GitHub Script payload builders. JavaScript rejects both functions before execution. A local `AsyncFunction` compilation check reproduced both failures.
+~~Declared `const fs = require('fs')` twice in each GitHub Script payload builder.~~
+Fixed: second declaration removed; single `const fs = require('fs')` at line 93.
 
-Options:
+#### B. Address-comments is a no-op — **FIXED**
 
-- **A — recommended:** remove the second declaration in each function and reuse the first binding.
-- **B:** move one declaration to the top of each function. This is equivalent but creates a larger diff.
+~~Filtered review comments by `rc.state === 'PENDING'` (nonexistent field).~~
+Fixed: now uses GraphQL `pullRequest.reviewThreads` with `isResolved` filter.
+Additionally fixed: Jules-author check moved before marker check (was blocking all Jules-created PRs).
+Instructions improved to require specific technical reasoning for disagreements.
 
-The newer documentation/template copy already implements option A. That correction should be ported to the deployed family after the broader patch is validated.
+#### C. Automerge trusts a branch-name convention as identity — **FIXED**
 
-#### B. Address-comments is a no-op
+~~Checked `pr.user.login === 'jules'` or `startsWith(head.ref, 'jules-')`.~~
+Fixed: now checks `pr.user.login === 'google-labs-jules[bot]'` and same-repo head. Branch-name prefix matching removed.
 
-`pulls.listReviewComments` returns review-comment records, not review-thread state. Those records do not have `state: PENDING`; that state belongs to pull-request review records. Filtering every comment with `rc.state === 'PENDING'` therefore produces an empty list and the workflow never tags Jules.
+#### D. Rebuild write phase is not gated by valid analysis — **FIXED**
 
-Options:
+~~Second job had no dependency condition for fork skip or successful analysis.~~
+Fixed: rebuild job now requires `needs.analyze.outputs.skip != 'true' && needs.analyze.outputs.session_state == 'COMPLETED'` (line 258). TIMEOUT and FAILED no longer proceed to write phase.
 
-- **A — recommended:** use GitHub GraphQL `pullRequest.reviewThreads`, paginate threads/comments, filter `isResolved == false`, and reply once to the relevant unresolved thread.
-- **B:** react only to the triggering `pull_request_review_comment` event without trying to infer resolution. This is smaller but can re-address already-resolved or superseded threads and does not satisfy the stated “all unresolved threads” design.
-- **C:** process all REST review comments. Reject because REST comments cannot reliably represent thread resolution and can duplicate replies.
+#### E. Repository rules silently fail to load — **PARTIALLY FIXED**
 
-The newer template adds prior Jules marker context but retains the invalid `rc.state` filter, so it does not fix the blocker.
+`const fs = require('fs')` moved before first use (contract repair). Resolve-conflicts and rebuild second job now load rules from trusted base via `github.rest.repos.getContent` with `ref: baseRef`. However, rebuild analyze job (line 97) still reads from local checkout (`fs.existsSync`) which may be PR-head content. Lower risk since analysis is read-only, but inconsistent with the trusted-base pattern used elsewhere.
 
-#### C. Automerge trusts a branch-name convention as identity
+#### F. Review prompt can manufacture an approval — **NOT FIXED**
 
-The hourly workflow adds `automerge` when either the author login equals `jules` or the head branch begins `jules-`. A fork author controls their branch name and can satisfy the second test. If Mergify or repository rules trust this label, the workflow elevates an untrusted naming convention into merge authorization. It also reads only the first 100 open PRs.
+Review and force-review prompts still contain the literal line `[VERDICT]: approve` as example text (review.yml line 261). The parser at line 411 accepts the first matching verdict marker. A model that follows the template without replacing the value can approve despite findings.
 
-Options:
-
-- **A — recommended minimum:** paginate open PRs, require a same-repository head, and require a trusted Jules bot/app identity or a trusted provenance label written by a privileged workflow.
-- **B:** require only the trusted Jules account/app identity and remove branch-prefix trust. This is safest if all valid Jules PRs have stable author identity.
-- **C:** retain branch-prefix matching but require same-repository head. This blocks fork spoofing but still lets any repository writer create a matching branch, so it is weaker than A/B.
-
-#### D. Rebuild write phase is not gated by valid analysis
-
-The analysis poll exits successfully for both `COMPLETED` and `FAILED`, and timeout also leaves a text file. The second job has no dependency condition for fork skip or successful analysis. Once the syntax blocker is removed, it can start a write session using “Analysis unavailable” or timeout text, and can reach a fork-incompatible checkout.
-
-Options:
-
-- **A — recommended:** expose `skip` and `session_state` as analyze-job outputs and require same-repository PR plus `session_state == COMPLETED` before the rebuild job. Reject empty/placeholder analysis.
-- **B:** collapse both phases into one job so step outputs directly gate the write phase. This simplifies gating but is a larger structural change and loses intentional two-job separation.
-
-#### E. Repository rules silently fail to load in auto-fix and conflict resolution
-
-Both scripts call `fs.existsSync` before a later lexical `const fs` declaration. The resulting temporal-dead-zone `ReferenceError` is swallowed by the optional-file `catch`, so the workflow runs but silently omits repository rules. The divergent `gemini-cli-prompt-library` review copy has a more severe duplicate declaration and cannot compile.
-
-Options:
-
-- **A — minimum contract repair:** move `const fs = require('fs')` before first use and remove the later declaration.
-- **B — recommended trust repair:** read rule files from the trusted PR base SHA/ref via the GitHub API, preserving file priority. This avoids treating a PR-head policy file as privileged instructions.
-
-#### F. Review prompt can manufacture an approval
-
-Review and force-review tell Jules to reproduce a template containing the literal line `[VERDICT]: approve`, then parse the first matching verdict marker. This is not a neutral example: a model that follows the template without replacing the value can approve despite findings.
-
-Options:
-
-- **A — recommended:** use `[VERDICT]: <approve|comment|block>`, define the decision criteria, parse exactly one marker from the `## Verdict` section, and fail on zero or multiple markers.
-- **B:** require a small JSON output object and parse it strictly. This is more robust but changes the human-readable output contract and requires careful separation from the posted review.
+Recommended fix: use `[VERDICT]: <approve|comment|block>` as the placeholder, parse exactly one marker from the `## Verdict` section, and fail on zero or multiple markers.
 
 ### 11.5 Validation evidence
 
