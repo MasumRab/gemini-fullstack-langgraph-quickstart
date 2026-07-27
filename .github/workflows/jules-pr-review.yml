@@ -304,24 +304,39 @@ jobs:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
           set +e
-          RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
-            -H "Content-Type: application/json" \
-            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
-            -d @/tmp/jules-review-payload.json)
-          CURL_EXIT=$?
-          set -e
+          MAX_RETRIES=3
+          RETRY_DELAY=5
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+              -H "Content-Type: application/json" \
+              -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+              -d @/tmp/jules-review-payload.json)
+            CURL_EXIT=$?
 
-          if [ $CURL_EXIT -ne 0 ]; then
+            if [ $CURL_EXIT -eq 0 ]; then
+              break
+            fi
+
             ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
             ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
+
+            # Quota/rate-limit is non-retryable — exit immediately
             if [ "$ERROR_CODE" = "429" ] || [ "$ERROR_CODE" = "403" ] || echo "$ERROR_MSG" | grep -qiE 'quota|limit|exceeded|capacity|daily'; then
               echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
               echo "⚠️ Session cap reached — no session created."
               exit 0
             fi
-            echo "Error: $RESPONSE"
-            exit 1
-          fi
+
+            if [ $attempt -lt $MAX_RETRIES ]; then
+              echo "Attempt $attempt/$MAX_RETRIES failed (exit $CURL_EXIT), retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+              RETRY_DELAY=$((RETRY_DELAY * 2))
+            else
+              echo "Error after $MAX_RETRIES attempts: $RESPONSE"
+              exit 1
+            fi
+          done
+          set -e
 
           SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
@@ -358,7 +373,7 @@ jobs:
           SESSION_ID: ${{ steps.create.outputs.session_id }}
         run: |
           SESSION_RESOURCE="${SESSION_NAME:-sessions/${SESSION_ID}}"
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=120
 
           for i in $(seq 1 $MAX_ATTEMPTS); do
             sleep 15
@@ -372,7 +387,7 @@ jobs:
               ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
                 "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
                 -H "X-Goog-Api-Key: ${JULES_API_KEY}")
-              echo "$ACTS" | jq -r '[(.activities // [])[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Review unavailable"' > /tmp/jules-review-output.txt
+              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null) | .agentMessaged.agentMessage] | if length == 0 then "Review unavailable" else join("\n\n---\n\n") end' > /tmp/jules-review-output.txt
               echo "Session finished ($STATE)"
               exit 0
             fi
@@ -381,6 +396,14 @@ jobs:
 
           echo "session_state=TIMEOUT" >> "$GITHUB_OUTPUT"
           echo "Review timed out after $((MAX_ATTEMPTS * 15)) seconds." > /tmp/jules-review-output.txt
+
+      - name: Upload review output as artifact
+        if: always() && steps.prepare.outputs.skip != 'true' && steps.create.outputs.quota_exhausted != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jules-review-output-${{ github.event.pull_request.number }}
+          path: /tmp/jules-*-output.txt
+          retention-days: 30
 
       - name: Post review and set commit status
         if: always() && steps.prepare.conclusion == 'success' && steps.prepare.outputs.skip != 'true' && steps.create.outputs.quota_exhausted != 'true'
@@ -392,6 +415,7 @@ jobs:
             const prNumber = context.payload.pull_request.number;
             const headSha = '${{ steps.prepare.outputs.head_sha }}';
             const sessionState = '${{ steps.poll.outputs.session_state }}';
+            let prevFindingsComment = null;
 
             // Split walkthrough from review before parsing
             const wtStart = '<!-- walkthrough_start -->';
@@ -446,12 +470,37 @@ jobs:
             }
 
             // Parse per-line findings from Jules output
-            const findingRegex = /<!--\s*FINDING\s+severity="([^"]+)"\s+file="([^"]+)"\s+line="?(\d+)"?(?:\s+reason="([^"]*)")?\s*-->/gi;
+            // Flexible FINDING parser: match the full HTML comment, then extract attributes individually
+            const findingRegex = /<!--\s*FINDING\s+([\s\S]*?)\s*-->/gi;
             const comments = [];
             let findingMatch;
             const seen = new Set();
+
+            // Fetch previously posted findings from PR comments for cross-session dedup
+            const allComments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+            prevFindingsComment = allComments.find(c => c.body?.includes('<!-- jules-posted-findings -->'));
+            if (prevFindingsComment) {
+              try {
+                const prevFindings = JSON.parse(prevFindingsComment.body.replace(/.*<!-- jules-posted-findings -->\n?/, '').trim());
+                for (const k of Object.keys(prevFindings)) {
+                  seen.add(k);
+                }
+              } catch (e) { /* ignore parse errors */ }
+            }
+
             while ((findingMatch = findingRegex.exec(mainReview)) !== null) {
-              const [, severity, file, line, reason] = findingMatch;
+              const attrs = findingMatch[1];
+              const severity = (attrs.match(/\bseverity\s*=\s*["']([^"']+)["']/i) || [])[1];
+              const file = (attrs.match(/\bfile\s*=\s*["']([^"']+)["']/i) || [])[1];
+              const line = (attrs.match(/\bline\s*=\s*["']?(\d+)["']?/i) || [])[1];
+              const reason = (attrs.match(/\breason\s*=\s*["']([^"']*)["']/i) || [])[1];
+              if (!severity || !file || !line) continue;
+
               const key = `${file}:${line}`;
               if (seen.has(key)) continue;
               seen.add(key);
@@ -511,3 +560,46 @@ jobs:
                 core.warning(`Failed to post walkthrough: ${e.message}`);
               }
             }
+
+            // Save posted findings for cross-session dedup
+            const postedFindings = {};
+            for (const c of comments) {
+              postedFindings[`${c.path}:${c.line}`] = true;
+            }
+            // Update or create the findings tracking comment
+            const findingsBody = `<!-- jules-posted-findings -->\n${JSON.stringify(postedFindings)}`;
+            if (prevFindingsComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: prevFindingsComment.id,
+                body: findingsBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: findingsBody,
+              });
+            }
+
+      - name: Post feedback summary
+        if: always() && steps.prepare.outputs.skip != 'true' && steps.create.outputs.quota_exhausted != 'true'
+        shell: bash
+        env:
+          SESSION_NAME: ${{ steps.create.outputs.session_name }}
+          SESSION_ID: ${{ steps.create.outputs.session_id }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          if [ -n "$SESSION_NAME" ] || [ -n "$SESSION_ID" ]; then
+            SESSION="${SESSION_NAME:-sessions/${SESSION_ID}}"
+            echo "Posting feedback summary for session $SESSION on $PR_URL"
+            # post_pr_feedback.py may or may not be available — run if found
+            if command -v python3 &>/dev/null && [ -f "tools/sessions/post_pr_feedback.py" ]; then
+              python3 tools/sessions/post_pr_feedback.py --session "$SESSION" --pr-url "$PR_URL" || echo "Warning: feedback tool failed (non-fatal)"
+            else
+              echo "post_pr_feedback.py not available — skipping feedback summary"
+            fi
+          fi
+

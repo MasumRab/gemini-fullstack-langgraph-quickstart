@@ -171,22 +171,39 @@ jobs:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
           set +e
-          RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
-            -H "Content-Type: application/json" \
-            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
-            -d @/tmp/jules-rebuild-analyze-payload.json)
-          CURL_EXIT=$?
-          set -e
-          if [ $CURL_EXIT -ne 0 ]; then
+          MAX_RETRIES=3
+          RETRY_DELAY=5
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+              -H "Content-Type: application/json" \
+              -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+              -d @/tmp/jules-rebuild-analyze-payload.json)
+            CURL_EXIT=$?
+
+            if [ $CURL_EXIT -eq 0 ]; then
+              break
+            fi
+
             ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
             ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
+
+            # Quota/rate-limit is non-retryable — exit immediately
             if [ "$ERROR_CODE" = "429" ] || [ "$ERROR_CODE" = "403" ] || echo "$ERROR_MSG" | grep -qiE 'quota|limit|exceeded|capacity|daily'; then
               echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
               echo "⚠️ Session cap reached — no analysis session created."
               exit 0
             fi
-            echo "Error: $RESPONSE"; exit 1
-          fi
+
+            if [ $attempt -lt $MAX_RETRIES ]; then
+              echo "Attempt $attempt/$MAX_RETRIES failed (exit $CURL_EXIT), retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+              RETRY_DELAY=$((RETRY_DELAY * 2))
+            else
+              echo "Error after $MAX_RETRIES attempts: $RESPONSE"
+              exit 1
+            fi
+          done
+          set -e
           SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
           if [ -z "$SESSION_NAME" ] && [ -z "$SESSION_ID" ]; then echo "Error: $RESPONSE"; exit 1; fi
@@ -215,7 +232,7 @@ jobs:
           SESSION_ID: ${{ steps.create-analysis.outputs.session_id }}
         run: |
           SESSION_RESOURCE="${SESSION_NAME:-sessions/${SESSION_ID}}"
-          for i in $(seq 1 40); do
+          for i in $(seq 1 80); do
             sleep 15
             RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
               "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}?view=FULL" \
@@ -226,7 +243,7 @@ jobs:
               ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
                 "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
                 -H "X-Goog-Api-Key: ${JULES_API_KEY}")
-              echo "$ACTS" | jq -r '[(.activities // [])[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Analysis unavailable"' > /tmp/jules-rebuild-analysis.txt
+              echo "$ACTS" | jq -r '[.activities[] | select(.agentMessaged.agentMessage != null) | .agentMessaged.agentMessage] | if length == 0 then "Analysis unavailable" else join("\n\n---\n\n") end' > /tmp/jules-rebuild-analysis.txt
               exit 0
             fi
           done
@@ -375,22 +392,39 @@ jobs:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
           set +e
-          RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
-            -H "Content-Type: application/json" \
-            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
-            -d @/tmp/jules-rebuild-action-payload.json)
-          CURL_EXIT=$?
-          set -e
-          if [ $CURL_EXIT -ne 0 ]; then
+          MAX_RETRIES=3
+          RETRY_DELAY=5
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+              -H "Content-Type: application/json" \
+              -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+              -d @/tmp/jules-rebuild-action-payload.json)
+            CURL_EXIT=$?
+
+            if [ $CURL_EXIT -eq 0 ]; then
+              break
+            fi
+
             ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
             ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
+
+            # Quota/rate-limit is non-retryable — exit immediately
             if [ "$ERROR_CODE" = "429" ] || [ "$ERROR_CODE" = "403" ] || echo "$ERROR_MSG" | grep -qiE 'quota|limit|exceeded|capacity|daily'; then
               echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
               echo "⚠️ Session cap reached — no rebuild session created."
               exit 0
             fi
-            echo "Error: $RESPONSE"; exit 1
-          fi
+
+            if [ $attempt -lt $MAX_RETRIES ]; then
+              echo "Attempt $attempt/$MAX_RETRIES failed (exit $CURL_EXIT), retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+              RETRY_DELAY=$((RETRY_DELAY * 2))
+            else
+              echo "Error after $MAX_RETRIES attempts: $RESPONSE"
+              exit 1
+            fi
+          done
+          set -e
           SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           if [ -z "$SESSION_NAME" ]; then echo "Error: $RESPONSE"; exit 1; fi
           echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"

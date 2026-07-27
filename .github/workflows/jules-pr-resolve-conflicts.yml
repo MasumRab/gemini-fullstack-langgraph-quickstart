@@ -374,24 +374,39 @@ jobs:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
           set +e
-          RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
-            -H "Content-Type: application/json" \
-            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
-            -d @/tmp/jules-resolve-payload.json)
-          CURL_EXIT=$?
-          set -e
+          MAX_RETRIES=3
+          RETRY_DELAY=5
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+              -H "Content-Type: application/json" \
+              -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+              -d @/tmp/jules-resolve-payload.json)
+            CURL_EXIT=$?
 
-          if [ $CURL_EXIT -ne 0 ]; then
+            if [ $CURL_EXIT -eq 0 ]; then
+              break
+            fi
+
             ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
             ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
+
+            # Quota/rate-limit is non-retryable — exit immediately
             if [ "$ERROR_CODE" = "429" ] || [ "$ERROR_CODE" = "403" ] || echo "$ERROR_MSG" | grep -qiE 'quota|limit|exceeded|capacity|daily'; then
               echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
               echo "⚠️ Session cap reached — no session created."
               exit 0
             fi
-            echo "Error: $RESPONSE"
-            exit 1
-          fi
+
+            if [ $attempt -lt $MAX_RETRIES ]; then
+              echo "Attempt $attempt/$MAX_RETRIES failed (exit $CURL_EXIT), retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+              RETRY_DELAY=$((RETRY_DELAY * 2))
+            else
+              echo "Error after $MAX_RETRIES attempts: $RESPONSE"
+              exit 1
+            fi
+          done
+          set -e
 
           SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
           SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
