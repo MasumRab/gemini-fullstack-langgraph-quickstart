@@ -29,7 +29,7 @@ def get_git_blame_date(file_path, line_number):
     return datetime.now()
 
 
-def check_stale_deps(file_path, deps_with_lines, dep_type, grep_args):
+def _run_stale_check(file_path, deps_with_lines, dep_type, grep_args):
     print(f"Checking {dep_type} dependencies in {file_path}...")
     stale_threshold = datetime.now() - timedelta(days=90)
 
@@ -37,8 +37,7 @@ def check_stale_deps(file_path, deps_with_lines, dep_type, grep_args):
         date = get_git_blame_date(file_path, line_num)
         if date < stale_threshold:
             try:
-                args = grep_args(dep)
-                subprocess.run(args, capture_output=True, check=True)  # noqa: S603
+                subprocess.run(grep_args(dep), capture_output=True, check=True)  # noqa: S603
             except subprocess.CalledProcessError:
                 print(
                     f"Stale/Unused {dep_type} Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
@@ -48,23 +47,23 @@ def check_stale_deps(file_path, deps_with_lines, dep_type, grep_args):
 def check_js_deps():
     try:
         with open("frontend/package.json", encoding="utf-8") as f:
-            package_json = json.load(f)
+            data = json.load(f)
 
-        deps = list(package_json.get("dependencies", {}).keys()) + list(
-            package_json.get("devDependencies", {}).keys()
+        deps = list(data.get("dependencies", {}).keys()) + list(
+            data.get("devDependencies", {}).keys()
         )
 
         with open("frontend/package.json", encoding="utf-8") as f:
             lines = f.readlines()
 
-        deps_with_lines = []
-        for dep in deps:
-            for i, line in enumerate(lines):
-                if f'"{dep}"' in line:
-                    deps_with_lines.append((dep, i + 1))
-                    break
+        deps_with_lines = [
+            (d, i + 1)
+            for d in deps
+            for i, line_content in enumerate(lines)
+            if f'"{d}"' in line_content
+        ]
 
-        check_stale_deps(
+        _run_stale_check(
             "frontend/package.json",
             deps_with_lines,
             "JS",
@@ -104,7 +103,7 @@ def check_py_deps():
                 )
                 deps_with_lines.append((dep, i + 1))
 
-        check_stale_deps(
+        _run_stale_check(
             "backend/pyproject.toml",
             deps_with_lines,
             "Py",
