@@ -299,7 +299,7 @@ class TestWebResearch:
 
         mock_result = Mock()
         mock_result.title = "Test Title"
-        mock_result.url = "https://example.com"
+        mock_result.url = "http://example.com"
         mock_result.content = "Test Content"
         mock_result.raw_content = "Test Content"
 
@@ -340,8 +340,8 @@ class TestValidateWebResults:
         """Test that validate_web_results filters research results based on keywords"""
         # Setup
         base_state["web_research_result"] = [
-            "Good content relevant to quantum [Source](https://example.com)",
-            "Bad content relevant to cooking [Source](https://example.com)",
+            "Good content relevant to quantum [Source](http://example.com)",
+            "Bad content relevant to cooking [Source](http://example.com)",
         ]
         base_state["search_query"] = ["quantum physics"]
 
@@ -475,13 +475,13 @@ class TestContentReader:
         """Test content_reader extracts evidence from results"""
         # Setup
         base_state["validated_web_research_result"] = [
-            "Quantum computing uses qubits. [Source 1](https://example.com/1)"
+            "Quantum computing uses qubits. [Source 1](http://example.com/1)"
         ]
 
         mock_chain = MagicMock()
         mock_evidence_item = Mock(
             claim="Quantum computing uses qubits.",
-            source_url="https://example.com/1",
+            source_url="http://example.com/1",
             context_snippet="Quantum computing uses qubits.",
         )
         mock_result = Mock()
@@ -498,7 +498,7 @@ class TestContentReader:
                 "items": [
                     {
                         "claim": "Quantum computing uses qubits.",
-                        "source_url": "https://example.com/1",
+                        "source_url": "http://example.com/1",
                         "context_snippet": "Quantum computing uses qubits.",
                     }
                 ]
@@ -527,7 +527,7 @@ class TestContentReader:
         assert "evidence_bank" in result
         assert len(result["evidence_bank"]) == 1
         assert result["evidence_bank"][0]["claim"] == "Quantum computing uses qubits."
-        assert result["evidence_bank"][0]["source_url"] == "https://example.com/1"
+        assert result["evidence_bank"][0]["source_url"] == "http://example.com/1"
 
     def test_content_reader_with_no_results(self, base_state, config):
         """Test content_reader returns empty list when no results"""

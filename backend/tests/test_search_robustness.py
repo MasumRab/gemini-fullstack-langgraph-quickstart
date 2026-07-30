@@ -38,24 +38,24 @@ class TestSearchRobustness:
                 "query": "test",
                 "results": [
                     {"title": "Bad Item"},  # Missing URL
-                    {"url": "https://ok.com", "title": "Good Item"},
+                    {"url": "http://ok.com", "title": "Good Item"},
                     {"url": None, "title": "Null URL"},
                 ],
             }
         ]
         result = deduplicate_search_results(mixed_response)
         assert len(result) == 1
-        assert "https://ok.com" in result
+        assert "http://ok.com" in result
 
     def test_process_search_results_empty_content(self):
         """Test handling of results with empty strings for content/raw_content."""
         input_data = {
-            "https://empty.com": {
+            "http://empty.com": {
                 "title": "Empty Page",
                 "content": "",
                 "raw_content": "",
             },
-            "https://partial.com": {
+            "http://partial.com": {
                 "title": "Partial Page",
                 "content": "Snippet",
                 "raw_content": None,
@@ -65,13 +65,13 @@ class TestSearchRobustness:
         # Should not crash, should preserve what it has
         processed = process_search_results(input_data)
 
-        assert processed["https://empty.com"]["content"] == ""
-        assert processed["https://partial.com"]["content"] == "Snippet"
+        assert processed["http://empty.com"]["content"] == ""
+        assert processed["http://partial.com"]["content"] == "Snippet"
 
     def test_format_search_output_special_chars(self):
         """Test formatting handles special characters or massive strings gracefully."""
         input_data = {
-            "https://test.com": {
+            "http://test.com": {
                 "title": "Title with \n newlines and \t tabs",
                 "content": 'Content with "quotes" and emojis 🚀',
             }
@@ -87,7 +87,7 @@ class TestSearchRobustness:
     def test_process_search_results_sanitization(self):
         """Ensure we don't crash on non-string content (e.g. if API returns dicts in content)."""
         input_data = {
-            "https://weird.com": {
+            "http://weird.com": {
                 "title": 12345,  # Numeric title
                 "content": {"nested": "dict"},  # Malformed content
                 "raw_content": {"nested": "raw"},  # Malformed raw content
@@ -97,7 +97,7 @@ class TestSearchRobustness:
         # Should proceed without error and convert to string
         result = process_search_results(input_data)
 
-        processed = result["https://weird.com"]
+        processed = result["http://weird.com"]
         assert isinstance(processed["title"], str)
         assert processed["title"] == "12345"
         assert isinstance(processed["content"], str)

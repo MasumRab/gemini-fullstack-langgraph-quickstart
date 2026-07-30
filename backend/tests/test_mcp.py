@@ -35,7 +35,7 @@ class TestMcpIntegration:
         # Mock settings
         mock_settings = MagicMock()
         mock_settings.enabled = True
-        mock_settings.endpoint = "https://localhost:8000/sse"
+        mock_settings.endpoint = "http://localhost:8000/sse"
         mock_settings.api_key = "test-key"
 
         # We need to mock the context manager SSEConnection and load_mcp_tools
@@ -64,7 +64,7 @@ class TestMcpIntegration:
 
             # Verify SSEConnection called with correct args
             MockSSE.assert_called_with(
-                url="https://localhost:8000/sse",
+                url="http://localhost:8000/sse",
                 headers={"Authorization": "Bearer test-key"},
             )
 
@@ -104,7 +104,7 @@ class TestMcpIntegration:
         """Test connection error handling."""
         mock_settings = MagicMock()
         mock_settings.enabled = True
-        mock_settings.endpoint = "https://localhost:8000/sse"
+        mock_settings.endpoint = "http://localhost:8000/sse"
         mock_settings.api_key = "test-key"
 
         with patch("langchain_mcp_adapters.sessions.SSEConnection") as MockSSE:

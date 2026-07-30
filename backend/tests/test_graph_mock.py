@@ -73,7 +73,7 @@ class TestGraphNodes:
         # Mock SearchRouter response
         mock_result = Mock()
         mock_result.title = "Test Page"
-        mock_result.url = "https://test.com"
+        mock_result.url = "http://test.com"
         mock_result.content = "Test content"
         mock_result.raw_content = None
 
@@ -86,7 +86,7 @@ class TestGraphNodes:
 
         assert "web_research_result" in result
         assert (
-            "Test content [Test Page](https://test.com)"
+            "Test content [Test Page](http://test.com)"
             in result["web_research_result"][0]
         )
         assert len(result["sources_gathered"]) == 1
@@ -126,12 +126,12 @@ class TestGraphNodes:
         mock_instance.invoke.side_effect = [
             AIMessage(content="Draft 1"),
             AIMessage(content="Draft 2"),
-            AIMessage(content="Final Answer with url: https://short.url"),
+            AIMessage(content="Final Answer with url: http://short.url"),
         ]
 
         state = mock_state.copy()
         state["sources_gathered"] = [
-            {"short_url": "https://short.url", "value": "https://real.url"}
+            {"short_url": "http://short.url", "value": "http://real.url"}
         ]
         state["validated_web_research_result"] = ["Some context"]
 
@@ -141,7 +141,7 @@ class TestGraphNodes:
 
         # It returns messages list where first item is AIMessage
         assert "messages" in result
-        assert "Final Answer with url: https://real.url" in result["messages"][0].content
+        assert "Final Answer with url: http://real.url" in result["messages"][0].content
         assert "artifacts" in result
 
     @patch("agent.nodes.load_plan")

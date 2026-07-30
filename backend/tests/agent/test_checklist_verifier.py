@@ -21,7 +21,7 @@ class TestChecklistVerifier(unittest.TestCase):
         self.mock_evidence_bank = [
             {
                 "claim": "Claim 1",
-                "source_url": "https://example.com",
+                "source_url": "http://example.com",
                 "context_snippet": "Context 1",
             }
         ]

@@ -71,6 +71,18 @@ def format_criteria_list(criteria_data):
         raise ValueError(f"Failed to serialize criteria to JSON: {e}")
 
 
+def _log_error_and_return_none(e):
+    logger.exception("Error occurred: " + str(e))
+    return None
+
+
+def _handle_task_error(msg, lock, pbar):
+    logger.exception(msg)
+    if lock and pbar:
+        with lock:
+            pbar.update(1)
+
+
 def _validate_task_data(task_id, prompt, target_map, ref_map, criteria_map):
     """Validate task data exists in all maps."""
     if prompt not in target_map:
@@ -124,9 +136,7 @@ def process_single_item(
     try:
         criteria_list_str = format_criteria_list(criteria_data)
     except ValueError as e:
-        logger.exception("Formatting error")
-        with lock:
-            pbar.update(1)
+        _handle_task_error("Formatting error", lock, pbar)
         return {
             "id": task_id,
             "prompt": prompt,
@@ -238,9 +248,7 @@ def process_single_item(
                 normalized_dims[dim] = 0
 
     except Exception as e:
-        logger.exception("Error calculating scores")
-        with lock:
-            pbar.update(1)
+        _handle_task_error("Error calculating scores", lock, pbar)
         return {
             "id": task_id,
             "prompt": prompt,
@@ -488,13 +496,6 @@ def main():
     query_file = args.query_file
     output_dir = args.output_dir
 
-    # Validate output_dir to prevent path traversal attacks
-    # Ensure the resolved path is within the current working directory
-    output_dir = os.path.abspath(output_dir)
-    cwd = os.getcwd()
-    if not output_dir.startswith(cwd):
-        raise ValueError("output_dir must be within the current working directory")
-
     os.makedirs(output_dir, exist_ok=True)
 
     # check if the results file exists
@@ -520,14 +521,21 @@ def main():
                 # calculate and print the average scores of the existing results
                 successful_results = [r for r in existing_results if "error" not in r]
                 if successful_results:
-                    def calc_avg(key):
-                        return sum(r.get(key, 0) for r in successful_results) / len(successful_results)
-
-                    comprehensiveness_avg = calc_avg("comprehensiveness")
-                    insight_avg = calc_avg("insight")
-                    instruction_following_avg = calc_avg("instruction_following")
-                    readability_avg = calc_avg("readability")
-                    overall_avg = calc_avg("overall_score")
+                    comprehensiveness_avg = sum(
+                        r.get("comprehensiveness", 0) for r in successful_results
+                    ) / len(successful_results)
+                    insight_avg = sum(
+                        r.get("insight", 0) for r in successful_results
+                    ) / len(successful_results)
+                    instruction_following_avg = sum(
+                        r.get("instruction_following", 0) for r in successful_results
+                    ) / len(successful_results)
+                    readability_avg = sum(
+                        r.get("readability", 0) for r in successful_results
+                    ) / len(successful_results)
+                    overall_avg = sum(
+                        r.get("overall_score", 0) for r in successful_results
+                    ) / len(successful_results)
 
                     logger.info("\n=== Existing Evaluation Results Summary ===")
                     logger.info(f"Comprehensiveness:      {comprehensiveness_avg:.4f}")
@@ -704,14 +712,21 @@ def main():
             # calculate and print the average scores
             successful_results = [r for r in all_results if "error" not in r]
             if successful_results:
-                def calc_avg(key):
-                    return sum(r.get(key, 0) for r in successful_results) / len(successful_results)
-
-                comprehensiveness_avg = calc_avg("comprehensiveness")
-                insight_avg = calc_avg("insight")
-                instruction_following_avg = calc_avg("instruction_following")
-                readability_avg = calc_avg("readability")
-                overall_avg = calc_avg("overall_score")
+                comprehensiveness_avg = sum(
+                    r.get("comprehensiveness", 0) for r in successful_results
+                ) / len(successful_results)
+                insight_avg = sum(
+                    r.get("insight", 0) for r in successful_results
+                ) / len(successful_results)
+                instruction_following_avg = sum(
+                    r.get("instruction_following", 0) for r in successful_results
+                ) / len(successful_results)
+                readability_avg = sum(
+                    r.get("readability", 0) for r in successful_results
+                ) / len(successful_results)
+                overall_avg = sum(
+                    r.get("overall_score", 0) for r in successful_results
+                ) / len(successful_results)
 
                 logger.info("\n=== Evaluation Results Summary ===")
                 logger.info(f"Comprehensiveness:      {comprehensiveness_avg:.4f}")

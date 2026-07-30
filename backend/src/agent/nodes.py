@@ -1041,7 +1041,18 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     with observe_span("flow_update", config):
         llm = get_cached_llm(config)
 
-        # [flow_update:1] Extract current context
+        # Implementation note on original structured TODOs:
+        # TODO(priority=High, complexity=Low, owner=agent): [flow_update:1] Extract current task from state
+        # TODO(priority=High, complexity=Medium, owner=agent): [flow_update:2] Analyze task completion
+        # TODO(priority=High, complexity=Medium, owner=agent): [flow_update:3] Identify knowledge gaps
+        # TODO(priority=Medium, complexity=High, owner=agent): [flow_update:4] DAG expansion logic
+        # TODO(priority=Low, complexity=Low, owner=agent): [flow_update:5] Return updated state
+        #
+        # Current implementation uses an LLM (plan_updater_instructions) to dynamically handle
+        # task completion (2), gap identification (3), and DAG expansion (4) in a single pass.
+        # Future iterations may break these into deterministic steps as originally scoped.
+
+        # Extract current context (addresses [flow_update:1])
         current_plan = state.get("plan", [])
         if not current_plan:
             return {"plan": current_plan}
@@ -1086,7 +1097,7 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
 
             parsed_data = json.loads(content_str.strip())
 
-            # [flow_update:2-4] DAG update and expansion handled by LLM parsing
+            # DAG update and expansion handled by LLM parsing (addresses [flow_update:2], [flow_update:3], [flow_update:4])
             if "plan" in parsed_data and isinstance(parsed_data["plan"], list):
                 updated_plan = parsed_data["plan"]
                 return {"plan": updated_plan}
@@ -1094,7 +1105,7 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
         except Exception:
             logger.exception("Error in flow_update")
 
-        # [flow_update:5] Return updated state fallback
+        # Return updated state fallback (addresses [flow_update:5])
         return {"plan": current_plan}
 
 
