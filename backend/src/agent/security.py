@@ -22,7 +22,7 @@ TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
 # 🛡️ Sentinel: Optional set of trusted proxy IP addresses
 # If set, we iterate from right to left and skip these IPs to find the first untrusted IP.
 # This is more flexible than TRUSTED_PROXY_COUNT but requires knowing proxy IPs.
-# Format: comma-separated IPs or CIDR ranges, e.g., "192.0.2.0/24,198.51.100.0/24,203.0.113.0/24"
+# Format: comma-separated IPs or CIDR ranges, e.g., "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 TRUSTED_PROXIES_ENV = os.getenv("TRUSTED_PROXIES", "")
 TRUSTED_PROXIES: Set[str] = set()
 if TRUSTED_PROXIES_ENV:
@@ -137,12 +137,10 @@ def extract_client_ip_from_forwarded(
             trusted_proxy_count = TRUSTED_PROXY_COUNT
 
         if trusted_proxy_count > 0:
-            # The X-Forwarded-For is [client, proxy1, proxy2].
-            # If trusted proxy count is 1, then the last element is the trusted proxy.
-            # The proxy appends the socket.peername.
-            # So the real client IP is the LAST element (ips[-1]) if TPC=1.
-            # If TPC=2, it's the second to last element (ips[-2]).
-            idx = -trusted_proxy_count
+            # Pick ips[-(trusted_proxy_count + 1)]
+            # For example, if trusted_proxy_count=1 and ips=[client, proxy1],
+            # we want ips[-2] = client
+            idx = -(trusted_proxy_count + 1)
             if abs(idx) <= len(ips):
                 return ips[idx]
             else:

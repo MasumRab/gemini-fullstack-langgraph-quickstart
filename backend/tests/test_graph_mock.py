@@ -43,7 +43,7 @@ class TestGraphNodes:
     @patch("agent.nodes.plan_writer_instructions")
     def test_generate_plan_success(
         self, mock_instructions, mock_get_cm, MockLLM, mock_state, mock_config
-    ):  # NOSONAR
+    ):
         # Mock prompts
         mock_get_cm.return_value.truncate_to_fit.return_value = "Mock Prompt"
         mock_instructions.format.return_value = "Mock Prompt"
@@ -73,7 +73,7 @@ class TestGraphNodes:
         # Mock SearchRouter response
         mock_result = Mock()
         mock_result.title = "Test Page"
-        mock_result.url = "http://example.com"
+        mock_result.url = "http://test.com"
         mock_result.content = "Test content"
         mock_result.raw_content = None
 
@@ -86,7 +86,7 @@ class TestGraphNodes:
 
         assert "web_research_result" in result
         assert (
-            "Test content [Test Page](http://example.com)"
+            "Test content [Test Page](http://test.com)"
             in result["web_research_result"][0]
         )
         assert len(result["sources_gathered"]) == 1
@@ -126,12 +126,12 @@ class TestGraphNodes:
         mock_instance.invoke.side_effect = [
             AIMessage(content="Draft 1"),
             AIMessage(content="Draft 2"),
-            AIMessage(content="Final Answer with url: http://example.short"),
+            AIMessage(content="Final Answer with url: http://short.url"),
         ]
 
         state = mock_state.copy()
         state["sources_gathered"] = [
-            {"short_url": "http://example.short", "value": "http://example.real"}
+            {"short_url": "http://short.url", "value": "http://real.url"}
         ]
         state["validated_web_research_result"] = ["Some context"]
 
@@ -141,10 +141,7 @@ class TestGraphNodes:
 
         # It returns messages list where first item is AIMessage
         assert "messages" in result
-        assert (
-            "Final Answer with url: http://example.real"
-            in result["messages"][0].content
-        )
+        assert "Final Answer with url: http://real.url" in result["messages"][0].content
         assert "artifacts" in result
 
     @patch("agent.nodes.load_plan")

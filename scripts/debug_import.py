@@ -1,3 +1,4 @@
+
 import sys
 import os
 from pathlib import Path
@@ -16,10 +17,8 @@ print(f"sys.path: {sys.path}")
 try:
     print("Attempting to import agent.graph...")
     from agent.graph import graph
-
     print("Successfully imported agent.graph")
 except Exception as e:
     print(f"Error importing agent.graph: {e}")
     import traceback
-
     traceback.print_exc()

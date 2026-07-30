@@ -61,7 +61,6 @@ class AppConfig:
     allowed_hosts: Tuple[str, ...] = tuple(
         filter(None, os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(","))
     )
-
     # Model Selection
     model_planning: str = os.getenv("MODEL_PLANNING", "gemma-3-27b-it")
     model_validation: str = os.getenv("MODEL_VALIDATION", "gemma-3-27b-it")

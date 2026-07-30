@@ -92,9 +92,10 @@ class TestAPISecurity:
             response = client.get("/agent/test")
             assert response.status_code == 200
 
-    @patch("agent.security.TRUSTED_PROXIES", set())
-    @patch("agent.security.TRUSTED_PROXY_COUNT", 1)
-    def test_rate_limit_respects_x_forwarded_for(self):
+    def test_rate_limit_respects_x_forwarded_for(self, monkeypatch):
+        import agent.security
+
+        monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
         """Test that rate limiting uses the X-Forwarded-For header when present."""
         from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 
@@ -116,7 +117,7 @@ class TestAPISecurity:
         client = TestClient(app)
 
         # Simulate 5 requests from IP A (via proxy)
-        headers_a = {"X-Forwarded-For": "192.0.2.100, 192.0.2.102"}
+        headers_a = {"X-Forwarded-For": "10.0.0.1, 10.0.0.2"}
         for _ in range(5):
             response = client.get("/agent/test", headers=headers_a)
             assert response.status_code == 200
@@ -127,7 +128,7 @@ class TestAPISecurity:
 
         # Requests from IP B should still be allowed (distinct from IP A)
         # Even if they come from the same "client host" (mock client doesn't change)
-        headers_b = {"X-Forwarded-For": "192.0.2.103"}
+        headers_b = {"X-Forwarded-For": "10.0.0.3"}
         response = client.get("/agent/test", headers=headers_b)
         assert response.status_code == 200
 
@@ -143,14 +144,14 @@ class TestAPISecurity:
         # Add 5000 stale entries (older than window=60s)
         for i in range(5000):
             # Use valid IPs to bypass "unknown" sanitization
-            ip = f"10.0.{i // 250}.{i % 250}"  # NOSONAR
+            ip = f"10.0.{i // 250}.{i % 250}"
             mw.requests[ip] = [now - 100]
 
         # Add 5002 active entries (newer than window)
         # Note: We need total > 10000 to trigger cleanup logic
         for i in range(5002):
             # Use valid IPs distinct from stale ones
-            ip = f"10.1.{i // 250}.{i % 250}"  # NOSONAR
+            ip = f"10.1.{i // 250}.{i % 250}"
             mw.requests[ip] = [now - 10]
 
         assert len(mw.requests) == 10002
@@ -160,7 +161,7 @@ class TestAPISecurity:
             "type": "http",
             "path": "/",
             "headers": [],
-            "client": ("192.0.2.201", 8000),
+            "client": ("10.2.0.1", 8000),
             "method": "GET",
             "scheme": "http",
         }
@@ -187,7 +188,7 @@ class TestAPISecurity:
 
         assert "10.0.0.0" not in mw.requests  # Stale IP (i=0) should be gone
         assert "10.1.0.0" in mw.requests  # Active IP (i=0) should be present
-        assert "192.0.2.201" in mw.requests  # New client should be present
+        assert "10.2.0.1" in mw.requests  # New client should be present
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_throttled(self):
@@ -200,7 +201,7 @@ class TestAPISecurity:
         now = time.time()
         # Add 10001 stale entries (older than window=60s)
         for i in range(10001):
-            ip = f"10.0.{i // 250}.{i % 250}"  # NOSONAR
+            ip = f"10.0.{i // 250}.{i % 250}"
             mw.requests[ip] = [now - 100]
 
         # Set last_cleanup to NOW (simulating it just ran)
@@ -210,7 +211,7 @@ class TestAPISecurity:
             "type": "http",
             "path": "/",
             "headers": [],
-            "client": ("192.0.2.201", 8000),
+            "client": ("10.2.0.1", 8000),
             "method": "GET",
             "scheme": "http",
         }
@@ -247,4 +248,4 @@ class TestAPISecurity:
 
         # Should be cleaned: 10001 stale removed. 1 new added.
         assert len(mw.requests) == 1
-        assert "192.0.2.201" in mw.requests
+        assert "10.2.0.1" in mw.requests
