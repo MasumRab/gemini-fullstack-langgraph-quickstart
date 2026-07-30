@@ -122,7 +122,14 @@ class DeepSearchAgent:
         else:
             self.mcp = None
 
+
     def research(self, query: str) -> str:
+        # Simple class to hold subgoal data
+        class SubGoal:
+            def __init__(self, id, query):
+                self.id = id
+                self.query = query
+
         logger.info(f"Starting research on: {query}")
 
         # 1. Plan
