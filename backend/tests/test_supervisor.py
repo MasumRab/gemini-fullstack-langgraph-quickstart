@@ -12,7 +12,7 @@ Tests cover:
 # Fixtures
 # =============================================================================
 import dataclasses
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,7 +20,6 @@ from langchain_core.runnables import RunnableConfig
 
 from agent.graphs import supervisor
 from agent.graphs.supervisor import compress_context, graph
-from agent.state import OverallState
 
 
 @pytest.fixture(autouse=True)
@@ -35,7 +34,7 @@ def disable_compression():
 
 
 @pytest.fixture
-def base_supervisor_state() -> Dict[str, Any]:
+def base_supervisor_state() -> dict[str, Any]:
     """Base state for supervisor tests."""
     return {
         "messages": [],

@@ -84,18 +84,20 @@ class VertexAIGemmaClient:
 class OllamaGemmaClient:
     """Client for local Gemma models via Ollama API."""
 
-    def __init__(self, model_name: str = "gemma:7b", base_url: str = "http://localhost:11434"):
+    def __init__(self, model_name: str = "gemma:7b", base_url: str = "http://localhost:11434", timeout: int = 60):
         """
         Initialize Ollama client.
 
         Args:
             model_name: Name of the model to use (e.g., 'gemma:7b').
             base_url: URL of the Ollama server.
+            timeout: Request timeout in seconds.
         """
         import requests
         self.requests = requests
         self.base_url = base_url
         self.model_name = model_name
+        self.timeout = timeout
         self.generate_url = f"{base_url}/api/generate"
         self.chat_url = f"{base_url}/api/chat"
 
@@ -112,7 +114,7 @@ class OllamaGemmaClient:
         if system:
             payload["system"] = system
 
-        response = self.requests.post(self.generate_url, json=payload)
+        response = self.requests.post(self.generate_url, json=payload, timeout=self.timeout)
         response.raise_for_status()
         return response.json().get("response", "")
 
@@ -130,7 +132,7 @@ class OllamaGemmaClient:
             **kwargs
         }
 
-        response = self.requests.post(self.chat_url, json=payload)
+        response = self.requests.post(self.chat_url, json=payload, timeout=self.timeout)
         response.raise_for_status()
         return response.json().get("message", {}).get("content", "")
 
