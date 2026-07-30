@@ -227,4 +227,4 @@ def draw_graph_png():
     return graph.get_graph().draw_mermaid_png()
 
 
-# Removed stale TODOs for visualization as draw_graph_png is now implemented.
+# Removed stale items for visualization as draw_graph_png is now implemented.
