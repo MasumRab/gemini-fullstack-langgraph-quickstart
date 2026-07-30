@@ -69,7 +69,7 @@ def test_flatten_queries_mixed_nesting_levels():
         "top1",
         ["level1a", "level1b"],
         "top2",
-        [["level2a", "level2b"], "level1c"]
+        [["level2a", "level2b"], "level1c"],
     ]
     result = _flatten_queries(queries)
 
@@ -142,11 +142,7 @@ def test_keywords_from_queries_empty_list():
 
 def test_keywords_from_queries_multiple_queries():
     """Test extracting keywords from multiple queries."""
-    queries = [
-        "quantum computing",
-        "neural networks",
-        "machine learning"
-    ]
+    queries = ["quantum computing", "neural networks", "machine learning"]
     result = _keywords_from_queries(queries)
 
     assert "quantum" in result
