@@ -47,9 +47,11 @@ logger = logging.getLogger(__name__)
 # Tool Registry
 # =============================================================================
 
+
 @dataclass
 class ToolSpec:
     """Specification for a registered tool."""
+
     name: str
     func: Callable
     description: str
@@ -87,6 +89,7 @@ class ToolRegistry:
         # Web search
         try:
             from search.router import search_router
+
             self.register(
                 "web_search",
                 lambda query: search_router.search(query, max_results=3),
@@ -94,11 +97,12 @@ class ToolRegistry:
                 category="search",
             )
         except ImportError:
-            pass
+            logger.debug("search.router not available; web_search tool not registered")
 
         # RAG retrieval
         try:
             from agent.rag import create_rag_tool, is_rag_enabled
+
             if is_rag_enabled():
                 rag_tool = create_rag_tool([])
                 if rag_tool:
@@ -109,11 +113,12 @@ class ToolRegistry:
                         category="search",
                     )
         except ImportError:
-            pass
+            logger.debug("agent.rag not available; rag_search tool not registered")
 
         # Tavily (if available)
         try:
             from agent.research_tools import TAVILY_AVAILABLE, tavily_search_multiple
+
             if TAVILY_AVAILABLE:
                 self.register(
                     "tavily_search",
@@ -122,7 +127,9 @@ class ToolRegistry:
                     category="search",
                 )
         except ImportError:
-            pass
+            logger.debug(
+                "agent.research_tools not available; tavily_search tool not registered"
+            )
 
     def register(
         self,
@@ -175,9 +182,11 @@ class ToolRegistry:
 # Agent Pool
 # =============================================================================
 
+
 @dataclass
 class AgentSpec:
     """Specification for a registered agent."""
+
     name: str
     graph: Any  # Compiled StateGraph
     description: str
@@ -210,6 +219,7 @@ class AgentPool:
         """Load default agents from the project."""
         try:
             from agent.graphs.upstream import graph as upstream
+
             self.register(
                 "quick_search",
                 upstream,
@@ -217,10 +227,13 @@ class AgentPool:
                 capabilities=["search", "quick_answer"],
             )
         except ImportError:
-            pass
+            logger.debug(
+                "agent.graphs.upstream not available; quick_search agent not registered"
+            )
 
         try:
             from agent.graphs.planning import graph as planning
+
             self.register(
                 "planner",
                 planning,
@@ -228,10 +241,13 @@ class AgentPool:
                 capabilities=["planning", "search", "reflection", "synthesis"],
             )
         except ImportError:
-            pass
+            logger.debug(
+                "agent.graphs.planning not available; planner agent not registered"
+            )
 
         try:
             from agent.graph import graph as enriched
+
             self.register(
                 "deep_researcher",
                 enriched,
@@ -239,7 +255,9 @@ class AgentPool:
                 capabilities=["planning", "search", "kg", "compression", "synthesis"],
             )
         except ImportError:
-            pass
+            logger.debug(
+                "agent.graph not available; deep_researcher agent not registered"
+            )
 
     def register(
         self,
@@ -273,8 +291,7 @@ class AgentPool:
     def get_agents_with_capability(self, capability: str) -> List[AgentSpec]:
         """Get agents that have a specific capability."""
         return [
-            agent for agent in self._agents.values()
-            if capability in agent.capabilities
+            agent for agent in self._agents.values() if capability in agent.capabilities
         ]
 
     def get_agent_descriptions(self) -> str:
@@ -289,6 +306,7 @@ class AgentPool:
 # =============================================================================
 # Coordinator Node
 # =============================================================================
+
 
 def create_coordinator_node(
     tools: ToolRegistry,
@@ -310,7 +328,11 @@ def create_coordinator_node(
             return {"coordinator_decision": "finalize"}
 
         last_message = messages[-1]
-        query = last_message.content if hasattr(last_message, "content") else str(last_message)
+        query = (
+            last_message.content
+            if hasattr(last_message, "content")
+            else str(last_message)
+        )
 
         # Build routing prompt
         tool_list = ", ".join(tools.get_tool_names())
@@ -337,12 +359,15 @@ Respond with JSON:
             # ⚡ Bolt Optimization: Use centralized cached factory
             llm = get_cached_llm(model, 0)
             response = llm.invoke(prompt)
-            content = response.content if hasattr(response, "content") else str(response)
+            content = (
+                response.content if hasattr(response, "content") else str(response)
+            )
 
             # Parse decision (simple extraction)
             import json
             import re
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+
+            json_match = re.search(r"\{.*\}", content, re.DOTALL)
             if json_match:
                 decision = json.loads(json_match.group())
                 return {
@@ -386,6 +411,7 @@ def create_task_router(agents: AgentPool):
 # Orchestrated Graph Builder
 # =============================================================================
 
+
 def build_orchestrated_graph(
     tools: ToolRegistry | None = None,
     agents: AgentPool | None = None,
@@ -417,7 +443,9 @@ def build_orchestrated_graph(
 
     # Core nodes
     builder.add_node("load_context", load_context)
-    builder.add_node("coordinator", create_coordinator_node(tools, agents, coordinator_model))
+    builder.add_node(
+        "coordinator", create_coordinator_node(tools, agents, coordinator_model)
+    )
     builder.add_node("finalize", denoising_refiner)
 
     # Add agent nodes (wrap each agent as a node)
@@ -429,6 +457,7 @@ def build_orchestrated_graph(
                 async def agent_node(state: OverallState, config: RunnableConfig):
                     result = await spec.graph.ainvoke(state, config)
                     return result
+
                 return agent_node
 
             builder.add_node(f"agent_{agent_name}", make_agent_node(agent_spec))
@@ -470,6 +499,7 @@ def build_orchestrated_graph(
 # =============================================================================
 # Convenience Functions
 # =============================================================================
+
 
 def get_default_registry() -> ToolRegistry:
     """Get a ToolRegistry with default tools loaded."""

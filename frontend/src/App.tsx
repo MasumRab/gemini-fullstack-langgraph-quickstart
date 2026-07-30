@@ -1,8 +1,8 @@
-import { WelcomeScreen } from "@/components/WelcomeScreen";
-import { ChatMessagesView } from "@/components/ChatMessagesView";
-import { Button } from "@/components/ui/button";
-import { useAgentState } from "@/hooks/useAgentState";
-import { ArtifactView } from "@/components/ArtifactView";
+import { WelcomeScreen } from '@/components/WelcomeScreen'
+import { ChatMessagesView } from '@/components/ChatMessagesView'
+import { Button } from '@/components/ui/button'
+import { useAgentState } from '@/hooks/useAgentState'
+import { ArtifactView } from '@/components/ArtifactView'
 
 export default function App() {
   const {
@@ -18,19 +18,22 @@ export default function App() {
     handlePlanningCommand,
     handleCancel,
     setIsArtifactOpen,
-  } = useAgentState();
+  } = useAgentState()
 
   // Get the latest artifact
-  const latestArtifactId = Object.keys(artifacts).pop();
-  const latestArtifact = latestArtifactId ? artifacts[latestArtifactId] : null;
+  const latestArtifactId = Object.keys(artifacts).pop()
+  const latestArtifact = latestArtifactId ? artifacts[latestArtifactId] : null
 
   return (
     <div className="flex h-screen bg-neutral-900 text-neutral-100 font-sans antialiased overflow-hidden">
       {/* Sidebar/Left panel could go here if needed in future */}
 
       {/* Main Content Area */}
-      <main className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${isArtifactOpen ? 'mr-0 md:mr-[40%] lg:mr-[30%] xl:mr-[25%]' : ''
-        }`}>
+      <main
+        className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${
+          isArtifactOpen ? 'mr-0 md:mr-[40%] lg:mr-[30%] xl:mr-[25%]' : ''
+        }`}
+      >
         <div className="h-full w-full max-w-4xl mx-auto px-4 overflow-hidden flex flex-col">
           {thread.messages.length === 0 ? (
             <WelcomeScreen
@@ -82,5 +85,5 @@ export default function App() {
         />
       )}
     </div>
-  );
+  )
 }
