@@ -27,7 +27,6 @@ def test_insert_citation_never_raises(text, end_indices):
     assert len(result) >= len(text)  # Citations only add text
 
 
-
 @given(st.text())
 def test_insert_citation_empty_citations(text):
     """Test that providing empty citations returns the original text."""

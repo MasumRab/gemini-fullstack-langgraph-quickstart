@@ -29,8 +29,23 @@ def get_git_blame_date(file_path, line_number):
     return datetime.now()
 
 
+def check_stale_deps(file_path, deps_with_lines, dep_type, grep_args):
+    print(f"Checking {dep_type} dependencies in {file_path}...")
+    stale_threshold = datetime.now() - timedelta(days=90)
+
+    for dep, line_num in deps_with_lines:
+        date = get_git_blame_date(file_path, line_num)
+        if date < stale_threshold:
+            try:
+                args = grep_args(dep)
+                subprocess.run(args, capture_output=True, check=True)  # noqa: S603
+            except subprocess.CalledProcessError:
+                print(
+                    f"Stale/Unused {dep_type} Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
+                )
+
+
 def check_js_deps():
-    print("Checking JS dependencies in frontend/package.json...")
     try:
         with open("frontend/package.json", encoding="utf-8") as f:
             package_json = json.load(f)
@@ -39,53 +54,39 @@ def check_js_deps():
             package_json.get("devDependencies", {}).keys()
         )
 
-        # Read the file again to find line numbers
         with open("frontend/package.json", encoding="utf-8") as f:
             lines = f.readlines()
 
-        stale_threshold = datetime.now() - timedelta(days=90)
-
+        deps_with_lines = []
         for dep in deps:
-            # Find line number
-            line_num = -1
             for i, line in enumerate(lines):
                 if f'"{dep}"' in line:
-                    line_num = i + 1
+                    deps_with_lines.append((dep, i + 1))
                     break
 
-            if line_num != -1:
-                date = get_git_blame_date("frontend/package.json", line_num)
-                if date < stale_threshold:
-                    # Check if used (simple grep)
-                    try:
-                        # Exclude node_modules and package.json itself
-                        subprocess.run(  # noqa: S603
-                            [
-                                "/bin/grep",
-                                "-r",
-                                "--exclude-dir=node_modules",
-                                "--exclude=package.json",
-                                dep,
-                                "frontend/src",
-                            ],
-                            capture_output=True,
-                            check=True,
-                        )
-                    except subprocess.CalledProcessError:
-                        print(
-                            f"Stale/Unused JS Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
-                        )
+        check_stale_deps(
+            "frontend/package.json",
+            deps_with_lines,
+            "JS",
+            lambda dep: [
+                "/bin/grep",
+                "-r",
+                "--exclude-dir=node_modules",
+                "--exclude=package.json",
+                dep,
+                "frontend/src",
+            ],
+        )
     except Exception as e:  # noqa: BLE001, S110
         print(f"Error checking JS deps: {e}")
 
 
 def check_py_deps():
-    print("\nChecking Python dependencies in backend/pyproject.toml...")
     try:
         with open("backend/pyproject.toml", encoding="utf-8") as f:
             lines = f.readlines()
 
-        deps = []
+        deps_with_lines = []
         in_deps = False
         for i, line in enumerate(lines):
             line = line.strip()
@@ -101,43 +102,30 @@ def check_py_deps():
                     .split("<")[0]
                     .split(">")[0]
                 )
-                deps.append((dep, i + 1))
+                deps_with_lines.append((dep, i + 1))
 
-        stale_threshold = datetime.now() - timedelta(days=90)
-
-        for dep, line_num in deps:
-            date = get_git_blame_date("backend/pyproject.toml", line_num)
-            if date < stale_threshold:
-                # Check if used (simple grep)
-                # Convert dash to underscore for python imports
-                import_name = dep.replace("-", "_")
-                try:
-                    subprocess.run(  # noqa: S603
-                        [
-                            "/bin/grep",
-                            "-E",
-                            "-r",
-                            "--exclude-dir=.venv",
-                            f"import {import_name}|from {import_name}",
-                            "backend/src",
-                        ],
-                        capture_output=True,
-                        check=True,
-                    )
-                except subprocess.CalledProcessError:
-                    print(
-                        f"Stale/Unused Py Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
-                    )
-
+        check_stale_deps(
+            "backend/pyproject.toml",
+            deps_with_lines,
+            "Py",
+            lambda dep: [
+                "/bin/grep",
+                "-E",
+                "-r",
+                "--exclude-dir=.venv",
+                f"import {dep.replace('-', '_')}|from {dep.replace('-', '_')}",
+                "backend/src",
+            ],
+        )
     except Exception as e:  # noqa: BLE001, S110
         print(f"Error checking Py deps: {e}")
 
 
 if __name__ == "__main__":
-    # Determine project root
     root_dir = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
     os.chdir(root_dir)
     check_js_deps()
+    print()
     check_py_deps()
