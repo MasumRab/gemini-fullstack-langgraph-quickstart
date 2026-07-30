@@ -53,11 +53,11 @@ class WebSearcher:
         	query (str): The search query string.
         
         Returns:
-        	List[Dict]: A list of result dictionaries, each typically containing keys like `'url'` and `'content'`. If the underlying search tool is not initialized, returns a single dummy result. If an error occurs during searching, returns an empty list.
+        	List[Dict]: A list of result dictionaries, each typically containing keys like `'url'` and `'content'`. If the underlying search tool is not initialized, returns an empty list. If an error occurs during searching, returns an empty list.
         """
         if not self.tool:
-            logger.warning("Search tool not initialized. Returning dummy results.")
-            return [{"url": "dummy", "content": f"Dummy result for '{query}'"}]
+            logger.warning("Search tool not initialized; returning no results.")
+            return []
         try:
             return self.tool.invoke({"query": query})
         except Exception as e:
@@ -125,10 +125,15 @@ class DeepResearchAgent:
         queries = await self._plan_queries(topic)
         notes = []
 
-        # Parallel search
-        for query in queries:
-            results = self.searcher.search(query)
-            for r in results:
+        # Parallel search using asyncio.to_thread to avoid blocking the event loop
+        search_tasks = [asyncio.to_thread(self.searcher.search, query) for query in queries]
+        search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+        
+        for query, result in zip(queries, search_results):
+            if isinstance(result, Exception):
+                logger.error("Search failed for '%s': %s", query, result)
+                continue
+            for r in result:
                 notes.append(f"Source: {r.get('url', 'unknown')}\n{r.get('content', '')}")
 
         joined_notes = "\n\n".join(notes)

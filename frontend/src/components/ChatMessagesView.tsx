@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Loader2, Copy, CopyCheck } from 'lucide-react'
 import { InputForm } from '@/components/InputForm'
 import { Button } from '@/components/ui/button'
-import { useState, ReactNode, memo, useCallback } from 'react'
+import { useState, ReactNode, memo, useCallback, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
@@ -238,23 +238,26 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = memo(
         <ReactMarkdown components={mdComponents} remarkPlugins={markdownPlugins}>
           {typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}
         </ReactMarkdown>
-        <Button
-          variant="default"
-          className={`cursor-pointer bg-neutral-700 border-neutral-600 text-neutral-300 self-end focus-visible:ring-2 focus-visible:ring-neutral-500 ${
-            message.content.length > 0 ? 'visible' : 'hidden'
-          }`}
-          onClick={() =>
-            handleCopy(
-              typeof message.content === 'string'
-                ? message.content
-                : JSON.stringify(message.content),
-              message.id!
-            )
-          }
-        >
-          {isCopied ? 'Copied' : 'Copy'}
-          {isCopied ? <CopyCheck aria-hidden="true" /> : <Copy aria-hidden="true" />}
-        </Button>
+        {(() => {
+          const copyText = typeof message.content === 'string' ? message.content : JSON.stringify(message.content)
+          const copyMessageId = typeof message.id === 'string' && message.id.length > 0 ? message.id : null
+          const canCopy = copyText.length > 0 && copyMessageId !== null
+          return (
+            <Button
+              variant="default"
+              className={`cursor-pointer bg-neutral-700 border-neutral-600 text-neutral-300 self-end focus-visible:ring-2 focus-visible:ring-neutral-500 ${
+                canCopy ? 'visible' : 'hidden'
+              }`}
+              disabled={!canCopy}
+              onClick={() => {
+                if (copyMessageId) handleCopy(copyText, copyMessageId)
+              }}
+            >
+              {isCopied ? 'Copied' : 'Copy'}
+              {isCopied ? <CopyCheck aria-hidden="true" /> : <Copy aria-hidden="true" />}
+            </Button>
+          )
+        })()}
       </div>
     )
   },
@@ -517,17 +520,31 @@ export function ChatMessagesView({
   onSendCommand,
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ⚡ Bolt Optimization: useCallback ensures handleCopy reference remains stable
   const handleCopy = useCallback(async (text: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(text)
       setCopiedMessageId(messageId)
-      setTimeout(() => setCopiedMessageId(null), 2000) // Reset after 2 seconds
+      // Clear any existing timer to avoid race conditions
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current)
+      }
+      copyResetTimerRef.current = setTimeout(() => setCopiedMessageId(null), 2000)
     } catch {
       // Clipboard write failed silently — no action needed as UI shows no copied state
     }
   }, []) // Empty deps as setCopiedMessageId is stable
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        clearTimeout(copyResetTimerRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div className="flex flex-col h-full">

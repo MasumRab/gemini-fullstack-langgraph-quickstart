@@ -88,12 +88,10 @@ class TavilyAdapter(SearchProvider):
                         title=item.get("title", "Untitled"),
                         url=item.get("url", ""),
                         content=item.get("content", ""),
+                        raw_content=item.get("raw_content"),
                         source="tavily",
                         metadata={
                             "score": item.get("score"),
-                            "raw_content": item.get(
-                                "raw_content"
-                            ),  # sometimes available
                         },
                     )
                 )

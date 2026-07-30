@@ -173,13 +173,17 @@ class DeepResearchMetrics:
             )
 
             # The mocked verification returns a dict
-            if verification.get("verified", False):
+            # Only count as completed if verified AND confidence meets threshold
+            is_verified = verification.get("verified", False) and (
+                verification.get("confidence", 0.0) >= confidence_threshold
+            )
+            if is_verified:
                 completed += 1
 
             subgoal_results.append(
                 {
                     "subgoal": subgoal,
-                    "verified": verification.get("verified", False),
+                    "verified": is_verified,
                     "confidence": verification.get("confidence", 0.0),
                 }
             )

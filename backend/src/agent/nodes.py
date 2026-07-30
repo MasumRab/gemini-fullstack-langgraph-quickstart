@@ -737,6 +737,21 @@ def planning_wait(state: OverallState) -> OverallState:
     }
 
 
+@graph_registry.describe(
+    "scoping_wait",
+    summary="Pauses execution until the frontend provides scoping clarification.",
+    tags=["scoping", "ui"],
+    outputs=["scoping_feedback"],
+)
+def scoping_wait(state: OverallState) -> OverallState:
+    """Pause execution until user provides clarification for scoping."""
+    return {
+        "scoping_feedback": [
+            "Awaiting user clarification. Update scoping_status to 'confirmed' to continue."
+        ]
+    }
+
+
 def _normalize_task(task: dict) -> dict:
     """
     Normalize a task dictionary into a consistent structure with keys `title`, `description`, `status`, and `query`.

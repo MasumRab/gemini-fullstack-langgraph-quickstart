@@ -5,7 +5,7 @@ on:
     paths:
       - '.env.example'
       - 'backend/.env.example'
-      - 'backend/src/agent/*.py'
+      - 'backend/src/agent/**/*.py'
 
 jobs:
   validate-env:

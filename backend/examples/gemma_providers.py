@@ -11,6 +11,7 @@ or used as standalone clients for specific nodes.
 import json
 import os
 import logging
+import threading
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -239,48 +240,54 @@ class KaggleGemmaClient:
         self.dtype = dtype
         self.model_path = None
         self.llm = None
+        self._load_lock = threading.Lock()
 
     def _lazy_load(self):
         """
-        Ensure the Kaggle-hosted Gemma model and required libraries are loaded into the client when first needed.
-        
-        Loads kagglehub, keras_nlp, and keras, attempts Kaggle authentication using KAGGLE_USERNAME/KAGGLE_KEY (logs a warning if missing), downloads or locates the model into `self.model_path`, applies `self.dtype` to Keras floatx if provided, and initializes `self.llm` with the loaded GemmaCausalLM. If the model is already loaded (`self.llm` is not None), this is a no-op.
+        Ensure the Kaggle-hosted Gemma model and its dependencies are loaded lazily.
+
+        Uses double-checked locking for thread-safety to avoid double-initialization
+        of heavy resources when multiple threads call generate() simultaneously.
         
         Raises:
-            ImportError: If required third-party packages are not available; the error message advises installing `kagglehub`, `keras`, and `keras-nlp`.
+            ImportError: If required third-party packages are not available.
         """
         if self.llm is not None:
             return
+        
+        with self._load_lock:
+            if self.llm is not None:
+                return
 
-        try:
-            import kagglehub
-            import keras_nlp
-            import keras
-            import os
+            try:
+                import kagglehub
+                import keras_nlp
+                import keras
+                import os
 
-            # Authenticate with Kaggle
-            # Requires KAGGLE_USERNAME and KAGGLE_KEY environment variables to be set
-            if not os.environ.get("KAGGLE_USERNAME") or not os.environ.get("KAGGLE_KEY"):
-                logger.warning("KAGGLE_USERNAME or KAGGLE_KEY not found in environment. "
-                               "Authentication may fail if the model requires it.")
+                # Authenticate with Kaggle
+                # Requires KAGGLE_USERNAME and KAGGLE_KEY environment variables to be set
+                if not os.environ.get("KAGGLE_USERNAME") or not os.environ.get("KAGGLE_KEY"):
+                    logger.warning("KAGGLE_USERNAME or KAGGLE_KEY not found in environment. "
+                                   "Authentication may fail if the model requires it.")
 
-            # Download the model weights and assets via kagglehub
-            logger.info(f"Downloading/Locating model {self.model_handle} via kagglehub...")
-            self.model_path = kagglehub.model_download(self.model_handle)
-            logger.info(f"Model path: {self.model_path}")
+                # Download the model weights and assets via kagglehub
+                logger.info(f"Downloading/Locating model {self.model_handle} via kagglehub...")
+                self.model_path = kagglehub.model_download(self.model_handle)
+                logger.info(f"Model path: {self.model_path}")
 
-            # Set floatx for efficiency if explicitly requested by caller
-            if self.dtype:
-                keras.config.set_floatx(self.dtype)
+                # Set floatx for efficiency if explicitly requested by caller
+                if self.dtype:
+                    keras.config.set_floatx(self.dtype)
 
-            # Initialize the causal language model via Keras NLP
-            logger.info(f"Loading Gemma model via Keras NLP from {self.model_path}...")
-            self.llm = keras_nlp.models.GemmaCausalLM.from_preset(self.model_path)
+                # Initialize the causal language model via Keras NLP
+                logger.info(f"Loading Gemma model via Keras NLP from {self.model_path}...")
+                self.llm = keras_nlp.models.GemmaCausalLM.from_preset(self.model_path)
 
-        except ImportError as e:
-            raise ImportError(
-                f"Please install 'kagglehub', 'keras', and 'keras-nlp' to use KaggleGemmaClient.\nError: {e}"
-            )
+            except ImportError as e:
+                raise ImportError(
+                    f"Please install 'kagglehub', 'keras', and 'keras-nlp' to use KaggleGemmaClient.\nError: {e}"
+                )
 
     def generate(self, prompt: str, max_length: int = 256, **kwargs) -> str:
         """
