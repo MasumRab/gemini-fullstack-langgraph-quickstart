@@ -25,10 +25,31 @@ TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
 # Format: comma-separated IPs or CIDR ranges, e.g., "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 TRUSTED_PROXIES_ENV = os.getenv("TRUSTED_PROXIES", "")
 TRUSTED_PROXIES: Set[str] = set()
+TRUSTED_PROXY_NETWORKS: list = []  # Pre-parsed networks for CIDR ranges
+TRUSTED_PROXY_ADDRESSES: set = set()  # Pre-parsed single IP addresses
 if TRUSTED_PROXIES_ENV:
     TRUSTED_PROXIES = set(
         ip.strip() for ip in TRUSTED_PROXIES_ENV.split(",") if ip.strip()
     )
+    # Pre-parse into networks and addresses for performance
+    for trusted in TRUSTED_PROXIES:
+        trusted = trusted.strip()
+        if not trusted:
+            continue
+        if "/" in trusted:
+            # CIDR range
+            try:
+                network = ipaddress.ip_network(trusted, strict=False)
+                TRUSTED_PROXY_NETWORKS.append(network)
+            except ValueError:
+                logger.warning(f"Invalid CIDR in TRUSTED_PROXIES: {trusted}")
+        else:
+            # Single IP address
+            try:
+                addr = ipaddress.ip_address(trusted)
+                TRUSTED_PROXY_ADDRESSES.add(addr)
+            except ValueError:
+                logger.warning(f"Invalid IP in TRUSTED_PROXIES: {trusted}")
 
 
 def _is_ip_in_trusted_proxies(
@@ -37,32 +58,45 @@ def _is_ip_in_trusted_proxies(
     """Check if an IP address is in the trusted proxies set.
 
     Supports both direct IP matching and CIDR range matching.
+    Uses pre-parsed networks and addresses for better performance.
     """
     if trusted_proxies is None:
-        trusted_proxies = TRUSTED_PROXIES
+        # Use pre-parsed collections
+        trusted_addrs = TRUSTED_PROXY_ADDRESSES
+        trusted_nets = TRUSTED_PROXY_NETWORKS
+    else:
+        # For dynamic trusted_proxies parameter, parse on-demand
+        trusted_addrs = set()
+        trusted_nets = []
+        for trusted in trusted_proxies:
+            trusted = trusted.strip()
+            if not trusted:
+                continue
+            if "/" in trusted:
+                try:
+                    network = ipaddress.ip_network(trusted, strict=False)
+                    trusted_nets.append(network)
+                except ValueError:
+                    continue
+            else:
+                try:
+                    addr = ipaddress.ip_address(trusted)
+                    trusted_addrs.add(addr)
+                except ValueError:
+                    continue
 
-    if not trusted_proxies:
+    if not trusted_addrs and not trusted_nets:
         return False
 
     try:
         ip_obj = ipaddress.ip_address(ip.strip())
-        for trusted in trusted_proxies:
-            trusted = trusted.strip()
-            if "/" in trusted:
-                # CIDR range
-                try:
-                    network = ipaddress.ip_network(trusted, strict=False)
-                    if ip_obj in network:
-                        return True
-                except ValueError:
-                    continue
-            else:
-                # Direct IP match
-                try:
-                    if ip_obj == ipaddress.ip_address(trusted):
-                        return True
-                except ValueError:
-                    continue
+        # Check direct IP match first
+        if ip_obj in trusted_addrs:
+            return True
+        # Check CIDR ranges
+        for network in trusted_nets:
+            if ip_obj in network:
+                return True
         return False
     except ValueError:
         return False
@@ -90,6 +124,10 @@ def extract_client_ip_from_forwarded(
     Args:
         forwarded: The X-Forwarded-For header value.
         trusted_proxy_count: Number of trusted proxies between client and server.
+            Uses TRUSTED_PROXY_COUNT global if not provided.
+        trusted_proxies: Set of trusted proxy IP addresses. Uses TRUSTED_PROXIES
+            global if not provided. When provided, enables right-to-left skipping
+            of trusted proxy IPs.
         fallback_ip: IP to return if no valid candidate is found.
 
     Returns:
@@ -144,12 +182,13 @@ def extract_client_ip_from_forwarded(
             if abs(idx) <= len(ips):
                 return ips[idx]
             else:
-                # Not enough IPs in the chain, return leftmost
+                # Not enough IPs in the chain, return fallback for security
+                # Don't use header-controlled ips[0] as it could be spoofed
                 logger.warning(
                     f"Not enough IPs in X-Forwarded-For for trusted_proxy_count={trusted_proxy_count}, "
-                    f"using leftmost IP"
+                    f"using fallback IP"
                 )
-                return ips[0] if ips else fallback_ip
+                return fallback_ip
 
         # No trusted proxies configured - return fallback for safety
         # This prevents IP spoofing when trust_proxy_headers is True but no proxies are configured
