@@ -8,7 +8,7 @@ import os
 import pathlib
 import sys
 from types import SimpleNamespace
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -72,7 +72,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture
-def base_state() -> Dict[str, Any]:
+def base_state() -> dict[str, Any]:
     """Minimal valid state for graph node tests."""
     return {
         "messages": [{"content": "User: test research topic"}],
@@ -88,7 +88,7 @@ def base_state() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def planning_state(base_state) -> Dict[str, Any]:
+def planning_state(base_state) -> dict[str, Any]:
     """State configured for planning mode tests."""
     state = base_state.copy()
     state["search_query"] = ["solar energy market", "renewable trends"]
@@ -96,7 +96,7 @@ def planning_state(base_state) -> Dict[str, Any]:
 
 
 @pytest.fixture
-def reflection_state(base_state) -> Dict[str, Any]:
+def reflection_state(base_state) -> dict[str, Any]:
     """State configured for reflection tests."""
     state = base_state.copy()
     state["is_sufficient"] = False
@@ -112,7 +112,7 @@ def reflection_state(base_state) -> Dict[str, Any]:
 
 
 @pytest.fixture
-def base_config() -> Dict[str, Any]:
+def base_config() -> dict[str, Any]:
     """Base configuration for tests."""
     return {
         "configurable": {
@@ -122,7 +122,7 @@ def base_config() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def confirmation_required_config() -> Dict[str, Any]:
+def confirmation_required_config() -> dict[str, Any]:
     """Configuration requiring planning confirmation."""
     return {
         "configurable": {
@@ -154,7 +154,7 @@ class MockChunk:
 class MockSupport:
     """Mock for grounding support metadata."""
 
-    def __init__(self, segment: MockSegment, grounding_chunk_indices: List[int] = None):
+    def __init__(self, segment: MockSegment, grounding_chunk_indices: list[int] = None):
         self.segment = segment
         self.grounding_chunk_indices = grounding_chunk_indices or []
 
@@ -163,7 +163,7 @@ class MockCandidate:
     """Mock for API response candidate."""
 
     def __init__(
-        self, grounding_supports: List[MockSupport], grounding_chunks: List[MockChunk]
+        self, grounding_supports: list[MockSupport], grounding_chunks: list[MockChunk]
     ):
         self.grounding_metadata = SimpleNamespace(
             grounding_supports=grounding_supports,
@@ -174,7 +174,7 @@ class MockCandidate:
 class MockResponse:
     """Mock for API response with candidates."""
 
-    def __init__(self, candidates: List[MockCandidate]):
+    def __init__(self, candidates: list[MockCandidate]):
         self.candidates = candidates
 
 

@@ -22,7 +22,7 @@ class TestSearchRobustness:
         malformed_response = [{"status": "ok", "metadata": "something"}]
         assert deduplicate_search_results(malformed_response) == {}
 
-        # Scenario: 'results' exists but items abstract 'url'
+        # Scenario: 'results' exists but items lack 'url'
         missing_url_response = [
             {
                 "query": "test",
