@@ -7,7 +7,7 @@ on:
     types: [created]
 
 concurrency:
-  group: jules-fix-${{ github.event.pull_request.number }}
+  group: jules-fix-${{ github.event.pull_request.number || github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
@@ -15,7 +15,9 @@ jobs:
     if: >
       github.event.label.name == 'jules-fix' ||
       (github.event_name == 'issue_comment' &&
-       startsWith(github.event.comment.body, '/jules-fix'))
+       github.event.issue.pull_request &&
+       startsWith(github.event.comment.body, '/jules-fix') &&
+       contains('OWNER,MEMBER,COLLABORATOR', github.event.comment.author_association))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -41,26 +43,51 @@ jobs:
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           CUSTOM=$(echo "$COMMENT_BODY" | sed 's|^/jules-fix ||')
-          echo "custom_instructions=$CUSTOM" >> "$GITHUB_OUTPUT"
+          {
+            echo "custom_instructions<<EOF"
+            echo "$CUSTOM"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Fork check
         id: fork-check
-        shell: bash
-        env:
-          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
-        run: |
-          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let pr;
+            if (context.eventName === 'issue_comment') {
+              if (!context.payload.issue?.pull_request) {
+                core.setOutput('skip', 'true');
+                return;
+              }
+              const { data } = await github.rest.pulls.get({
+                owner: context.repo.owner, repo: context.repo.repo,
+                pull_number: context.payload.issue.number,
+              });
+              pr = data;
+            } else {
+              pr = context.payload.pull_request;
+            }
+            const sameRepo = pr.head.repo?.full_name === pr.base.repo?.full_name;
+            core.setOutput('skip', sameRepo ? 'false' : 'true');
+            core.setOutput('pr_number', String(pr.number));
+            core.setOutput('head_sha', pr.head.sha);
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('base_ref', pr.base.ref);
 
       - uses: actions/checkout@v4
         if: steps.fork-check.outputs.skip != 'true'
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ steps.fork-check.outputs.head_sha }}
           fetch-depth: 1
+
+      - name: Checkout trusted classifier
+        if: steps.fork-check.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.fork-check.outputs.base_ref }}
+          path: _helpers
+          sparse-checkout: .github/scripts
 
       - name: Prepare prompt and payload
         id: prepare
@@ -74,7 +101,20 @@ jobs:
               return;
             }
 
-            const pr = context.payload.pull_request;
+            let pr;
+            if (context.eventName === 'issue_comment') {
+              if (!context.payload.issue?.pull_request) {
+                core.setOutput('skip', 'true');
+                return;
+              }
+              const { data } = await github.rest.pulls.get({
+                owner: context.repo.owner, repo: context.repo.repo,
+                pull_number: context.payload.issue.number,
+              });
+              pr = data;
+            } else {
+              pr = context.payload.pull_request;
+            }
             const baseRef = pr.base.ref;
             const headRef = pr.head.ref;
             const headSha = pr.head.sha;
@@ -105,38 +145,42 @@ jobs:
               core.warning(`Large diff (${totalChanges} lines) — instructing selective git diff`);
             }
 
-            // Fetch existing PR comments (newest-first, capped)
-            const { data: reviewComments } = await github.rest.pulls.listReviewComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number,
-              per_page: 20,
-              direction: 'desc',
-            });
+            // Cross-session dedup: skip if auto-fix already started for this SHA.
             const allIssueComments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr.number,
               per_page: 100,
             });
-            const issueComments = allIssueComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const existingFix = allIssueComments.find(c =>
+              c.body?.includes('<!-- jules-auto-fix -->') &&
+              c.body?.includes(`head_sha:${headSha}`)
+            );
+            if (existingFix) {
+              core.info('Auto-fix already started for this HEAD SHA — skipping');
+              core.setOutput('skip', 'true');
+              return;
+            }
 
-            // Priority 1: review comments (line-level, actionable) — newest 10
-            const priorReviews = reviewComments
-              .slice(0, 10)
-              .map(c => `- ${c.path}:${c.line} — ${c.body.slice(0, 300)}`)
-              .join('\n');
-
-            // Priority 2: issue comments — include humans + walkthroughs, skip circular reviews
-            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->', '<!-- jules-rebuild -->', '<!-- jules-quota-exhausted -->', '<!-- jules-address-comments -->'];
-            const priorFeedback = issueComments
-              .filter(c => !skipMarkers.some(m => c.body?.includes(m)))
-              .slice(0, 10)
-              .map(c => {
-                const who = c.user?.type === 'User' ? c.user.login : `[${c.user?.login}]`;
-                return `${who}: ${c.body?.slice(0, 300)}`;
-              })
-              .join('\n\n');
+            const fs = require('fs');
+            const classifierPath = './_helpers/.github/scripts/jules-comment-classifier.cjs';
+            let priorFeedback = '';
+            let priorReviews = '';
+            if (fs.existsSync(classifierPath)) {
+              const { classifyAndFilter } = require(classifierPath);
+              const result = await classifyAndFilter(github, context.repo.owner, context.repo.repo, pr.number, {
+                includeReviewComments: true,
+                includeReviews: false,
+                includeThreads: false,
+                includeWalkthrough: true,
+                maxComments: 10,
+                maxBodyLength: 300,
+              });
+              priorFeedback = result.priorFeedback;
+              priorReviews = result.priorReviews;
+            } else {
+              core.warning('jules-comment-classifier.cjs not found in base branch — proceeding without prior comment context');
+            }
 
             // Load repo-specific instructions from base branch (trusted)
             let reviewRules = '';
@@ -157,6 +201,34 @@ jobs:
             let prompt = [
               ...(customInstr ? [`## User instructions`, customInstr, ``] : []),
               `Fix the issue described in this PR. You will create a new PR with the fix.`,
+              ``,
+              `## ⚠️ IMPORTANT — Plan / Approve Workflow`,
+              `Before making ANY code changes, you MUST follow this structured workflow:`,
+              ``,
+              `1. **Plan Phase**: Analyze the PR, identify the files to change, and create a`,
+              `   detailed plan. Post your plan as a **PR comment** with the marker`,
+              `   <!-- jules-auto-fix-plan --> at the top. Include:`,
+              `   - Files to modify`,
+              `   - Specific changes per file`,
+              `   - Resource estimate (tool calls, files modified)`,
+              `   - The current head SHA so the maintainer can confirm the plan`,
+              `     targets the right commit.`,
+              `   - Instructions for the maintainer: "Comment /approve to proceed, or /deny to cancel."`,
+              ``,
+              `2. **Wait for Approval**: After posting the plan, STOP. Do NOT implement the fix`,
+              `   in this session. A maintainer will review the plan and comment /approve or /deny.`,
+              `   The workflow will start a SEPARATE execution session when /approve is received`,
+              `   (only OWNER/MEMBER/COLLABORATOR association is accepted). If /deny is received,`,
+              `   the plan is cancelled and <!-- jules-auto-fix-plan-denied --> is posted.`,
+              ``,
+              `3. **Execute Phase** (in a separate session after /approve): Implement the plan`,
+              `   — apply fixes, run tests, commit, and create the PR.`,
+              ``,
+              `4. **Report Phase**: Post a final summary comment with marker`,
+              `   <!-- jules-auto-fix-summary -->.`,
+              ``,
+              `---`,
+              ``,
               ...(reviewRules ? [``, `## Repository-specific instructions`, reviewRules] : []),
               ``,
               `## ${pr.title}`,
@@ -224,7 +296,7 @@ jobs:
             };
 
             // Write payload to file for the curl step
-            fs.writeFileSync('/tmp/jules-payload.json', JSON.stringify(payload));
+            fs.writeFileSync('/tmp/jules-auto-fix-payload.json', JSON.stringify(payload));
             core.setOutput('target_branch', target);
             core.info(`Payload written to /tmp/jules-payload.json`);
 
@@ -235,22 +307,34 @@ jobs:
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
+          retry_curl() {
+            local attempt response rc
+            for attempt in 1 2 3; do
+              response=$(curl "$@")
+              rc=$?
+              if [ $rc -eq 0 ]; then printf '%s' "$response"; return 0; fi
+              [ $attempt -eq 3 ] || sleep $((attempt * 5))
+            done
+            printf '%s' "$response"
+            return $rc
+          }
           set +e
-          RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+          RESPONSE=$(retry_curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
-            -d @/tmp/jules-payload.json)
+            -d @/tmp/jules-auto-fix-payload.json)
           CURL_EXIT=$?
           set -e
 
           if [ $CURL_EXIT -ne 0 ]; then
             ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
             ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
-            if [ "$ERROR_CODE" = "429" ] || [ "$ERROR_CODE" = "403" ] || echo "$ERROR_MSG" | grep -qiE 'quota|limit|exceeded|capacity|daily'; then
+            if [ "$ERROR_CODE" = "429" ] || echo "$ERROR_MSG" | grep -qi 'quota'; then
               echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
               echo "⚠️ Session cap reached — no session created."
               exit 0
             fi
+            if [ "$ERROR_CODE" = "403" ]; then echo "Warning: Jules API returned 403 (not treated as quota)."; fi
             echo "Error: $RESPONSE"
             exit 1
           fi
@@ -265,6 +349,21 @@ jobs:
 
           echo "Session created: ${SESSION_NAME:-sessions/${SESSION_ID}}"
 
+      - name: Post session-started marker
+        if: steps.create.outputs.quota_exhausted != 'true' && steps.prepare.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const headSha = '${{ steps.fork-check.outputs.head_sha }}';
+            const prNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (!prNumber) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `🔧 **Jules auto-fix session started.** The fix PR will appear shortly.\n\n<!-- jules-auto-fix -->\n<!-- head_sha: ${headSha} -->`,
+            });
+
       - name: Notify session cap reached
         if: steps.create.outputs.quota_exhausted == 'true'
         uses: actions/github-script@v7
@@ -273,11 +372,223 @@ jobs:
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
+              issue_number: context.payload.pull_request?.number || context.payload.issue.number,
               body: '⚠️ **Jules session cap reached (15/day).**\n\nAuto-fix cannot run today. Re-apply the `jules-fix` label tomorrow to retry.\n\n<!-- jules-quota-exhausted -->',
             });
+
+      - name: Upload session payload
+        if: always() && steps.prepare.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jules-auto-fix-${{ github.event.pull_request.number || github.event.issue.number }}
+          path: /tmp/jules-auto-fix-payload.json
+          retention-days: 30
 
       - name: Skip (fork)
         if: steps.prepare.outputs.skip == 'true'
         shell: bash
         run: echo "Skipped — fork PR (no secret access)"
+
+  # ─── Plan/Approve: handles /approve and /deny comments ──────────────────────
+
+  approve:
+    if: >
+      github.event_name == 'issue_comment' &&
+      (startsWith(github.event.comment.body, '/approve') || startsWith(github.event.comment.body, '/deny')) &&
+      github.event.issue.pull_request &&
+      contains('OWNER,MEMBER,COLLABORATOR', github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Validate approver authorization
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const assoc = context.payload.comment.author_association;
+            core.info(`Approver association: ${assoc}`);
+
+      - name: Find pending plan and fetch PR context
+        id: plan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: prNumber, per_page: 100,
+            });
+            const planComment = comments.find(c => c.body?.includes('<!-- jules-auto-fix-plan -->'));
+            if (!planComment) {
+              core.info('No pending plan comment found — nothing to approve/deny');
+              core.setOutput('skip', 'true');
+              return;
+            }
+            const pr = (await github.rest.pulls.get({
+              owner: context.repo.owner, repo: context.repo.repo,
+              pull_number: prNumber,
+            })).data;
+            core.setOutput('skip', 'false');
+            core.setOutput('head_sha', pr.head.sha);
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('base_ref', pr.base.ref);
+            core.setOutput('target', pr.base.ref);
+            core.setOutput('plan_comment_id', String(planComment.id));
+            core.info('Found pending plan comment');
+
+      - name: Handle /deny
+        if: startsWith(github.event.comment.body, '/deny') && steps.plan.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: '❌ **Jules auto-fix plan denied by maintainer.**\n\nThe plan will not be executed. Re-apply the `jules-fix` label to restart.\n\n<!-- jules-auto-fix-plan-denied -->',
+            });
+
+      - name: Checkout PR head
+        if: startsWith(github.event.comment.body, '/approve') && steps.plan.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.plan.outputs.head_sha }}
+          fetch-depth: 1
+
+      - name: Checkout trusted classifier
+        if: startsWith(github.event.comment.body, '/approve') && steps.plan.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.plan.outputs.base_ref }}
+          path: _helpers
+          sparse-checkout: .github/scripts
+
+      - name: Prepare execution payload
+        id: prepare
+        if: startsWith(github.event.comment.body, '/approve') && steps.plan.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const headSha = '${{ steps.plan.outputs.head_sha }}';
+            const planCid = '${{ steps.plan.outputs.plan_comment_id }}';
+            const target = '${{ steps.plan.outputs.target }}';
+            const prNumber = context.payload.issue.number;
+
+            // Fetch the plan comment body to include as context
+            const planComment = await github.rest.issues.getComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              comment_id: planCid,
+            });
+            const planBody = planComment.data.body;
+
+            const prompt = [
+              `## Executor: Implement the Approved Plan`,
+              ``,
+              `A maintainer approved the plan posted below. Implement the fix`,
+              `by following the plan step by step.`,
+              ``,
+              `## Approved Plan (from PR comment)`,
+              planBody,
+              ``,
+              `## PR Context`,
+              `Target branch: ${target}`,
+              `PR head branch: ${{ steps.plan.outputs.head_ref }}`,
+              `PR head SHA: ${headSha}`,
+              ``,
+              `## Strategy`,
+              `The repo is cloned in your sandbox with the PR head branch checked out.`,
+              `1. Review the plan above — identify the files to modify`,
+              `2. Read existing PR/review comments for additional context`,
+              `3. Apply fixes file by file`,
+              `4. Run tests`,
+              `5. Commit and create a new PR with gh`,
+              `6. Post a summary comment with marker <!-- jules-auto-fix-summary -->`,
+            ].join('\n');
+
+            const payload = {
+              prompt,
+              sourceContext: {
+                source: `sources/github/${context.repo.owner}/${context.repo.repo}`,
+                githubRepoContext: { startingBranch: '${{ steps.plan.outputs.head_ref }}' },
+              },
+            };
+            fs.writeFileSync('/tmp/jules-approve-payload.json', JSON.stringify(payload));
+            core.setOutput('target_branch', target);
+
+      - name: Invoke Jules for execution
+        id: create
+        if: steps.prepare.outputs.target_branch
+        shell: bash
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          retry_curl() {
+            local attempt response rc
+            for attempt in 1 2 3; do
+              response=$(curl "$@")
+              rc=$?
+              if [ $rc -eq 0 ]; then printf '%s' "$response"; return 0; fi
+              [ $attempt -eq 3 ] || sleep $((attempt * 5))
+            done
+            printf '%s' "$response"
+            return $rc
+          }
+          set +e
+          RESPONSE=$(retry_curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+            -H "Content-Type: application/json" \
+            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+            -d @/tmp/jules-approve-payload.json)
+          CURL_EXIT=$?
+          set -e
+
+          if [ $CURL_EXIT -ne 0 ]; then
+            ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
+            ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
+            if [ "$ERROR_CODE" = "429" ] || echo "$ERROR_MSG" | grep -qi 'quota'; then
+              echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+              echo "⚠️ Session cap reached — no session created."
+              exit 0
+            fi
+            if [ "$ERROR_CODE" = "403" ]; then echo "Warning: Jules API returned 403 (not treated as quota)."; fi
+            echo "Error: $RESPONSE"
+            exit 1
+          fi
+
+          SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
+          echo "Session created: ${SESSION_NAME:-sessions/$(echo "$RESPONSE" | jq -r '.id // empty')}"
+
+      - name: Post execution-started comment
+        if: steps.create.outputs.quota_exhausted != 'true' && steps.prepare.outputs.target_branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const headSha = '${{ steps.plan.outputs.head_sha }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `🔧 **Plan approved — Jules execution session started.**\n\n<!-- jules-auto-fix -->\n<!-- head_sha: ${headSha} -->`,
+            });
+
+      - name: Notify session cap reached
+        if: steps.create.outputs.quota_exhausted == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: '⚠️ **Jules session cap reached (15/day).**\n\nExecution cannot start today. Comment /approve again tomorrow.\n\n<!-- jules-quota-exhausted -->',
+            });
+
+      - name: Upload execution payload
+        if: always() && steps.prepare.outputs.target_branch
+        uses: actions/upload-artifact@v4
+        with:
+          name: jules-approve-${{ github.event.issue.number }}
+          path: /tmp/jules-approve-payload.json
+          retention-days: 30

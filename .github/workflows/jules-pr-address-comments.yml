@@ -29,7 +29,6 @@ jobs:
       pull-requests: write
       contents: read
     steps:
-
       - name: Build prompt from review context
         id: build
         uses: actions/github-script@v7
@@ -145,23 +144,44 @@ jobs:
             //    also avoids re-triggering this workflow (review comment
             //    replies would fire new pull_request_review_comment events).
             const threadSummaries = [];
+            let newestThreadTime = null;
             for (const thread of unresolvedThreads) {
               const nodes = thread.comments.nodes || [];
               const lastComment = nodes[nodes.length - 1];
               if (!lastComment) continue;
+              if (!newestThreadTime || new Date(lastComment.createdAt) > new Date(newestThreadTime)) {
+                newestThreadTime = lastComment.createdAt;
+              }
               threadSummaries.push([
-                '### Thread ' + (threadSummaries.length + 1) + ': ' + lastComment.path + ':' + lastComment.originalLine,
-                '**Comment by @' + lastComment.author.login + ':**',
-                lastComment.body.slice(0, 1000),
+                '### Thread ' + (threadSummaries.length + 1) + ': ' + (lastComment.path ? lastComment.path + (lastComment.originalLine ? ':' + lastComment.originalLine : '') : '(file-level)'),
+                '**Comment by @' + (lastComment.author?.login || 'unknown') + ':**',
+                (lastComment.body || '').slice(0, 1000),
                 '',
                 '<details><summary>Code context</summary>',
                 '',
                 '```',
-                (lastComment.diffHunk || '').slice(0, 500),
+                ((lastComment.diffHunk || '(no code context)').slice(0, 500)),
                 '```',
                 '',
                 '</details>',
               ].join('\n'));
+            }
+
+            // Debounce: skip if a consolidated comment already exists that is
+            // newer than the newest unresolved review-thread comment.
+            if (newestThreadTime) {
+              const existingComments = await github.paginate(github.rest.issues.listComments, {
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: prNumber, per_page: 100,
+              });
+              const markerComment = existingComments
+                .filter(c => c.body?.includes('<!-- jules-address-comments -->'))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+              if (markerComment && new Date(markerComment.created_at) >= new Date(newestThreadTime)) {
+                core.info('Existing @jules address-comments comment is newer than the newest unresolved thread — skipping');
+                core.setOutput('no_comments', 'true');
+                return;
+              }
             }
 
             if (threadSummaries.length === 0) {
