@@ -16,6 +16,7 @@ import logging
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List
 
 from google.genai import Client
@@ -239,6 +240,29 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
     return {}
 
 
+def _get_active_context() -> str:
+    """Read the active context file if it exists."""
+    try:
+        repo_root = Path(__file__).resolve().parents[3]
+        context_path = repo_root / "docs" / "ACTIVE_CONTEXT.md"
+        max_chars = 4000
+        if context_path.exists():
+            content = context_path.read_text(encoding="utf-8")
+            if len(content) > max_chars:
+                logger.warning(
+                    "Active context is large; truncating to the first %d characters.",
+                    max_chars,
+                )
+                content = (
+                    content[:max_chars]
+                    + "\n\n[... active context truncated for prompt size ...]"
+                )
+            return content
+    except Exception as e:
+        logger.warning(f"Failed to read active context: {e}")
+    return "No active context available."
+
+
 @graph_registry.describe(
     "generate_plan",
     summary="LLM generates a structured research plan (Todos) from the conversation context.",
@@ -260,10 +284,12 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
 
         # Format the prompt
         current_date = get_current_date()
+        active_context = _get_active_context()
         formatted_prompt = plan_writer_instructions.format(
             current_date=current_date,
             research_topic=get_research_topic(state["messages"]),
             number_queries=state["initial_search_query_count"],
+            active_context=active_context,
         )
 
         # Truncate if needed
@@ -738,16 +764,8 @@ def planning_wait(state: OverallState) -> OverallState:
 
 
 def _normalize_task(task: dict) -> dict:
-    """
-    Normalize a task dictionary into a consistent structure with keys `title`, `description`, `status`, and `query`.
-    
-    If `title` is missing, the function uses the value of `task`. `description` defaults to an empty string. `status` defaults to "pending". `query` is taken from `query` if present, otherwise falls back to `title` or `task`.
-    
-    Parameters:
-        task (dict): Input mapping that may contain `task`, `title`, `description`, `status`, or `query`.
-    
-    Returns:
-        dict: Normalized task containing keys `title`, `description`, `status`, and `query`.
+    """Normalize a task dict to have consistent keys.
+    Handles tasks that may have 'task' instead of 'title' key.
     """
     return {
         "title": task.get("title") or task.get("task", ""),
@@ -764,17 +782,8 @@ def _normalize_task(task: dict) -> dict:
     outputs=["plan"],
 )
 def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Update the research plan using the latest web research results and the current conversation context.
-    
-    Uses the configured LLM to produce a normalized list of plan todos. If a current task index is present, the function ensures that task is marked as "done" in the returned plan to avoid repeating completed work. On LLM errors or parsing failures, returns a normalized fallback derived from the existing plan.
-    
-    Returns:
-        dict: A dictionary with key "plan" mapping to a list of todo objects. Each todo is a dict with:
-            - title (str): Task title.
-            - description (str): Task description or notes.
-            - status (str): Task status, e.g., "pending" or "done".
-            - query (str): Search/query text associated with the task.
+    """Updates the research plan based on latest findings.
+    Implements FlowSearch/Open SWE logic to dynamically adjust tasks.
     """
     with observe_span("update_plan", config):
         configurable = Configuration.from_runnable_config(config)
@@ -939,26 +948,9 @@ def execution_router(state: OverallState) -> str:
     outputs=["outline"],
 )
 def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Generate a hierarchical outline of the research topic with sections and subsections.
-    
-    Uses a STORM-style prompt to produce a structured outline (title, sections, subsections). On failure, returns a simple default outline so the graph can continue.
-    
-    Returns:
-        dict: A mapping with key "outline" whose value is an outline object, e.g.
-            {
-                "title": "<topic>",
-                "sections": [
-                    {
-                        "title": "<section title>",
-                        "subsections": [
-                            {"title": "<subsection title>", "description": "<optional description>"},
-                            ...
-                        ]
-                    },
-                    ...
-                ]
-            }
+    """Generates a hierarchical outline (Sections -> Subsections) for the research.
+    Implements STORM pattern for structured long-form content generation.
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
     with observe_span("outline_gen", config):
         messages = state.get("messages", [])
@@ -1039,13 +1031,32 @@ def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
 
 
 def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Adjust the research DAG and planning state based on the current task's findings.
-    
-    Analyze the active task and web research results to update the plan and progression state: mark tasks done when satisfied, insert follow-up tasks if gaps are found, advance the current task index when appropriate, and set a completion flag when the plan is finished.
-    
-    Returns:
-        Updated OverallState containing the modified `plan`, `current_task_idx`, and `research_complete` status.
+    """Dynamically expands the research DAG based on findings.
+
+    Fine-grained implementation guide:
+
+    TODO(priority=High, complexity=Low): [flow_update:1] Extract current task from state
+    - Read `current_task_idx` and `plan` from state
+    - Get the task object being evaluated
+
+    TODO(priority=High, complexity=Medium): [flow_update:2] Analyze task completion
+    - Compare task query against `web_research_result`
+    - Use fuzzy matching or LLM to determine if task is adequately answered
+    - Return completion_score (0.0-1.0)
+
+    TODO(priority=High, complexity=Medium): [flow_update:3] Identify knowledge gaps
+    - Parse research results for "unclear", "contradictory", or "insufficient" signals
+    - Generate list of follow-up questions if gaps detected
+
+    TODO(priority=Medium, complexity=High): [flow_update:4] DAG expansion logic
+    - If gaps detected: Create new tasks and insert into plan
+    - If task complete: Mark status='done' and increment current_task_idx
+    - If no more tasks: Set research_complete=True
+
+    TODO(priority=Low, complexity=Low): [flow_update:5] Return updated state
+    - Return dict with updated `plan`, `current_task_idx`, `research_complete`
+
+    See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
     """
     raise NotImplementedError("flow_update not implemented")
 
@@ -1057,15 +1068,8 @@ def flow_update(state: OverallState, config: RunnableConfig) -> OverallState:
     outputs=["evidence_bank"],
 )
 def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Extract structured evidence (claim, source_url, context_snippet) from web research results.
-    
-    Returns:
-        evidence_bank (list[dict]): A list of evidence items where each item is a dict with keys:
-            - `claim` (str): A concise factual claim extracted from the results.
-            - `source_url` (str): The URL source supporting the claim.
-            - `context_snippet` (str): A short quoted snippet providing context for the claim.
-        Returns an empty list when no search results are available.
+    """Extracts structured evidence from raw web content.
+    Implements ManuSearch logic to convert raw search results into `Evidence` objects.
     """
     with observe_span("content_reader", config):
         # Prefer validated results, fallback to raw
@@ -1157,17 +1161,8 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
 # Implement logic in reflection or a new 'router' node to decide when to call 'research_subgraph'.
 # This should happen when a complex sub-topic is identified that requires its own full research loop.
 def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Run a recursive child research graph for a given subtopic and return its collected results.
-    
-    This node invokes the child LangGraph using state["subtopic_query"] as the initial message, increasing recursion_depth on the child config and forcing planning to "auto_approved" and scoping to "complete" so the subgraph runs without UI interaction. If the configured recursion limit is reached the function returns a validation note and does not invoke the child graph. On success it merges and returns the child's web_research_result, evidence_bank, and sources_gathered. On failure it returns a validation_notes entry describing the error.
-    
-    Returns:
-        dict: A mapping that may contain:
-            - "web_research_result": list of search/tool results produced by the child graph.
-            - "evidence_bank": list of extracted evidence items from the child graph.
-            - "sources_gathered": list of source metadata gathered by the child graph.
-            - "validation_notes": list of human-readable notes about success, depth limits, or errors.
+    """Executes a recursive research subgraph for a specific sub-topic.
+    Implements GPT Researcher pattern for recursive depth.
     """
     with observe_span("research_subgraph", config):
         # 1. Extract sub-topic query
@@ -1250,13 +1245,10 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
     outputs=["validation_notes"],
 )
 def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Generate a checklist-style validation report that compares gathered evidence to the provided outline.
-    
-    Formats evidence from `evidence_bank` (or falls back to `validated_web_research_result` / `web_research_result`), prompts the configured LLM with the outline and evidence, and returns the LLM's validation report. If no outline or no evidence is available, returns a validation note indicating the skip reason; on LLM errors returns a validation note describing the failure.
-    
-    Returns:
-        dict: A mapping containing `validation_notes`, a list with a single markdown-formatted report or an error/skip message.
+    """Audits gathered evidence against the outline requirements.
+
+    Generates a markdown report flagging missing citations or insufficient evidence
+    for each section of the outline.
     """
     with observe_span("checklist_verifier", config):
         configurable = Configuration.from_runnable_config(config)
@@ -1320,17 +1312,9 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
     outputs=["messages", "artifacts"],
 )
 def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallState:
-    """
-    Synthesize multiple drafts into a final research report, restore citation URLs, and produce a preview message plus a markdown artifact.
-    
-    Parameters:
-        state (OverallState): Current graph state containing messages, web research results, and optional sources_gathered.
-        config (RunnableConfig): Runtime configuration used to select models and options for synthesis.
-    
-    Returns:
-        OverallState: A mapping with:
-            - "messages": a list containing an AIMessage summarizing the finalized report (preview).
-            - "artifacts": a dict mapping artifact_id to an artifact object with keys "id", "title", "content", "type", and "version".
+    """Refines the final answer by synthesizing multiple drafts.
+    Implements TTD-DR pattern for high-fidelity report synthesis.
+    Ensures URL restoration for citations.
     """
     with observe_span("denoising_refiner", config):
         configurable = Configuration.from_runnable_config(config)
@@ -1413,16 +1397,8 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
 
 
 def update_artifact(id: str, content: str, type: str) -> str:
-    """
-    Create or update a collaborative artifact and return its JSON representation.
-    
-    Parameters:
-        id (str): Unique identifier for the artifact.
-        content (str): Artifact content (e.g., markdown or text).
-        type (str): Artifact type (for example, "markdown" or "text").
-    
-    Returns:
-        str: JSON string containing the artifact with keys `id`, `content`, `type`, and `created_at` (ISO 8601 timestamp).
+    """Updates a collaborative artifact.
+    Returns a JSON string representation of the updated artifact.
     """
     artifact = {
         "id": id,

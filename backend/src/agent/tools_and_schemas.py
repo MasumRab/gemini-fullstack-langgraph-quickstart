@@ -67,11 +67,8 @@ class Outline(BaseModel):
 
 
 def get_mcp_tools() -> List:
-    """
-    Retrieve MCP-based tools for persistence.
-    
-    Returns:
-        tools (List): A list of MCP persistence tools, for example `load_thread_plan` and `save_thread_plan`.
+    """Retrieves MCP-based tools.
+    Currently returns the Persistence tools (load_thread_plan, save_thread_plan).
     """
     manager = McpConnectionManager()
     # In a sync context, we might need to be careful with async tools,
@@ -80,20 +77,7 @@ def get_mcp_tools() -> List:
 
 
 async def get_tools_from_mcp(mcp_config=None):
-    """
-    Load available tools from a remote MCP server using the provided configuration.
-    
-    Parameters:
-        mcp_config: Configuration object for MCP connection. Expected to include:
-            - endpoint: URL of the MCP server.
-            - enabled: boolean indicating whether to attempt connection.
-            - api_key (optional): bearer token used for authorization if present.
-        If `mcp_config` is falsy, not enabled, or lacks an endpoint, the function returns an empty list.
-    
-    Returns:
-        List of tools discovered and loaded from the MCP server; an empty list if no tools are available,
-        MCP is disabled/misconfigured, required adapters are missing, or an error occurs during loading.
-    """
+    """Connects to an MCP server and loads available tools."""
     if not mcp_config or not mcp_config.enabled or not mcp_config.endpoint:
         return []
 
@@ -121,14 +105,7 @@ async def get_tools_from_mcp(mcp_config=None):
 
 
 async def get_global_tools() -> List[Any]:
-    """
-    Aggregate available MCP persistence tools and internal filesystem tools into a single tool list.
-    
-    Ensures a local "./workspace" directory exists, includes MCP persistence tools from get_mcp_tools(), and exposes three filesystem StructuredTool coroutines named "read_file", "write_file", and "list_directory" that operate against an internal FilesystemMCPServer.
-    
-    Returns:
-        tools (List[Any]): A list of tool objects (including MCP persistence tools and StructuredTool entries for filesystem operations).
-    """
+    """Aggregates MCP tools (Persistence) and Custom tools (Filesystem)."""
     tools = []
 
     # 1. Get Persistence Tools
@@ -154,15 +131,6 @@ async def get_global_tools() -> List[Any]:
         return str(res.data) if res.success else f"Error: {res.error}"
 
     async def list_directory_wrapper(path: str) -> str:
-        """
-        Retrieve the contents of a directory from the internal filesystem server and return them as a string.
-        
-        Parameters:
-            path (str): Path of the directory to list, relative to the workspace root.
-        
-        Returns:
-            str: Directory listing as a string if the operation succeeds, `Error: <message>` otherwise.
-        """
         res = await server.list_directory(path)
         return str(res.data) if res.success else f"Error: {res.error}"
 

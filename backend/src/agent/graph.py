@@ -94,15 +94,7 @@ builder.add_edge("load_context", "scoping_node")
 
 
 def scoping_router(state: OverallState) -> str:
-    """
-    Choose the next graph node name based on the state's scoping status.
-    
-    Parameters:
-        state (OverallState): Agent state that may include the key `"scoping_status"`.
-    
-    Returns:
-        str: `"planning_wait"` if `state["scoping_status"] == "active"`, `"outline_gen"` otherwise.
-    """
+    """Route based on scoping status."""
     if state.get("scoping_status") == "active":
         return "planning_wait"  # Reusing planning_wait to pause for user input
     return "outline_gen"
@@ -137,13 +129,7 @@ builder.add_edge("checklist_verifier", "reflection")
 
 
 def reflection_router(state: OverallState) -> list[Send] | str:
-    """
-    Choose the next route based on whether the state contains subtopics to explore.
-    
-    Returns:
-        list[Send]: One Send to "research_subgraph" for each subtopic, each carrying {"subtopic_query": <subtopic>}, or
-        str: "update_plan" when there are no subtopics to explore.
-    """
+    """Route to recursive subgraphs if subtopics were identified."""
     subtopics = state.get("subtopics_to_explore", [])
     if subtopics:
         return [Send("research_subgraph", {"subtopic_query": s}) for s in subtopics]
@@ -237,13 +223,8 @@ graph = builder.compile(name="pro-search-agent")
 
 
 def draw_graph_png():
-    """
-    Render the compiled graph as a PNG image for use in notebooks.
-    
-    Returns:
-        bytes: PNG image data representing the graph.
-    """
+    """Helper to draw the graph as a PNG (for notebooks)."""
     return graph.get_graph().draw_mermaid_png()
 
 
-# Removed stale TODOs for visualization as draw_graph_png is now implemented.
+# Removed stale items for visualization as draw_graph_png is now implemented.

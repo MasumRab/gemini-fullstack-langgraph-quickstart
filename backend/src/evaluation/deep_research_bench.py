@@ -42,7 +42,7 @@ def evaluate_deep_research():
     for task in dataset:
         # report = run_full_research(task.query)
         # results.append({"task_id": task.id, "report": report})
-        pass
+        _ = task  # placeholder until implementation is complete
 
     # TODO(priority=Medium, complexity=High): [deep_bench:3] Score reports
     scores = []

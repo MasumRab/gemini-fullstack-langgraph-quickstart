@@ -1,0 +1,40 @@
+# Large dependency folders
+node_modules/
+venv/
+.venv/
+env/
+__pycache__/
+
+# Build and cache
+build/
+dist/
+out/
+target/
+.next/
+.cache/
+.pytest_cache/
+
+# Agent and IDE metadata
+.agent/
+.agents/
+.claude/
+.cline/
+.crush/
+.cursor/
+.goose/
+.kiro/
+.opencode/
+.openhands/
+.pi/
+.qwen/
+.taskmaster/
+.vscode/
+.windsurf/
+
+# Logs and Data
+logs/
+.logs/
+data/
+assets/
+review documents/
+scratch/
