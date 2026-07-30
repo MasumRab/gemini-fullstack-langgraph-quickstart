@@ -1,0 +1,345 @@
+name: Jules PR Walkthrough
+
+on:
+  pull_request:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: jules-walkthrough-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  walkthrough:
+    if: >
+      github.event.label.name == 'jules-walkthrough' ||
+      (github.event_name == 'issue_comment' &&
+       startsWith(github.event.comment.body, '/jules-walkthrough'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Consume label — prevent duplicate sessions
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              name: 'jules-walkthrough',
+            }).catch(e => { if (e.status !== 404) throw e; core.info('Label already consumed'); });
+
+      - name: Parse slash command context
+        if: github.event_name == 'issue_comment'
+        id: parse
+        shell: bash
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          CUSTOM=$(echo "$COMMENT_BODY" | sed 's|^/jules-walkthrough ||')
+          echo "custom_instructions=$CUSTOM" >> "$GITHUB_OUTPUT"
+
+      - name: Fork check
+        id: fork-check
+        shell: bash
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.fork-check.outputs.skip != 'true'
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 1
+
+      - name: Build payload
+        id: build
+        env:
+          CUSTOM_INSTRUCTIONS: ${{ steps.parse.outputs.custom_instructions }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if ('${{ steps.fork-check.outputs.skip }}' === 'true') {
+              core.setOutput('skip', 'true');
+              return;
+            }
+
+            const pr = context.payload.pull_request;
+            const baseRef = pr.base.ref;
+            const headRef = pr.head.ref;
+            const headSha = pr.head.sha;
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const fileSummary = files.map(f => ({
+              path: f.filename, status: f.status,
+              additions: f.additions, deletions: f.deletions,
+            }));
+
+            const hasSchema = files.some(f => /schema|migration|\.sql|model/i.test(f.filename));
+            const hasArch = files.some(f => /arch|flow|deps|module|service/i.test(f.filename));
+            const diagramHints = [];
+            if (hasSchema) diagramHints.push('ER diagram if schema/models changed');
+            if (hasArch) diagramHints.push('sequence diagram for key flows');
+
+            // Fetch existing PR comments for context
+            const { data: reviewComments } = await github.rest.pulls.listReviewComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 20,
+              direction: 'desc',
+            });
+            const allIssueComments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              per_page: 100,
+            });
+            const issueComments = allIssueComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            const skipMarkers = ['<!-- jules-pr-reviewer -->', '<!-- jules-auto-fix -->', '<!-- jules-resolve -->', '<!-- jules-walkthrough -->', '<!-- jules-rebuild -->', '<!-- jules-quota-exhausted -->', '<!-- jules-address-comments -->'];
+            const priorFeedback = issueComments
+              .filter(c => !skipMarkers.some(m => c.body?.includes(m)))
+              .slice(0, 10)
+              .map(c => {
+                const who = c.user?.type === 'User' ? c.user.login : `[${c.user?.login}]`;
+                return `${who}: ${c.body?.slice(0, 300)}`;
+              })
+              .join('\n\n');
+
+            const priorReviews = reviewComments
+              .slice(0, 10)
+              .map(c => `- ${c.path}:${c.line} — ${c.body.slice(0, 300)}`)
+              .join('\n');
+
+            // Load repo-specific instructions from base branch (trusted)
+            let reviewRules = '';
+            for (const path of ['.jules/INSTRUCTIONS.md', '.github/jules-review-rules.md']) {
+              try {
+                const { data } = await github.rest.repos.getContent({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  path, ref: baseRef,
+                });
+                reviewRules = Buffer.from(data.content, 'base64').toString('utf8');
+                break;
+              } catch (e) { /* file is optional */ }
+            }
+
+            const customInstr = process.env.CUSTOM_INSTRUCTIONS || '';
+            const prompt = [
+              ...(customInstr ? [`## User instructions`, customInstr, ``] : []),
+              `## PR Walkthrough`,
+              ``,
+              `Repository: ${context.repo.owner}/${context.repo.repo}`,
+              `Title: ${pr.title}`,
+              `Target branch: ${baseRef}`,
+              `PR head branch: ${headRef}`,
+              `PR head SHA: ${headSha}`,
+              `Files changed: ${files.length} files (${files.reduce((s, f) => s + f.additions + f.deletions, 0)} +/-)`,
+              ``,
+              `## Changed files (names only)`,
+              JSON.stringify(fileSummary, null, 2),
+              ...(priorFeedback ? [
+                ``,
+                `## Existing PR comments`,
+                priorFeedback,
+              ] : []),
+              ...(priorReviews ? [
+                ``,
+                `## Existing review comments`,
+                priorReviews,
+              ] : []),
+              ...(reviewRules ? [``, `## Repository-specific instructions`, reviewRules] : []),
+              ``,
+              `## Your task`,
+              `This is a read-only walkthrough. Do NOT create any pull requests or modify code.`,
+              `Write a "Reviewer's Guide" walkthrough for this PR. Include:`,
+              `1. **Narrative summary** — what changed and why (2-3 paragraphs)`,
+              `2. **Key architectural decisions** — why this approach was chosen`,
+              `3. **Diagrams** — where applicable:`,
+              `${diagramHints.length ? diagramHints.map(h => `   - ${h}`).join('\n') : '   Keep it text-based'}`,
+              ``,
+              `Use \`\`\`mermaid blocks for diagrams.`,
+              `Read the existing PR/review comments above — build on prior context, do not repeat it.`,
+              `Output the entire walkthrough as your final message.`,
+            ].join('\n');
+
+            const fs = require('fs');
+            fs.writeFileSync('/tmp/jules-walkthrough-payload.json', JSON.stringify({
+              prompt,
+              sourceContext: {
+                source: `sources/github/${context.repo.owner}/${context.repo.repo}`,
+                githubRepoContext: { startingBranch: headRef },
+              },
+            }));
+            core.setOutput('base_ref', baseRef);
+            core.setOutput('head_sha', headSha);
+            core.info(`Payload written`);
+
+      - name: Create Jules session
+        if: steps.build.outputs.skip != 'true'
+        id: create
+        shell: bash
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          set +e
+          RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+            -H "Content-Type: application/json" \
+            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+            -d @/tmp/jules-walkthrough-payload.json)
+          CURL_EXIT=$?
+          set -e
+
+          if [ $CURL_EXIT -ne 0 ]; then
+            ERROR_CODE=$(echo "$RESPONSE" | jq -r '.error.code // "0"')
+            ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // ""')
+            if [ "$ERROR_CODE" = "429" ] || [ "$ERROR_CODE" = "403" ] || echo "$ERROR_MSG" | grep -qiE 'quota|limit|exceeded|capacity|daily'; then
+              echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+              echo "⚠️ Session cap reached — no session created."
+              exit 0
+            fi
+            echo "Error: $RESPONSE"
+            exit 1
+          fi
+
+          SESSION_NAME=$(echo "$RESPONSE" | jq -r '.name // empty')
+          SESSION_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
+          STATE=$(echo "$RESPONSE" | jq -r '.state // empty')
+
+          if [ -z "$SESSION_NAME" ] && [ -z "$SESSION_ID" ]; then
+            echo "Error: $RESPONSE"
+            exit 1
+          fi
+
+          echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
+          echo "state=$STATE" >> "$GITHUB_OUTPUT"
+          echo "Session created: $SESSION_NAME"
+
+      - name: Notify session cap reached
+        if: steps.create.outputs.quota_exhausted == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '⚠️ **Jules session cap reached (15/day).**\n\nWalkthrough cannot run today. Re-apply the `jules-walkthrough` label tomorrow to retry.\n\n<!-- jules-quota-exhausted -->',
+            });
+
+      - name: Poll for completion
+        if: steps.build.outputs.skip != 'true' && steps.create.outputs.quota_exhausted != 'true'
+        id: poll
+        shell: bash
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          SESSION_NAME: ${{ steps.create.outputs.session_name }}
+          SESSION_ID: ${{ steps.create.outputs.session_id }}
+        run: |
+          SESSION_RESOURCE="${SESSION_NAME:-sessions/${SESSION_ID}}"
+          MAX_ATTEMPTS=60
+
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            sleep 15
+
+            RESPONSE=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
+              "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}?view=FULL" \
+              -H "X-Goog-Api-Key: ${JULES_API_KEY}")
+
+            STATE=$(echo "$RESPONSE" | jq -r '.state // "UNKNOWN"')
+
+            if [ "$STATE" = "COMPLETED" ] || [ "$STATE" = "FAILED" ]; then
+              echo "session_state=$STATE" >> "$GITHUB_OUTPUT"
+
+              ACTS=$(curl -sS --fail-with-body --connect-timeout 10 --max-time 60 \
+                "https://jules.googleapis.com/v1alpha/${SESSION_RESOURCE}/activities?pageSize=100" \
+                -H "X-Goog-Api-Key: ${JULES_API_KEY}")
+
+              echo "$ACTS" | jq -r '[(.activities // [])[] | select(.agentMessaged.agentMessage != null)][-1].agentMessaged.agentMessage // "Walkthrough unavailable"' > /tmp/jules-walkthrough-output.txt
+              echo "Session finished ($STATE)"
+              exit 0
+            fi
+
+            echo "Attempt $i/$MAX_ATTEMPTS — state: $STATE"
+          done
+
+          echo "session_state=TIMEOUT" >> "$GITHUB_OUTPUT"
+          echo "Walkthrough timed out." > /tmp/jules-walkthrough-output.txt
+
+      - name: Post walkthrough comment
+        if: always() && steps.build.conclusion == 'success' && steps.create.outputs.quota_exhausted != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const message = fs.readFileSync('/tmp/jules-walkthrough-output.txt', 'utf8');
+            const prNumber = context.payload.pull_request.number;
+
+            const body = [
+              `<!-- jules-walkthrough -->`,
+              `## PR Walkthrough`,
+              ``,
+              message,
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c => c.body?.includes('<!-- jules-walkthrough -->'));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated walkthrough comment #${existing.id}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+              core.info(`Posted new walkthrough comment`);
+            }
+
+      - name: Skip (fork)
+        if: steps.build.outputs.skip == 'true'
+        shell: bash
+        run: echo "Skipped — fork PR (no secret access)"
+
+      - name: Remove jules-walkthrough label
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              name: 'jules-walkthrough',
+            }).catch(e => { if (e.status !== 404) throw e; core.warning('Label already removed'); });

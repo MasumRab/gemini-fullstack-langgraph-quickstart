@@ -41,6 +41,7 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
     # Create middleware instance with low limit (2 per minute)
     # We use a distinct path prefix to ensure we hit the logic
     # 🛡️ Sentinel: Explicitly enable trust_proxy_headers for this test as we want to test X-Forwarded-For logic
+    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
     middleware = RateLimitMiddleware(
         mock_app,
         limit=2,
@@ -117,6 +118,7 @@ async def test_rate_limiter_truncation(monkeypatch):
         await response(scope, receive, send)
 
     # 🛡️ Sentinel: Enable proxy trust to test header parsing
+    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
     middleware = RateLimitMiddleware(
         mock_app,
         limit=10,
