@@ -1,4 +1,5 @@
-"""Kaggle Models Integration Scaffolding.
+"""
+Kaggle Models Integration Scaffolding.
 
 This module provides reference implementations for downloading and integrating
 models from Kaggle (https://www.kaggle.com/models) into the agent architecture.
@@ -17,7 +18,6 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Union
 
-
 # Define a base LLM interface compatible with the project
 class BaseLLMClient:
     def generate(self, prompt: str, **kwargs) -> str:
@@ -27,8 +27,9 @@ class KaggleModelLoader:
     """Helper to download and load models from Kaggle."""
 
     @staticmethod
-    def download(handle: str, path: str | None = None) -> str:
-        """Download a model from Kaggle.
+    def download(handle: str, path: Optional[str] = None) -> str:
+        """
+        Download a model from Kaggle.
 
         Args:
             handle: Kaggle model handle (e.g., 'google/gemma/pyTorch/2b').
@@ -48,22 +49,24 @@ class KaggleModelLoader:
         return model_path
 
 class KaggleHuggingFaceClient(BaseLLMClient):
-    """Adapter for Kaggle models compatible with Hugging Face Transformers.
+    """
+    Adapter for Kaggle models compatible with Hugging Face Transformers.
 
     This is useful for models like Gemma, Llama, Mistral available on Kaggle
     in PyTorch/Transformers format.
     """
 
     def __init__(self, model_handle: str, device: str = "auto"):
-        """Initialize the client.
+        """
+        Initialize the client.
 
         Args:
             model_handle: Kaggle model handle or local path.
             device: 'auto', 'cuda', or 'cpu'.
         """
         try:
+            from transformers import AutoTokenizer, AutoModelForCausalLM
             import torch
-            from transformers import AutoModelForCausalLM, AutoTokenizer
         except ImportError:
             raise ImportError("Please install 'transformers' and 'torch'.")
 
@@ -99,7 +102,8 @@ class KaggleHuggingFaceClient(BaseLLMClient):
         return generated_text
 
 class SimpleReActAgent:
-    """A simple ReAct (Reason+Act) wrapper to enable tool use for
+    """
+    A simple ReAct (Reason+Act) wrapper to enable tool use for
     plain text-generation models downloaded from Kaggle.
 
     This replaces the native function calling capabilities of API-based models.

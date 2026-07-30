@@ -5,6 +5,7 @@ Tests cover:
 - Routing logic (primary vs fallback).
 - Error handling and fallback mechanisms.
 """
+
 # Import SUT
 import sys
 from unittest.mock import MagicMock, patch
@@ -35,12 +36,13 @@ class TestSearchRouter:
         """Mock the adapter classes used by SearchRouter."""
         # Patch the classes where they are DEFINED, since they are imported locally
 
-        with patch("search.providers.google_adapter.GoogleSearchAdapter") as mock_google, \
-             patch("search.providers.duckduckgo_adapter.DuckDuckGoAdapter") as mock_ddg, \
-             patch("search.providers.brave_adapter.BraveSearchAdapter") as mock_brave, \
-             patch("search.providers.tavily_adapter.TavilyAdapter") as mock_tavily, \
-             patch("search.providers.bing_adapter.BingAdapter") as mock_bing:
-
+        with (
+            patch("search.providers.google_adapter.GoogleSearchAdapter") as mock_google,
+            patch("search.providers.duckduckgo_adapter.DuckDuckGoAdapter") as mock_ddg,
+            patch("search.providers.brave_adapter.BraveSearchAdapter") as mock_brave,
+            patch("search.providers.tavily_adapter.TavilyAdapter") as mock_tavily,
+            patch("search.providers.bing_adapter.BingAdapter") as mock_bing,
+        ):
             # Setup instances
             mock_google.return_value = MagicMock(name="google_instance")
             mock_ddg.return_value = MagicMock(name="ddg_instance")
@@ -53,7 +55,7 @@ class TestSearchRouter:
                 "duckduckgo": mock_ddg,
                 "brave": mock_brave,
                 "tavily": mock_tavily,
-                "bing": mock_bing
+                "bing": mock_bing,
             }
 
     def test_lazy_init_providers(self, mock_config, mock_adapters):
@@ -72,20 +74,24 @@ class TestSearchRouter:
         # Request again (should be cached)
         provider2 = router._get_provider("google")
         assert provider2 is provider
-        mock_adapters["google"].assert_called_once() # Still called only once
+        mock_adapters["google"].assert_called_once()  # Still called only once
 
     def test_search_primary_success(self, mock_config, mock_adapters):
         """Test search using primary provider successfully."""
         router = SearchRouter(app_config=mock_config)
         mock_config.search_provider = "google"
 
-        expected_results = [SearchResult(title="Title", content="test", url="http://test.com")]
+        expected_results = [
+            SearchResult(title="Title", content="test", url="http://test.com")
+        ]
         mock_adapters["google"].return_value.search.return_value = expected_results
 
         results = router.search("query", max_results=3)
 
         assert results == expected_results
-        mock_adapters["google"].return_value.search.assert_called_with("query", max_results=3, tuned=True)
+        mock_adapters["google"].return_value.search.assert_called_with(
+            "query", max_results=3, tuned=True
+        )
 
     def test_search_fallback_on_missing_provider(self, mock_config, mock_adapters):
         """Test fallback when primary provider is not available (init fails)."""
@@ -96,7 +102,9 @@ class TestSearchRouter:
         # Make Google fail to init
         mock_adapters["google"].side_effect = Exception("Init failed")
 
-        expected_results = [SearchResult(title="DDG", content="ddg", url="http://ddg.com")]
+        expected_results = [
+            SearchResult(title="DDG", content="ddg", url="http://ddg.com")
+        ]
         mock_adapters["duckduckgo"].return_value.search.return_value = expected_results
 
         results = router.search("query")
@@ -105,7 +113,9 @@ class TestSearchRouter:
         # Google init attempted
         mock_adapters["google"].assert_called()
         # DDG search called
-        mock_adapters["duckduckgo"].return_value.search.assert_called_with("query", max_results=5, tuned=True)
+        mock_adapters["duckduckgo"].return_value.search.assert_called_with(
+            "query", max_results=5, tuned=True
+        )
 
     def test_search_retry_logic(self, mock_config, mock_adapters):
         """Test retry with tuned=False if tuned=True fails."""
@@ -115,7 +125,10 @@ class TestSearchRouter:
         provider_mock = mock_adapters["google"].return_value
 
         # First call fails, second succeeds
-        provider_mock.search.side_effect = [Exception("Tuned failed"), [SearchResult(title="Relaxed", content="relaxed", url="http://test.com")]]
+        provider_mock.search.side_effect = [
+            Exception("Tuned failed"),
+            [SearchResult(title="Relaxed", content="relaxed", url="http://test.com")],
+        ]
 
         results = router.search("query")
 
@@ -139,7 +152,9 @@ class TestSearchRouter:
         # Google fails twice
         google_mock.search.side_effect = [Exception("Fail 1"), Exception("Fail 2")]
         # DDG succeeds
-        ddg_mock.search.return_value = [SearchResult(title="Fallback", content="fallback", url="http://ddg.com")]
+        ddg_mock.search.return_value = [
+            SearchResult(title="Fallback", content="fallback", url="http://ddg.com")
+        ]
 
         results = router.search("query")
 
