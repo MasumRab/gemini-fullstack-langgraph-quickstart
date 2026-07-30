@@ -61,6 +61,9 @@ class AppConfig:
     allowed_hosts: Tuple[str, ...] = tuple(
         filter(None, os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(","))
     )
+    trust_proxy_headers: bool = (
+        os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
+    )
 
     # Model Selection
     model_planning: str = os.getenv("MODEL_PLANNING", "gemma-3-27b-it")
@@ -85,13 +88,7 @@ class AppConfig:
 
     @classmethod
     def load(cls) -> "AppConfig":
-        """
-        Create an AppConfig by reading environment variables and return the resulting configuration.
-        
-        If the instance's audit_mode is not "off", the loaded configuration is logged. Raises ValueError if configuration parsing or validation fails.
-        @returns The loaded AppConfig instance.
-        @raises ValueError If configuration parsing or validation fails.
-        """
+        """Load configuration and log the effective settings."""
         try:
             config = cls()
             if config.audit_mode != "off":

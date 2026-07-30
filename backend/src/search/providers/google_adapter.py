@@ -13,12 +13,7 @@ class GoogleSearchAdapter(SearchProvider):
     """Adapter for Google Search using the GenAI SDK."""
 
     def __init__(self, api_key: str | None = None):
-        """
-        Create a GoogleSearchAdapter with an API key and initialize the GenAI client.
-        
-        Parameters:
-            api_key (str | None): API key to use; if None, GEMINI_API_KEY is read from the environment. If no key is found, a warning is logged.
-        """
+        """Initialize with API key."""
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         if not self.api_key:
             logger.warning("GEMINI_API_KEY not found. Google Search may fail.")
@@ -33,19 +28,8 @@ class GoogleSearchAdapter(SearchProvider):
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """
-        Perform a Google-backed search for the given query.
-        
-        Parameters:
-        	query (str): The search query.
-        	max_results (int): Maximum number of results to return.
-        	region (str | None): Optional region hint; currently ignored by the GenAI SDK wrapper.
-        	time_range (str | None): Optional time-range hint; currently ignored by the GenAI SDK wrapper.
-        	safe_search (bool): Safe-search toggle; currently ignored by the GenAI SDK wrapper.
-        	tuned (bool): Tuning hint for results; currently ignored by the GenAI SDK wrapper.
-        
-        Returns:
-        	List[SearchResult]: A list of SearchResult objects sourced from Google, limited to `max_results`.
+        """Execute search.
+        Note: region, time_range, safe_search, tuned are not currently supported by the GenAI SDK tool wrapper.
         """
         from agent.models import GEMINI_FLASH
 

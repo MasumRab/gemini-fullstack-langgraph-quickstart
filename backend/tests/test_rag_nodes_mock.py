@@ -1,20 +1,26 @@
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
+
 from agent.rag_nodes import rag_retrieve
+
 
 @pytest.fixture
 def mock_rag_state():
     return {
         "messages": [{"content": "What is RAG?"}],
         "rag_resources": ["uri1"],
-        "rag_documents": []
+        "rag_documents": [],
     }
 
+
 class TestRagNodes:
-    @patch('agent.rag_nodes.is_rag_enabled')
-    @patch('agent.rag_nodes.create_rag_tool')
-    @patch('agent.rag_nodes._lazy_import_state_utils')
-    def test_rag_retrieve_success(self, mock_lazy_import, mock_create_tool, mock_enabled, mock_rag_state):
+    @patch("agent.rag_nodes.is_rag_enabled")
+    @patch("agent.rag_nodes.create_rag_tool")
+    @patch("agent.rag_nodes._lazy_import_state_utils")
+    def test_rag_retrieve_success(
+        self, mock_lazy_import, mock_create_tool, mock_enabled, mock_rag_state
+    ):
         # Setup mocks
         mock_enabled.return_value = True
 
@@ -37,9 +43,11 @@ class TestRagNodes:
         assert result["rag_documents"][0] == "Retrieved Document Content"
         assert result["rag_enabled"] is True
 
-    @patch('agent.rag_nodes.is_rag_enabled')
-    @patch('agent.rag_nodes._lazy_import_state_utils')
-    def test_rag_retrieve_disabled(self, mock_lazy_import, mock_enabled, mock_rag_state):
+    @patch("agent.rag_nodes.is_rag_enabled")
+    @patch("agent.rag_nodes._lazy_import_state_utils")
+    def test_rag_retrieve_disabled(
+        self, mock_lazy_import, mock_enabled, mock_rag_state
+    ):
         mock_enabled.return_value = False
         # Setup lazy import just in case, though it shouldn't be reached if enabled check is first
         mock_lazy_import.return_value = (Mock(), Mock(), Mock())
@@ -50,14 +58,20 @@ class TestRagNodes:
         assert result["rag_documents"] == []
         assert result["rag_enabled"] is False
 
-    @patch('agent.rag_nodes.is_rag_enabled')
-    @patch('agent.rag_nodes.create_rag_tool')
-    @patch('agent.rag_nodes._lazy_import_state_utils')
-    def test_rag_retrieve_no_results(self, mock_lazy_import, mock_create_tool, mock_enabled, mock_rag_state):
+    @patch("agent.rag_nodes.is_rag_enabled")
+    @patch("agent.rag_nodes.create_rag_tool")
+    @patch("agent.rag_nodes._lazy_import_state_utils")
+    def test_rag_retrieve_no_results(
+        self, mock_lazy_import, mock_create_tool, mock_enabled, mock_rag_state
+    ):
         mock_enabled.return_value = True
         # Ensure create_rag_resources returns a list so len() works
         mock_create_resources = Mock(return_value=["res1"])
-        mock_lazy_import.return_value = (Mock(), mock_create_resources, Mock(return_value="topic"))
+        mock_lazy_import.return_value = (
+            Mock(),
+            mock_create_resources,
+            Mock(return_value="topic"),
+        )
 
         mock_tool = Mock()
         mock_tool.invoke.return_value = "No relevant information found"

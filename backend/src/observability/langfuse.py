@@ -52,9 +52,11 @@ def get_langfuse_handler(metadata: Dict[str, Any] | None = None) -> Any | None:
         # 3. Callback module (Older V2)
         if LangfuseCallbackHandler is None:
             try:
-                from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
+                from langfuse.callback import (
+                    CallbackHandler as LangfuseCallbackHandler,
+                )
             except ImportError:
-                pass
+                pass  # not available in this version; all paths exhausted
 
         if LangfuseCallbackHandler is None:
             logger.warning(
@@ -75,18 +77,14 @@ def get_langfuse_handler(metadata: Dict[str, Any] | None = None) -> Any | None:
 
 @contextlib.contextmanager
 def observe_span(name: str, config: Dict | None = None, **kwargs):
-    """
-    Create a context manager that opens a Langfuse observation span for a with-block.
-    
-    When Langfuse is disabled or unavailable this yields control without creating a span.
-    Parameters:
-        name (str): Name of the span.
-        config (Dict | None): Optional runnable configuration used to extract trace/traceparent context;
-            when audit mode is active, the span will include `config_keys` derived from this mapping.
-        **kwargs: Additional metadata/attributes forwarded to the span creation.
-    
-    Returns:
-        span: The active span object when a span was created, otherwise `None`.
+    """Context manager to create a Langfuse span manually.
+
+    This is useful for non-LangChain code blocks or when we want explicit control.
+
+    Args:
+        name: Name of the span.
+        config: RunnableConfig object (optional) to extract existing trace context.
+        **kwargs: Additional metadata/attributes.
     """
     if not is_enabled() or not _LANGFUSE_AVAILABLE or not observe:
         yield

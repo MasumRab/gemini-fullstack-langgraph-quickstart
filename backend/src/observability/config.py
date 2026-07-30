@@ -2,14 +2,7 @@ import os
 
 
 def is_enabled() -> bool:
-    """
-    Determine whether Langfuse observability is enabled based on environment variables.
-    
-    Checks the LANGFUSE_ENABLED environment variable (case-insensitive; accepts "true", "1", "yes", "on" as true). If enabled, requires both LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY to be present.
-    
-    Returns:
-        True if LANGFUSE_ENABLED is set to a true value and both public and secret keys are present, False otherwise.
-    """
+    """Check if Langfuse observability is enabled via environment variables."""
     # Check if explicitly enabled
     enabled = os.getenv("LANGFUSE_ENABLED", "false").lower() in (
         "true",
@@ -29,10 +22,5 @@ def is_enabled() -> bool:
 
 
 def is_audit_mode() -> bool:
-    """
-    Determine whether audit mode is enabled to include richer metadata.
-    
-    Returns:
-        True if the `AUDIT_MODE` environment variable (case-insensitive) is set to `true`, `1`, `yes`, or `on`, False otherwise.
-    """
+    """Check if audit mode is enabled for richer metadata."""
     return os.getenv("AUDIT_MODE", "false").lower() in ("true", "1", "yes", "on")
