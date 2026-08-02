@@ -20,6 +20,7 @@ from agent.nodes import (
     reflection,
     research_subgraph,  # New Node
     scoping_node,  # New Node
+    scoping_wait,  # New Node
     select_next_task,
     update_plan,
     validate_web_results,
@@ -71,6 +72,7 @@ if mcp_settings.enabled:
 
 builder.add_node("load_context", load_context)
 builder.add_node("scoping_node", scoping_node)
+builder.add_node("scoping_wait", scoping_wait)  # New Node for scoping clarification
 builder.add_node("generate_plan", generate_plan)
 builder.add_node("planning_mode", planning_mode)
 builder.add_node("planning_wait", planning_wait)
@@ -94,14 +96,22 @@ builder.add_edge("load_context", "scoping_node")
 
 
 def scoping_router(state: OverallState) -> str:
-    """Route based on scoping status."""
+    """
+    Choose the next graph node name based on the state's scoping status.
+    
+    Parameters:
+        state (OverallState): Agent state that may include the key `"scoping_status"`.
+    
+    Returns:
+        str: `"scoping_wait"` if `state["scoping_status"] == "active"`, `"outline_gen"` otherwise.
+    """
     if state.get("scoping_status") == "active":
-        return "planning_wait"  # Reusing planning_wait to pause for user input
+        return "scoping_wait"  # Dedicated wait for scoping clarification
     return "outline_gen"
 
 
 builder.add_conditional_edges(
-    "scoping_node", scoping_router, ["planning_wait", "outline_gen"]
+    "scoping_node", scoping_router, ["scoping_wait", "outline_gen"]
 )
 
 builder.add_edge("outline_gen", "generate_plan")
@@ -116,6 +126,9 @@ builder.add_conditional_edges(
 builder.add_conditional_edges(
     "planning_wait", planning_router, ["planning_wait", "select_next_task"]
 )
+
+# Scoping wait should go back to scoping_node for re-evaluation after user clarification
+builder.add_edge("scoping_wait", "scoping_node")
 
 # New execution loop wiring
 builder.add_edge("select_next_task", "web_research")

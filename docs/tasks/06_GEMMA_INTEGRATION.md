@@ -11,16 +11,19 @@ Scaffolding Code: `backend/examples/gemma_providers.py`
     - [ ] `google-cloud-aiplatform` (for Vertex AI)
     - [ ] `requests` (for Ollama - usually standard, but check)
     - [ ] `llama-cpp-python` (for local embedded)
+    - [ ] `kagglehub`, `keras`, `keras-nlp` (for Kaggle Models integration)
 - [ ] **Configuration**: Update `backend/src/config/app_config.py` to include Gemma-specific settings.
-    - [ ] `GEMMA_PROVIDER` (vertex, ollama, local)
-    - [ ] `GEMMA_MODEL_NAME` (e.g., gemma:7b, 2b_pt_v2.gguf)
+    - [ ] `GEMMA_PROVIDER` (vertex, ollama, local, kaggle)
+    - [ ] `GEMMA_MODEL_NAME` (e.g., gemma:7b, 2b_pt_v2.gguf, google/gemma-2/keras/gemma2-2b-en)
     - [ ] `VERTEX_ENDPOINT_ID` (if applicable)
     - [ ] `OLLAMA_BASE_URL` (default: http://localhost:11434)
+    - [ ] `KAGGLE_USERNAME` and `KAGGLE_KEY` (for Kaggle hub authentication)
 
 ## Phase 2: Client Implementation
 
 - [ ] **Integrate Vertex Client**: Adapt `VertexAIGemmaClient` from `backend/examples/gemma_providers.py` into `backend/src/agent/llm_client.py` or a new module `backend/src/agent/gemma_client.py`.
 - [ ] **Integrate Ollama Client**: Adapt `OllamaGemmaClient` for local development workflows.
+- [ ] **Integrate Kaggle Client**: Adapt `KaggleGemmaClient` using `kagglehub` and `keras_nlp` for direct model inference.
 - [ ] **Standardize Interface**: Ensure all Gemma clients conform to the existing `LLMClient` interface (or `LangChain` runnable interface) used by the agent graph.
 
 ## Phase 3: Agentic Workflows (from Cookbook)

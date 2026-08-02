@@ -56,6 +56,15 @@ class WebSearcher:
             self.tool = None
 
     def search(self, query: str) -> List[Dict]:
+        """
+        Perform a web search for the given query and return collected results.
+        
+        Parameters:
+        	query (str): The search query string.
+        
+        Returns:
+        	List[Dict]: A list of result dictionaries, each typically containing keys like `'url'` and `'content'`. If the underlying search tool is not initialized, returns an empty list. If an error occurs during searching, returns an empty list.
+        """
         if self.tool:
             try:
                 results = self.tool.invoke({"query": query})
@@ -72,20 +81,10 @@ class WebSearcher:
                 return normalized
             except Exception as e:
                 logger.warning(f"Search tool failed: {e}")
-
-        # Fallback Mock
-        return [
-            {
-                "content": f"Mock content about {query}. This is a simulated search result.",
-                "url": "http://mock-source.com",
-                "score": 0.5,
-            },
-            {
-                "content": f"More details on {query} found here.",
-                "url": "http://wiki-mock.org",
-                "score": 0.6,
-            },
-        ]
+        
+        # Return empty list instead of dummy/fallback results when tool not initialized
+        logger.warning("Search tool not initialized; returning no results.")
+        return []
 
 
 class AnswerRefiner:
@@ -123,25 +122,25 @@ class DeepSearchAgent:
         else:
             self.mcp = None
 
+
     def research(self, query: str) -> str:
-        logger.info(f"Starting research on: {query}")
-
-        # 1. Plan
-        subgoals_data = self.planner.decompose(query)
-
-        # Convert dicts to objects for easier handling if needed, or just use dicts
-        # Using simple objects
+        # Simple class to hold subgoal data
         class SubGoal:
             def __init__(self, id, query):
                 self.id = id
                 self.query = query
 
+        logger.info(f"Starting research on: {query}")
+
+        # 1. Plan
+        subgoals_data = self.planner.decompose(query)
         subgoals = [SubGoal(sg["id"], sg["query"]) for sg in subgoals_data]
 
         # 2. Research each subgoal
+        # Use asyncio.to_thread to avoid blocking the event loop on search calls
         for sg in subgoals:
             logger.info(f"Processing subgoal: {sg.query}")
-            docs = self.searcher.search(sg.query)
+            docs = await asyncio.to_thread(self.searcher.search, sg.query)
 
             # 3. Ingest into RAG
             self.rag.ingest_research_results(

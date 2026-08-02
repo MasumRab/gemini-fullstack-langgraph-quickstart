@@ -152,8 +152,8 @@ class ChromaStore:
                 content=docs[i],
                 source_url=meta.get("source_url", ""),
                 subgoal_id=meta.get("subgoal_id", ""),
-                relevance_score=meta.get("relevance_score", 0.0),
-                timestamp=meta.get("timestamp", 0.0),
+                relevance_score=float(meta.get("relevance_score", 0.0) or 0.0),
+                timestamp=float(meta.get("timestamp", 0.0) or 0.0),
                 metadata={
                     k: v
                     for k, v in meta.items()
