@@ -11,6 +11,7 @@ import os
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage
 
 # Load env vars before importing evaluators or agent components
 load_dotenv()
@@ -60,13 +61,13 @@ async def run_benchmark():
 
     results = []
 
-    for item in questions:
+    for idx, item in enumerate(questions):
         question = item.get("question")
         if not question:
             logger.warning(f"Skipping malformed item missing 'question': {item}")
             continue
         expected_topics = item.get("expected_topics", [])
-        logger.info(f"Running benchmark for: {question}")
+        logger.info(f"Running benchmark for question index: {idx}")
 
         try:
             # Invoke agent
@@ -76,7 +77,7 @@ async def run_benchmark():
             # Increase recursion limit to handle multi-step research plans (default is 25)
             # Disable planning confirmation to allow automated execution
             response = await graph.ainvoke(
-                {"messages": [("user", question)]},
+                {"messages": [HumanMessage(content=question)]},
                 config={
                     "recursion_limit": 100,
                     "configurable": {"require_planning_confirmation": False},
@@ -132,14 +133,11 @@ async def run_benchmark():
             results.append(result_entry)
 
             logger.info(
-                "Result for '%s': Q=%s, G=%s",
-                question,
-                result_entry["quality_score"],
-                result_entry["groundedness_score"],
-            )
+                f"Result for question index {idx}: Q={result_entry['quality_score']}, G={result_entry['groundedness_score']}"
+            )  # NOSONAR
 
         except Exception as e:
-            logger.error(f"Agent failed for '{question}'", exc_info=True)
+            logger.error(f"Agent failed for question index {idx}: {e}", exc_info=True)
             continue
 
     # Report Generation

@@ -102,6 +102,8 @@ async def test_spoofing_vulnerability(monkeypatch):
     when it is the last IP in the trusted proxy chain.
     Prevents spoofing by injecting a public IP at the start of X-Forwarded-For.
     """
+    # Use non-empty TRUSTED_PROXIES to test the right-to-left trusted-proxy branch
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXIES", {"10.0.0.1"})
     monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 0)
 
     # Mock App
