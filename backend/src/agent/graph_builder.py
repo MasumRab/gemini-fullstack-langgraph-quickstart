@@ -37,7 +37,6 @@ from agent.state import OverallState
 # Optional imports with graceful fallback
 try:
     from agent.kg import kg_enrich
-
     KG_AVAILABLE = True
 except ImportError:
     KG_AVAILABLE = False
@@ -45,7 +44,6 @@ except ImportError:
 
 try:
     from agent.rag_nodes import rag_fallback_to_web, rag_retrieve, should_use_rag
-
     RAG_AVAILABLE = True
 except ImportError:
     RAG_AVAILABLE = False
@@ -139,7 +137,9 @@ def build_graph(
         # No planning: fan out directly to web research
         if parallel_search:
             builder.add_conditional_edges(
-                "generate_plan", continue_to_web_research, ["web_research"]
+                "generate_plan",
+                continue_to_web_research,
+                ["web_research"]
             )
         else:
             # Sequential: just connect
@@ -185,7 +185,6 @@ def build_graph(
 
 
 # === Preset Graphs ===
-
 
 def upstream_graph():
     """Minimal graph: Query -> Search -> Answer."""

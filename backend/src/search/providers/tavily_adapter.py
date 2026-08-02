@@ -12,7 +12,6 @@ try:
 except ImportError:
     TavilyClient = None
 
-
 class TavilyAdapter(SearchProvider):
     """Adapter for Tavily Search API."""
 
@@ -38,7 +37,8 @@ class TavilyAdapter(SearchProvider):
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """Execute search."""
+        """Execute search.
+        """
         if not self.client:
             if not TavilyClient:
                 logger.error("Tavily python package not installed.")
@@ -60,20 +60,16 @@ class TavilyAdapter(SearchProvider):
             results = []
             # Tavily returns {'results': [...]}
             for item in response.get("results", []):
-                results.append(
-                    SearchResult(
-                        title=item.get("title", "Untitled"),
-                        url=item.get("url", ""),
-                        content=item.get("content", ""),
-                        source="tavily",
-                        metadata={
-                            "score": item.get("score"),
-                            "raw_content": item.get(
-                                "raw_content"
-                            ),  # sometimes available
-                        },
-                    )
-                )
+                results.append(SearchResult(
+                    title=item.get("title", "Untitled"),
+                    url=item.get("url", ""),
+                    content=item.get("content", ""),
+                    source="tavily",
+                    metadata={
+                        "score": item.get("score"),
+                        "raw_content": item.get("raw_content") # sometimes available
+                    }
+                ))
 
             return results
 

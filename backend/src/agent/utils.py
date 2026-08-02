@@ -8,7 +8,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 def get_research_topic(messages: List[AnyMessage]) -> str:
-    """Get the research topic from the messages."""
+    """Get the research topic from the messages.
+    """
     # check if request has a history and combine the messages into a single string
     if len(messages) == 1:
         research_topic = messages[-1].content
@@ -54,7 +55,8 @@ def insert_citation_markers(text, citations_list):
     # ⚡ Bolt Optimization: Sort by end_index ascending for linear O(N) pass.
     # This replaces O(N^2) string concatenation loop with O(N) list construction.
     sorted_citations = sorted(
-        citations_list, key=lambda c: (c["end_index"], c.get("start_index", 0))
+        citations_list,
+        key=lambda c: (c["end_index"], c.get("start_index", 0))
     )
 
     parts = []
@@ -171,15 +173,14 @@ def get_citations(response, resolved_urls_map):
                         }
                     )
                 except (IndexError, AttributeError, NameError):
-                    # Skip malformed grounding chunk — chunk, web, or uri attribute missing
-                    continue
+                    # Handle cases where chunk, web, uri, or resolved_map might be problematic
+                    # For simplicity, we'll just skip adding this particular segment link
+                    # In a production system, you might want to log this.
+                    pass
         citations.append(citation)
     return citations
 
-
-def join_and_truncate(
-    strings: List[str], max_length: int, separator: str = "\n\n"
-) -> str:
+def join_and_truncate(strings: List[str], max_length: int, separator: str = "\n\n") -> str:
     """Efficiently joins a list of strings up to a maximum length.
     Avoids creating the full joined string in memory if it exceeds the limit.
     """
@@ -217,16 +218,16 @@ def get_cached_llm(model: str, temperature: float) -> Any:
     Supports Gemini (native) and Gemma (via GemmaAdapter).
     """
     is_gemma = "gemma" in model.lower()
-
+    
     if is_gemma:
         from agent.gemma_client import get_gemma_client
         from agent.llm_client import GemmaAdapter
-
+        
         # Instantiate the correct provider (Vertex or Ollama) from app_config
         client = get_gemma_client()
         # Return an adapter that mimics LangChain's invoke interface
         return GemmaAdapter(client=client, temperature=temperature)
-
+    
     return ChatGoogleGenerativeAI(
         model=model,
         temperature=temperature,
@@ -234,9 +235,7 @@ def get_cached_llm(model: str, temperature: float) -> Any:
     )
 
 
-def has_fuzzy_match(
-    keyword: str, candidates: Iterable[str], cutoff: float = 0.8
-) -> bool:
+def has_fuzzy_match(keyword: str, candidates: Iterable[str], cutoff: float = 0.8) -> bool:
     """Checks if there is any candidate in the list that has a fuzzy match ratio >= cutoff
     with the keyword. Returns True immediately on the first match.
     Avoids sorting overhead of get_close_matches.
