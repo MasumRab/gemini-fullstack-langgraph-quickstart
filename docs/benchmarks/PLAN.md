@@ -1,4 +1,4 @@
-# TODO(priority=High, complexity=Large): Benchmarking & Evaluation Framework
+# TODO(priority=High, complexity=Large, owner=agent): Benchmarking & Evaluation Framework
 
 We need to implement a systematic evaluation framework to measure improvements in report quality, relevance, and accuracy.
 
