@@ -105,8 +105,7 @@ def eval_quality(request: str, report: str) -> Dict[str, Any]:
 
 
 def eval_groundedness(report: str, sources: List[str]) -> Dict[str, Any]:
-    """Evaluates how well the report is grounded in the provided sources.
-    """
+    """Evaluates how well the report is grounded in the provided sources."""
     # Simplified placeholder for groundedness logic
     # In a real scenario, this would involve extracting claims and checking them against summaries
     prompt = ChatPromptTemplate.from_messages(
