@@ -12,3 +12,8 @@
 **Vulnerability:** The `RateLimitMiddleware` blindly trusted the `X-Forwarded-For` header, allowing attackers to bypass rate limits by spoofing random IPs in this header.
 **Learning:** Middleware often defaults to "dev-friendly" (trusting headers) which is insecure for production. Implicit trust in headers creates silent vulnerabilities.
 **Prevention:** Always default to NOT trusting `X-Forwarded-For`. Require explicit configuration (`TRUST_PROXY_HEADERS`) to enable it.
+
+## 2026-01-25 - [HIGH] XSS Defense in Depth via Sanitization
+**Vulnerability:** The ChatMessagesView component rendered Markdown content using `ReactMarkdown` without explicit HTML sanitization (`rehype-sanitize`). While `ReactMarkdown` v9+ is safe by default, adding plugins or future configuration changes could introduce Stored XSS vulnerabilities.
+**Learning:** Security tools often require careful configuration to avoid breaking functionality. Default sanitization schemas can be too aggressive, stripping attributes needed for styling (like `className` for code highlighting or `align` for GFM tables).
+**Prevention:** Always include `rehype-sanitize` when rendering user content. Explicitly configure the schema to allow necessary safe attributes (e.g., `className` on `code` blocks) to balance security and functionality.
