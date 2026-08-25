@@ -40,29 +40,26 @@ def get_age_days(timestamp):
     return (now - commit_date).days
 
 
+def _check_file_for_dep(filepath, dep_name, py_dep):
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+            if dep_name in content or py_dep in content:
+                return True
+    except (OSError, UnicodeDecodeError):
+        pass
+    return False
+
 def is_used(dep_name, search_dirs, extensions):
     """Simple grep-based heuristic to check if a dependency is imported."""
-    # This is a naive MVP check.
-    # Convert hyphens to underscores for python (e.g. langchain-core -> langchain_core)
     py_dep = dep_name.replace("-", "_")
-
-    # We will search for occurrences of dep_name or py_dep in source files.
     for d in search_dirs:
         for root, dirs, files in os.walk(d):
-            if "node_modules" in dirs:
-                dirs.remove("node_modules")
-            if ".venv" in dirs:
-                dirs.remove(".venv")
+            dirs[:] = [d_ for d_ in dirs if d_ not in ("node_modules", ".venv")]
             for file in files:
                 if any(file.endswith(ext) for ext in extensions):
-                    filepath = os.path.join(root, file)
-                    try:
-                        with open(filepath, "r", encoding="utf-8") as f:
-                            content = f.read()
-                            if dep_name in content or py_dep in content:
-                                return True
-                    except (OSError, UnicodeDecodeError):
-                        pass
+                    if _check_file_for_dep(os.path.join(root, file), dep_name, py_dep):
+                        return True
     return False
 
 
@@ -104,46 +101,48 @@ def check_frontend():
 
 
 # --- BACKEND (pyproject.toml / requirements.txt) ---
+def _parse_pyproj_deps(content):
+    deps = []
+    in_deps = False
+    for line in content.splitlines():
+        line = line.strip()
+        if line == "dependencies = [":
+            in_deps = True
+        elif in_deps and line == "]":
+            in_deps = False
+        elif in_deps and line.startswith('"'):
+            dep = line.split('"')[1]
+            dep = re.split(r"[=><~]", dep)[0]
+            deps.append(dep)
+    return deps
+
+def _get_dep_age(dep, blame):
+    age = 0
+    for b_line in blame:
+        if dep in b_line["content"]:
+            age = max(age, get_age_days(b_line.get("time", 0)))
+    return age
+
 def check_backend():
     print("Checking backend...")
     pyproj = "backend/pyproject.toml"
     results = []
+    if not os.path.exists(pyproj):
+        return results
 
-    if os.path.exists(pyproj):
-        with open(pyproj, "r", encoding="utf-8") as f:
-            content = f.read()
+    with open(pyproj, "r", encoding="utf-8") as f:
+        content = f.read()
 
-        deps = []
-        in_deps = False
-        for line in content.splitlines():
-            line = line.strip()
-            if line == "dependencies = [":
-                in_deps = True
-                continue
-            if in_deps and line == "]":
-                in_deps = False
-                continue
-            if in_deps and line.startswith('"'):
-                # parse dependency name
-                dep = line.split('"')[1]
-                # clean versions like "fastapi>=0.100" -> "fastapi"
-                dep = re.split(r"[=><~]", dep)[0]
-                deps.append(dep)
+    deps = _parse_pyproj_deps(content)
+    blame = get_file_blame_lines(pyproj)
 
-        blame = get_file_blame_lines(pyproj)
-
-        for dep in deps:
-            # Skip python runtime dep or core frameworks
-            if dep in ["python", "pytest"]:
-                continue
-            age = 0
-            for b_line in blame:
-                if dep in b_line["content"]:
-                    age = max(age, get_age_days(b_line.get("time", 0)))
-
-            if age > AGE_THRESHOLD_DAYS:
-                if not is_used(dep, ["backend/src", "backend/tests"], [".py"]):
-                    results.append(f"[Backend] {dep} (Age: {age} days)")
+    for dep in deps:
+        if dep in ["python", "pytest"]:
+            continue
+        age = _get_dep_age(dep, blame)
+        if age > AGE_THRESHOLD_DAYS:
+            if not is_used(dep, ["backend/src", "backend/tests"], [".py"]):
+                results.append(f"[Backend] {dep} (Age: {age} days)")
     return results
 
 

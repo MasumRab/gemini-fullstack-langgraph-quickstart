@@ -122,10 +122,10 @@ async def run_benchmark():
             }
             results.append(result_entry)
 
-            logger.info("Result for '%s': Q=%s, G=%s", question, result_entry["quality_score"], result_entry["groundedness_score"])
+            logger.info("Evaluation result generated successfully")
 
         except Exception as e:
-            logger.error("Agent failed for '%s': %s", question, e, exc_info=True)
+            logger.exception("Agent failed during evaluation")
             continue
 
     # Report Generation
