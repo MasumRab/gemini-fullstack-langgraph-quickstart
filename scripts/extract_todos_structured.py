@@ -40,11 +40,11 @@ def extract_todos(root_dir):
                                 owner = "Unknown"
 
                                 match_with_owner = re.search(
-                                    r"TODO\(priority=(.*?), complexity=(.*?), owner=(.*?)\):",
+                                    r"TODO\(priority=([^,]+), complexity=([^,]+), owner=([^)]+)\):",
                                     content,
                                 )
                                 match_without_owner = re.search(
-                                    r"TODO\(priority=(.*?), complexity=(.*?)\):",
+                                    r"TODO\(priority=([^,]+), complexity=([^)]+)\):",
                                     content,
                                 )
 
@@ -66,7 +66,7 @@ def extract_todos(root_dir):
                                         "owner": owner,
                                     }
                                 )
-                except Exception as e:
+                except (OSError, UnicodeDecodeError) as e:
                     print(f"Error reading {filepath}: {e}")
     return todos
 

@@ -29,7 +29,7 @@ def get_file_blame_lines(filepath):
                 lines.append(current_line)
                 current_line = {}
         return lines
-    except Exception as e:
+    except subprocess.CalledProcessError as e:
         print(f"Error blaming {filepath}: {e}")
         return []
 
@@ -61,7 +61,7 @@ def is_used(dep_name, search_dirs, extensions):
                             content = f.read()
                             if dep_name in content or py_dep in content:
                                 return True
-                    except Exception:
+                    except (OSError, UnicodeDecodeError):
                         pass
     return False
 
