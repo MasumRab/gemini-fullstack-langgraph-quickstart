@@ -1,9 +1,12 @@
-import os
-import logging
 import importlib.util
-from unittest.mock import patch, MagicMock
+import logging
+import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from config.validation import validate_environment, check_env_strict
+
+from config.validation import check_env_strict, validate_environment
+
 
 class TestValidation:
     @pytest.fixture

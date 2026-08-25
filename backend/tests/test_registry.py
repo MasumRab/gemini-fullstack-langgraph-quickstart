@@ -10,6 +10,7 @@ Tests cover:
 """
 
 import pytest
+
 from agent.registry import GraphRegistry, graph_registry
 
 
