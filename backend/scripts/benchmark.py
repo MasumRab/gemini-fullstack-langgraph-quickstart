@@ -1,7 +1,7 @@
 """Benchmark Orchestration Script
 
 This script runs the agent against a dataset of questions and evaluates performance
-using the evaluators defined in backend/tests/evaluators.py.
+using the evaluators defined in backend/src/agent/evaluation.py.
 """
 
 import asyncio
@@ -18,7 +18,7 @@ load_dotenv()
 from agent.graph import graph
 
 try:
-    from tests.evaluators import eval_groundedness, eval_quality
+    from agent.evaluation import eval_groundedness, eval_quality
 except ImportError:
     # This might happen if running script directly without module context
     # But usually handled by running as `python -m scripts.benchmark`
