@@ -1,0 +1,15 @@
+--- .github/workflows/pr-check.yml
++++ .github/workflows/pr-check.yml
+@@ -19,10 +19,8 @@
+       - name: Checkout repository
+         uses: actions/checkout@v4
+
+-      - name: Setup pnpm
+-        uses: pnpm/action-setup@v4
+-        with:
+-          version: "9"
++      - name: Install pnpm
++        run: npm install -g pnpm@9
+
+       - name: Set up Node.js ${{ matrix.node-version }}
+         uses: actions/setup-node@v4
