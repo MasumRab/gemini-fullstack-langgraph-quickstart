@@ -256,6 +256,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # 🛡️ Sentinel: Optimize cleanup frequency to prevent DoS via Iteration attacks
         self.last_cleanup = 0
         self.cleanup_interval = 60  # seconds
+        self.max_connections = 10000
 
     async def dispatch(self, request: Request, call_next):
         """Check rate limit for API endpoints."""
@@ -323,7 +324,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # Since active_requests for each client might not be updated until they make a request,
                 # we need to check the last timestamp in their list.
                 # Note: This is an O(N) operation where N is number of clients.
-                if len(self.requests) > 10000:
+                if len(self.requests) > self.max_connections:
                     stale_ips = []
                     for ip, timestamps in self.requests.items():
                         # If list is empty (shouldn't happen with logic above but possible)
@@ -337,7 +338,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Fallback: If still too large (active attack with >10k distinct IPs),
             # 🛡️ Sentinel: Do NOT clear everything, as that allows attackers to reset everyone's limit.
             # Instead, if we are full, REJECT new clients.
-            if len(self.requests) > 10000:
+            if len(self.requests) > self.max_connections:
                 # If the client is already known, we updated them above.
                 # But wait, if we are > 10000, and this is a NEW client_ip (or one that was just added),
                 # we should remove it and block.
