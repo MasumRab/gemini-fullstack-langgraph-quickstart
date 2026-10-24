@@ -45,7 +45,7 @@ def extract_todos(root_dir):
                                     'complexity': complexity,
                                     'owner': owner
                                 })
-                except Exception as e:
+                except (OSError, UnicodeDecodeError) as e:
                     print(f"Error reading {filepath}: {e}")
     return todos
 

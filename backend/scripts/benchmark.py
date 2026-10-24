@@ -8,6 +8,7 @@ import asyncio
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
@@ -28,23 +29,24 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Path relative to backend root
-DATASET_PATH = os.path.join("tests", "data", "benchmark_questions.json")
+DATASET_PATH = Path("tests") / "data" / "benchmark_questions.json"
 
 
-def load_dataset(path: str) -> List[Dict[str, Any]]:
+def load_dataset(path: str | Path) -> List[Dict[str, Any]]:
     """Load questions from a JSON file."""
-    if not os.path.exists(path):
+    path_obj = Path(path)
+    if not path_obj.exists():
         # Try finding it relative to script if run differently
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        alt_path = os.path.join(script_dir, "..", path)
-        if os.path.exists(alt_path):
-            path = alt_path
+        script_dir = Path(__file__).resolve().parent
+        alt_path = script_dir.parent / path
+        if alt_path.exists():
+            path_obj = alt_path
         else:
             logger.error(f"Dataset not found at {path}")
             return []
 
     try:
-        with open(path, encoding="utf-8") as f:
+        with path_obj.open(encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         logger.error(f"Failed to load dataset: {e}")
