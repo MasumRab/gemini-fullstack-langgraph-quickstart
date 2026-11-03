@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import agent.mcp_config
 from agent.tools_and_schemas import get_tools_from_mcp
 
 # Fine-grained implementation guide for MCP Tests:
@@ -28,6 +29,13 @@ from agent.tools_and_schemas import get_tools_from_mcp
 
 class TestMcpIntegration:
     """Test suite for MCP integration."""
+
+    @pytest.fixture(autouse=True)
+    def reset_manager(self):
+        original = getattr(agent.mcp_config, "_default_manager", None)
+        agent.mcp_config._default_manager = None
+        yield
+        agent.mcp_config._default_manager = original
 
     @pytest.mark.asyncio
     async def test_mcp_tools_loading(self):
@@ -109,9 +117,23 @@ class TestMcpIntegration:
         mock_settings.endpoint = "http://localhost:8000/sse"
         mock_settings.api_key = "test-key"
 
-        with patch("langchain_mcp_adapters.sessions.SSEConnection") as MockSSE:
-            MockSSE.side_effect = ConnectionError("Connection failed")
+        mock_tools_module = MagicMock()
+        mock_sessions_module = MagicMock()
+        mock_conn_cls = mock_sessions_module.SSEConnection
 
+        def side_effect(*args, **kwargs):
+            raise ConnectionError("Connection failed")
+
+        mock_conn_cls.side_effect = side_effect
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "langchain_mcp_adapters": MagicMock(),
+                "langchain_mcp_adapters.tools": mock_tools_module,
+                "langchain_mcp_adapters.sessions": mock_sessions_module,
+            },
+        ):
             # Should not raise, but return empty list and log warning
             tools = await get_tools_from_mcp(mock_settings)
             assert tools == []

@@ -3,8 +3,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import agent.mcp_config
 from agent.mcp_config import MCPSettings
 from agent.tools_and_schemas import get_tools_from_mcp
+
+
+@pytest.fixture(autouse=True)
+def reset_manager():
+    original = getattr(agent.mcp_config, "_default_manager", None)
+    agent.mcp_config._default_manager = None
+    yield
+    agent.mcp_config._default_manager = original
 
 
 @pytest.mark.asyncio

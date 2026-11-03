@@ -1,6 +1,9 @@
+import logging
 import os
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -45,34 +48,10 @@ def validate(settings: MCPSettings) -> None:
         raise ValueError("MCP enabled but MCP_ENDPOINT missing")
 
 
-# Fine-grained implementation guide for MCP Integration:
-#
-# TODO(priority=High, complexity=Low): [MCP:1] Define SSE client interface
-# - Create abstract base class for MCP transport
-# - Define methods: connect(), disconnect(), send_message(), receive_stream()
-#
-# TODO(priority=High, complexity=Medium): [MCP:2] Implement SSE transport
-# - Use httpx or aiohttp for Server-Sent Events
-# - Handle reconnection with exponential backoff
-# - Parse SSE event format (event:, data:, id:)
-#
-# TODO(priority=Medium, complexity=Medium): [MCP:3] Connection pooling
-# - Maintain pool of persistent connections
-# - Implement health checks and automatic reconnection
-# - Thread-safe connection acquisition/release
-#
-# TODO(priority=Medium, complexity=Low): [MCP:4] Error recovery
-# - Catch and log transport errors
-# - Retry failed tool calls with backoff
-# - Return graceful fallback on persistent failure
-#
-# TODO(priority=Low, complexity=Low): [MCP:5] Metrics and observability
-# - Track connection latency, success/failure rates
-# - Integrate with Langfuse spans
 class McpConnectionManager:
     def __init__(self, settings: MCPSettings | None = None):
         self.settings = settings or load_mcp_settings()
-        self.clients = []
+        self._pool: Dict[Tuple[str, str | None], Dict[str, Any]] = {}
 
     def get_persistence_tools(self) -> List:
         """Returns persistence tools wrapped for LangChain."""
@@ -93,12 +72,50 @@ class McpConnectionManager:
             ),
         ]
 
-    async def get_tools(self):
-        # TODO(priority=High, complexity=Medium): [MCP:6] Implement actual SSE tool discovery
-        # - Connect to MCP endpoint from settings
-        # - Fetch tool list via SSE stream
-        # - Convert to LangChain StructuredTool format
-        if not self.settings.enabled:
+    async def get_tools(self, config: MCPSettings | None = None) -> List[Any]:
+        config = config or self.settings
+        if not config or not config.enabled or not config.endpoint:
             return []
-        # Return stubs or connect to real MCP server
-        return []
+
+        key = (config.endpoint, config.api_key)
+        if key in self._pool:
+            return self._pool[key]["tools"]
+
+        try:
+            from langchain_mcp_adapters.sessions import SSEConnection
+            from langchain_mcp_adapters.tools import load_mcp_tools
+
+            conn_kwargs = {"url": config.endpoint}
+            if config.api_key:
+                conn_kwargs["headers"] = {"Authorization": f"Bearer {config.api_key}"}
+
+            conn = SSEConnection(**conn_kwargs)
+            session = await conn.__aenter__()
+            tools = await load_mcp_tools(session)
+
+            self._pool[key] = {"conn": conn, "session": session, "tools": tools}
+            return tools
+        except (ImportError, Exception) as e:
+            logger.error(f"Error loading MCP tools for {config.endpoint}: {e}")
+            self._pool.pop(key, None)
+            return []
+
+    async def close_all(self) -> None:
+        for key, entry in list(self._pool.items()):
+            conn = entry.get("conn")
+            if conn:
+                try:
+                    await conn.__aexit__(None, None, None)
+                except Exception as e:
+                    logger.warning(f"Error closing MCP connection for {key[0]}: {e}")
+        self._pool.clear()
+
+
+_default_manager = None
+
+
+def get_default_manager() -> McpConnectionManager:
+    global _default_manager
+    if _default_manager is None:
+        _default_manager = McpConnectionManager()
+    return _default_manager

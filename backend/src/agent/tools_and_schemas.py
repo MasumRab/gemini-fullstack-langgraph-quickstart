@@ -4,7 +4,7 @@ from typing import Any, List
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from agent.mcp_config import McpConnectionManager
+from agent.mcp_config import McpConnectionManager, get_default_manager
 from agent.mcp_server import FilesystemMCPServer
 
 # Global list to hold MCP tools config or instances
@@ -70,7 +70,7 @@ def get_mcp_tools() -> List:
     """Retrieves MCP-based tools.
     Currently returns the Persistence tools (load_thread_plan, save_thread_plan).
     """
-    manager = McpConnectionManager()
+    manager = get_default_manager()
     # In a sync context, we might need to be careful with async tools,
     # but LangGraph handles async tools fine.
     return manager.get_persistence_tools()
@@ -78,30 +78,8 @@ def get_mcp_tools() -> List:
 
 async def get_tools_from_mcp(mcp_config=None):
     """Connects to an MCP server and loads available tools."""
-    if not mcp_config or not mcp_config.enabled or not mcp_config.endpoint:
-        return []
-
-    try:
-        from langchain_mcp_adapters.sessions import SSEConnection
-        from langchain_mcp_adapters.tools import load_mcp_tools
-        # TODO(priority=Low, complexity=Medium, owner=infra): Support Stdio connection if schema allows? For now assuming SSE via endpoint URL
-        # headers = {"Authorization": f"Bearer {mcp_config.api_key}"} if mcp_config.api_key else {}
-        # NOTE: Test mocks SSEConnection(url=..., headers=...).
-
-        # We need to construct arguments for SSEConnection dynamically based on availability
-        conn_kwargs = {"url": mcp_config.endpoint}
-        if mcp_config.api_key:
-            conn_kwargs["headers"] = {"Authorization": f"Bearer {mcp_config.api_key}"}
-
-        async with SSEConnection(**conn_kwargs) as session:
-            return await load_mcp_tools(session)
-    except ImportError:
-        # Fallback or log if adapters not installed (though dependency is listed)
-        return []
-    except Exception as e:
-        # Log error or return empty list so app startup doesn't crash on optional tool load
-        print(f"Error loading MCP tools: {e}")
-        return []
+    manager = get_default_manager()
+    return await manager.get_tools(mcp_config)
 
 
 async def get_global_tools() -> List[Any]:
