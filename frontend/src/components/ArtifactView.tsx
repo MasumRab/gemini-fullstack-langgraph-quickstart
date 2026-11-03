@@ -124,7 +124,8 @@ export const ArtifactView = React.memo<ArtifactViewProps>(
     if (!isOpen) return null
 
     const handleCopy = () => {
-      navigator.clipboard.writeText(content)
+      // Promise from writeText is floating, sonar lint issues a warning if we don't catch/then it or await it.
+      navigator.clipboard.writeText(content).catch(() => {})
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }

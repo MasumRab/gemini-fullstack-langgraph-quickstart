@@ -4,7 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 
 // Mock clipboard API
 const mockClipboard = {
-  writeText: vi.fn(),
+  writeText: vi.fn().mockResolvedValue(undefined),
 }
 Object.defineProperty(navigator, 'clipboard', {
   value: mockClipboard,
