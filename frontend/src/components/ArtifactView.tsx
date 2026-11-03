@@ -1,6 +1,15 @@
 import React, { useState, useDeferredValue } from 'react'
 import { Button } from '@/components/ui/button'
-import { X, Copy, Check, Maximize2, Minimize2, FileText, Code as CodeIcon } from 'lucide-react'
+import {
+  X,
+  Copy,
+  Check,
+  Maximize2,
+  Minimize2,
+  FileText,
+  Code as CodeIcon,
+  Loader2,
+} from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
@@ -13,6 +22,7 @@ interface ArtifactViewProps {
   type: 'markdown' | 'code' | 'text'
   title?: string
   isOpen: boolean
+  isLoading?: boolean
   onClose: () => void
 }
 
@@ -107,7 +117,7 @@ const MarkdownComponents = {
 
 // ⚡ Bolt: Wrap in React.memo to prevent re-renders when parent state updates but artifact content hasn't changed.
 export const ArtifactView = React.memo<ArtifactViewProps>(
-  ({ content, type, title, isOpen, onClose }) => {
+  ({ content, type, title, isOpen, isLoading, onClose }) => {
     const [copied, setCopied] = useState(false)
     const [isMaximized, setIsMaximized] = useState(false)
 
@@ -169,9 +179,14 @@ export const ArtifactView = React.memo<ArtifactViewProps>(
               )}
             </div>
             <div className="flex flex-col overflow-hidden">
-              <h3 className="text-sm font-semibold text-neutral-100 truncate">
-                {title || (type === 'code' ? 'Code Artifact' : 'Research Artifact')}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-neutral-100 truncate">
+                  {title || (type === 'code' ? 'Code Artifact' : 'Research Artifact')}
+                </h3>
+                {isLoading && (
+                  <Loader2 className="h-3 w-3 animate-spin text-blue-400" aria-label="Loading" />
+                )}
+              </div>
               <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">
                 {type}
               </span>

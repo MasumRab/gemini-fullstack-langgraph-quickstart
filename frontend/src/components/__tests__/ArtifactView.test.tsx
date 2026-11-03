@@ -17,11 +17,17 @@ describe('ArtifactView Component', () => {
     type: 'markdown' as const,
     title: 'Test Artifact',
     isOpen: true,
+    isLoading: false,
     onClose: vi.fn(),
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('shows loading spinner when isLoading is true', () => {
+    render(<ArtifactView {...defaultProps} isLoading={true} />)
+    expect(screen.getByLabelText('Loading')).toBeDefined()
   })
 
   it('does not render when isOpen is false', () => {

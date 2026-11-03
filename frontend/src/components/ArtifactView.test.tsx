@@ -7,6 +7,7 @@ describe('ArtifactView', () => {
     content: '# Test Content',
     type: 'markdown' as const,
     isOpen: true,
+    isLoading: false,
     onClose: vi.fn(),
   }
 
@@ -30,6 +31,11 @@ describe('ArtifactView', () => {
     fireEvent.click(maximizeButton)
 
     expect(screen.getByLabelText('Restore size')).toBeInTheDocument()
+  })
+
+  it('shows loading spinner when isLoading is true', () => {
+    render(<ArtifactView {...defaultProps} isLoading={true} />)
+    expect(screen.getByLabelText('Loading')).toBeInTheDocument()
   })
 
   it('hides decorative icons from screen readers', () => {
