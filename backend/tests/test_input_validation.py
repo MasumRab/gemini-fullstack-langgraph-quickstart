@@ -1,11 +1,12 @@
-import unittest
-import sys
 import os
+import sys
+import unittest
 
 # Add backend/src to python path
 sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
 
 from agent.app import InvokeRequest
+
 
 class TestDoS(unittest.TestCase):
     def test_large_initial_query_count(self):
@@ -16,9 +17,9 @@ class TestDoS(unittest.TestCase):
         payload = {
             "input": {
                 "initial_search_query_count": 1000000,
-                "messages": [{"role": "user", "content": "test"}]
+                "messages": [{"role": "user", "content": "test"}],
             },
-            "config": {}
+            "config": {},
         }
 
         # This should now RAISE ValueError
@@ -34,9 +35,9 @@ class TestDoS(unittest.TestCase):
         payload = {
             "input": {
                 "max_research_loops": 1000,
-                "messages": [{"role": "user", "content": "test"}]
+                "messages": [{"role": "user", "content": "test"}],
             },
-            "config": {}
+            "config": {},
         }
 
         with self.assertRaises(ValueError) as cm:
@@ -52,13 +53,14 @@ class TestDoS(unittest.TestCase):
             "input": {
                 "initial_search_query_count": 5,
                 "max_research_loops": 3,
-                "messages": [{"role": "user", "content": "test"}]
+                "messages": [{"role": "user", "content": "test"}],
             },
-            "config": {}
+            "config": {},
         }
         req = InvokeRequest(**payload)
         self.assertEqual(req.input["initial_search_query_count"], 5)
         self.assertEqual(req.input["max_research_loops"], 3)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
