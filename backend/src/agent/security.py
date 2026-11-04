@@ -17,8 +17,7 @@ logger = logging.getLogger(__name__)
 # 🛡️ Sentinel: Configurable trusted proxy count for X-Forwarded-For extraction
 # This should be set to the number of trusted proxies between the client and your server.
 # For example, if you have a CDN + load balancer, set this to 2.
-def get_trusted_proxy_count() -> int:
-    return int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
+TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "0"))
 
 # 🛡️ Sentinel: Optional set of trusted proxy IP addresses
 # If set, we iterate from right to left and skip these IPs to find the first untrusted IP.
@@ -32,17 +31,17 @@ if TRUSTED_PROXIES_ENV:
     )
 
 
-def _is_ip_in_trusted_proxies(ip: str, trusted_proxies: Set[str] = None) -> bool:
+def _is_ip_in_trusted_proxies(ip: str) -> bool:
     """Check if an IP address is in the trusted proxies set.
 
     Supports both direct IP matching and CIDR range matching.
     """
-    if not trusted_proxies:
+    if not TRUSTED_PROXIES:
         return False
 
     try:
         ip_obj = ipaddress.ip_address(ip.strip())
-        for trusted in trusted_proxies:
+        for trusted in TRUSTED_PROXIES:
             trusted = trusted.strip()
             if "/" in trusted:
                 # CIDR range
@@ -69,14 +68,6 @@ def extract_client_ip_from_forwarded(
     trusted_proxy_count: int | None = None,
     fallback_ip: str | None = None,
 ) -> str | None:
-    if trusted_proxy_count is None:
-        trusted_proxy_count = int(os.environ.get("TRUSTED_PROXY_COUNT", "0"))
-    
-    trusted_proxies_env = os.environ.get("TRUSTED_PROXIES", "")
-    trusted_proxies: Set[str] = set()
-    if trusted_proxies_env:
-        trusted_proxies = set(ip.strip() for ip in trusted_proxies_env.split(",") if ip.strip())
-
     """Extract the real client IP from X-Forwarded-For header using trust-bound extraction.
 
     🛡️ Sentinel: This implements secure IP extraction to prevent IP spoofing attacks.
@@ -98,6 +89,9 @@ def extract_client_ip_from_forwarded(
     Returns:
         The extracted client IP, or fallback_ip if no valid candidate found.
     """
+    if trusted_proxy_count is None:
+        trusted_proxy_count = TRUSTED_PROXY_COUNT
+
     if not forwarded:
         return fallback_ip
 
@@ -121,10 +115,10 @@ def extract_client_ip_from_forwarded(
             return fallback_ip
 
         # Method 1: Use trusted proxies list if available (more flexible)
-        if trusted_proxies:
+        if TRUSTED_PROXIES:
             # Iterate from right to left, skip trusted proxies
             for ip in reversed(ips):
-                if not _is_ip_in_trusted_proxies(ip, trusted_proxies):
+                if not _is_ip_in_trusted_proxies(ip):
                     return ip
             # All IPs are trusted proxies, return the leftmost (original client)
             # This shouldn't happen in normal operation
@@ -138,7 +132,7 @@ def extract_client_ip_from_forwarded(
             # Pick ips[-(trusted_proxy_count + 1)]
             # For example, if trusted_proxy_count=1 and ips=[client, proxy1],
             # we want ips[-2] = client
-            idx = -trusted_proxy_count
+            idx = -(trusted_proxy_count + 1)
             if abs(idx) <= len(ips):
                 return ips[idx]
             else:
