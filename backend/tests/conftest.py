@@ -3,13 +3,14 @@
 This module provides reusable fixtures that can be used across all test files.
 Fixtures are designed to be path-insensitive and robust to minor code changes.
 """
+
+import os
 import pathlib
 import sys
-from typing import Any, Dict, List
 from types import SimpleNamespace
+from typing import Any, Dict, List
 
 import pytest
-import os
 
 # Set dummy API key before any imports that might use it
 os.environ["GEMINI_API_KEY"] = "dummy_key_for_tests"
@@ -28,8 +29,47 @@ if str(SRC_PATH) not in sys.path:
 
 
 # =============================================================================
+# Pytest Configuration
+# =============================================================================
+
+
+def pytest_addoption(parser):
+    """Add command-line options for extended tests."""
+    parser.addoption(
+        "--only-extended",
+        action="store_true",
+        default=False,
+        help="run only extended tests",
+    )
+
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers", "extended: mark test as extended (slow, external, etc.)"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Modify test collection based on --only-extended flag."""
+    if config.getoption("--only-extended"):
+        # --only-extended given in CLI: skip non-extended tests
+        skip_non_extended = pytest.mark.skip(reason="skipping non-extended tests")
+        for item in items:
+            if "extended" not in item.keywords:
+                item.add_marker(skip_non_extended)
+    else:
+        # normal run: skip extended tests
+        skip_extended = pytest.mark.skip(reason="use --only-extended to run this test")
+        for item in items:
+            if "extended" in item.keywords:
+                item.add_marker(skip_extended)
+
+
+# =============================================================================
 # State Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def base_state() -> Dict[str, Any]:
@@ -70,6 +110,7 @@ def reflection_state(base_state) -> Dict[str, Any]:
 # Config Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def base_config() -> Dict[str, Any]:
     """Base configuration for tests."""
@@ -94,8 +135,10 @@ def confirmation_required_config() -> Dict[str, Any]:
 # Mock Classes for External Dependencies
 # =============================================================================
 
+
 class MockSegment:
     """Mock for grounding segment metadata."""
+
     def __init__(self, start_index=None, end_index=None):
         self.start_index = start_index
         self.end_index = end_index
@@ -103,12 +146,14 @@ class MockSegment:
 
 class MockChunk:
     """Mock for grounding chunk with web metadata."""
+
     def __init__(self, uri: str, title: str):
         self.web = SimpleNamespace(uri=uri, title=title)
 
 
 class MockSupport:
     """Mock for grounding support metadata."""
+
     def __init__(self, segment: MockSegment, grounding_chunk_indices: List[int] = None):
         self.segment = segment
         self.grounding_chunk_indices = grounding_chunk_indices or []
@@ -116,7 +161,10 @@ class MockSupport:
 
 class MockCandidate:
     """Mock for API response candidate."""
-    def __init__(self, grounding_supports: List[MockSupport], grounding_chunks: List[MockChunk]):
+
+    def __init__(
+        self, grounding_supports: List[MockSupport], grounding_chunks: List[MockChunk]
+    ):
         self.grounding_metadata = SimpleNamespace(
             grounding_supports=grounding_supports,
             grounding_chunks=grounding_chunks,
@@ -125,12 +173,14 @@ class MockCandidate:
 
 class MockResponse:
     """Mock for API response with candidates."""
+
     def __init__(self, candidates: List[MockCandidate]):
         self.candidates = candidates
 
 
 class MockSite:
     """Mock for URL site data."""
+
     def __init__(self, uri: str):
         self.web = SimpleNamespace(uri=uri)
 
@@ -138,6 +188,7 @@ class MockSite:
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def make_message(content: str, role: str = "human"):
     """Create a simple message dict for testing."""
@@ -147,10 +198,12 @@ def make_message(content: str, role: str = "human"):
 def make_human_message(content: str):
     """Create a mock HumanMessage-like object."""
     from langchain_core.messages import HumanMessage
+
     return HumanMessage(content=content)
 
 
 def make_ai_message(content: str):
     """Create a mock AIMessage-like object."""
     from langchain_core.messages import AIMessage
+
     return AIMessage(content=content)
