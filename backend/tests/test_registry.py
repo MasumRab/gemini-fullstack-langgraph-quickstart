@@ -10,6 +10,7 @@ Tests cover:
 """
 
 import pytest
+
 from agent.registry import GraphRegistry, graph_registry
 
 
@@ -26,9 +27,9 @@ class TestGraphRegistryInitialization:
     def test_registry_has_required_attributes(self):
         """Test that registry has required data structures"""
         registry = GraphRegistry()
-        assert hasattr(registry, 'node_docs')
-        assert hasattr(registry, 'edge_docs')
-        assert hasattr(registry, 'notes')
+        assert hasattr(registry, "node_docs")
+        assert hasattr(registry, "edge_docs")
+        assert hasattr(registry, "notes")
         assert isinstance(registry.node_docs, dict)
         assert isinstance(registry.edge_docs, list)
         assert isinstance(registry.notes, list)

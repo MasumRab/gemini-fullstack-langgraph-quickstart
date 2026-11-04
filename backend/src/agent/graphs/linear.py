@@ -1,20 +1,23 @@
-from typing import Dict, Any, List
+from typing import Any, Dict
+
 from langchain_core.runnables import RunnableConfig
-from langgraph.graph import StateGraph, START, END
-from agent.state import OverallState, ReflectionState
+from langgraph.graph import END, START, StateGraph
+
 from agent.configuration import Configuration
 from agent.nodes import (
-    load_context,
+    finalize_answer,
     generate_plan,
+    load_context,
     planning_mode,
-    planning_wait,
     planning_router,
-    web_research,
-    validate_web_results,
+    planning_wait,
     reflection,
-    finalize_answer
+    validate_web_results,
+    web_research,
 )
 from agent.registry import graph_registry
+from agent.state import OverallState, ReflectionState
+
 
 # Override evaluate_research to avoid Send (parallelism)
 @graph_registry.describe(
@@ -34,6 +37,7 @@ def evaluate_research_linear(state: ReflectionState, config: RunnableConfig) -> 
     # The 'web_research' node needs to be smart enough to pick the *next* query
     # from the list if there are multiple, or just use the follow-up queries.
     return "web_research"
+
 
 # Helper to process queries one by one
 @graph_registry.describe(
@@ -74,6 +78,7 @@ def queue_manager(state: OverallState) -> Dict[str, Any]:
 
     return {}
 
+
 builder = StateGraph(OverallState, config_schema=Configuration)
 builder.add_node("load_context", load_context)
 builder.add_node("generate_plan", generate_plan)
@@ -93,14 +98,10 @@ builder.add_edge("generate_plan", "planning_mode")
 
 # Modified routing for planning
 builder.add_conditional_edges(
-    "planning_mode",
-    planning_router,
-    ["planning_wait", "web_research"]
+    "planning_mode", planning_router, ["planning_wait", "web_research"]
 )
 builder.add_conditional_edges(
-    "planning_wait",
-    planning_router,
-    ["planning_wait", "web_research"]
+    "planning_wait", planning_router, ["planning_wait", "web_research"]
 )
 
 builder.add_edge("web_research", "validate_web_results")
@@ -108,9 +109,7 @@ builder.add_edge("validate_web_results", "reflection")
 
 # Use linear evaluation (returns string "web_research" or "finalize_answer")
 builder.add_conditional_edges(
-    "reflection",
-    evaluate_research_linear,
-    ["web_research", "finalize_answer"]
+    "reflection", evaluate_research_linear, ["web_research", "finalize_answer"]
 )
 
 builder.add_edge("finalize_answer", END)
