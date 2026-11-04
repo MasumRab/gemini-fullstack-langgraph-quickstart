@@ -1,117 +1,88 @@
 # Open PR Conflict Review
 
-> **Generated**: 2025-12-12T05:16:00+11:00
+> **Generated**: 2026-06-08
 > **Purpose**: Document conflicts and issues in open PRs before merge
 
 ---
 
 ## Summary
 
-| PR | Title | Status | Critical Issues |
-|----|-------|--------|-----------------|
-| #16 | Hybrid Search, RAG Dual-Write, Validation | MERGEABLE | ⚠️ **DELETES 823 lines of valuable code** |
-| #19 | MCP Persistence Wrapper | UNKNOWN | ⚠️ Merge status unknown, needs rebase |
-| #23 | Add docstrings (CodeRabbit) | MERGEABLE | ✅ Low risk - docstrings only |
-| #24 | SOTA Deep Research Alignment | MERGEABLE | ✅ Docs only - safe |
-| #25 | Search Tool Comparison | MERGEABLE | ✅ Additive - safe |
+| Status | Count |
+|--------|-------|
+| MERGEABLE | 11 |
+| CONFLICTING | 20 |
 
 ---
 
-## PR #16 - CRITICAL REVIEW REQUIRED
+## Mergeable PRs (Ready)
 
-### Files Being Deleted (UNINTENDED?)
-
-The following files exist on `main` and would be **deleted** if PR #16 is merged:
-
-| File | Lines | Purpose |
-|------|-------|---------|
-| `backend/src/agent/orchestration.py` | 484 | ToolRegistry, AgentPool, Coordinator-based orchestration |
-| `backend/src/agent/graph_builder.py` | 241 | Dynamic graph composition with optional enrichments |
-| `backend/src/agent/graphs/planning.py` | 56 | Planning graph variant |
-| `backend/src/agent/graphs/upstream.py` | 42 | Minimal upstream graph variant |
-| `backend/tests/test_graph_mock.py` | 121 | Graph mock tests |
-| `backend/tests/test_nodes.py` | 737 | Comprehensive node tests |
-
-**Total: 1,681 lines of code would be lost**
-
-### Recommended Action for PR #16
-
-1. **Rebase on main** to pick up orchestration layer additions
-2. **Restore deleted files** that were added to main after PR branch creation
-3. **Keep the valid updates**: hybrid search, RAG improvements, validation enhancements
-
-### Valid Changes to Keep from PR #16
-
-- `backend/src/agent/_graph.py` (+425 lines) - Alternative graph implementation
-- `docs/tasks/upstream_compatibility.md` (+62 lines) - Documentation
-- RAG and search improvements in existing files
-- Frontend InputForm.tsx improvements
+| PR | Title | Status | Risk |
+|----|-------|--------|------|
+| #349 | jules-4486936059047711087-e991cb85 | MERGEABLE | Low (+255 lines) |
+| #350 | agent-cleanup-task-1179018605793400 | MERGEABLE | Medium (+1442 lines) |
+| #353 | chore/linear-repo-health-audit-1601 | MERGEABLE | Low (+100 lines) |
+| #356 | agent-repo-maintenance-277301642799 | MERGEABLE | Low (+10 lines) |
+| #364 | cto/resolve-accessibility-rebase | MERGEABLE | Medium (+755 lines) |
+| #365 | cto/resolve-conflicts-merge-8-prs-r | MERGEABLE | Medium (+804 lines) |
+| #368 | agent-cleanup-ruff-fixes-8631250892 | MERGEABLE | Low (+201 lines) |
+| #369 | jules-899862534564244020-0ad7c785 | MERGEABLE | Low (+240 lines) |
+| #370 | agent-maintenance-todo-cleanup-1675 | MERGEABLE | Low (+44 lines) |
+| #371 | recovery-critical-fixes | MERGEABLE | Medium (+360 lines) |
+| #372 | fix/trusted-proxy-late-binding-9173 | MERGEABLE | Medium (+153 lines) |
 
 ---
 
-## PR #19 - MCP Persistence Wrapper
+## Conflicting PRs (Need Resolution)
 
-### Status: UNKNOWN (needs rebase)
+### Priority 1: Security (sentinel)
+| PR | Branch | Files | Delta | Action |
+|----|--------|-------|-------|--------|
+| #310 | sentinel/fix-ip-spoofing-ratelimit- | 31 files | +360/-31 | High priority - security |
+| #289 | sentinel-logging-enhancement-491827 | 553 files | +553/-372 | High priority - logging |
 
-This PR has merge status `UNKNOWN`, indicating it needs to be rebased on the current main branch.
+### Priority 2: Performance (bolt)
+| PR | Branch | Files | Delta | Action |
+|----|--------|-------|-------|--------|
+| #297 | bolt/lazy-load-search-providers-566 | 82 files | +82/-70 | Optimize search providers |
+| #287 | bolt-optimize-string-concatenation- | 12 files | +12/-9 | String optimization |
+| #307 | bolt-lazy-search-init-4718001797650 | 54 files | +54/-47 | Search init |
 
-### Files Modified
+### Priority 3: Large Changes (Require careful review)
+| PR | Branch | Files | Delta | Action |
+|----|--------|-------|-------|--------|
+| #283 | palette/activity-timeline-semantics | 39 files | -8570 deletions | Large removal - verify intent |
+| #346 | jules-kaggle-gemma-integration-9750 | 346 files | +5530/-3262 | Largest addition - careful review |
+| #347 | jules-15198152699149131080-b0bfadc2 | 347 files | +1619/-1027 | Jules integration |
+| #290 | maintenance/cleanup-and-organizatio | 553 files | -9171 deletions | Large cleanup |
 
-- `backend/src/agent/mcp_*.py` - MCP configuration and persistence
-- `backend/src/agent/nodes.py` - Node updates
-- `backend/src/agent/rag.py` - RAG enhancements
-- `backend/tests/test_*.py` - Test updates
-
-### Recommended Action
-
-1. Rebase on current main
-2. Resolve any conflicts with recent main changes
-3. Ensure MCP persistence doesn't conflict with orchestration layer
-
----
-
-## PR #23 - CodeRabbit Docstrings
-
-### Status: MERGEABLE ✅
-
-Low-risk PR that only adds docstrings. Safe to merge.
-
----
-
-## PR #24 - SOTA Deep Research Alignment
-
-### Status: MERGEABLE ✅
-
-Documentation-only PR. Adds research landscape docs and task files. Safe to merge.
-
----
-
-## PR #25 - Search Tool Comparison
-
-### Status: MERGEABLE ✅
-
-Additive changes only:
-- New `bing_adapter.py` and `tavily_adapter.py`
-- New comparison notebook
-- Router updates
-
-Safe to merge - no deletions or conflicts.
+### Priority 4: Other
+| PR | Branch | Files | Action |
+|----|--------|-------|--------|
+| #275 | palette-ux-improvement-welcome-foot | 2 files | UX improvement |
+| #288 | palette-activity-timeline-semantic- | 37 files | Duplicate of #283? |
+| #296 | palette-activity-timeline-semantic- | 1 file | Duplicate of #283? |
+| #302 | fix-extended-tests-configuration-16 | 40 files | Test config |
+| #308 | fix-test-suite-stability-3968941239 | 64 files | Test stability |
+| #340 | render-free-tier-gemma-api-18323209 | 498 files | Gemma API |
+| #348 | jules-consolidate-examples-notebook | 281 files | Examples |
+| #351 | jules/linear-audit-report-146516021 | 394 files | Audit report |
+| #352 | feat/render-free-tier-lite-mode-114 | 424 files | Lite mode |
+| #354 | feat/render-free-tier-lite-mode-618 | 539 files | Lite mode variant |
 
 ---
 
 ## Merge Order Recommendation
 
-1. **PR #25** - Search Tool Comparison (clean, additive)
-2. **PR #24** - SOTA Documentation (docs only)
-3. **PR #23** - Docstrings (safe)
-4. **PR #19** - After rebase and conflict resolution
-5. **PR #16** - **ONLY after restoring deleted files**
+1. **First batch (low risk)**: #356, #353, #370, #372, #368, #369, #349
+2. **Second batch (medium risk)**: #350, #364, #365, #371
+3. **After conflict resolution**: All CONFLICTING PRs above
 
 ---
 
 ## Action Items
 
-- [ ] Comment on PR #16 about deleted file issue
-- [ ] Request PR #19 rebase
-- [ ] Merge safe PRs (#23, #24, #25)
-- [ ] After safe merges, re-evaluate #16 and #19
+- [ ] Review duplicate PRs (#283, #288, #296) - may conflict with each other
+- [ ] Inspect large deletions (#283 -8570, #290 -9171) for unintended removals
+- [ ] Rebase sentinel PRs (#310, #289) with priority
+- [ ] Rebase bolt PRs (#297, #287, #307) for performance improvements
+- [ ] Carefully review #346 (largest PR) before merging
