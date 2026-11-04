@@ -7,16 +7,17 @@ to ensure:
 3. Robustness against token limit behaviors typical of smaller models.
 """
 
+from unittest.mock import ANY, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, ANY
-from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.runnables import RunnableConfig
 
 from agent.models import GEMMA_2_27B_IT, GEMMA_3_27B_IT
 from agent.nodes import (
+    denoising_refiner,
     generate_plan,
     web_research,
-    denoising_refiner,
 )
 from agent.state import OverallState
 

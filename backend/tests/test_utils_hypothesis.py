@@ -1,5 +1,7 @@
-from hypothesis import given, strategies as st, settings, HealthCheck
 import pytest
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+
 from agent.utils import insert_citation_markers
 
 # Mark these tests as extended because they are slow property-based tests

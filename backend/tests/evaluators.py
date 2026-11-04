@@ -4,12 +4,14 @@ This module defines Pydantic models and evaluation functions for
 structured grading of agent outputs using a Judge LLM (Gemini 2.5 Pro).
 """
 
-from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, Field
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
-from agent.models import GEMINI_PRO
 import os
+from typing import Any, Dict, List, Optional
+
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import BaseModel, Field
+
+from agent.models import GEMINI_PRO
 
 # Module-level cache for the judge model instance
 _judge_model_cache: Optional[ChatGoogleGenerativeAI] = None

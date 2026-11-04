@@ -8,19 +8,19 @@ Tests cover:
 - State validation and edge cases
 """
 
+from typing import Any, Dict, List
+
 import pytest
-from typing import List, Dict, Any
 
 from agent.state import (
-    create_rag_resources,
     OverallState,
-    ReflectionState,
     Query,
     QueryGenerationState,
-    WebSearchState,
+    ReflectionState,
     SearchStateOutput,
+    WebSearchState,
+    create_rag_resources,
 )
-
 
 # =============================================================================
 # Tests for create_rag_resources Function

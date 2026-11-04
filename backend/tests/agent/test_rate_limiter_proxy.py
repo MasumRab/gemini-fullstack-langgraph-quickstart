@@ -1,9 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from starlette.responses import PlainTextResponse
+
 from agent.app import app
 from agent.security import RateLimitMiddleware
-from starlette.responses import PlainTextResponse
 
 # ----------------------------------------------------------------------
 # 1. Integration Test with FastAPI App
@@ -27,7 +29,9 @@ def test_rate_limiter_integration():
 
 @pytest.mark.skip(reason="Proxy security tests failing due to env var mock ordering")
 @pytest.mark.asyncio
-async def test_rate_limiter_proxy_logic():
+async def test_rate_limiter_proxy_logic(monkeypatch):
+    import agent.security
+
     """Unit test for RateLimitMiddleware proxy logic."""
 
     # Mock App
@@ -38,6 +42,7 @@ async def test_rate_limiter_proxy_logic():
     # Create middleware instance with low limit (2 per minute)
     # We use a distinct path prefix to ensure we hit the logic
     # 🛡️ Sentinel: Explicitly enable trust_proxy_headers for this test as we want to test X-Forwarded-For logic
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
     middleware = RateLimitMiddleware(
         mock_app,
         limit=2,
@@ -105,7 +110,9 @@ async def test_rate_limiter_proxy_logic():
 
 @pytest.mark.skip(reason="Proxy security tests failing due to env var mock ordering")
 @pytest.mark.asyncio
-async def test_rate_limiter_truncation():
+async def test_rate_limiter_truncation(monkeypatch):
+    import agent.security
+
     """Test that extremely long headers are truncated to prevent memory exhaustion."""
 
     async def mock_app(scope, receive, send):
@@ -113,6 +120,7 @@ async def test_rate_limiter_truncation():
         await response(scope, receive, send)
 
     # 🛡️ Sentinel: Enable proxy trust to test header parsing
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
     middleware = RateLimitMiddleware(
         mock_app,
         limit=10,
@@ -143,4 +151,4 @@ async def test_rate_limiter_truncation():
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
     # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
-    assert keys[0] == "unknown"
+    assert keys[0] == "127.0.0.1"

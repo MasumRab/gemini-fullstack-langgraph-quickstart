@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+
 from agent.tools_and_schemas import get_tools_from_mcp
 
 # Fine-grained implementation guide for MCP Tests:
