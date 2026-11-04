@@ -1,4 +1,3 @@
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -9,9 +8,11 @@ from agent.security import RateLimitMiddleware
 class MockApp:
     pass
 
+
 def test_get_client_key_ipv4():
     mw = RateLimitMiddleware(MockApp())
     assert mw.get_client_key("192.168.1.1") == "192.168.1.1"
+
 
 def test_get_client_key_ipv6():
     mw = RateLimitMiddleware(MockApp())
@@ -29,9 +30,11 @@ def test_get_client_key_ipv6():
     assert key1.endswith("/64")
     assert key1 != key3
 
+
 def test_get_client_key_invalid():
     mw = RateLimitMiddleware(MockApp())
     assert mw.get_client_key("invalid_ip") == "unknown"
+
 
 @pytest.mark.asyncio
 async def test_ipv6_rate_limiting_shared_bucket():
@@ -43,7 +46,7 @@ async def test_ipv6_rate_limiting_shared_bucket():
     req1 = MagicMock()
     req1.url.path = "/api/test"
     req1.client.host = "2001:db8::1"
-    req1.headers.get.return_value = None # No X-Forwarded-For
+    req1.headers.get.return_value = None  # No X-Forwarded-For
 
     async def call_next(request):
         return "success"
@@ -67,10 +70,12 @@ async def test_ipv6_rate_limiting_shared_bucket():
     # The response is a Starlette Response object
     assert response2.status_code == 429
     import json
+
     body = json.loads(response2.body)
     assert body["detail"] == "Too Many Requests"
     assert "retry_after" in body
     assert "retry-after" in response2.headers or "Retry-After" in response2.headers
+
 
 @pytest.mark.asyncio
 async def test_ipv6_rate_limiting_different_bucket():
