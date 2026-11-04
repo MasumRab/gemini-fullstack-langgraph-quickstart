@@ -93,7 +93,10 @@ class TestAPISecurity:
             response = client.get("/agent/test")
             assert response.status_code == 200
 
-    def test_rate_limit_respects_x_forwarded_for(self):
+    def test_rate_limit_respects_x_forwarded_for(self, monkeypatch):
+        import agent.security
+
+        monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
         """Test that rate limiting uses the X-Forwarded-For header when present."""
         import agent.security
         from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware

@@ -35,8 +35,10 @@ class TestToolRegistry:
     def test_register_and_get_tool(self):
         """Test registering a tool and retrieving it."""
         registry = ToolRegistry()
+
         def func(x):
             return x
+
         registry.register("test_tool", func, "Test description", "test_cat")
 
         # Get by name
@@ -53,8 +55,10 @@ class TestToolRegistry:
     def test_get_tools_as_langchain_tools(self):
         """Test retrieving tools as LangChain BaseTool objects."""
         registry = ToolRegistry()
+
         def func(x):
             return x
+
         registry.register("tool1", func, "Desc 1")
         registry.register("tool2", func, "Desc 2", category="special")
 
