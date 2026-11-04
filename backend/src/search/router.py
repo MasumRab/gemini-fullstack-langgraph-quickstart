@@ -119,10 +119,7 @@ class SearchRouter:
                         # Fallback gets the same retry logic or just a single shot?
                         # For simplicity, fallback is usually single shot untuned or standard.
                         # Let's try standard (tuned=True default)
-                        try:
-                            return fallback_provider.search(query, max_results=max_results)
-                        except Exception as e3:
-                            logger.warning(f"Search failed with fallback {fallback_name}: {e3}")
+                        return fallback_provider.search(query, max_results=max_results)
 
                 # If we get here, all attempts failed
                 logger.error("All search attempts failed.")
