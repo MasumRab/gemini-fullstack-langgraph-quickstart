@@ -8,6 +8,7 @@ from ..provider import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
 
+
 class GoogleSearchAdapter(SearchProvider):
     """Adapter for Google Search using the GenAI SDK."""
 
@@ -51,13 +52,17 @@ class GoogleSearchAdapter(SearchProvider):
                 for chunk in chunks:
                     if chunk.web:
                         # Extract snippet or title fallback
-                        content = getattr(chunk.web, 'snippet', None) or chunk.web.title or ""
-                        results.append(SearchResult(
-                            title=chunk.web.title or "Untitled",
-                            url=chunk.web.uri,
-                            content=content,
-                            source="google"
-                        ))
+                        content = (
+                            getattr(chunk.web, "snippet", None) or chunk.web.title or ""
+                        )
+                        results.append(
+                            SearchResult(
+                                title=chunk.web.title or "Untitled",
+                                url=chunk.web.uri,
+                                content=content,
+                                source="google",
+                            )
+                        )
 
             return results[:max_results]
 

@@ -9,6 +9,7 @@ from .provider import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
 
+
 class SearchProviderType(Enum):
     GOOGLE = "google"
     DUCKDUCKGO = "duckduckgo"
@@ -16,9 +17,9 @@ class SearchProviderType(Enum):
     TAVILY = "tavily"
     BING = "bing"
 
+
 class SearchRouter:
-    """Routes search queries to the appropriate provider with fallback logic.
-    """
+    """Routes search queries to the appropriate provider with fallback logic."""
 
     def __init__(self, app_config: AppConfig = config):
         """Initialize router with config."""
@@ -39,18 +40,23 @@ class SearchRouter:
             try:
                 if name == SearchProviderType.GOOGLE.value:
                     from .providers.google_adapter import GoogleSearchAdapter
+
                     self.providers[name] = GoogleSearchAdapter()
                 elif name == SearchProviderType.BRAVE.value:
                     from .providers.brave_adapter import BraveSearchAdapter
+
                     self.providers[name] = BraveSearchAdapter()
                 elif name == SearchProviderType.DUCKDUCKGO.value:
                     from .providers.duckduckgo_adapter import DuckDuckGoAdapter
+
                     self.providers[name] = DuckDuckGoAdapter()
                 elif name == SearchProviderType.TAVILY.value:
                     from .providers.tavily_adapter import TavilyAdapter
+
                     self.providers[name] = TavilyAdapter()
                 elif name == SearchProviderType.BING.value:
                     from .providers.bing_adapter import BingAdapter
+
                     self.providers[name] = BingAdapter()
             except Exception as e:
                 logger.debug(f"Provider {name} failed to init: {e}")
@@ -59,7 +65,9 @@ class SearchRouter:
             # Log warning for unrecognized provider
             if name not in self.providers:
                 valid_providers = [p.value for p in SearchProviderType]
-                logger.warning(f"Unknown provider '{name}'. Valid providers: {valid_providers}")
+                logger.warning(
+                    f"Unknown provider '{name}'. Valid providers: {valid_providers}"
+                )
 
             return self.providers.get(name)
 
@@ -116,6 +124,7 @@ class SearchRouter:
                 # If we get here, all attempts failed
                 logger.error("All search attempts failed.")
                 return []
+
 
 # Singleton instance
 search_router = SearchRouter()
