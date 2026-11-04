@@ -3,6 +3,9 @@ import re
 import json
 from pathlib import Path
 
+# Get the script's own filename for robust self-exclusion
+SCRIPT_NAME = Path(__file__).name
+
 def extract_todos(root_dir):
     todos = []
     # Exclude directories
@@ -12,7 +15,8 @@ def extract_todos(root_dir):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
         for file in files:
-            if file == 'extract_todos_structured.py':
+            # Skip the script itself to prevent false positives when searching for TODOs
+            if file == SCRIPT_NAME:
                 continue
             if file.endswith(('.py', '.tsx', '.ts', '.js', '.jsx', '.md')):
                 filepath = os.path.join(root, file)
@@ -21,32 +25,31 @@ def extract_todos(root_dir):
                         lines = f.readlines()
                         for i, line in enumerate(lines):
                             if 'TODO' in line:
-                                # Simple parser
                                 content = line.strip()
-                                # Try to parse structured TODOs if they exist
-                                # Format: TODO(priority=<Level>, complexity=<Level>, owner=agent):
                                 priority = "Unknown"
                                 complexity = "Unknown"
                                 owner = "Unknown"
 
-                                match = re.search(r'TODO\(priority=(.*?), complexity=(.*?), owner=(.*?)\):', content)
-                                if not match:
-                                    match = re.search(r'TODO\(priority=(.*?), complexity=(.*?)\):', content)
-                                if match:
-                                    priority = match.group(1)
-                                    complexity = match.group(2)
-                                    if match.lastindex and match.lastindex >= 3:
-                                        owner = match.group(3)
+                                match_with_owner = re.search(r'TODO\(priority=([^,]+), complexity=([^,]+), owner=([^)]+)\):', content)
+                                if match_with_owner:
+                                    priority = match_with_owner.group(1)
+                                    complexity = match_with_owner.group(2)
+                                    owner = match_with_owner.group(3)
+                                else:
+                                    match = re.search(r'TODO\(priority=([^,]+), complexity=([^)]+)\):', content)
+                                    if match:
+                                        priority = match.group(1)
+                                        complexity = match.group(2)
 
-                                    todos.append({
-                                        'file': filepath,
-                                        'line': i + 1,
-                                        'content': content,
-                                        'priority': priority,
-                                        'complexity': complexity,
-                                        'owner': owner
-                                    })
-                except Exception as e:  # noqa: BLE001
+                                todos.append({
+                                    'file': filepath,
+                                    'line': i + 1,
+                                    'content': content,
+                                    'priority': priority,
+                                    'complexity': complexity,
+                                    'owner': owner
+                                })
+                except Exception as e:
                     print(f"Error reading {filepath}: {e}")
     return todos
 

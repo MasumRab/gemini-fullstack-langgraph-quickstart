@@ -1,10 +1,12 @@
+from unittest.mock import patch
+
 import pytest
 import agent.security
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from starlette.responses import PlainTextResponse
+
 from agent.app import app
 from agent.security import RateLimitMiddleware
-from starlette.responses import PlainTextResponse
 
 # ----------------------------------------------------------------------
 # 1. Integration Test with FastAPI App
@@ -39,8 +41,13 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
     # Create middleware instance with low limit (2 per minute)
     # We use a distinct path prefix to ensure we hit the logic
     # 🛡️ Sentinel: Explicitly enable trust_proxy_headers for this test as we want to test X-Forwarded-For logic
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
     middleware = RateLimitMiddleware(
-        mock_app, limit=2, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app,
+        limit=2,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
     # Helper to simulate request
@@ -110,8 +117,13 @@ async def test_rate_limiter_truncation(monkeypatch):
         await response(scope, receive, send)
 
     # 🛡️ Sentinel: Enable proxy trust to test header parsing
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
     middleware = RateLimitMiddleware(
-        mock_app, limit=10, window=60, protected_paths=["/protected"], trust_proxy_headers=True
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
     )
 
     long_ip = "1.2.3.4" + "a" * 1000  # Very long string
