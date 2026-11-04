@@ -1,7 +1,7 @@
 # Jules GitHub Workflow Review and Repair Plan
 
-Date: 2026-07-20
-Representative repository: `MasumRab/gemini-fullstack-langgraph-quickstart`
+Date: 2026-07-20  
+Representative repository: `MasumRab/gemini-fullstack-langgraph-quickstart`  
 Status: evolved-workflow regression audit (re-audited 2026-07-23). Most P0/P1 issues fixed. Remaining: verdict template approval, untrusted PR content, late-commit rebase contradiction, label removal error swallowing. See section 11.3 for current status of each defect.
 
 ## 1. Objective and scope

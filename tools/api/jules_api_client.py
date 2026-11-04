@@ -14,7 +14,7 @@ JULES_API_BASE_URL = "https://jules.googleapis.com/v1alpha"
 
 def get_api_key() -> str:
     """Retrieve the Jules API key from the environment.
-
+    
     Supports JULES_API_KEY (primary).
     """
     key = os.environ.get("JULES_API_KEY")
