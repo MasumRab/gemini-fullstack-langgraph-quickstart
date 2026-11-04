@@ -14,39 +14,38 @@ Usage in notebooks:
     result = await graph.ainvoke(state, config)
 """
 
-import os
-from typing import Optional
 from dotenv import load_dotenv
+from langgraph.graph import END, START, StateGraph
 
-from langgraph.graph import StateGraph, START, END
-
-from agent.state import OverallState
 from agent.configuration import Configuration
 from agent.nodes import (
-    load_context,
-    generate_plan,
-    continue_to_web_research,
-    planning_mode,
-    planning_wait,
-    planning_router,
-    web_research,
-    validate_web_results,
     compression_node,
-    reflection,
-    finalize_answer,
+    continue_to_web_research,
     evaluate_research,
+    finalize_answer,
+    generate_plan,
+    load_context,
+    planning_mode,
+    planning_router,
+    planning_wait,
+    reflection,
+    validate_web_results,
+    web_research,
 )
+from agent.state import OverallState
 
 # Optional imports with graceful fallback
 try:
     from agent.kg import kg_enrich
+
     KG_AVAILABLE = True
 except ImportError:
     KG_AVAILABLE = False
     kg_enrich = None
 
 try:
-    from agent.rag_nodes import rag_retrieve, should_use_rag, rag_fallback_to_web
+    from agent.rag_nodes import rag_fallback_to_web, rag_retrieve, should_use_rag
+
     RAG_AVAILABLE = True
 except ImportError:
     RAG_AVAILABLE = False
@@ -140,9 +139,7 @@ def build_graph(
         # No planning: fan out directly to web research
         if parallel_search:
             builder.add_conditional_edges(
-                "generate_plan",
-                continue_to_web_research,
-                ["web_research"]
+                "generate_plan", continue_to_web_research, ["web_research"]
             )
         else:
             # Sequential: just connect
@@ -188,6 +185,7 @@ def build_graph(
 
 
 # === Preset Graphs ===
+
 
 def upstream_graph():
     """Minimal graph: Query -> Search -> Answer."""

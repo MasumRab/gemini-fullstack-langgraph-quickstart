@@ -26,7 +26,11 @@ Thumbs.db
 
 # IDE files
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 *.suo
 *.ntvs*
 *.njsproj
@@ -38,6 +42,7 @@ Thumbs.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 uv.lock
@@ -207,3 +212,4 @@ model_test_results.txt
 validation_coverage.txt
 temp_cell.txt
 markdownlint-cli2-results.json
+frontend/test-results/
