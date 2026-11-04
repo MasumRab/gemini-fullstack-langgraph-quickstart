@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+
 from agent.tools_and_schemas import get_tools_from_mcp
 
 # Fine-grained implementation guide for MCP Tests:
@@ -23,6 +25,7 @@ from agent.tools_and_schemas import get_tools_from_mcp
 #
 # See docs/tasks/01_MCP_TASKS.md
 
+
 class TestMcpIntegration:
     """Test suite for MCP integration."""
 
@@ -39,9 +42,12 @@ class TestMcpIntegration:
 
         # We need to mock the context manager SSEConnection and load_mcp_tools
         # Since they are imported inside the function, we patch the source modules
-        with patch("langchain_mcp_adapters.sessions.SSEConnection") as MockSSE, \
-             patch("langchain_mcp_adapters.tools.load_mcp_tools", new_callable=AsyncMock) as mock_load_tools:
-
+        with (
+            patch("langchain_mcp_adapters.sessions.SSEConnection") as MockSSE,
+            patch(
+                "langchain_mcp_adapters.tools.load_mcp_tools", new_callable=AsyncMock
+            ) as mock_load_tools,
+        ):
             # Setup context manager mock
             mock_session = AsyncMock()
             MockSSE.return_value.__aenter__.return_value = mock_session
@@ -59,7 +65,10 @@ class TestMcpIntegration:
             assert tools[0].name == "test_tool"
 
             # Verify SSEConnection called with correct args
-            MockSSE.assert_called_with(url="http://localhost:8000/sse", headers={"Authorization": "Bearer test-key"})
+            MockSSE.assert_called_with(
+                url="http://localhost:8000/sse",
+                headers={"Authorization": "Bearer test-key"},
+            )
 
             # Verify load_mcp_tools called with session
             mock_load_tools.assert_called_with(mock_session)
@@ -82,3 +91,27 @@ class TestMcpIntegration:
 
         assert result == "file content"
         mock_tool.assert_called_with(filepath="test.txt")
+
+    @pytest.mark.asyncio
+    async def test_disabled_mcp_returns_empty_list(self):
+        """Test disabled MCP returns empty list."""
+        mock_settings = MagicMock()
+        mock_settings.enabled = False
+
+        tools = await get_tools_from_mcp(mock_settings)
+        assert tools == []
+
+    @pytest.mark.asyncio
+    async def test_connection_error_handling(self):
+        """Test connection error handling."""
+        mock_settings = MagicMock()
+        mock_settings.enabled = True
+        mock_settings.endpoint = "http://localhost:8000/sse"
+        mock_settings.api_key = "test-key"
+
+        with patch("langchain_mcp_adapters.sessions.SSEConnection") as MockSSE:
+            MockSSE.side_effect = ConnectionError("Connection failed")
+
+            # Should not raise, but return empty list and log warning
+            tools = await get_tools_from_mcp(mock_settings)
+            assert tools == []
