@@ -7,6 +7,7 @@ Tests cover:
 - Orchestrated graph construction
 """
 
+from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -14,11 +15,14 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.orchestration import (
     AgentPool,
+    AgentSpec,
     ToolRegistry,
+    ToolSpec,
     build_orchestrated_graph,
     create_coordinator_node,
     create_task_router,
 )
+from agent.state import OverallState
 
 # =============================================================================
 # ToolRegistry Tests
@@ -31,7 +35,10 @@ class TestToolRegistry:
     def test_register_and_get_tool(self):
         """Test registering a tool and retrieving it."""
         registry = ToolRegistry()
-        func = lambda x: x
+
+        def func(x):
+            return x
+
         registry.register("test_tool", func, "Test description", "test_cat")
 
         # Get by name
@@ -48,7 +55,10 @@ class TestToolRegistry:
     def test_get_tools_as_langchain_tools(self):
         """Test retrieving tools as LangChain BaseTool objects."""
         registry = ToolRegistry()
-        func = lambda x: x
+
+        def func(x):
+            return x
+
         registry.register("tool1", func, "Desc 1")
         registry.register("tool2", func, "Desc 2", category="special")
 
@@ -137,11 +147,11 @@ class TestAgentPool:
 class TestCoordinatorNode:
     """Tests for the coordinator node logic."""
 
-    @patch("agent.orchestration.ChatGoogleGenerativeAI")
-    def test_coordinator_routing_decision(self, mock_llm_class):
+    @patch("agent.orchestration.get_cached_llm")
+    def test_coordinator_routing_decision(self, mock_get_llm):
         """Test parsing of LLM JSON response."""
         # Setup mocks
-        mock_llm = mock_llm_class.return_value
+        mock_llm = mock_get_llm.return_value
         mock_llm.invoke.return_value = AIMessage(
             content='```json\n{"action": "delegate_agent", "target": "researcher", "reason": "complex query"}\n```'
         )
@@ -160,10 +170,10 @@ class TestCoordinatorNode:
         assert result["coordinator_decision"] == "delegate_agent"
         assert result["coordinator_target"] == "researcher"
 
-    @patch("agent.orchestration.ChatGoogleGenerativeAI")
-    def test_coordinator_fallback_on_error(self, mock_llm_class):
+    @patch("agent.orchestration.get_cached_llm")
+    def test_coordinator_fallback_on_error(self, mock_get_llm):
         """Test fallback when LLM fails or returns invalid JSON."""
-        mock_llm = mock_llm_class.return_value
+        mock_llm = mock_get_llm.return_value
         mock_llm.invoke.side_effect = Exception("API Error")
 
         registry = ToolRegistry()

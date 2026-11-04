@@ -17,7 +17,7 @@ import pytest
 sys.modules["google.genai"] = MagicMock()
 
 from search.provider import SearchResult
-from search.router import SearchRouter
+from search.router import SearchProviderType, SearchRouter
 
 
 class TestSearchRouter:
@@ -34,14 +34,14 @@ class TestSearchRouter:
     @pytest.fixture
     def mock_adapters(self):
         """Mock the adapter classes used by SearchRouter."""
-        # Patch the classes where they are imported in router.py
+        # Patch the classes where they are DEFINED, since they are imported locally
 
         with (
-            patch("search.router.GoogleSearchAdapter") as mock_google,
-            patch("search.router.DuckDuckGoAdapter") as mock_ddg,
-            patch("search.router.BraveSearchAdapter") as mock_brave,
-            patch("search.router.TavilyAdapter") as mock_tavily,
-            patch("search.router.BingAdapter") as mock_bing,
+            patch("search.providers.google_adapter.GoogleSearchAdapter") as mock_google,
+            patch("search.providers.duckduckgo_adapter.DuckDuckGoAdapter") as mock_ddg,
+            patch("search.providers.brave_adapter.BraveSearchAdapter") as mock_brave,
+            patch("search.providers.tavily_adapter.TavilyAdapter") as mock_tavily,
+            patch("search.providers.bing_adapter.BingAdapter") as mock_bing,
         ):
             # Setup instances
             mock_google.return_value = MagicMock(name="google_instance")
@@ -58,23 +58,23 @@ class TestSearchRouter:
                 "bing": mock_bing,
             }
 
-    def test_init_providers(self, mock_config, mock_adapters):
-        """Test that providers are initialized correctly."""
+    def test_lazy_init_providers(self, mock_config, mock_adapters):
+        """Test that providers are initialized lazily."""
         router = SearchRouter(app_config=mock_config)
 
-        # Verify all adapters were attempted
-        mock_adapters["google"].assert_called()
-        mock_adapters["duckduckgo"].assert_called()
-        mock_adapters["brave"].assert_called()
-        mock_adapters["tavily"].assert_called()
-        mock_adapters["bing"].assert_called()
+        # Verify providers dict is EMPTY initially
+        assert len(router.providers) == 0
 
-        # Verify providers dict is populated
+        # Request a provider
+        provider = router._get_provider("google")
+        assert provider is not None
         assert "google" in router.providers
-        assert "duckduckgo" in router.providers
-        assert "brave" in router.providers
-        assert "tavily" in router.providers
-        assert "bing" in router.providers
+        mock_adapters["google"].assert_called_once()
+
+        # Request again (should be cached)
+        provider2 = router._get_provider("google")
+        assert provider2 is provider
+        mock_adapters["google"].assert_called_once()  # Still called only once
 
     def test_search_primary_success(self, mock_config, mock_adapters):
         """Test search using primary provider successfully."""
@@ -94,13 +94,13 @@ class TestSearchRouter:
         )
 
     def test_search_fallback_on_missing_provider(self, mock_config, mock_adapters):
-        """Test fallback when primary provider is not available."""
+        """Test fallback when primary provider is not available (init fails)."""
         router = SearchRouter(app_config=mock_config)
-
-        # Simulate Google not being available (removed from providers dict)
-        del router.providers["google"]
         mock_config.search_provider = "google"
         mock_config.search_fallback = "duckduckgo"
+
+        # Make Google fail to init
+        mock_adapters["google"].side_effect = Exception("Init failed")
 
         expected_results = [
             SearchResult(title="DDG", content="ddg", url="http://ddg.com")
@@ -110,7 +110,9 @@ class TestSearchRouter:
         results = router.search("query")
 
         assert results == expected_results
-        # Should have called DDG (tuned=True by default in fallback logic implementation)
+        # Google init attempted
+        mock_adapters["google"].assert_called()
+        # DDG search called
         mock_adapters["duckduckgo"].return_value.search.assert_called_with(
             "query", max_results=5, tuned=True
         )
@@ -165,7 +167,7 @@ class TestSearchRouter:
         ddg_mock.search.assert_called_once()
 
     def test_search_all_fail(self, mock_config, mock_adapters):
-        """Test empty list returned when all providers fail."""
+        """Test that exception is raised if fallback also fails."""
         router = SearchRouter(app_config=mock_config)
         mock_config.search_provider = "google"
         mock_config.search_fallback = "duckduckgo"
@@ -184,7 +186,10 @@ class TestSearchRouter:
     def test_search_no_provider_available(self, mock_config, mock_adapters):
         """Test ValueError when no providers are configured/available."""
         router = SearchRouter(app_config=mock_config)
-        router.providers.clear()  # Simulate no init
+
+        # Make inits fail
+        mock_adapters["google"].side_effect = Exception("Init Fail")
+        mock_adapters["duckduckgo"].side_effect = Exception("Init Fail")
 
         with pytest.raises(ValueError, match="No valid search provider available"):
             router.search("query")

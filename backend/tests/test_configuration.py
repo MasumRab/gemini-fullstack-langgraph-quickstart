@@ -5,6 +5,7 @@ and comprehensive validation.
 """
 
 import pytest
+from pydantic import ValidationError
 
 from agent.configuration import Configuration
 from agent.models import (
@@ -12,6 +13,7 @@ from agent.models import (
     DEFAULT_QUERY_MODEL,
     DEFAULT_REFLECTION_MODEL,
     GEMINI_PRO,
+    TEST_MODEL,
 )
 
 

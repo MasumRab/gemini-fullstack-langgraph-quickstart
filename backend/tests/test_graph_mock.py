@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
@@ -11,8 +11,6 @@ from agent.nodes import (
     reflection,
     web_research,
 )
-
-TEST_MODEL = "gemma-3-27b-it"
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from langgraph.graph import END, START, StateGraph
+from langgraph.graph import END, START, Send, StateGraph
 
 from agent.configuration import Configuration
 from agent.kg import kg_enrich  # New Node
@@ -18,6 +18,7 @@ from agent.nodes import (
     planning_router,
     planning_wait,
     reflection,
+    research_subgraph,  # New Node
     scoping_node,  # New Node
     select_next_task,
     update_plan,
@@ -84,6 +85,9 @@ builder.add_node("update_plan", update_plan)
 builder.add_node("select_next_task", select_next_task)
 builder.add_node("outline_gen", outline_gen)  # Add STORM Outline Gen
 builder.add_node("checklist_verifier", checklist_verifier)  # Add RhinoInsight Verifier
+builder.add_node(
+    "research_subgraph", research_subgraph
+)  # Add GPT Researcher recursive research
 
 builder.add_edge(START, "load_context")
 builder.add_edge("load_context", "scoping_node")
@@ -93,7 +97,7 @@ def scoping_router(state: OverallState) -> str:
     """Route based on scoping status."""
     if state.get("scoping_status") == "active":
         return "planning_wait"  # Reusing planning_wait to pause for user input
-    return "generate_plan"
+    return "outline_gen"
 
 
 builder.add_conditional_edges(
@@ -123,14 +127,35 @@ builder.add_edge("compression_node", "kg_enrich")
 builder.add_edge("kg_enrich", "checklist_verifier")
 builder.add_edge("checklist_verifier", "reflection")
 
+
+def reflection_router(state: OverallState) -> list[Send] | str:
+    """Route to recursive subgraphs if subtopics were identified."""
+    subtopics = state.get("subtopics_to_explore", [])
+    if subtopics:
+        return [Send("research_subgraph", {"subtopic_query": s}) for s in subtopics]
+    return "update_plan"
+
+
+builder.add_conditional_edges(
+    "reflection", reflection_router, ["research_subgraph", "update_plan"]
+)
+
+# research_subgraph results are merged automatically via state reducers
+# We need to route it back to update_plan to synchronize everything
+builder.add_edge("research_subgraph", "update_plan")
+
 # Reflection now goes to update_plan instead of evaluate_research
-builder.add_edge("reflection", "update_plan")
+# builder.add_edge("reflection", "update_plan") # Replaced by conditional edge above
 
 # Update plan goes to execution_router to decide next step
 builder.add_conditional_edges(
     "update_plan", execution_router, ["select_next_task", "denoising_refiner"]
 )
 builder.add_edge("denoising_refiner", END)
+
+# TODO(priority=High, complexity=Medium): [SOTA Deep Research] Graph Wiring
+# Add conditional edges to route from 'reflection' or 'update_plan' to 'research_subgraph'.
+# research_subgraph results should then flow back into 'update_plan' or merge into the state.
 
 # Document edges for registry/tooling
 graph_registry.document_edge(
@@ -202,4 +227,4 @@ def draw_graph_png():
     return graph.get_graph().draw_mermaid_png()
 
 
-# Removed stale TODOs for visualization as draw_graph_png is now implemented.
+# Removed stale items for visualization as draw_graph_png is now implemented.

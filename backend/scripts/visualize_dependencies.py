@@ -1,9 +1,12 @@
 import ast
+import os
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pkg_resources
 import scipy.cluster.hierarchy as sch
 
 # Set up paths

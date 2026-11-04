@@ -27,19 +27,18 @@ Usage:
 """
 
 import logging
-import os
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, StructuredTool
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
 from agent.configuration import Configuration
 from agent.models import GEMINI_PRO
 from agent.state import OverallState
+from agent.utils import get_cached_llm
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +97,7 @@ class ToolRegistry:
                 category="search",
             )
         except ImportError:
-            pass
+            logger.debug("search.router not available; web_search tool not registered")
 
         # RAG retrieval
         try:
@@ -114,7 +113,7 @@ class ToolRegistry:
                         category="search",
                     )
         except ImportError:
-            pass
+            logger.debug("agent.rag not available; rag_search tool not registered")
 
         # Tavily (if available)
         try:
@@ -128,7 +127,9 @@ class ToolRegistry:
                     category="search",
                 )
         except ImportError:
-            pass
+            logger.debug(
+                "agent.research_tools not available; tavily_search tool not registered"
+            )
 
     def register(
         self,
@@ -226,7 +227,9 @@ class AgentPool:
                 capabilities=["search", "quick_answer"],
             )
         except ImportError:
-            pass
+            logger.debug(
+                "agent.graphs.upstream not available; quick_search agent not registered"
+            )
 
         try:
             from agent.graphs.planning import graph as planning
@@ -238,7 +241,9 @@ class AgentPool:
                 capabilities=["planning", "search", "reflection", "synthesis"],
             )
         except ImportError:
-            pass
+            logger.debug(
+                "agent.graphs.planning not available; planner agent not registered"
+            )
 
         try:
             from agent.graph import graph as enriched
@@ -250,7 +255,9 @@ class AgentPool:
                 capabilities=["planning", "search", "kg", "compression", "synthesis"],
             )
         except ImportError:
-            pass
+            logger.debug(
+                "agent.graph not available; deep_researcher agent not registered"
+            )
 
     def register(
         self,
@@ -349,11 +356,8 @@ Respond with JSON:
 """
 
         try:
-            llm = ChatGoogleGenerativeAI(
-                model=model,
-                temperature=0,
-                api_key=os.getenv("GEMINI_API_KEY"),
-            )
+            # ⚡ Bolt Optimization: Use centralized cached factory
+            llm = get_cached_llm(model, 0)
             response = llm.invoke(prompt)
             content = (
                 response.content if hasattr(response, "content") else str(response)

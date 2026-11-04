@@ -11,6 +11,7 @@ import logging
 import time
 from collections import deque
 from datetime import datetime
+from functools import lru_cache
 from threading import Lock
 from typing import Dict
 from zoneinfo import ZoneInfo
@@ -159,7 +160,7 @@ class RateLimiter:
                     logger.error(
                         f"Daily request limit ({self.limits['rpd']}) reached for {self.model}!"
                     )
-                    raise Exception(
+                    raise RuntimeError(
                         f"Daily quota exceeded for {self.model}. Resets at midnight Pacific time."
                     )
 
@@ -356,6 +357,10 @@ def get_rate_limiter(model: str) -> RateLimiter:
         return _rate_limiters[model]
 
 
+# ⚡ Bolt Optimization: Cache ContextWindowManager
+# Since this class is stateless (except for config) and logs on init,
+# caching it prevents unnecessary object creation and log spam on every LLM call.
+@lru_cache(maxsize=16)
 def get_context_manager(model: str) -> ContextWindowManager:
     """Get a context window manager for a model.
 

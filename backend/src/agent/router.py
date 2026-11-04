@@ -68,6 +68,6 @@ try:
         if handler:
             graph = graph.with_config({"callbacks": [handler]})
 except ImportError:
-    pass
+    pass  # observability is optional; graph runs without it
 
 __all__ = ["graph", "graph_registry"]

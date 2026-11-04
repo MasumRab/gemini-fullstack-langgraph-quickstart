@@ -4,6 +4,10 @@ These tests ensure that the agent's search tools do not crash when external APIs
 unexpected structures, empty strings, or partial data.
 """
 
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from agent.research_tools import (
     deduplicate_search_results,
     format_search_output,
