@@ -65,7 +65,7 @@ def _is_ip_in_trusted_proxies(ip: str) -> bool:
 
 def extract_client_ip_from_forwarded(
     forwarded: str,
-    trusted_proxy_count: int = TRUSTED_PROXY_COUNT,
+    trusted_proxy_count: int | None = None,
     fallback_ip: str | None = None,
 ) -> str | None:
     """Extract the real client IP from X-Forwarded-For header using trust-bound extraction.
@@ -89,6 +89,9 @@ def extract_client_ip_from_forwarded(
     Returns:
         The extracted client IP, or fallback_ip if no valid candidate found.
     """
+    if trusted_proxy_count is None:
+        trusted_proxy_count = TRUSTED_PROXY_COUNT
+
     if not forwarded:
         return fallback_ip
 
