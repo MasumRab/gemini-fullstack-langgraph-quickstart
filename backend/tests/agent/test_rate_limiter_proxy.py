@@ -29,9 +29,10 @@ def test_rate_limiter_integration():
 
 @pytest.mark.asyncio
 async def test_rate_limiter_proxy_logic(monkeypatch):
-    from agent import security
-    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
     """Unit test for RateLimitMiddleware proxy logic."""
+    from agent import security
+
+    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -109,9 +110,10 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_rate_limiter_truncation(monkeypatch):
-    from agent import security
-    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
     """Test that extremely long headers are truncated to prevent memory exhaustion."""
+    from agent import security
+
+    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
 
     async def mock_app(scope, receive, send):
         response = PlainTextResponse("OK")

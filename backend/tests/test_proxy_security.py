@@ -10,6 +10,7 @@ from agent.security import RateLimitMiddleware
 async def test_proxy_security_default_secure(monkeypatch):
     """Verify that by default (trust_proxy_headers=False), X-Forwarded-For is ignored."""
     from agent import security
+
     monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 0)
 
     # Mock App
@@ -51,11 +52,11 @@ async def test_proxy_security_default_secure(monkeypatch):
     assert "192.168.0.3" not in middleware.requests
 
 
-
 @pytest.mark.asyncio
 async def test_proxy_security_trusted_enabled(monkeypatch):
     """Verify that when enabled, X-Forwarded-For IS used."""
     from agent import security
+
     monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
 
     # Mock App
@@ -97,16 +98,15 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
     assert "192.168.0.1" not in middleware.requests
 
 
-
 @pytest.mark.asyncio
 async def test_spoofing_vulnerability(monkeypatch):
-
     """
     Verify that the middleware correctly identifies the client IP even if it\'s private,
     when it is the last IP in the trusted proxy chain.
     Prevents spoofing by injecting a public IP at the start of X-Forwarded-For.
     """
     from agent import security
+
     monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 0)
 
     # Mock App
@@ -129,7 +129,10 @@ async def test_spoofing_vulnerability(monkeypatch):
     # Trusted Proxy appends Real IP.
     # Header: "192.168.0.4, 192.168.0.5"
 
-    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"192.168.0.4, 192.168.0.5")]
+    headers = [
+        (b"host", b"localhost"),
+        (b"x-forwarded-for", b"192.168.0.4, 192.168.0.5"),
+    ]
 
     scope = {
         "type": "http",
@@ -153,7 +156,6 @@ async def test_spoofing_vulnerability(monkeypatch):
     assert "192.168.0.4" not in middleware.requests
 
 
-
 @pytest.mark.asyncio
 async def test_x_forwarded_for_ignored_by_default(monkeypatch):
     """
@@ -161,6 +163,7 @@ async def test_x_forwarded_for_ignored_by_default(monkeypatch):
     This test expects SECURE behavior (Req 2 blocked).
     """
     from agent import security
+
     monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
 
     app = AsyncMock()
@@ -209,6 +212,7 @@ async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     This is for legitimate use cases (behind load balancer).
     """
     from agent import security
+
     monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
     app = AsyncMock()
     # Limit 1 request per window, BUT we trust proxies

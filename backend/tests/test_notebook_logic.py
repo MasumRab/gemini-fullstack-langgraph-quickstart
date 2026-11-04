@@ -49,15 +49,6 @@ class TestNotebookLogic(unittest.TestCase):
 
             # Instantiate LLM
             llm = mock_llm_class(model=model_name, temperature=0)
-        os.environ["QUERY_GENERATOR_MODEL"] = SELECTED_MODEL
-        os.environ["REFLECTION_MODEL"] = SELECTED_MODEL
-        os.environ["ANSWER_MODEL"] = SELECTED_MODEL
-
-        # Now simulate agent init
-        model_name = os.environ.get("ANSWER_MODEL", "gemma-3-27b-it")
-
-        # Instantiate LLM
-        llm = mock_llm_class(model=model_name, temperature=0)
 
         # Assertions
         mock_llm_class.assert_called_with(model="gemma-3-27b-it", temperature=0)
