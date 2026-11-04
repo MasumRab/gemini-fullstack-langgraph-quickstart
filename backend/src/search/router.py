@@ -1,16 +1,14 @@
 import logging
-from typing import List, Optional, Dict, Any
+import threading
 from enum import Enum
+from typing import Dict, List
 
-from config.app_config import config, AppConfig
+from config.app_config import AppConfig, config
+
 from .provider import SearchProvider, SearchResult
-from .providers.google_adapter import GoogleSearchAdapter
-from .providers.duckduckgo_adapter import DuckDuckGoAdapter
-from .providers.brave_adapter import BraveSearchAdapter
-from .providers.tavily_adapter import TavilyAdapter
-from .providers.bing_adapter import BingAdapter
 
 logger = logging.getLogger(__name__)
+
 
 class SearchProviderType(Enum):
     GOOGLE = "google"
@@ -19,49 +17,68 @@ class SearchProviderType(Enum):
     TAVILY = "tavily"
     BING = "bing"
 
-class SearchRouter:
-    """
-    Routes search queries to the appropriate provider with fallback logic.
-    """
 
-    _PROVIDER_CLASSES = {
-        SearchProviderType.GOOGLE.value: GoogleSearchAdapter,
-        SearchProviderType.DUCKDUCKGO.value: DuckDuckGoAdapter,
-        SearchProviderType.BRAVE.value: BraveSearchAdapter,
-        SearchProviderType.TAVILY.value: TavilyAdapter,
-        SearchProviderType.BING.value: BingAdapter,
-    }
+class SearchRouter:
+    """Routes search queries to the appropriate provider with fallback logic."""
 
     def __init__(self, app_config: AppConfig = config):
         """Initialize router with config."""
         self.config = app_config
         self.providers: Dict[str, SearchProvider] = {}
+        self._providers_lock = threading.Lock()
 
-    def _get_provider(self, name: str) -> Optional[SearchProvider]:
+    def _get_provider(self, name: str) -> SearchProvider | None:
+        # Quick check without lock
         if name in self.providers:
             return self.providers[name]
 
-        provider_cls = self._PROVIDER_CLASSES.get(name)
-        if not provider_cls:
-            return None
+        with self._providers_lock:
+            # Double-checked locking
+            if name in self.providers:
+                return self.providers[name]
 
-        try:
-            instance = provider_cls()
-            self.providers[name] = instance
-            return instance
-        except Exception as e:
-            logger.debug(f"Failed to initialize provider {name}: {e}")
-            return None
+            try:
+                if name == SearchProviderType.GOOGLE.value:
+                    from .providers.google_adapter import GoogleSearchAdapter
+
+                    self.providers[name] = GoogleSearchAdapter()
+                elif name == SearchProviderType.BRAVE.value:
+                    from .providers.brave_adapter import BraveSearchAdapter
+
+                    self.providers[name] = BraveSearchAdapter()
+                elif name == SearchProviderType.DUCKDUCKGO.value:
+                    from .providers.duckduckgo_adapter import DuckDuckGoAdapter
+
+                    self.providers[name] = DuckDuckGoAdapter()
+                elif name == SearchProviderType.TAVILY.value:
+                    from .providers.tavily_adapter import TavilyAdapter
+
+                    self.providers[name] = TavilyAdapter()
+                elif name == SearchProviderType.BING.value:
+                    from .providers.bing_adapter import BingAdapter
+
+                    self.providers[name] = BingAdapter()
+            except Exception as e:
+                logger.debug(f"Provider {name} failed to init: {e}")
+                return None
+
+            # Log warning for unrecognized provider
+            if name not in self.providers:
+                valid_providers = [p.value for p in SearchProviderType]
+                logger.warning(
+                    f"Unknown provider '{name}'. Valid providers: {valid_providers}"
+                )
+
+            return self.providers.get(name)
 
     def search(
         self,
         query: str,
         max_results: int = 5,
-        provider_name: Optional[str] = None,
+        provider_name: str | None = None,
         attempt_fallback: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search with routing and fallback logic.
+        """Execute search with routing and fallback logic.
 
         Args:
             query: Search query
@@ -107,6 +124,7 @@ class SearchRouter:
                 # If we get here, all attempts failed
                 logger.error("All search attempts failed.")
                 return []
+
 
 # Singleton instance
 search_router = SearchRouter()
