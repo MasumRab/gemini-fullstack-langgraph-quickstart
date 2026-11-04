@@ -31,17 +31,17 @@ def setup_environment():
              backend_dir = backend_dir / 'backend'
         elif (backend_dir.parent / 'backend').exists():
              backend_dir = backend_dir.parent / 'backend'
-
+    
     # Add src to path if it exists (for 'from agent import ...' style)
     src_dir = backend_dir / 'src'
     if src_dir.exists():
         if str(src_dir) not in sys.path:
             sys.path.append(str(src_dir))
             print(f"  [OK] Added {src_dir} to sys.path")
-
+    
     if str(backend_dir) not in sys.path:
         sys.path.append(str(backend_dir))
-
+        
     # Verify backend/agent can be imported
     try:
         import agent
@@ -103,21 +103,21 @@ if "GEMINI_API_KEY" not in os.environ:
 else:
     try:
         from google import genai
-
+        
         # Initialize the client
         client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-
+        
         # Test the selected model
         print(f"🧪 Testing model: {SELECTED_MODEL}")
         response = client.models.generate_content(
             model=SELECTED_MODEL,
             contents="Explain how AI works in a few words"
         )
-
+        
         print(f"  [OK] Model verification successful!")
         print(f"   Model: {SELECTED_MODEL}")
         print(f"   Response: {response.text[:100]}...")
-
+        
     except ImportError:
         print("  [!] google-genai package not installed!")
         print("   Installing now...")
@@ -125,7 +125,7 @@ else:
         import sys
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "google-genai"])
         print("  [OK] Installed! Please re-run this cell.")
-
+        
     except Exception as e:
         print(f"  [X] Model verification failed: {e}")
         print(f"   This could mean:")
@@ -152,7 +152,7 @@ except ImportError:
 
 if IN_COLAB:
     print("🔧 Running in Google Colab - Installing dependencies...")
-
+    
     # 1. Clone the repository
     !rm -rf gemini-fullstack-langgraph-quickstart
     !git clone https://github.com/MasumRab/gemini-fullstack-langgraph-quickstart.git

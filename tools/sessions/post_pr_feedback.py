@@ -36,13 +36,13 @@ def get_pr_info_from_session(session: Dict) -> Optional[Dict]:
     pr_url = session.get("pr_url", "")
     if not pr_url or pr_url == "N/A":
         return None
-
+    
     # Parse: https://github.com/owner/repo/pull/123
     import re
     match = re.match(r"https://github\.com/([^/]+)/([^/]+)/pull/(\d+)", pr_url)
     if not match:
         return None
-
+    
     return {
         "owner": match.group(1),
         "repo": match.group(2),
@@ -56,7 +56,7 @@ def get_session_context(store: JulesSessionStore, session_id: str) -> Dict:
     session = store.get_session(session_id)
     if not session:
         return {}
-
+    
     activities = []
     sid = session_id.replace("sessions/", "")
     with store._conn() as conn:
@@ -65,7 +65,7 @@ def get_session_context(store: JulesSessionStore, session_id: str) -> Dict:
             (sid,)
         ).fetchall()
         activities = [dict(r) for r in rows]
-
+    
     # Get latest agent message
     latest_agent_msg = None
     latest_user_msg = None
@@ -76,7 +76,7 @@ def get_session_context(store: JulesSessionStore, session_id: str) -> Dict:
             latest_user_msg = a.get("summary", "")
         if latest_agent_msg and latest_user_msg:
             break
-
+    
     return {
         "session": session,
         "activities": activities,
@@ -95,7 +95,7 @@ def generate_feedback_comment(session_id: str, context: Dict) -> str:
     activity_count = context.get("activity_count", 0)
     latest_agent = context.get("latest_agent_message") or ""
     latest_user = context.get("latest_user_message") or ""
-
+    
     # Determine what the agent needs
     state_lower = state.lower()
     if "plan_approval" in state_lower:
@@ -120,7 +120,7 @@ def generate_feedback_comment(session_id: str, context: Dict) -> str:
     else:
         action = "Reply with **@jules** followed by your instructions."
         category = "Awaiting Input"
-
+    
     # Build the comment
     comment = f"""## 🤖 Jules Session Feedback
 
@@ -157,7 +157,7 @@ def post_pr_comment(owner: str, repo: str, pr_number: int, body: str, token: str
         "X-GitHub-Api-Version": "2022-11-28",
     }
     data = {"body": body}
-
+    
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 201:
         print(f"  ✅ Posted comment to {owner}/{repo}#{pr_number}")
@@ -174,20 +174,20 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Show comments without posting")
     parser.add_argument("--list", action="store_true", help="List sessions with PRs awaiting feedback")
     args = parser.parse_args()
-
+    
     store = JulesSessionStore()
-
+    
     # Get sessions with PRs in awaiting states
     awaiting_states = ["AWAITING_USER_FEEDBACK", "AWAITING_PLAN_APPROVAL", "PAUSED"]
     sessions_with_prs = []
-
+    
     for state in awaiting_states:
         sessions = store.list_sessions(state=state, limit=100)
         for s in sessions:
             pr_info = get_pr_info_from_session(s)
             if pr_info:
                 sessions_with_prs.append((s, pr_info))
-
+    
     if args.list:
         print(f"\n{'Session ID':<22} {'State':<28} {'PR':<10} {'Repo':<35} Title")
         print("-" * 110)
@@ -199,27 +199,27 @@ def main():
             title = session.get("title", "")[:40]
             print(f"{session_id:<22} {state:<28} {pr_str:<10} {repo:<35} {title}")
         return
-
+    
     if not sessions_with_prs:
         print("No sessions with PRs in awaiting states.")
         return
-
+    
     # Filter to specific session if requested
     if args.session:
         sessions_with_prs = [(s, p) for s, p in sessions_with_prs if s.get("session_id") == args.session]
         if not sessions_with_prs:
             print(f"Session {args.session} not found or has no PR.")
             return
-
+    
     token = get_github_token() if not args.dry_run else ""
-
+    
     for session, pr_info in sessions_with_prs:
         session_id = session.get("session_id", "")
         print(f"\n📋 Processing {session_id} -> {pr_info['owner']}/{pr_info['repo']}#{pr_info['number']}")
-
+        
         context = get_session_context(store, session_id)
         comment = generate_feedback_comment(session_id, context)
-
+        
         if args.dry_run:
             print("--- DRY RUN: Comment preview ---")
             print(comment)

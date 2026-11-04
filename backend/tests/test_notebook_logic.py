@@ -11,20 +11,20 @@ sys.modules["google.colab.userdata"] = MagicMock()
 sys.modules["langchain_google_genai"] = MagicMock()
 
 
-import pytest
-
-
-class TestNotebookLogic:
-    def setup_method(self):
+class TestNotebookLogic(unittest.TestCase):
+    def setUp(self):
         self.original_env = os.environ.copy()
         os.environ["GEMINI_API_KEY"] = "fake_key"
 
-    def teardown_method(self):
+    def tearDown(self):
         os.environ.clear()
         os.environ.update(self.original_env)
 
     @patch("langchain_google_genai.ChatGoogleGenerativeAI")
-    def test_agent_initialization_with_gemma(self, mock_llm_class, monkeypatch):
+    @patch.dict("os.environ", clear=False)
+    def test_agent_initialization_with_gemma(self, mock_llm_class):
+        import os
+
         """Verify that the agent initializes with the gemma-3 model based on notebook logic."""
 
         # Simulate the notebook's model selection logic
@@ -36,19 +36,23 @@ class TestNotebookLogic:
             SELECTED_MODEL = "wrong-model"
 
         # Set Env vars as notebook does
-        monkeypatch.setenv("QUERY_GENERATOR_MODEL", SELECTED_MODEL)
-        monkeypatch.setenv("REFLECTION_MODEL", SELECTED_MODEL)
-        monkeypatch.setenv("ANSWER_MODEL", SELECTED_MODEL)
+        with patch.dict(
+            os.environ,
+            {
+                "QUERY_GENERATOR_MODEL": SELECTED_MODEL,
+                "REFLECTION_MODEL": SELECTED_MODEL,
+                "ANSWER_MODEL": SELECTED_MODEL,
+            },
+        ):
+            # Now simulate agent init
+            model_name = os.environ.get("ANSWER_MODEL", "gemma-3-27b-it")
 
-        # Now simulate agent init
-        model_name = os.environ.get("ANSWER_MODEL", "gemma-3-27b-it")
-
-        # Instantiate LLM
-        llm = mock_llm_class(model=model_name, temperature=0)
+            # Instantiate LLM
+            llm = mock_llm_class(model=model_name, temperature=0)
 
         # Assertions
         mock_llm_class.assert_called_with(model="gemma-3-27b-it", temperature=0)
-        assert model_name == "gemma-3-27b-it"
+        self.assertEqual(model_name, "gemma-3-27b-it")
         print("✅ Notebook logic for model selection is correct.")
 
 

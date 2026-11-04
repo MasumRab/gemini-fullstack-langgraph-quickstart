@@ -93,11 +93,11 @@ class TestAPISecurity:
             assert response.status_code == 200
 
     def test_rate_limit_respects_x_forwarded_for(self, monkeypatch):
-        """Test that rate limiting uses the X-Forwarded-For header when present."""
         import agent.security
-        from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 
         monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
+        """Test that rate limiting uses the X-Forwarded-For header when present."""
+        from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 
         # Instantiate a dedicated app with trust_proxy_headers=True
         app = FastAPI()
@@ -165,9 +165,9 @@ class TestAPISecurity:
             "method": "GET",
             "scheme": "http",
         }
-        request = Request(scope)  # noqa: F841
+        request = Request(scope)
 
-        async def call_next(*args, **kwargs):
+        async def call_next(req):
             return Response("ok")
 
         # 🛡️ Sentinel: Manually reset last_cleanup to ensure logic triggers
@@ -215,9 +215,9 @@ class TestAPISecurity:
             "method": "GET",
             "scheme": "http",
         }
-        request = Request(scope)  # noqa: F841
+        request = Request(scope)
 
-        async def call_next(*args, **kwargs):
+        async def call_next(req):
             return Response("ok")
 
         # Dispatch should SKIP cleanup
