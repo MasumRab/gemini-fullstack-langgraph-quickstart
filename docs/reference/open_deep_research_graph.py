@@ -429,7 +429,7 @@ async def execute_tool_safely(tool, args, config):
     try:
         return await tool.ainvoke(args, config)
     except Exception as e:
-        return f"Error executing tool: {str(e)}"
+        return f"Error executing tool: {e!s}"
 
 
 async def researcher_tools(state: ResearcherState, config: RunnableConfig) -> Command[Literal["researcher", "compress_research"]]:
