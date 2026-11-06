@@ -153,7 +153,7 @@ builder.add_conditional_edges(
 )
 builder.add_edge("denoising_refiner", END)
 
-# TODO(priority=High, complexity=Medium): [SOTA Deep Research] Graph Wiring
+# TODO(priority=High, complexity=Medium, owner=agent): [SOTA Deep Research] Graph Wiring
 # Add conditional edges to route from 'reflection' or 'update_plan' to 'research_subgraph'.
 # research_subgraph results should then flow back into 'update_plan' or merge into the state.
 
@@ -227,4 +227,4 @@ def draw_graph_png():
     return graph.get_graph().draw_mermaid_png()
 
 
-# Removed stale TODOs for visualization as draw_graph_png is now implemented.
+# Removed stale items for visualization as draw_graph_png is now implemented.
