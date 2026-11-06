@@ -4,7 +4,7 @@ import pytest
 from starlette.responses import PlainTextResponse
 
 import agent.security
-from agent.security import RateLimitMiddleware
+from agent.security import RateLimitMiddleware, extract_client_ip_from_forwarded
 
 
 @pytest.mark.asyncio
@@ -292,3 +292,134 @@ async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
         assert response3.status_code == 429
     else:
         pytest.fail("Client A should have been rate limited on second request.")
+
+
+# ---------------------------------------------------------------------------
+# Direct unit tests for extract_client_ip_from_forwarded
+#
+# These call the function with explicit arguments rather than monkeypatching the
+# module globals, so each case exercises one branch on its own. Note the
+# None-vs-empty distinction: `trusted_proxies=None` means "fall back to the
+# TRUSTED_PROXIES global", while `set()` means "explicitly no trusted proxies"
+# and selects the count-based path. Two cases below depend on that difference.
+# ---------------------------------------------------------------------------
+
+
+def test_direct_trusted_proxies_skips_from_the_right():
+    """Rightmost trusted hops are skipped; the first untrusted IP wins."""
+    assert (
+        extract_client_ip_from_forwarded(
+            "203.0.113.9, 10.0.0.1, 10.0.0.2",
+            trusted_proxies={"10.0.0.1", "10.0.0.2"},
+        )
+        == "203.0.113.9"
+    )
+
+
+def test_direct_trusted_proxies_prefers_rightmost_untrusted_hop():
+    """A hop closer to the server beats a client-supplied leftmost value."""
+    assert (
+        extract_client_ip_from_forwarded(
+            "1.2.3.4, 203.0.113.9, 10.0.0.1",
+            trusted_proxies={"10.0.0.1"},
+        )
+        == "203.0.113.9"
+    )
+
+
+def test_direct_trusted_proxies_supports_cidr_entries():
+    """Trusted entries may be CIDR ranges, not only single addresses."""
+    assert (
+        extract_client_ip_from_forwarded(
+            "203.0.113.9, 10.8.0.4",
+            trusted_proxies={"10.0.0.0/8"},
+        )
+        == "203.0.113.9"
+    )
+
+
+def test_direct_count_selects_the_element_before_the_trusted_hops():
+    """count=1 over [client, proxy1] returns ips[-2], the client."""
+    assert (
+        extract_client_ip_from_forwarded(
+            "203.0.113.9, 10.0.0.1",
+            trusted_proxy_count=1,
+            trusted_proxies=set(),
+        )
+        == "203.0.113.9"
+    )
+
+
+def test_direct_count_len_equal_to_chain_returns_leftmost():
+    """count spanning the whole chain still has a valid index: ips[-len]."""
+    assert (
+        extract_client_ip_from_forwarded(
+            "198.51.100.7, 10.0.0.1",
+            trusted_proxy_count=1,
+            trusted_proxies=set(),
+        )
+        == "198.51.100.7"
+    )
+
+
+def test_direct_count_beyond_chain_falls_back_to_leftmost(caplog):
+    """An over-large count warns and degrades to ips[0] instead of raising."""
+    with caplog.at_level("WARNING"):
+        got = extract_client_ip_from_forwarded(
+            "203.0.113.9, 10.0.0.1",
+            trusted_proxy_count=5,
+            trusted_proxies=set(),
+        )
+    assert got == "203.0.113.9"
+    assert any("Not enough IPs" in r.message for r in caplog.records)
+
+
+def test_direct_no_trust_configured_returns_fallback():
+    """count=0 with no trusted proxies must not trust the header at all."""
+    assert (
+        extract_client_ip_from_forwarded(
+            "203.0.113.9",
+            trusted_proxy_count=0,
+            trusted_proxies=set(),
+            fallback_ip="127.0.0.1",
+        )
+        == "127.0.0.1"
+    )
+
+
+def test_direct_invalid_entries_are_skipped():
+    """Unparseable hops are dropped before indexing."""
+    assert (
+        extract_client_ip_from_forwarded(
+            "not-an-ip, 203.0.113.9, 10.0.0.1",
+            trusted_proxies={"10.0.0.1"},
+        )
+        == "203.0.113.9"
+    )
+
+
+def test_direct_all_hops_trusted_returns_leftmost():
+    """If every hop is trusted there is no untrusted candidate; use the leftmost."""
+    assert (
+        extract_client_ip_from_forwarded(
+            "10.0.0.2, 10.0.0.1",
+            trusted_proxies={"10.0.0.1", "10.0.0.2"},
+        )
+        == "10.0.0.2"
+    )
+
+
+def test_direct_empty_header_returns_fallback():
+    assert extract_client_ip_from_forwarded("", fallback_ip="127.0.0.1") == "127.0.0.1"
+
+
+def test_direct_none_reads_the_global_not_an_empty_set(monkeypatch):
+    """`trusted_proxies=None` must fall back to the module global."""
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXIES", {"10.0.0.1"})
+    assert (
+        extract_client_ip_from_forwarded(
+            "203.0.113.9, 10.0.0.1",
+            trusted_proxies=None,
+        )
+        == "203.0.113.9"
+    )
