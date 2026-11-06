@@ -3,14 +3,15 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from starlette.responses import PlainTextResponse
 
-import agent.security
 from agent.security import RateLimitMiddleware
 
 
 @pytest.mark.asyncio
 async def test_proxy_security_default_secure(monkeypatch):
     """Verify that by default (trust_proxy_headers=False), X-Forwarded-For is ignored."""
-    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 0)
+    from agent import security
+
+    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 0)
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -29,16 +30,16 @@ async def test_proxy_security_default_secure(monkeypatch):
     # Simulate request with spoofed header
     # Real IP: 1.2.3.4
     # Spoofed Header: 5.6.7.8
-    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"5.6.7.8")]
+    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"192.168.0.3")]
 
     scope = {
         "type": "http",
         "path": "/protected",
-        "client": ("1.2.3.4", 1234),
+        "client": ("192.168.0.2", 1234),
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():
@@ -47,14 +48,16 @@ async def test_proxy_security_default_secure(monkeypatch):
     await middleware(scope, mock_receive, mock_send)
 
     # Expectation: The request should be tracked under the Real IP (1.2.3.4), NOT the spoofed one
-    assert "1.2.3.4" in middleware.requests
-    assert "5.6.7.8" not in middleware.requests
+    assert "192.168.0.2" in middleware.requests
+    assert "192.168.0.3" not in middleware.requests
 
 
 @pytest.mark.asyncio
 async def test_proxy_security_trusted_enabled(monkeypatch):
     """Verify that when enabled, X-Forwarded-For IS used."""
-    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
+    from agent import security
+
+    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -73,16 +76,16 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
     # Simulate request
     # Real IP: 10.0.0.1 (Proxy)
     # Header: 5.6.7.8 (Client)
-    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"5.6.7.8")]
+    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"192.168.0.3")]
 
     scope = {
         "type": "http",
         "path": "/protected",
-        "client": ("10.0.0.1", 1234),
+        "client": ("192.168.0.1", 1234),
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
         pass
 
     async def mock_receive():
@@ -91,8 +94,8 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
     await middleware(scope, mock_receive, mock_send)
 
     # Expectation: The request should be tracked under the Client IP (5.6.7.8)
-    assert "5.6.7.8" in middleware.requests
-    assert "10.0.0.1" not in middleware.requests
+    assert "192.168.0.3" in middleware.requests
+    assert "192.168.0.1" not in middleware.requests
 
 
 @pytest.mark.asyncio
@@ -102,7 +105,9 @@ async def test_spoofing_vulnerability(monkeypatch):
     when it is the last IP in the trusted proxy chain.
     Prevents spoofing by injecting a public IP at the start of X-Forwarded-For.
     """
-    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 0)
+    from agent import security
+
+    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 0)
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -120,20 +125,24 @@ async def test_spoofing_vulnerability(monkeypatch):
 
     # Scenario:
     # Attacker Real IP (seen by proxy): 10.0.0.5 (Private)
-    # Attacker Spoofs Header: "8.8.8.8" (Public)
+    # Attacker Spoofs Header: "192.168.0.4" (Public)
     # Trusted Proxy appends Real IP.
-    # Header: "8.8.8.8, 10.0.0.5"
+    # Header: "192.168.0.4, 192.168.0.5"
 
-    headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"8.8.8.8, 10.0.0.5")]
+    headers = [
+        (b"host", b"localhost"),
+        (b"x-forwarded-for", b"192.168.0.4, 192.168.0.5"),
+    ]
 
     scope = {
         "type": "http",
         "path": "/protected",
-        "client": ("10.0.0.1", 1234),  # Connection from Proxy
+        "client": ("192.168.0.1", 1234),  # Connection from Proxy
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(_message):
+
         pass
 
     async def mock_receive():
@@ -143,8 +152,8 @@ async def test_spoofing_vulnerability(monkeypatch):
 
     # Expectation: The request should be tracked under the Real IP (10.0.0.5)
     # If vulnerable, it would be under 8.8.8.8
-    assert "10.0.0.1" in middleware.requests
-    assert "8.8.8.8" not in middleware.requests
+    assert "192.168.0.1" in middleware.requests
+    assert "192.168.0.4" not in middleware.requests
 
 
 @pytest.mark.asyncio
@@ -153,16 +162,18 @@ async def test_x_forwarded_for_ignored_by_default(monkeypatch):
     Test that X-Forwarded-For is IGNORED by default to prevent spoofing.
     This test expects SECURE behavior (Req 2 blocked).
     """
-    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
+    from agent import security
+
+    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
 
     app = AsyncMock()
     # Limit 1 request per window, default trust_proxy_headers=False
     mw = RateLimitMiddleware(app, limit=1, window=60, protected_paths=["/api"])
 
     # Real Client IP
-    client_ip = "1.2.3.4"
+    client_ip = "192.168.0.2"
 
-    async def call_next(request):
+    async def call_next(_request):
         return "success"
 
     # Request 1: Normal request
@@ -178,7 +189,7 @@ async def test_x_forwarded_for_ignored_by_default(monkeypatch):
     req2 = MagicMock()
     req2.url.path = "/api/test"
     req2.client.host = client_ip  # Same real IP
-    req2.headers.get.return_value = "10.0.0.1"  # Spoofed IP
+    req2.headers.get.return_value = "192.168.0.1"  # Spoofed IP
 
     response2 = await mw.dispatch(req2, call_next)
 
@@ -200,8 +211,9 @@ async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     Test that X-Forwarded-For IS respected when trust_proxy_headers is True.
     This is for legitimate use cases (behind load balancer).
     """
-    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
+    from agent import security
 
+    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
     app = AsyncMock()
     # Limit 1 request per window, BUT we trust proxies
     mw = RateLimitMiddleware(
@@ -209,16 +221,16 @@ async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     )
 
     # Real Client IP (Load Balancer IP)
-    lb_ip = "10.0.0.1"
+    lb_ip = "192.168.0.1"
 
-    async def call_next(request):
+    async def call_next(_request):
         return "success"
 
     # Request 1: Client A behind LB
     req1 = MagicMock()
     req1.url.path = "/api/test"
     req1.client.host = lb_ip
-    req1.headers.get.return_value = "1.2.3.4"  # Client A
+    req1.headers.get.return_value = "192.168.0.2"  # Client A
 
     response1 = await mw.dispatch(req1, call_next)
     assert response1 == "success"
@@ -227,7 +239,7 @@ async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     req2 = MagicMock()
     req2.url.path = "/api/test"
     req2.client.host = lb_ip  # Same LB IP
-    req2.headers.get.return_value = "5.6.7.8"  # Client B
+    req2.headers.get.return_value = "192.168.0.3"  # Client B
 
     response2 = await mw.dispatch(req2, call_next)
 
@@ -239,7 +251,7 @@ async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     req3 = MagicMock()
     req3.url.path = "/api/test"
     req3.client.host = lb_ip
-    req3.headers.get.return_value = "1.2.3.4"  # Client A again
+    req3.headers.get.return_value = "192.168.0.2"  # Client A again
 
     response3 = await mw.dispatch(req3, call_next)
     if hasattr(response3, "status_code"):

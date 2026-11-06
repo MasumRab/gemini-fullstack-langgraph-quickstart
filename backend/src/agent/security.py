@@ -131,8 +131,9 @@ def extract_client_ip_from_forwarded(
         if trusted_proxy_count > 0:
             # Pick ips[-(trusted_proxy_count + 1)]
             # For example, if trusted_proxy_count=1 and ips=[client, proxy1],
-            # we want ips[-2] = client
-            idx = -(trusted_proxy_count + 1)
+            # proxy1 appended the client's IP to X-Forwarded-For.
+            # So the rightmost IP (ips[-1]) is the true client.
+            idx = -trusted_proxy_count
             if abs(idx) <= len(ips):
                 return ips[idx]
             else:
