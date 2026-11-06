@@ -1,0 +1,14 @@
+commit 897e64b22dd10e681046b3e61dc955b08b65edb6
+Author: google-labs-jules[bot] <161369871+google-labs-jules[bot]@users.noreply.github.com>
+Date:   Sun Jan 25 19:36:04 2026 +0000
+
+    Fix SearchRouter crash when fallback provider fails
+    
+    Wraps the fallback provider search call in a try-except block to ensure that if the fallback provider also fails, the exception is caught, logged, and an empty list is returned. This prevents the application from crashing on search failures.
+    
+    Updates backend/tests/test_search_router.py to assert empty list return instead of expecting an exception.
+    
+    Updates frontend/.gitignore to exclude test-results and coverage.
+
+backend/src/search/router.py
+backend/tests/test_search_router.py

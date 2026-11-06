@@ -1,0 +1,404 @@
+[33me19d0cc[m[33m ([m[1;32mpr19[m[33m)[m Merge origin/main into jules-mcp-persistence: Resolve conflicts in rag, tests, deps, frontend
+[33m634caba[m fix: explicit relative imports and MCP tools list
+[33mcc7f10d[m Merge pull request #67 from MasumRab/feature/integrate-langgraph-cli-11590871688762893801
+[33mcdb347f[m Integrate LangGraph CLI and Studio into backend workflow
+[33m44ae66c[m Merge pull request #63 from MasumRab/test-fix-mcp-adapters-pin-3031791815795426854
+[33m6e92c18[m Merge branch 'main' into test-fix-mcp-adapters-pin-3031791815795426854
+[33md780a40[m Merge pull request #64 from MasumRab/palette-a11y-improvements-4978182156323388569
+[33mabed950[m Merge branch 'main' into palette-a11y-improvements-4978182156323388569
+[33m1bc259e[m Merge pull request #62 from MasumRab/bolt-rag-batch-optimization-6291968710851999125
+[33me81057a[m Merge branch 'main' into bolt-rag-batch-optimization-6291968710851999125
+[33m9c36687[m Merge pull request #65 from MasumRab/bolt-optimize-keyword-validation-13654721609286953954
+[33macb6315[m ⚡ Bolt: Optimize keyword validation loop
+[33m12616a1[m feat(frontend): accessibility improvements for input form and timeline
+[33m697ba4d[m fix(deps): pin langchain-mcp-adapters to 0.1.0 to resolve import errors
+[33m38adb55[m perf: Optimize RAG ingestion with batched embeddings
+[33mdcd40e3[m Merge pull request #60 from MasumRab/feature/deep-research-guide-11750811831712446399
+[33mddc22f5[m Merge branch 'main' into feature/deep-research-guide-11750811831712446399
+[33mec21260[m Merge pull request #59 from MasumRab/docs/sota-deep-research-guide-18403194554220481522
+[33mdff6e72[m Add Deep Research Implementation Guide and Comparison Notebook
+[33mabe7752[m Add SOTA Deep Research implementation guide and analysis notebooks
+[33mb01c987[m Merge pull request #58 from MasumRab/fix/frontend-default-model-15842043454995237304
+[33mc37ec95[m Fix frontend default model and remove deprecated models
+[33ma4e3ad8[m fix(tests): resolve mocking issues in nodes and update config defaults
+[33mdc7311b[m fix(notebooks): resolve merge conflicts by adopting origin/main versions
+[33mc424965[m fix: implement requested MCP stubs, fix chunk collisions, and resolve verification script conflict
+[33m0e3f313[m fix: resolve import errors and merge conflicts in restored files
+[33m85b69ec[m Fix frontend default model and remove deprecated models
+[33meed6429[m chore: restore critical project files deleted in PR merge
+[33mcead744[m chore: cleanup temporary PR documentation
+[33md2e694f[m chore: restore deleted files - _graph.py and git submodules
+[33m6ab670f[m Merge pull request #57 from MasumRab/frontend-sdk-fix-2-9651535830503785674
+[33m2b6357c[m Merge branch 'main' into frontend-sdk-fix-2-9651535830503785674
+[33mdd8e575[m Fix frontend SDK dependency and restore rendering
+[33m0082c33[m Merge origin/main, Resolve Conflicts, Fix RAG & Config (Final)
+[33mac1240f[m test: update assertions to use correct state schema keys
+[33m24d849d[m Merge pull request #56 from MasumRab/fix-dependencies-phased-plan-17982404279432300040
+[33m09ebbc1[m Merge branch 'main' into fix-dependencies-phased-plan-17982404279432300040
+[33me7a414a[m Fix backend and frontend dependencies and setup Playwright
+[33m2e848ba[m Merge pull request #54 from MasumRab/test-suite-stabilization-7399322957621369046
+[33mb94af6a[m Merge branch 'main' into test-suite-stabilization-7399322957621369046
+[33mf3d85b7[m fix: prevent chunk ID collisions and improve MCP error handling
+[33mc345014[m feat: MCP Persistence Wrapper and Graph Integration
+[33mfaffd38[m Merge pull request #55 from MasumRab/palette-fixes-verification-979268848616387044
+[33m9543fb1[m fix(ui): improve accessibility and interactivity in frontend components
+[33m6104090[m Fix backend test suite stability and determinism
+[33mc165bd1[m Merge pull request #46 from MasumRab/test-search-router-3387601296606226997
+[33m187bc22[m Merge branch 'main' into test-search-router-3387601296606226997
+[33md18ca21[m Merge pull request #47 from MasumRab/jules-test-coverage-rag-17018154778382052389
+[33m551d9f4[m Merge branch 'main' into jules-test-coverage-rag-17018154778382052389
+[33m89b204b[m Merge pull request #50 from MasumRab/bolt-chat-optimization-10938347740428707192
+[33m06e7b8a[m Merge branch 'main' into bolt-chat-optimization-10938347740428707192
+[33m6732864[m Merge pull request #52 from MasumRab/sentinel-lifespan-fix-12893841852917096988
+[33mb7f73bf[m Merge branch 'main' into sentinel-lifespan-fix-12893841852917096988
+[33m8a6b054[m Merge pull request #53 from MasumRab/palette-fix-input-accessibility-6543884899976415532
+[33mc561da8[m Merge branch 'main' into palette-fix-input-accessibility-6543884899976415532
+[33m5ecc49e[m Merge pull request #51 from MasumRab/bolt-optimize-chat-messages-memo-3635737676414879179
+[33m39adbb5[m feat: Fix accessibility labels and focus visibility in InputForm
+[33m38ae1a1[m Fix shadowed lifespan function to enable startup security checks
+[33mbc016c0[m ⚡ Bolt: Optimize ChatMessagesView re-renders
+[33m6d898d3[m perf(frontend): Optimize chat message rendering
+[33me7f7f8b[m Add comprehensive tests for RAG agent and cleanup test conflicts
+[33m62248b3[m Add unit tests for SearchRouter and fix configuration tests
+[33m93b33ec[m Merge pull request #45 from MasumRab/fix-frontend-tailwind-config-676382026464649359
+[33me173b7e[m Merge branch 'main' into fix-frontend-tailwind-config-676382026464649359
+[33md10d27e[m Fix frontend Tailwind CSS configuration mismatch
+[33m9c73c29[m Merge pull request #43 from MasumRab/test-coverage-validation-8449441533459037330
+[33m9daca2b[m Merge branch 'main' into test-coverage-validation-8449441533459037330
+[33m021aba1[m Merge pull request #44 from MasumRab/test-coverage-validation-7079145966748242247
+[33medfbf41[m Merge branch 'main' into test-coverage-validation-7079145966748242247
+[33m1096b26[m test: add unit tests for config/validation.py
+[33m65ff010[m test: Add comprehensive coverage for config/validation.py
+[33m7110e0b[m Merge pull request #42 from MasumRab/palette-ux-input-focus-5292505814397533574
+[33m0ec9b97[m Merge branch 'main' into palette-ux-input-focus-5292505814397533574
+[33me0d0619[m feat(ui): restore focus visibility to InputForm textarea
+[33mc85de39[m Merge pull request #41 from MasumRab/jules-4537198483290311356-df910ef1
+[33m44ad50e[m Merge branch 'main' into jules-4537198483290311356-df910ef1
+[33ma098f23[m test: increase coverage for backend/src/agent/utils.py
+[33m83e4ad8[m Merge pull request #32 from MasumRab/alternate-graphs
+[33meaa82e0[m Merge branch 'main' into alternate-graphs
+[33m3b497c8[m Merge pull request #39 from MasumRab/palette-input-accessibility-6312775298417618215
+[33m4c1da60[m Merge branch 'main' into palette-input-accessibility-6312775298417618215
+[33maaf7a30[m Merge pull request #34 from MasumRab/feature/robustness-improvements-9142767055185354670
+[33m2a3ea84[m Merge branch 'main' into feature/robustness-improvements-9142767055185354670
+[33m47a329a[m Merge pull request #27 from MasumRab/mcp-tool-binding-2048192030904785537
+[33mdea3025[m Merge branch 'main' into mcp-tool-binding-2048192030904785537
+[33m820b12f[m Merge pull request #40 from MasumRab/palette-ux-input-accessibility-5136122614629226643
+[33m1e6f957[m Merge branch 'main' into palette-ux-input-accessibility-5136122614629226643
+[33mc5f9603[m Merge pull request #35 from MasumRab/docs-todos-9701834597185411280
+[33m33cde2b[m Merge branch 'main' into docs-todos-9701834597185411280
+[33m5bdc006[m feat(ui): add aria-labels to InputForm components
+[33mae3488a[m Merge pull request #38 from MasumRab/palette-input-a11y-5117487945826834969
+[33md7aa175[m Merge branch 'main' into palette-input-a11y-5117487945826834969
+[33m70b8038[m feat(ux): Add ARIA labels to input form elements
+[33m5102f5c[m 🎨 Palette: Improve InputForm accessibility
+[33m451cea9[m Merge pull request #36 from MasumRab/bolt-parallel-validation-10787127542177927464
+[33m43a5b2c[m Merge branch 'main' into bolt-parallel-validation-10787127542177927464
+[33m206707c[m Annotate notebooks with TODOs for SOTA demos and benchmarks
+[33m6e056b4[m Add placeholder files and functions for outstanding tasks
+[33mb9fb529[m Bind MCP tools to graph builder (Plan A) and document ReAct architecture (Plan C)
+[33mbcb4b72[m Bind MCP tools to graph builder (Plan A) and document ReAct architecture (Plan C)
+[33m31990fc[m docs: consolidate PR #19 tasks and cleanup analysis file
+[33m3baa2a3[m 📝 CodeRabbit Chat: Add comprehensive test modules and docs for PR #19
+[33m94d5e89[m docs: add detailed PR #19 conflict resolution guide
+[33m559507b[m docs: add comprehensive PR #19 analysis
+[33me86abfe[m fix: address critical issues and enhance documentation
+[33m462af14[m Merge branch 'main' into docs-todos-9701834597185411280
+[33m6bd4bdf[m Expand inline TODOs with granular subtasks per documentation
+[33me0c2975[m Merge pull request #37 from MasumRab/palette-micro-ux-stop-button-3419044398513726814
+[33maf17e9e[m chore(ux): add accessibility labels to Stop button
+[33m6483918[m ⚡ Bolt: Parallelize LLM validation in validate_web_results
+[33ma6ffd93[m Add inline TODOs for planned features (MCP, Open SWE, Deep Research)
+[33m7103f8e[m feat: improve code robustness to API and package changes
+[33md1a5530[m Merge pull request #26 from MasumRab/connect-mcp-tools-16801872704919415788
+[33m00ce897[m Merge branch 'main' into connect-mcp-tools-16801872704919415788
+[33ma21e9ba[m Merge pull request #29 from MasumRab/mcp-tool-lookup-fix-16998406718782240515
+[33m7bc4e9d[m Merge branch 'main' into mcp-tool-lookup-fix-16998406718782240515
+[33m890303b[m Merge pull request #30 from MasumRab/enhance-compression-logic-15446731213745464730
+[33m0dae357[m Merge branch 'main' into enhance-compression-logic-15446731213745464730
+[33md6bb7e1[m Merge pull request #28 from MasumRab/audit-memories-10014500364183378714
+[33m6d6ace8[m Merge branch 'main' into audit-memories-10014500364183378714
+[33m2edb353[m Merge branch 'main' into connect-mcp-tools-16801872704919415788
+[33m8d7dee0[m Merge branch 'main' into mcp-tool-lookup-fix-16998406718782240515
+[33m01ab99e[m Merge branch 'main' into enhance-compression-logic-15446731213745464730
+[33m447351e[m Merge pull request #33 from MasumRab/test-coverage-improvement-8482400748474765030
+[33m6fc865b[m Fix backend tests and increase coverage for agent nodes
+[33mcae3bd7[m Merge branch 'main' into connect-mcp-tools-16801872704919415788
+[33mea7f24f[m Merge branch 'main' into enhance-compression-logic-15446731213745464730
+[33m70ad6f2[m chore: update notebooks to gemma-3-27b-it and add notebook logic tests
+[33mc906d1e[m feat: set gemma-3-27b-it as default model for most tasks
+[33m9b96faa[m feat: add gemma-2-27b-it support as high-limit fallback option
+[33maec46a2[m Merge branch 'main' into connect-mcp-tools-16801872704919415788
+[33md526adb[m Merge branch 'main' into enhance-compression-logic-15446731213745464730
+[33m77a2788[m feat(agent): Enhance compression logic in supervisor with LLM summarization
+[33m4a7c758[m feat(agent): Enhance compression logic in supervisor with LLM summarization
+[33mcb75f1f[m Audit memories against codebase state and generate verification artifacts
+[33medb8e01[m Audit memories against codebase state and generate verification artifacts
+[33ma988522[m feat: Connect Tools to MCP Server
+[33m0818df0[m fix: update all model references to gemini-2.5-flash and cleanup configurations
+[33mad9e8e5[m feat: Introduce Gemini 2.5 model migration, Google Search adapter, updated agent tools, and corresponding tests and documentation.
+[33me1c836f[m feat: Migrate to Gemini 2.5 models and implement rate limiting
+[33m11f2a20[m fix: standardize model config options across all functional notebooks
+[33m754a1ac[m config updates
+[33m5d6caed[m feat: add explicit gemini-2.5 models to update_models and notebook lists
+[33m856dcf1[m feat: add gemini-2.0-flash support and interactive colab model selector
+[33ma2d5ed9[m docs: add billing enablement guide and status report for gemini 2.5
+[33m5db00b3[m docs: add authentication guide and update free tier strategy
+[33mef697b2[m docs: reinstate deleted research inspiration sections (RhinoInsight, TTD-DR)
+[33m3bf5525[m update: gemini-2.5-flash conversion, colab-ready visualization notebooks, and documentation links
+[33m9d0785d[m Merge pull request #24 from MasumRab:docs-deep-research-alignment-9538689040300913572
+[33mf86b6d5[m Merge pull request #25 from MasumRab:jules-search-tool-comparison-2884665531048183745
+[33m03bc133[m Merge pull request #16 from MasumRab/feature/search-rag-hybrid-3228504735555579147
+[33m39d54c4[m fix: restore orchestration layer and tests deleted during merge
+[33m17042e6[m docs: align roadmap with verified SOTA Deep Research architectures
+[33mcb75afa[m chore: revert mass deletion of files
+[33mc8ce0ad[m chore: restore _graph.py for upstream compatibility
+[33maabd0fa[m feat: robust MCP tool lookup with ambiguity checks
+[33m3fd9ba8[m feat: Search Tool Comparison Notebook and Adapters
+[33mb27efda[m fix: cleanup unused variable in google_adapter
+[33m1494eb5[m docs: align roadmap with verified SOTA Deep Research architectures
+[33m01471c3[m Merge branch 'main' into feature/search-rag-hybrid-3228504735555579147
+[33md57a589[m docs: align roadmap with verified SOTA Deep Research architectures
+[33mcf205a3[m docs: align roadmap with verified SOTA Deep Research architectures
+[33m0c36296[m feat: add orchestration layer with ToolRegistry, AgentPool, and coordinator-based task allocation
+[33m5775128[m docs: add SOTA research agent inspirations and implementation map
+[33mefba158[m feat: add dynamic graph builder for flexible notebook composition with optional enrichments
+[33madaec88[m docs: create comprehensive architecture inventory of nodes, graphs, and features
+[33m6d3a115[m feat: implement minimal upstream and standard planning graph variants, update CLI selector
+[33ma9da82a[m feat: add upstream graph mode and update CLI to select between upstream/linear/enriched modes
+[33m32ea00c[m fix: rename runnable_config to config in kg_enrich node to fix LangGraph invocation
+[33m9623705[m fix: nitpick errors in notebooks and add matplotlib dependency
+[33m7f3efca[m fix: strictly enforce usage of gemini-2.5 variants
+[33m49960a0[m fix: batch update all notebooks with correct repo url and dependency cleanup
+[33m6f3091f[m fix: use valid gemini-2.0-flash-exp model and async CLI execution
+[33mc4dbc4f[m fix: use valid default model names in AppConfig
+[33m59fa637[m fix: disable planning confirmation in CLI to prevent recursion loops
+[33m88724fc[m docs: add dependency analysis and relax python version to 3.10+
+[33md0b292c[m fix: uninstall conflicting google-generativeai package in colab setup
+[33mafa52e9[m fix: update colab notebooks with correct repo url and cli path
+[33mdc06628[m fix: update hardcoded gemini-2.0-flash to gemini-2.5-flash-preview-05-20
+[33m56563a4[m Merge branch 'main' into feature/search-rag-hybrid-3228504735555579147
+[33m3952409[m fix: make config/search/observability imports optional for standalone CLI usage
+[33mb4e779e[m Merge branch 'main' of https://github.com/MasumRab/gemini-fullstack-langgraph-quickstart
+[33m5b03847[m Merge pull request #22 from MasumRab/alternate-graphs
+[33meb385e0[m Merge origin/main into alternate-graphs
+[33mc56dae4[m chore: remove all gemini-2.0 model references
+[33m1ed0cf4[m fix: resolve import path errors in nodes.py - Replaced absolute backend.src imports with relative imports - Fixes ModuleNotFoundError issues in certain execution contexts - Addresses PR #16 review comment on import style
+[33m819efd3[m Merge branch 'main' into feature/search-rag-hybrid-3228504735555579147
+[33m5c24190[m fix: ensure RAG embedding consistency and configurable persistence path - Addresses PR #16 review requirement for RAG store parity - Passes shared embedding function to ChromaStore - Confirms persist_path is configurable via app config
+[33m91eaca8[m Merge branch 'main' into feature/search-rag-hybrid-3228504735555579147
+[33m9e88802[m feat: add shell script wrapper for model updates
+[33m4023a92[m feat: add update_models.py script for easy model strategy switching
+[33meff304f[m fix: add defensive error handling for Chroma query edge cases - Addresses PR #16 review comment about empty/failed query handling - Adds try/except block around collection.query - Adds debug logging for empty results
+[33m30ae162[m merge: PR #16 (Hybrid Search) and PR #19 changes into main with conflict resolution
+[33maf23dd3[m docs: add PR review action plan and Chroma fix documentation
+[33m85472eb[m docs: enhance FAISS soft-delete documentation and clarify RAG store selection logic
+[33m7a2a071[m docs: plan upstream compatibility refactor
+[33mad31f21[m feat: migrate to Gemini 2.5 models with optimized configuration
+[33mb126390[m merge: confirm resolution of nodes.py conflicts
+[33mb585d96[m merge: resolve conflicts with main
+[33m11d1042[m Fix broken AI-generated tests and deprecation warnings
+[33mba60fed[m feat: add FastAPI application with health check and frontend serving, and update Dockerfile for non-root user and health probing.
+[33mc4ebfb2[m fix: address PR review feedback
+[33m043e91f[m Merge pull request #17 from MasumRab/feature/observability-langfuse-9151913001192414433
+[33m07b5277[m Merge branch 'main' into feature/observability-langfuse-9151913001192414433
+[33m992a157[m Merge pull request #14 from MasumRab/feature/mcp-foundation-12260874981452966901
+[33m0791ff2[m Merge branch 'main' into feature/mcp-foundation-12260874981452966901
+[33m8b4c6cf[m Merge branch 'dependabot/npm_and_yarn/frontend/vite-6.4.1' into main
+[33m8944d94[m Merge branch 'dependabot/npm_and_yarn/frontend/mdast-util-to-hast-13.2.1' into main
+[33m1225365[m Merge branch 'dependabot/npm_and_yarn/frontend/js-yaml-4.1.1' into main
+[33m0802170[m Merge branch 'coderabbitai/utg/bbea88c' into main
+[33m2441f7e[m Merge branch 'architectural-variants-refactor' into main
+[33m7eb7718[m Merge branch 'refactor-backend-and-frontend-v2' into main
+[33m1a236ff[m Merge branch 'refactor-backend-and-frontend' into main
+[33m395eb85[m feat(mcp): complete phase 1 tasks (file memory, tool binding)
+[33m448b13c[m Merge branch 'main' of https://github.com/MasumRab/gemini-fullstack-langgraph-quickstart
+[33m2e5fb00[m chore: remove static upstream diff artifacts
+[33ma4492c5[m chore: restore persistence.py from history
+[33m07232f2[m Merge pull request #21 from MasumRab/compatibility-install-docs-7882902972205301202
+[33m404476f[m feat: implement hybrid search, RAG dual-write, and validation enhancements
+[33mb615115[m feat: implement hybrid search, RAG dual-write, and validation enhancements
+[33ma21fac8[m fix: update Pydantic and LangGraph configuration for compatibility
+[33md956ee8[m fix: restore upstream features and merge mcp foundation
+[33m373284e[m fix: dependency path conflicts and notebook installation
+[33m024e253[m Merge branch 'main' into feature/search-rag-hybrid-3228504735555579147
+[33mfc58f99[m Merge branch 'main' into feature/mcp-foundation-12260874981452966901
+[33mc9e447b[m Merge pull request #18 from MasumRab/compatibility-install-docs-7882902972205301202
+[33m20dbc30[m Merge pull request #20 from MasumRab/fix-dependencies-protobuf-9656212200078597472
+[33ma3c472c[m Fix protobuf dependency conflict by upgrading google-ai-generativelanguage
+[33m10b234f[m docs: add architectural alignment strategy
+[33md5ffe6d[m docs: refine upstream sync strategy to prioritize cherry-picking
+[33mc4bf664[m docs: add upstream sync commands guide
+[33me859581[m docs: add upstream pick list analysis
+[33m671e415[m Merge branch 'main' into feature/mcp-foundation-12260874981452966901
+[33ma023b1d[m Update docs/STATUS.md
+[33m05ade2a[m feat(mcp): foundation setup and upstream alignment report
+[33m519ee18[m feat: add python 3.13 compatibility instructions and tools
+[33md60b96e[m 📝 CodeRabbit Chat: Add comprehensive unit and integration tests to backend
+[33m292d89b[m Fix Windows dev, Citations, and Docker support
+[33m18fcc59[m feat(observability): Add opt-in Langfuse observability
+[33m3f35645[m Fix critical issues: API URL config, GFM tables, and query duplication
+[33mc58ce0b[m feat: implement hybrid search, RAG dual-write, and validation enhancements
+[33mc9e4c5c[m Merge pull request #13 from MasumRab/test-coverage-improvement-10106642344368378444
+[33med7875f[m feat(mcp): add mcp configuration, agent wiring, and upstream divergence report
+[33m6d9c020[m feat(test): improve backend and frontend test coverage
+[33mf711d2d[m Merge origin/refactor-backend-and-frontend-v2 with conflict resolution
+[33me849b35[m Merge origin/refactor-backend-and-frontend-v2 with conflict resolution
+[33m10489f8[m chore: prepare conflict resolution for setup.ts and vitest.config.ts
+[33m8b85455[m Merge branch 'main' of https://github.com/MasumRab/gemini-fullstack-langgraph-quickstart
+[33mde515a8[m Merge pull request #10 from MasumRab/coderabbitai/utg/bbea88c
+[33m9fbd5d8[m Merge pull request #12 from MasumRab/feature/deep-research-bench-integration
+[33m72d9636[m Implement Deep Research Agent, MCP Tools, and Benchmarking Pipeline
+[33m9adbf0f[m Resolve merge conflicts: Adopt modular graph architecture, integrate Tavily search, and preserve tests
+[33mdf2228d[m feat: Introduce property-based and unit tests for backend utilities and research tools, establish frontend testing with Vitest, and add deep research agent demo notebooks.
+[33m1f12d45[m Merge pull request #11 from MasumRab/architectural-variants-refactor
+[33m6a86185[m Merge branch 'main' into architectural-variants-refactor
+[33mb263bce[m feat: Add new deep research agent examples with associated code, tests, documentation, and updated configurations.
+[33maccf2a0[m Refactor agent architecture to support multiple execution variants.
+[33m3de4be2[m feat: Add new deep research examples with agent implementations and graph visualizations.
+[33m840678c[m Refactor agent architecture to support multiple execution variants.
+[33mf5509cf[m Refactor agent architecture to support multiple execution variants.
+[33mce23de5[m persistance fix
+[33m23d9334[m persistance fix
+[33m4ee6b7e[m Merge branch 'main' of github.com:MasumRab/gemini-fullstack-langgraph-quickstart
+[33m2697666[m Merge branch 'main' of github.com:MasumRab/gemini-fullstack-langgraph-quickstart
+[33md281d49[m small fixes
+[33m1b5ff3e[m small fixes
+[33m5e56564[m 📝 CodeRabbit Chat: Add comprehensive test suite and testing infrastructure
+[33m8516d00[m 📝 CodeRabbit Chat: Add comprehensive test suite and testing infrastructure
+[33m445957d[m CodeRabbit Generated Unit Tests: Add comprehensive test coverage for backend and frontend
+[33maaacd3e[m CodeRabbit Generated Unit Tests: Add comprehensive test coverage for backend and frontend
+[33m90169ed[m Refactor backend structure and frontend state management.
+[33mbbea88c[m Refactor backend structure and frontend state management.
+[33m4b732d9[m Merge pull request #6 from MasumRab/analysis/deep-research-comparison
+[33m94bda6b[m Merge pull request #6 from MasumRab/analysis/deep-research-comparison
+[33mb90623f[m docs: Add Deep Research comparison analysis and reference implementation
+[33m4914193[m docs: Add Deep Research comparison analysis and reference implementation
+[33mb5465cf[m html files
+[33m6905694[m html files
+[33m120e7be[m feat: Implement open deep research module, establish legacy code structure, add testing infrastructure, and update project configuration.
+[33m31d6447[m feat: Implement open deep research module, establish legacy code structure, add testing infrastructure, and update project configuration.
+[33m0b85e19[m feat: Implement core frontend application with chat UI and streaming event processing, and add a backend agent configuration model for LLM parameters and research loop settings.
+[33md22a91f[m feat: Implement core frontend application with chat UI and streaming event processing, and add a backend agent configuration model for LLM parameters and research loop settings.
+[33m5f1e42c[m Merge branch 'main' of github.com:MasumRab/gemini-fullstack-langgraph-quickstart
+[33m06a11ef[m Merge branch 'main' of github.com:MasumRab/gemini-fullstack-langgraph-quickstart
+[33ma41a4e8[m feat: Implement agent planning mode with a dedicated test interface and documentation.
+[33m4201943[m feat: Implement agent planning mode with a dedicated test interface and documentation.
+[33m3ac4589[m Refactor backend graph structure and frontend state management.
+[33m88464f0[m Merge pull request #4 from MasumRab/docs/comprehensive-planning-and-strategy
+[33m155a9d1[m Merge pull request #4 from MasumRab/docs/comprehensive-planning-and-strategy
+[33mce6a820[m Refactor documentation for MCP, Open SWE, and Open Canvas integration
+[33md1e6467[m Refactor documentation for MCP, Open SWE, and Open Canvas integration
+[33m7f92745[m Merge pull request #3 from MasumRab/docs/longterm-planning-strategy
+[33m0d9b129[m Merge pull request #3 from MasumRab/docs/longterm-planning-strategy
+[33mc41910f[m Add detailed integration strategy and refine planning docs
+[33mdc39dd6[m Add detailed integration strategy and refine planning docs
+[33m5aa017c[m Merge pull request #2 from MasumRab/iterative-planning-design
+[33m394b79c[m Merge pull request #2 from MasumRab/iterative-planning-design
+[33m686f746[m Merge branch 'main' into iterative-planning-design
+[33m03eccfe[m Merge branch 'main' into iterative-planning-design
+[33m45a1a00[m feat: technical design for iterative planning agent
+[33me6ec63b[m feat: technical design for iterative planning agent
+[33m37c45ff[m Merge branch 'main' of github.com:MasumRab/gemini-fullstack-langgraph-quickstart
+[33mad4c1b2[m Merge branch 'main' of github.com:MasumRab/gemini-fullstack-langgraph-quickstart
+[33m21b0b37[m Merge pull request #1 from MasumRab/jules/roadmap-creation
+[33m4ea0af5[m Merge pull request #1 from MasumRab/jules/roadmap-creation
+[33m0d4bc79[m feat: add roadmap and updated task prompt
+[33mef36c17[m feat: add roadmap and updated task prompt
+[33m1ed1480[m frontend changes
+[33m15b58ce[m frontend changes
+[33m8549f84[m new features plan rag options validation
+[33m27ab209[m new features plan rag options validation
+[33m106a01f[m Bump mdast-util-to-hast from 13.2.0 to 13.2.1 in /frontend
+[33madc3e56[m Bump js-yaml from 4.1.0 to 4.1.1 in /frontend
+[33m766df4d[m Bump vite from 6.3.4 to 6.4.1 in /frontend
+[33mfc92660[m updates to prompt
+[33me34e569[m updates to prompt
+[33m919abdb[m Merge pull request #45 from smell-of-curry/patch-1
+[33mf586b75[m Merge pull request #45 from smell-of-curry/patch-1
+[33mddf1924[m Merge branch 'main' into patch-1
+[33m35d7f02[m Merge branch 'main' into patch-1
+[33mfb377c7[m Merge pull request #43 from nisaharan/main
+[33md9c44fe[m Merge pull request #43 from nisaharan/main
+[33m2d03758[m Merge pull request #35 from dkqjrm/chore/typo
+[33m23f6aa5[m Merge pull request #35 from dkqjrm/chore/typo
+[33maf4aa39[m Merge pull request #17 from kahirokunn/fix/ime-input-form-submission
+[33m3214a7e[m Merge pull request #17 from kahirokunn/fix/ime-input-form-submission
+[33mf4b6f5d[m Merge pull request #7 from CharlesCNorton/patch-1
+[33md3fd999[m Merge pull request #7 from CharlesCNorton/patch-1
+[33mb9e5ceb[m Merge pull request #5 from LeaderOnePro/main
+[33m972392d[m Merge pull request #5 from LeaderOnePro/main
+[33mdea9a52[m Merge pull request #76 from tigermlt/patch-1
+[33m7f95976[m Merge pull request #76 from tigermlt/patch-1
+[33mee0a85c[m Merge pull request #86 from 7Gamil/Improve-image-scaling-on-desktop-view
+[33md0abbad[m Merge pull request #86 from 7Gamil/Improve-image-scaling-on-desktop-view
+[33mbd93e77[m Merge pull request #90 from cscandore/query-writer-typo
+[33m1607958[m Merge pull request #90 from cscandore/query-writer-typo
+[33m3fb0d8e[m Merge pull request #15 from vietnamesekid/main
+[33m3092013[m Merge pull request #15 from vietnamesekid/main
+[33mdcf0520[m Merge branch 'main' into main
+[33m8304e3f[m Merge branch 'main' into main
+[33m0fca2ca[m Merge pull request #44 from nandsha/docs/fix-python-version-requirement
+[33mc4969e4[m Merge pull request #44 from nandsha/docs/fix-python-version-requirement
+[33mf3f172e[m Merge pull request #109 from google-gemini/fixes
+[33m6efccf7[m Merge pull request #109 from google-gemini/fixes
+[33md4bc357[m fixed state and app
+[33m9380323[m fixed state and app
+[33m82300f2[m error display
+[33m6dab27b[m error display
+[33meb88bd4[m Merge pull request #103 from YishenTu/main
+[33me44ee7e[m Merge pull request #103 from YishenTu/main
+[33me391a2c[m feat: improve UI/UX with scroll behavior and styling enhancements
+[33m5c85818[m feat: improve UI/UX with scroll behavior and styling enhancements
+[33mfc5cafd[m fix: handle undefined follow_up_queries in reflection event
+[33ma59a198[m fix: handle undefined follow_up_queries in reflection event
+[33m215b48b[m Update prompts.py
+[33m8e6f3f5[m Update prompts.py
+[33mb774878[m Improve image scaling on desktop view
+[33mfdb34df[m Improve image scaling on desktop view
+[33mb00a205[m Merge pull request #78 from google-gemini/fix-react-serving
+[33mcf240a2[m Merge pull request #78 from google-gemini/fix-react-serving
+[33m3c35e76[m update react serving part
+[33m128e365[m update react serving part
+[33m96b29b9[m Remove duplicate imports in state.py
+[33m1c4d5a7[m Remove duplicate imports in state.py
+[33m99f2499[m Update README.md
+[33m26c0b47[m Update README.md
+[33m07d8314[m Update Python version requirement to match pyproject.toml
+[33mdff6596[m Update Python version requirement to match pyproject.toml
+[33m207eabb[m Merge pull request #1 from nisaharan/Research_agent/cli_research
+[33m211c23f[m Merge pull request #1 from nisaharan/Research_agent/cli_research
+[33mbc2a70f[m Add CLI example
+[33m3bf5d97[m Add CLI example
+[33m80beb4c[m fix(docs): Correct typos and grammatical inconsistencies
+[33m3da4c4e[m fix(docs): Correct typos and grammatical inconsistencies
+[33mb085d8a[m fix: improve IME compatibility by changing form submission to Ctrl/Cmd+Enter
+[33mb0dd02b[m fix: improve IME compatibility by changing form submission to Ctrl/Cmd+Enter
+[33m7890170[m Refactor layout and scrolling for chat and welcome screens
+[33m418c729[m Refactor layout and scrolling for chat and welcome screens
+[33m0f40fc4[m Merge branch 'main' of github.com:LeaderOnePro/deepresearch-fullstack-langgraph-quickstart
+[33m70c348c[m Merge branch 'main' of github.com:LeaderOnePro/deepresearch-fullstack-langgraph-quickstart
+[33mf57a21a[m Update the Vite configuration to correct the path resolution to use __dirname
+[33mc429cb2[m Update the Vite configuration to correct the path resolution to use __dirname
+[33m68e5eb6[m Merge branch 'google-gemini:main' into main
+[33m8dde8c6[m Merge branch 'google-gemini:main' into main
+[33mb47a05e[m Update README.md
+[33me538603[m Update README.md
+[33m2478b1b[m Merge pull request #4 from rahimnathwani/patch-1
+[33mfddf107[m Merge pull request #4 from rahimnathwani/patch-1
+[33mb23901d[m 更新 Vite 配置，修正路径解析以支持文件 URL
+[33maa4fb9d[m 更新 Vite 配置，修正路径解析以支持文件 URL
+[33m2dc2f75[m Fix typo in prompts.py
+[33m806197c[m Fix typo in prompts.py
+[33ma15664b[m Merge pull request #2 from JayDoubleu/main
+[33m17f8286[m Merge pull request #2 from JayDoubleu/main
+[33m1807fdd[m Fix Dockerfile
+[33m99f745b[m Fix Dockerfile
+[33m549cf1c[m added an app picture
+[33m5a8f89a[m added an app picture
+[33m20fe6f2[m rename stuff
+[33me66233b[m rename stuff
+[33m30c562a[m init
+[33m09971ff[m init
+[33m4e76a98[m Initial commit
+[33mabd4403[m Initial commit
