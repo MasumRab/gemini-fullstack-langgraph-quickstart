@@ -1,6 +1,3 @@
-import os
-os.environ["TRUSTED_PROXY_COUNT"] = "1"
-
 from unittest.mock import patch
 
 import pytest

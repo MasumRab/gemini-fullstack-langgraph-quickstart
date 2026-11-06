@@ -1,8 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock
 
-import os
-os.environ["TRUSTED_PROXY_COUNT"] = "1"
-
 import pytest
 from starlette.responses import PlainTextResponse
 
