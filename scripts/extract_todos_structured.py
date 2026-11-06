@@ -15,12 +15,8 @@ def extract_todos(root_dir):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
         for file in files:
-<<<<<<< HEAD
-            if file == "extract_todos_structured.py":
-=======
             # Skip the script itself to prevent false positives when searching for TODOs
             if file == SCRIPT_NAME:
->>>>>>> origin/main
                 continue
             if file.endswith(('.py', '.tsx', '.ts', '.js', '.jsx', '.md')):
                 filepath = os.path.join(root, file)
@@ -53,7 +49,7 @@ def extract_todos(root_dir):
                                     'complexity': complexity,
                                     'owner': owner
                                 })
-                except (OSError, UnicodeDecodeError) as e:
+                except Exception as e:
                     print(f"Error reading {filepath}: {e}")
     return todos
 
