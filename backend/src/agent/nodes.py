@@ -192,14 +192,14 @@ def scoping_node(state: OverallState, config: RunnableConfig) -> OverallState:
                 )
                 assessment = parser.parse(content)
             except Exception as e:
-                logger.error(f"Scoping LLM failed (Gemma): {e}")
+                logger.exception("Scoping LLM failed (Gemma):")
                 return {"scoping_status": "complete"}
         else:
             structured_llm = llm.with_structured_output(ScopingAssessment)
             try:
                 assessment = structured_llm.invoke(prompt)
             except Exception as e:
-                logger.error(f"Scoping LLM failed: {e}")
+                logger.exception("Scoping LLM failed:")
                 return {"scoping_status": "complete"}  # Fail open
 
         if assessment.is_ambiguous:
@@ -414,7 +414,7 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                     plan_todos.append(todo)
                     search_queries.append(item.title)
             except Exception as e:
-                logger.error(f"Failed to generate plan: {e}")
+                logger.exception("Failed to generate plan:")
                 # Fallback to single query based on research topic
                 topic = get_research_topic(state["messages"])
                 todo = {
@@ -511,7 +511,7 @@ def web_research(state: WebSearchState, config: RunnableConfig) -> OverallState:
                     "web_research_result": [combined_result],
                 }
             except Exception as e:
-                logger.error(f"Web research failed: {e}")
+                logger.exception("Web research failed:")
                 return {
                     "sources_gathered": [],
                     "search_query": [query],
@@ -874,7 +874,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                                 plan_todos.append(todo)
                         break
             except Exception as e:
-                logger.error(f"Gemma plan update failed: {e}")
+                logger.exception("Gemma plan update failed:")
                 # Fallback: keep existing plan to avoid data loss, with normalized structure
                 plan_todos = [_normalize_task(t) for t in current_plan]
 
@@ -892,7 +892,7 @@ def update_plan(state: OverallState, config: RunnableConfig) -> OverallState:
                     }
                     plan_todos.append(todo)
             except Exception as e:
-                logger.error(f"Failed to update plan (Gemini): {e}")
+                logger.exception("Failed to update plan (Gemini):")
                 plan_todos = [_normalize_task(t) for t in current_plan]
 
         # Safety Fallback: Ensure the executed task is actually marked as done in the new plan
@@ -995,7 +995,7 @@ def outline_gen(state: OverallState, config: RunnableConfig) -> OverallState:
 
             return {"outline": outline_data}
         except Exception as e:
-            logger.error(f"Outline generation failed: {e}")
+            logger.exception("Outline generation failed:")
             # Return a simple default outline to keep the graph moving
             return {
                 "outline": {
@@ -1135,7 +1135,7 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
                                 }
                             )
             except Exception as e:
-                logger.error(f"Content Reader (Gemma) failed: {e}")
+                logger.exception("Content Reader (Gemma) failed:")
 
         else:
             # Gemini Structured Output
@@ -1152,7 +1152,7 @@ def content_reader(state: OverallState, config: RunnableConfig) -> OverallState:
                             }
                         )
             except Exception as e:
-                logger.error(f"Content Reader (Gemini) failed: {e}")
+                logger.exception("Content Reader (Gemini) failed:")
 
         return {"evidence_bank": extracted_evidence}
 
@@ -1230,7 +1230,7 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
             }
 
         except Exception as e:
-            logger.error(f"Recursive research failed for {subtopic_query}: {e}")
+            logger.exception("Recursive research failed for {subtopic_query}:")
             return {
                 "validation_notes": [
                     f"Recursive research failed for {subtopic_query}: {e}"
@@ -1301,8 +1301,8 @@ def checklist_verifier(state: OverallState, config: RunnableConfig) -> OverallSt
             report = response.content if hasattr(response, "content") else str(response)
             return {"validation_notes": [report]}
         except Exception as e:
-            logger.error(f"Checklist verification failed: {e}")
-            return {"validation_notes": [f"Checklist verification failed: {e}"]}
+            logger.exception("Checklist verification failed:")
+            return {"validation_notes": ["Checklist verification failed."]}
 
 
 @graph_registry.describe(
@@ -1728,7 +1728,7 @@ def reflection(state: OverallState, config: RunnableConfig) -> ReflectionState:
                 )
                 result = parser.parse(content)
             except Exception as e:
-                logger.error(f"Reflection LLM failed (Gemma): {e}")
+                logger.exception("Reflection LLM failed (Gemma):")
                 # Fallback to sufficient to avoid infinite loops on error
                 return {
                     "is_sufficient": True,
