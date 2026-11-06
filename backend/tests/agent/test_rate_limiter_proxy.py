@@ -15,6 +15,8 @@ from agent.security import RateLimitMiddleware
 client = TestClient(app, base_url="http://localhost")
 
 
+
+
 def test_rate_limiter_integration():
     """Test that the app still works with the modified middleware."""
     response = client.get("/health")

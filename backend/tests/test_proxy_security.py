@@ -6,7 +6,6 @@ from starlette.responses import PlainTextResponse
 import agent.security
 from agent.security import RateLimitMiddleware
 
-
 @pytest.mark.asyncio
 async def test_proxy_security_default_secure(monkeypatch):
     """Verify that by default (trust_proxy_headers=False), X-Forwarded-For is ignored."""
