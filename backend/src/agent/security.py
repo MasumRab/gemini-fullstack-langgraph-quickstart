@@ -143,11 +143,6 @@ def extract_client_ip_from_forwarded(
                 )
                 return ips[0] if ips else fallback_ip
 
-        # Method 3: Fallback when trusted_proxy_count is 0 but we want to simulate
-        # trusting proxy logic (like in tests) or when connection explicitly ignores proxies
-        if trusted_proxy_count == 0:
-            return ips[-1]
-
         # No trusted proxies configured - return fallback for safety
         # This prevents IP spoofing when trust_proxy_headers is True but no proxies are configured
         logger.warning(

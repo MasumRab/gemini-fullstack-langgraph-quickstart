@@ -98,9 +98,12 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
 @pytest.mark.asyncio
 async def test_spoofing_vulnerability(monkeypatch):
     """
-    Verify that the middleware correctly identifies the client IP even if it's private,
-    when it is the last IP in the trusted proxy chain.
-    Prevents spoofing by injecting a public IP at the start of X-Forwarded-For.
+    With no trusted proxies configured, X-Forwarded-For is ignored entirely.
+
+    The attacker sets a public IP in the header and a private one is appended by an
+    upstream hop. Neither may become the rate-limit key: with TRUSTED_PROXY_COUNT=0
+    nothing in the header was written by a proxy we trust, so the only trustworthy
+    address is the connection peer.
     """
 
     # Mock App
@@ -108,8 +111,9 @@ async def test_spoofing_vulnerability(monkeypatch):
         response = PlainTextResponse("OK")
         await response(scope, receive, send)
 
-    # Initialize middleware with trust_proxy_headers=True
+    # trust_proxy_headers=True but no trusted proxies: the header must still be dropped
     monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 0)
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXIES", set())
 
     middleware = RateLimitMiddleware(
         mock_app,
@@ -120,10 +124,9 @@ async def test_spoofing_vulnerability(monkeypatch):
     )
 
     # Scenario:
-    # Attacker Real IP (seen by proxy): 10.0.0.5 (Private)
     # Attacker Spoofs Header: "8.8.8.8" (Public)
-    # Trusted Proxy appends Real IP.
-    # Header: "8.8.8.8, 10.0.0.5"
+    # Upstream hop appends: "10.0.0.5"
+    # Connection peer: 10.0.0.1
 
     headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"8.8.8.8, 10.0.0.5")]
 
@@ -142,10 +145,11 @@ async def test_spoofing_vulnerability(monkeypatch):
 
     await middleware(scope, mock_receive, mock_send)
 
-    # Expectation: The request should be tracked under the Real IP (10.0.0.5)
-    # If vulnerable, it would be under 8.8.8.8
-    assert "10.0.0.5" in middleware.requests
+    # Expectation: the request is tracked under the connection peer, and under neither
+    # header value — otherwise a client can mint a fresh bucket per request.
+    assert "10.0.0.1" in middleware.requests
     assert "8.8.8.8" not in middleware.requests
+    assert "10.0.0.5" not in middleware.requests
 
 
 @pytest.mark.asyncio
