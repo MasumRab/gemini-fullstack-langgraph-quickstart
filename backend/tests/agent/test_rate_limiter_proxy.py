@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-import agent.security
 from fastapi.testclient import TestClient
 from starlette.responses import PlainTextResponse
 
