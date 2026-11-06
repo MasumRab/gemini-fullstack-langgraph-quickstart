@@ -29,9 +29,9 @@ def test_rate_limiter_integration():
 
 @pytest.mark.asyncio
 async def test_rate_limiter_proxy_logic(monkeypatch):
-    import agent.security
-
     """Unit test for RateLimitMiddleware proxy logic."""
+    import agent.security
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -41,7 +41,6 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
     # Create middleware instance with low limit (2 per minute)
     # We use a distinct path prefix to ensure we hit the logic
     # 🛡️ Sentinel: Explicitly enable trust_proxy_headers for this test as we want to test X-Forwarded-For logic
-    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
     middleware = RateLimitMiddleware(
         mock_app,
         limit=2,

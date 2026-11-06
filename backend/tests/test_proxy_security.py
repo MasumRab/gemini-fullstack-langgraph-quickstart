@@ -54,6 +54,7 @@ async def test_proxy_security_default_secure(monkeypatch):
 @pytest.mark.asyncio
 async def test_proxy_security_trusted_enabled(monkeypatch):
     """Verify that when enabled, X-Forwarded-For IS used."""
+    import agent.security
     monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
 
     # Mock App
@@ -102,6 +103,7 @@ async def test_spoofing_vulnerability(monkeypatch):
     when it is the last IP in the trusted proxy chain.
     Prevents spoofing by injecting a public IP at the start of X-Forwarded-For.
     """
+    import agent.security
     monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 0)
 
     # Mock App
@@ -143,7 +145,7 @@ async def test_spoofing_vulnerability(monkeypatch):
 
     # Expectation: The request should be tracked under the Real IP (10.0.0.5)
     # If vulnerable, it would be under 8.8.8.8
-    assert "10.0.0.1" in middleware.requests
+    assert "10.0.0.5" in middleware.requests
     assert "8.8.8.8" not in middleware.requests
 
 
@@ -200,6 +202,7 @@ async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
     Test that X-Forwarded-For IS respected when trust_proxy_headers is True.
     This is for legitimate use cases (behind load balancer).
     """
+    import agent.security
     monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
 
     app = AsyncMock()
