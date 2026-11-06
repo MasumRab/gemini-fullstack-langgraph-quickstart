@@ -10,7 +10,9 @@
 # Subtask: Review 'deepagents' repo for relevant nodes (e.g. hierarchical planning).
 # Subtask: Adapt useful patterns to `backend/src/agent/nodes.py`.
 
+import asyncio
 import concurrent.futures
+import inspect
 import json
 import logging
 import os
@@ -446,6 +448,26 @@ def continue_to_web_research(state: QueryGenerationState):
 
 # ⚡ Bolt Optimization: Helper to execute a single tool call
 # Moved to module level to avoid re-definition overhead in web_research node loop.
+def _resolve_tool_result(result: Any) -> Any:
+    """Await a tool result that came back as an awaitable.
+
+    MCP tools discovered by ``load_mcp_tools()`` wrap a coroutine, and
+    ``StructuredTool.invoke()`` hands that coroutine back un-awaited rather than
+    raising: rendering it would put ``<coroutine object ...>`` in the model's
+    context and the tool call would never actually run.
+
+    These calls run on ``ThreadPoolExecutor`` workers, which have no running
+    event loop, so ``asyncio.run()`` can drive the async path.
+    """
+    if not inspect.isawaitable(result):
+        return result
+
+    async def _await(awaitable: Any) -> Any:
+        return await awaitable
+
+    return asyncio.run(_await(result))
+
+
 def _exec_single_tool(tool_call: Dict[str, Any], tools_map: Dict[str, Any]) -> str:
     t_name = tool_call.get("name")
     t_args = tool_call.get("args") or tool_call.get("arguments") or {}
@@ -453,7 +475,7 @@ def _exec_single_tool(tool_call: Dict[str, Any], tools_map: Dict[str, Any]) -> s
     selected = tools_map.get(t_name)
     if selected:
         try:
-            res = selected.invoke(t_args)
+            res = _resolve_tool_result(selected.invoke(t_args))
             return f"\nResult from {t_name}:\n{res}\n"
         except Exception as e:
             return f"\nError executing {t_name}: {e}\n"

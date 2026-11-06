@@ -2,6 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import agent.mcp_config
+from agent.mcp_config import MCPSettings
 from agent.tools_and_schemas import get_tools_from_mcp
 
 # Fine-grained implementation guide for MCP Tests:
@@ -10,14 +12,12 @@ from agent.tools_and_schemas import get_tools_from_mcp
 # - Create MCPSettings with enabled=False
 # - Verify get_tools_from_mcp returns []
 #
-# TODO(priority=Medium, complexity=Medium, owner=agent): [test_mcp:2] Test connection error handling
-# - Mock SSEConnection to raise ConnectionError
-# - Verify graceful fallback (empty list, logged warning)
+# [test_mcp:2] Done: mock SSEConnection to raise ConnectionError and verify the
+# failure propagates (callers cannot tell a broken endpoint from a disabled one
+# if it degrades to an empty list).
 #
-# TODO(priority=Medium, complexity=Medium, owner=agent): [test_mcp:3] Test tool whitelist filtering
-# - Load multiple tools from mock MCP
-# - Set tool_whitelist to subset
-# - Verify only whitelisted tools returned
+# [test_mcp:3] Done: tool_whitelist filtering is covered in
+# tests/test_mcp_connection_manager.py.
 #
 # TODO(priority=Low, complexity=Medium, owner=agent): [test_mcp:4] Test tool execution with real MCP server
 # - Skip if MCP_ENDPOINT not set (integration test)
@@ -29,49 +29,52 @@ from agent.tools_and_schemas import get_tools_from_mcp
 class TestMcpIntegration:
     """Test suite for MCP integration."""
 
+    @pytest.fixture(autouse=True)
+    def reset_manager(self):
+        original = getattr(agent.mcp_config, "_default_manager", None)
+        agent.mcp_config._default_manager = None
+        yield
+        agent.mcp_config._default_manager = original
+
     @pytest.mark.asyncio
     async def test_mcp_tools_loading(self):
-        """
-        Test that MCP tools can be loaded from the configuration.
-        """
-        # Mock settings
-        mock_settings = MagicMock()
-        mock_settings.enabled = True
-        mock_settings.endpoint = "http://localhost:8000/sse"
-        mock_settings.api_key = "test-key"
+        """Tools discovered on the endpoint are returned, and the key is sent."""
+        settings = MCPSettings(
+            enabled=True, endpoint="http://localhost:8000/sse", api_key="test-key"
+        )
 
-        # We need to mock the context manager SSEConnection and load_mcp_tools
-        # Since they are imported inside the function, we patch the source modules
-        with (
-            patch("langchain_mcp_adapters.sessions.SSEConnection") as MockSSE,
-            patch(
-                "langchain_mcp_adapters.tools.load_mcp_tools", new_callable=AsyncMock
-            ) as mock_load_tools,
+        mock_tool = MagicMock()
+        mock_tool.name = "test_tool"
+
+        async def mock_load_tools(session):
+            return [mock_tool]
+
+        tools_module = MagicMock()
+        tools_module.load_mcp_tools = mock_load_tools
+        sessions_module = MagicMock()
+        conn = MagicMock()
+        conn.__aenter__ = AsyncMock(return_value=AsyncMock())
+        conn.__aexit__ = AsyncMock(return_value=None)
+        sessions_module.SSEConnection.return_value = conn
+
+        # Injected through sys.modules because get_tools() imports the adapters
+        # at call time; patching attributes on the real package only works if
+        # something else happened to import the submodule first.
+        with patch.dict(
+            "sys.modules",
+            {
+                "langchain_mcp_adapters": MagicMock(),
+                "langchain_mcp_adapters.tools": tools_module,
+                "langchain_mcp_adapters.sessions": sessions_module,
+            },
         ):
-            # Setup context manager mock
-            mock_session = AsyncMock()
-            MockSSE.return_value.__aenter__.return_value = mock_session
+            tools = await get_tools_from_mcp(settings)
 
-            # Setup tool mock
-            mock_tool = MagicMock()
-            mock_tool.name = "test_tool"
-            mock_load_tools.return_value = [mock_tool]
-
-            # Call the function
-            tools = await get_tools_from_mcp(mock_settings)
-
-            # Verify
-            assert len(tools) == 1
-            assert tools[0].name == "test_tool"
-
-            # Verify SSEConnection called with correct args
-            MockSSE.assert_called_with(
-                url="http://localhost:8000/sse",
-                headers={"Authorization": "Bearer test-key"},
-            )
-
-            # Verify load_mcp_tools called with session
-            mock_load_tools.assert_called_with(mock_session)
+        assert [t.name for t in tools] == ["test_tool"]
+        sessions_module.SSEConnection.assert_called_once_with(
+            url="http://localhost:8000/sse",
+            headers={"Authorization": "Bearer test-key"},
+        )
 
     @pytest.mark.asyncio
     async def test_filesystem_tool_execution(self):
@@ -109,9 +112,26 @@ class TestMcpIntegration:
         mock_settings.endpoint = "http://localhost:8000/sse"
         mock_settings.api_key = "test-key"
 
-        with patch("langchain_mcp_adapters.sessions.SSEConnection") as MockSSE:
-            MockSSE.side_effect = ConnectionError("Connection failed")
+        mock_tools_module = MagicMock()
+        mock_sessions_module = MagicMock()
+        mock_conn_cls = mock_sessions_module.SSEConnection
 
-            # Should not raise, but return empty list and log warning
-            tools = await get_tools_from_mcp(mock_settings)
-            assert tools == []
+        def side_effect(*args, **kwargs):
+            raise ConnectionError("Connection failed")
+
+        mock_conn_cls.side_effect = side_effect
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "langchain_mcp_adapters": MagicMock(),
+                "langchain_mcp_adapters.tools": mock_tools_module,
+                "langchain_mcp_adapters.sessions": mock_sessions_module,
+            },
+        ):
+            # An enabled-but-unreachable endpoint must surface, not degrade to
+            # the "MCP is disabled" empty list.
+            with pytest.raises(ConnectionError, match="Connection failed"):
+                await get_tools_from_mcp(mock_settings)
+
+        assert mock_conn_cls.call_count == 1
