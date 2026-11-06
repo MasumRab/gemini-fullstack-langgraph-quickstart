@@ -10,7 +10,11 @@ or used as standalone clients for specific nodes.
 
 import json
 import os
+import logging
+import threading
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # 1. Google Vertex AI (Cloud)
@@ -216,3 +220,89 @@ keras.config.set_floatx("bfloat16")
 gemma_lm = keras_nlp.models.GemmaCausalLM.from_preset("gemma2_2b_en")
 print("Model loaded successfully")
 """
+
+# ============================================================================
+# 5. Kaggle Models (Using Kagglehub & KerasNLP)
+# ============================================================================
+
+class KaggleGemmaClient:
+    """Client for local Gemma models downloaded via Kagglehub and run with KerasNLP."""
+
+    def __init__(self, model_handle: str = "google/gemma-2/keras/gemma2-2b-en", dtype: Optional[str] = None):
+        """
+        Create a KaggleGemmaClient configured to load a Gemma model from KaggleHub for use with KerasNLP.
+        
+        Parameters:
+            model_handle (str): Kaggle model identifier, e.g. "google/gemma-2/keras/gemma2-2b-en".
+            dtype (Optional[str]): Optional Keras `floatx` value (for example, "bfloat16"); if provided, it will be applied to Keras configuration before the model is loaded.
+        """
+        self.model_handle = model_handle
+        self.dtype = dtype
+        self.model_path = None
+        self.llm = None
+        self._load_lock = threading.Lock()
+
+    def _lazy_load(self):
+        """
+        Ensure the Kaggle-hosted Gemma model and its dependencies are loaded lazily.
+
+        Uses double-checked locking for thread-safety to avoid double-initialization
+        of heavy resources when multiple threads call generate() simultaneously.
+        
+        Raises:
+            ImportError: If required third-party packages are not available.
+        """
+        if self.llm is not None:
+            return
+        
+        with self._load_lock:
+            if self.llm is not None:
+                return
+
+            try:
+                import kagglehub
+                import keras_nlp
+                import keras
+                import os
+
+                # Authenticate with Kaggle
+                # Requires KAGGLE_USERNAME and KAGGLE_KEY environment variables to be set
+                if not os.environ.get("KAGGLE_USERNAME") or not os.environ.get("KAGGLE_KEY"):
+                    logger.warning("KAGGLE_USERNAME or KAGGLE_KEY not found in environment. "
+                                   "Authentication may fail if the model requires it.")
+
+                # Download the model weights and assets via kagglehub
+                logger.info(f"Downloading/Locating model {self.model_handle} via kagglehub...")
+                self.model_path = kagglehub.model_download(self.model_handle)
+                logger.info(f"Model path: {self.model_path}")
+
+                # Set floatx for efficiency if explicitly requested by caller
+                if self.dtype:
+                    keras.config.set_floatx(self.dtype)
+
+                # Initialize the causal language model via Keras NLP
+                logger.info(f"Loading Gemma model via Keras NLP from {self.model_path}...")
+                self.llm = keras_nlp.models.GemmaCausalLM.from_preset(self.model_path)
+
+            except ImportError as e:
+                raise ImportError(
+                    f"Please install 'kagglehub', 'keras', and 'keras-nlp' to use KaggleGemmaClient.\nError: {e}"
+                )
+
+    def generate(self, prompt: str, max_length: int = 256, **kwargs) -> str:
+        """
+        Generate text from the loaded Gemma model for the given prompt.
+        
+        Ensures the model and its dependencies are loaded lazily before invoking generation.
+        
+        Parameters:
+            prompt (str): The input prompt to generate text from.
+            max_length (int): Maximum number of tokens/characters to generate.
+        
+        Returns:
+            str: The generated text output.
+        """
+        self._lazy_load()
+        # KerasNLP GemmaCausalLM 'generate' takes the prompt and max_length
+        output = self.llm.generate(prompt, max_length=max_length, **kwargs)
+        return str(output)
