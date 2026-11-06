@@ -318,7 +318,6 @@ jobs:
               },
             };
 
-            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-force-review-payload.json', JSON.stringify(payload));
             core.setOutput('head_sha', headSha);
             core.info(`Force-review payload written for PR #${pr.number}`);

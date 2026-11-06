@@ -291,7 +291,6 @@ jobs:
               },
             };
 
-            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-review-payload.json', JSON.stringify(payload));
             core.setOutput('head_sha', headSha);
             core.info(`Payload written for PR #${pr.number}`);

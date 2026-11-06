@@ -326,8 +326,6 @@ jobs:
               } catch (e) { /* file is optional */ }
             }
 
-            const fs = require('fs');
-
             const customInstr = process.env.CUSTOM_INSTRUCTIONS || '';
             let prompt = [
               ...(customInstr ? ['## User instructions', customInstr, ''] : []),
