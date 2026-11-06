@@ -1,10 +1,12 @@
-from typing import List, Optional
 import logging
+from typing import List
+
 from duckduckgo_search import DDGS
 
 from ..provider import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
+
 
 class DuckDuckGoAdapter(SearchProvider):
     """Adapter for DuckDuckGo Search."""
@@ -17,17 +19,16 @@ class DuckDuckGoAdapter(SearchProvider):
         self,
         query: str,
         max_results: int = 5,
-        region: Optional[str] = "wt-wt",
-        time_range: Optional[str] = None,
+        region: str | None = "wt-wt",
+        time_range: str | None = None,
         safe_search: bool = True,
         tuned: bool = True,
     ) -> List[SearchResult]:
-        """
-        Execute search.
+        """Execute search.
+
         Arguments:
             tuned (bool): If False, clears the time_range to relax search constraints.
         """
-
         # specific DDG region mapping if needed
         ddg_region = region if region else "wt-wt"
 
@@ -39,20 +40,22 @@ class DuckDuckGoAdapter(SearchProvider):
 
         try:
             with DDGS() as ddgs:
-                results = list(ddgs.text(
-                    keywords=query,
-                    region=ddg_region,
-                    safesearch='on' if safe_search else 'off',
-                    timelimit=effective_time_range,
-                    max_results=max_results
-                ))
+                results = list(
+                    ddgs.text(
+                        keywords=query,
+                        region=ddg_region,
+                        safesearch="on" if safe_search else "off",
+                        timelimit=effective_time_range,
+                        max_results=max_results,
+                    )
+                )
 
             return [
                 SearchResult(
                     title=r.get("title", ""),
                     url=r.get("href", ""),
                     content=r.get("body", ""),
-                    source="duckduckgo"
+                    source="duckduckgo",
                 )
                 for r in results
             ]
