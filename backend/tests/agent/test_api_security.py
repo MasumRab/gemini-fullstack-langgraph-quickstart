@@ -2,9 +2,10 @@ import time
 from unittest.mock import patch
 
 import pytest
-import agent.security
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
+
+import agent.security
 
 
 class TestAPISecurity:

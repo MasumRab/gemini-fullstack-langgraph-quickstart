@@ -128,7 +128,7 @@ def extract_client_ip_from_forwarded(
             return ips[0] if ips else fallback_ip
 
         # Method 2: Use trusted proxy count
-        if trusted_proxy_count > 0:
+        if trusted_proxy_count is not None and trusted_proxy_count > 0:
             # Pick ips[-(trusted_proxy_count + 1)]
             # For example, if trusted_proxy_count=1 and ips=[client, proxy1],
             # we want ips[-2] = client
