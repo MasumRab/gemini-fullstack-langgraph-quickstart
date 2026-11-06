@@ -6,14 +6,12 @@ from typing import List
 @dataclass
 class SearchResult:
     """Standardized search result."""
-
     title: str
     url: str
     content: str
     raw_content: str | None = None
     source: str = "unknown"
     metadata: dict | None = None
-
 
 class SearchProvider(ABC):
     """Abstract base class for search providers."""

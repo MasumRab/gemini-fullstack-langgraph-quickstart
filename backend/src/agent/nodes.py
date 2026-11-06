@@ -1,5 +1,5 @@
 # TODO(priority=Low, complexity=Low): See docs/tasks/upstream_compatibility.md for future splitting of this file into _nodes.py (upstream) and nodes.py (evolved).
-#
+# 
 # TODO(priority=Medium, complexity=Medium): [SOTA Deep Research] Benchmarking
 # See docs/tasks/04_SOTA_DEEP_RESEARCH_TASKS.md
 # Subtask: MLE-bench Integration (Evaluate on Kaggle engineering tasks).
@@ -16,7 +16,6 @@ import logging
 import os
 import re
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List
 
 from google.genai import Client
@@ -240,29 +239,6 @@ def load_context(state: OverallState, config: RunnableConfig) -> OverallState:
     return {}
 
 
-def _get_active_context() -> str:
-    """Read the active context file if it exists."""
-    try:
-        repo_root = Path(__file__).resolve().parents[3]
-        context_path = repo_root / "docs" / "ACTIVE_CONTEXT.md"
-        max_chars = 4000
-        if context_path.exists():
-            content = context_path.read_text(encoding="utf-8")
-            if len(content) > max_chars:
-                logger.warning(
-                    "Active context is large; truncating to the first %d characters.",
-                    max_chars,
-                )
-                content = (
-                    content[:max_chars]
-                    + "\n\n[... active context truncated for prompt size ...]"
-                )
-            return content
-    except Exception as e:
-        logger.warning(f"Failed to read active context: {e}")
-    return "No active context available."
-
-
 @graph_registry.describe(
     "generate_plan",
     summary="LLM generates a structured research plan (Todos) from the conversation context.",
@@ -284,12 +260,10 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
 
         # Format the prompt
         current_date = get_current_date()
-        active_context = _get_active_context()
         formatted_prompt = plan_writer_instructions.format(
             current_date=current_date,
             research_topic=get_research_topic(state["messages"]),
             number_queries=state["initial_search_query_count"],
-            active_context=active_context,
         )
 
         # Truncate if needed
@@ -468,8 +442,6 @@ def _format_search_results(
     sources = []
     texts = []
     for r in results_list:
-        # Populate short_url with something distinct if we had shorten logic.
-        # Otherwise simply keep it equal to r.url or None.
         source = {"label": r.title, "short_url": r.url, "value": r.url}
         sources.append(source)
         snippet = r.content or r.raw_content or ""
@@ -1176,45 +1148,37 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
         parent_config = config.get("configurable", {})
         parent_id = parent_config.get("thread_id", "root")
         recursion_depth = parent_config.get("recursion_depth", 0)
-        max_recursion_depth = parent_config.get(
-            "max_recursion_depth", 1
-        )  # Default to 1 level deep
+        max_recursion_depth = parent_config.get("max_recursion_depth", 1) # Default to 1 level deep
 
         # 3. Guard against infinite recursion
         if recursion_depth >= max_recursion_depth:
-            logger.info(
-                f"Max recursion depth reached ({recursion_depth}). Skipping subgraph for: {subtopic_query}"
-            )
+            logger.info(f"Max recursion depth reached ({recursion_depth}). Skipping subgraph for: {subtopic_query}")
             return {
-                "validation_notes": [
-                    f"Depth limit reached. Sub-topic skipped: {subtopic_query}"
-                ]
+                "validation_notes": [f"Depth limit reached. Sub-topic skipped: {subtopic_query}"]
             }
 
         # 4. Invoke child graph
         # Local import to prevent circular dependency
         from agent.graph import graph
-
+        
         child_config = config.copy()
         child_config["configurable"] = parent_config.copy()
-        child_config["configurable"]["thread_id"] = (
-            f"{parent_id}_sub_{recursion_depth + 1}"
-        )
+        child_config["configurable"]["thread_id"] = f"{parent_id}_sub_{recursion_depth + 1}"
         child_config["configurable"]["recursion_depth"] = recursion_depth + 1
-
+        
         logger.info(f"Recursive Call (Depth {recursion_depth + 1}): {subtopic_query}")
-
+        
         try:
             # We run the graph with the sub-topic as the initial message
             # We also set planning_status to auto_approved to avoid child pausing for UI
             child_input = {
                 "messages": [HumanMessage(content=subtopic_query)],
                 "planning_status": "auto_approved",
-                "scoping_status": "complete",  # Skip scoping in subqueries
+                "scoping_status": "complete" # Skip scoping in subqueries
             }
-
+            
             child_output = graph.invoke(child_input, child_config)
-
+            
             # 5. Merge child results
             child_results = child_output.get("web_research_result", [])
             child_evidence = child_output.get("evidence_bank", [])
@@ -1224,17 +1188,13 @@ def research_subgraph(state: OverallState, config: RunnableConfig) -> OverallSta
                 "web_research_result": child_results,
                 "evidence_bank": child_evidence,
                 "sources_gathered": child_sources,
-                "validation_notes": [
-                    f"Successfully researched sub-topic: {subtopic_query}"
-                ],
+                "validation_notes": [f"Successfully researched sub-topic: {subtopic_query}"]
             }
-
+            
         except Exception as e:
             logger.error(f"Recursive research failed for {subtopic_query}: {e}")
             return {
-                "validation_notes": [
-                    f"Recursive research failed for {subtopic_query}: {e}"
-                ]
+                "validation_notes": [f"Recursive research failed for {subtopic_query}: {e}"]
             }
 
 
@@ -1372,8 +1332,8 @@ def denoising_refiner(state: OverallState, config: RunnableConfig) -> OverallSta
         # 5. Restore URLs (Critical for Citations)
         if "sources_gathered" in state:
             for source in state["sources_gathered"]:
-                if source.get("short_url") and source["short_url"] != source["value"]:
-                    pattern = re.escape(source["short_url"])
+                pattern = re.escape(source["short_url"])
+                if re.search(pattern, final_content):
                     final_content = re.sub(pattern, source["value"], final_content)
 
         # 6. Create Artifact for Open Canvas

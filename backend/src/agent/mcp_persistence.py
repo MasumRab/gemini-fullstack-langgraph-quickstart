@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 # Initialize FastMCP server
 mcp = FastMCP("persistence")
 
-
 @mcp.tool()
 def load_thread_plan(thread_id: str) -> Dict[str, Any] | None:
     """Loads the plan and artifacts for a specific thread from the local file system.
@@ -28,11 +27,8 @@ def load_thread_plan(thread_id: str) -> Dict[str, Any] | None:
         logger.exception(f"Error loading plan for thread {thread_id}: {e}")
         return None
 
-
 @mcp.tool()
-def save_thread_plan(
-    thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, Any]
-) -> str:
+def save_thread_plan(thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, Any]) -> str:
     """Saves the plan and artifacts for a specific thread to the local file system.
 
     Args:
