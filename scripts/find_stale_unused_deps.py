@@ -1,167 +1,141 @@
 #!/usr/bin/env python3
 import json
-import subprocess
 import os
-import re
-from datetime import datetime, timedelta, timezone
-
-# --- CONFIG ---
-AGE_THRESHOLD_DAYS = 90
-REPORT_FILE = "unused_deps_report.txt"
+import subprocess
+from datetime import datetime, timedelta
 
 
-# --- HELPERS ---
-def get_file_blame_lines(filepath):
-    """Returns a list of dicts with line number, commit date, and content."""
+def get_git_blame_date(file_path, line_number):
     try:
-        output = subprocess.check_output(
-            ["git", "blame", "--line-porcelain", filepath],
-            universal_newlines=True,
-            stderr=subprocess.DEVNULL,
+        result = subprocess.run(  # noqa: S603
+            [
+                "/usr/bin/git",
+                "blame",
+                "--line-porcelain",
+                "-L",
+                f"{line_number},{line_number}",
+                file_path,
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
         )
-        lines = []
-        current_line = {}
-        for line in output.splitlines():
+        for line in result.stdout.splitlines():
             if line.startswith("author-time "):
-                current_line["time"] = int(line.split(" ")[1])
-            elif line.startswith("\t"):
-                current_line["content"] = line[1:]
-                lines.append(current_line)
-                current_line = {}
-        return lines
-    except subprocess.CalledProcessError as e:
-        print(f"Error blaming {filepath}: {e}")
-        return []
-
-
-def get_age_days(timestamp):
-    commit_date = datetime.fromtimestamp(timestamp, tz=timezone.utc)
-    now = datetime.now(tz=timezone.utc)
-    return (now - commit_date).days
-
-
-def _check_file_for_dep(filepath, dep_name, py_dep):
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
-            if dep_name in content or py_dep in content:
-                return True
-    except (OSError, UnicodeDecodeError):
+                timestamp = int(line.split(" ")[1])
+                return datetime.fromtimestamp(timestamp)
+    except subprocess.CalledProcessError:
         pass
-    return False
-
-def is_used(dep_name, search_dirs, extensions):
-    """Simple grep-based heuristic to check if a dependency is imported."""
-    py_dep = dep_name.replace("-", "_")
-    for d in search_dirs:
-        for root, dirs, files in os.walk(d):
-            dirs[:] = [d_ for d_ in dirs if d_ not in ("node_modules", ".venv")]
-            for file in files:
-                if any(file.endswith(ext) for ext in extensions):
-                    if _check_file_for_dep(os.path.join(root, file), dep_name, py_dep):
-                        return True
-    return False
+    return datetime.now()
 
 
-# --- FRONTEND (package.json) ---
-def check_frontend():
-    print("Checking frontend...")
-    pkg_json = "frontend/package.json"
-    if not os.path.exists(pkg_json):
-        return []
+def check_js_deps():
+    print("Checking JS dependencies in frontend/package.json...")
+    try:
+        with open("frontend/package.json", "r") as f:
+            package_json = json.load(f)
 
-    with open(pkg_json, "r", encoding="utf-8") as f:
-        pkg = json.load(f)
+        deps = list(package_json.get("dependencies", {}).keys()) + list(
+            package_json.get("devDependencies", {}).keys()
+        )
 
-    deps = list(pkg.get("dependencies", {}).keys()) + list(
-        pkg.get("devDependencies", {}).keys()
-    )
+        # Read the file again to find line numbers
+        with open("frontend/package.json", "r") as f:
+            lines = f.readlines()
 
-    blame = get_file_blame_lines(pkg_json)
+        stale_threshold = datetime.now() - timedelta(days=90)
 
-    results = []
-    for dep in deps:
-        # Exclude internal or highly common toolings if desired, but for MVP check all
-        if dep in ["react", "react-dom", "typescript", "vite"]:
-            continue
+        for dep in deps:
+            # Find line number
+            line_num = -1
+            for i, line in enumerate(lines):
+                if f'"{dep}"' in line:
+                    line_num = i + 1
+                    break
 
-        # Find oldest insertion of this dep in package.json
-        age = 0
-        for b_line in blame:
-            if f'"{dep}"' in b_line["content"]:
-                age = max(age, get_age_days(b_line.get("time", 0)))
-
-        if age > AGE_THRESHOLD_DAYS:
-            # Check if used
-            if not is_used(
-                dep, ["frontend/src"], [".ts", ".tsx", ".js", ".jsx", ".css"]
-            ):
-                results.append(f"[Frontend] {dep} (Age: {age} days)")
-    return results
-
-
-# --- BACKEND (pyproject.toml / requirements.txt) ---
-def _parse_pyproj_deps(content):
-    deps = []
-    in_deps = False
-    for line in content.splitlines():
-        line = line.strip()
-        if line == "dependencies = [":
-            in_deps = True
-        elif in_deps and line == "]":
-            in_deps = False
-        elif in_deps and line.startswith('"'):
-            dep = line.split('"')[1]
-            dep = re.split(r"[=><~]", dep)[0]
-            deps.append(dep)
-    return deps
-
-def _get_dep_age(dep, blame):
-    age = 0
-    for b_line in blame:
-        if dep in b_line["content"]:
-            age = max(age, get_age_days(b_line.get("time", 0)))
-    return age
-
-def check_backend():
-    print("Checking backend...")
-    pyproj = "backend/pyproject.toml"
-    results = []
-    if not os.path.exists(pyproj):
-        return results
-
-    with open(pyproj, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    deps = _parse_pyproj_deps(content)
-    blame = get_file_blame_lines(pyproj)
-
-    for dep in deps:
-        if dep in ["python", "pytest"]:
-            continue
-        age = _get_dep_age(dep, blame)
-        if age > AGE_THRESHOLD_DAYS:
-            if not is_used(dep, ["backend/src", "backend/tests"], [".py"]):
-                results.append(f"[Backend] {dep} (Age: {age} days)")
-    return results
+            if line_num != -1:
+                date = get_git_blame_date("frontend/package.json", line_num)
+                if date < stale_threshold:
+                    # Check if used (simple grep)
+                    try:
+                        # Exclude node_modules and package.json itself
+                        subprocess.run(  # noqa: S603
+                            [
+                                "/bin/grep",
+                                "-r",
+                                "--exclude-dir=node_modules",
+                                "--exclude=package.json",
+                                dep,
+                                "frontend/src",
+                            ],
+                            capture_output=True,
+                            check=True,
+                        )
+                    except subprocess.CalledProcessError:
+                        print(
+                            f"Stale/Unused JS Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
+                        )
+    except Exception as e:  # noqa: BLE001, S110
+        print(f"Error checking JS deps: {e}")
 
 
-# --- RUN ---
-def main():
-    report = []
-    report.extend(check_frontend())
-    report.extend(check_backend())
+def check_py_deps():
+    print("\nChecking Python dependencies in backend/pyproject.toml...")
+    try:
+        with open("backend/pyproject.toml", "r") as f:
+            lines = f.readlines()
 
-    with open(REPORT_FILE, "w") as f:
-        f.write("Unused Dependencies (>90 days old):\n")
-        f.write("======================================\n")
-        if not report:
-            f.write("None found.\n")
-        for item in report:
-            f.write(f"- {item}\n")
+        deps = []
+        in_deps = False
+        for i, line in enumerate(lines):
+            line = line.strip()
+            if line.startswith("dependencies = ["):
+                in_deps = True
+            elif line.startswith("]") and in_deps:
+                in_deps = False
+            elif in_deps and line.startswith('"'):
+                dep = (
+                    line.split('"')[1]
+                    .split(" ")[0]
+                    .split("=")[0]
+                    .split("<")[0]
+                    .split(">")[0]
+                )
+                deps.append((dep, i + 1))
 
-    print(f"Done. Report saved to {REPORT_FILE}")
+        stale_threshold = datetime.now() - timedelta(days=90)
+
+        for dep, line_num in deps:
+            date = get_git_blame_date("backend/pyproject.toml", line_num)
+            if date < stale_threshold:
+                # Check if used (simple grep)
+                # Convert dash to underscore for python imports
+                import_name = dep.replace("-", "_")
+                try:
+                    subprocess.run(  # noqa: S603
+                        [
+                            "/bin/grep",
+                            "-E",
+                            "-r",
+                            "--exclude-dir=.venv",
+                            f"import {import_name}|from {import_name}",
+                            "backend/src",
+                        ],
+                        capture_output=True,
+                        check=True,
+                    )
+                except subprocess.CalledProcessError:
+                    print(
+                        f"Stale/Unused Py Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
+                    )
+
+    except Exception as e:  # noqa: BLE001, S110
+        print(f"Error checking Py deps: {e}")
 
 
 if __name__ == "__main__":
-    main()
+    # Determine project root
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(root_dir)
+    check_js_deps()
+    check_py_deps()

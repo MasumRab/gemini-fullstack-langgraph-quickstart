@@ -2,6 +2,7 @@ import time
 from unittest.mock import patch
 
 import pytest
+import agent.security
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
@@ -10,7 +11,6 @@ class TestAPISecurity:
     @pytest.fixture
     def app(self):
         """Create a simple FastAPI app with the middleware."""
-        import agent.security
         from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 
         app = FastAPI()
@@ -94,11 +94,8 @@ class TestAPISecurity:
             assert response.status_code == 200
 
     def test_rate_limit_respects_x_forwarded_for(self, monkeypatch):
-        import agent.security
-
-        monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
         """Test that rate limiting uses the X-Forwarded-For header when present."""
-        import agent.security
+        monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
         from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 
         # Instantiate a dedicated app with trust_proxy_headers=True
@@ -120,20 +117,19 @@ class TestAPISecurity:
 
         # Simulate 5 requests from IP A (via proxy)
         headers_a = {"X-Forwarded-For": "10.0.0.1, 10.0.0.2"}
-        with patch.object(agent.security, "TRUSTED_PROXY_COUNT", 1):
-            for _ in range(5):
-                response = client.get("/agent/test", headers=headers_a)
-                assert response.status_code == 200
-
-            # 6th request from IP A should be blocked
+        for _ in range(5):
             response = client.get("/agent/test", headers=headers_a)
-            assert response.status_code == 429
-
-            # Requests from IP B should still be allowed (distinct from IP A)
-            # Even if they come from the same "client host" (mock client doesn't change)
-            headers_b = {"X-Forwarded-For": "10.0.0.3"}
-            response = client.get("/agent/test", headers=headers_b)
             assert response.status_code == 200
+
+        # 6th request from IP A should be blocked
+        response = client.get("/agent/test", headers=headers_a)
+        assert response.status_code == 429
+
+        # Requests from IP B should still be allowed (distinct from IP A)
+        # Even if they come from the same "client host" (mock client doesn't change)
+        headers_b = {"X-Forwarded-For": "10.0.0.3"}
+        response = client.get("/agent/test", headers=headers_b)
+        assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_memory_cleanup_preserves_active_clients(self):
