@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+import agent.security
 from fastapi.testclient import TestClient
 from starlette.responses import PlainTextResponse
 
@@ -31,6 +32,7 @@ def test_rate_limiter_integration():
 @pytest.mark.asyncio
 async def test_rate_limiter_proxy_logic(monkeypatch):
     """Unit test for RateLimitMiddleware proxy logic."""
+    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
 
     # Mock App
     async def mock_app(scope, receive, send):
@@ -110,6 +112,7 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
 @pytest.mark.asyncio
 async def test_rate_limiter_truncation(monkeypatch):
     """Test that extremely long headers are truncated to prevent memory exhaustion."""
+    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
 
     async def mock_app(scope, receive, send):
         response = PlainTextResponse("OK")
