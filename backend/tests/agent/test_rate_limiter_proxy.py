@@ -145,8 +145,8 @@ async def test_rate_limiter_truncation(monkeypatch):
 
     await middleware(scope, mock_receive, mock_send)
 
-    # Verify the key in requests is truncated
+    # Verify the key uses the fallback IP when all forwarded IPs are invalid
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
-    # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
+    # When all X-Forwarded-For IPs are invalid, it falls back to client.host ("127.0.0.1")
     assert keys[0] == "127.0.0.1"
