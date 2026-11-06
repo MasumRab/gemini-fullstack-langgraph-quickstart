@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 from mcp.server.fastmcp import FastMCP
 
 from agent.persistence import load_plan, save_plan
+from agent.state import Todo
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def load_thread_plan(thread_id: str) -> Dict[str, Any] | None:
 
 @mcp.tool()
 def save_thread_plan(
-    thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, Any]
+    thread_id: str, todo_list: List[Todo], artifacts: Dict[str, Any]
 ) -> str:
     """Saves the plan and artifacts for a specific thread to the local file system.
 
