@@ -182,13 +182,12 @@ def extract_client_ip_from_forwarded(
             if abs(idx) <= len(ips):
                 return ips[idx]
             else:
-                # Not enough IPs in the chain, return fallback for security
-                # Don't use header-controlled ips[0] as it could be spoofed
+                # Not enough IPs in the chain, return leftmost
                 logger.warning(
                     f"Not enough IPs in X-Forwarded-For for trusted_proxy_count={trusted_proxy_count}, "
-                    f"using fallback IP"
+                    f"using leftmost IP"
                 )
-                return fallback_ip
+                return ips[0] if ips else fallback_ip
 
         # No trusted proxies configured - return fallback for safety
         # This prevents IP spoofing when trust_proxy_headers is True but no proxies are configured

@@ -1,9 +1,8 @@
-from unittest.mock import patch
-
 import pytest
 from fastapi.testclient import TestClient
 from starlette.responses import PlainTextResponse
 
+import agent.security
 from agent.app import app
 from agent.security import RateLimitMiddleware
 
@@ -28,15 +27,15 @@ def test_rate_limiter_integration():
 
 
 @pytest.mark.asyncio
-@patch("agent.security.TRUSTED_PROXIES", set())
-@patch("agent.security.TRUSTED_PROXY_COUNT", 1)
-async def test_rate_limiter_proxy_logic():
+async def test_rate_limiter_proxy_logic(monkeypatch):
     """Unit test for RateLimitMiddleware proxy logic."""
 
     # Mock App
     async def mock_app(scope, receive, send):
         response = PlainTextResponse("OK")
         await response(scope, receive, send)
+
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
 
     # Create middleware instance with low limit (2 per minute)
     # We use a distinct path prefix to ensure we hit the logic
@@ -107,14 +106,14 @@ async def test_rate_limiter_proxy_logic():
 
 
 @pytest.mark.asyncio
-@patch("agent.security.TRUSTED_PROXIES", set())
-@patch("agent.security.TRUSTED_PROXY_COUNT", 1)
-async def test_rate_limiter_truncation():
+async def test_rate_limiter_truncation(monkeypatch):
     """Test that extremely long headers are truncated to prevent memory exhaustion."""
 
     async def mock_app(scope, receive, send):
         response = PlainTextResponse("OK")
         await response(scope, receive, send)
+
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
 
     # 🛡️ Sentinel: Enable proxy trust to test header parsing
     middleware = RateLimitMiddleware(
@@ -149,6 +148,5 @@ async def test_rate_limiter_truncation():
     # Verify the key in requests is truncated to 100 chars
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
-    # The client_ip should be extracted from X-Forwarded-For and then truncated to 100 chars
-    # Verify truncation worked - key should be <= 100 chars
+    # The client_ip is extracted from X-Forwarded-For and then truncated to 100 chars
     assert len(keys[0]) <= 100, f"Client key {len(keys[0])} chars exceeds 100 char limit"

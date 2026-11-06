@@ -137,7 +137,7 @@ async def run_benchmark():
             )  # NOSONAR
 
         except Exception as e:
-            logger.error(f"Agent failed for question index {idx}: {e}", exc_info=True)
+            logger.error("Agent failed for '%s': %s", question, e, exc_info=True)
             continue
 
     # Report Generation
