@@ -1,10 +1,10 @@
 import logging
 from typing import Any, Dict, List
-from agent.state import Todo
 
 from mcp.server.fastmcp import FastMCP
 
 from agent.persistence import load_plan, save_plan
+from agent.state import Todo
 
 # Setup logging
 logger = logging.getLogger(__name__)

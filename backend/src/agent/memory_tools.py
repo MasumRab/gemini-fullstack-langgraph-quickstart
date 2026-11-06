@@ -1,9 +1,10 @@
-from langchain_core.tools import tool
 from typing import List
-from agent.state import Todo
+
+from langchain_core.tools import tool
 
 from agent.persistence import load_plan as persist_load
 from agent.persistence import save_plan as persist_save
+from agent.state import Todo
 
 
 @tool

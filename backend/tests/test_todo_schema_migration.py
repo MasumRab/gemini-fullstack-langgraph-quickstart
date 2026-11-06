@@ -1,11 +1,7 @@
-import pytest
 import typing
-import json
-from pathlib import Path
+
+from agent import mcp_persistence, memory_tools, persistence
 from agent.state import OverallState, Todo
-from agent import persistence
-from agent import mcp_persistence
-from agent import memory_tools
 
 # We decided not to change `planning_steps` because it's a scratch/telemetry field
 # populated at backend/src/agent/nodes.py:238 from a persisted payload, not a Todo collection.
@@ -17,14 +13,25 @@ def test_overallstate_todo_list_type_hint():
     """
     hints = typing.get_type_hints(OverallState)
     todo_list_hint = hints["todo_list"]
-    
-    # Optional[List[Todo]] is Union[List[Todo], NoneType]
+
+    # Optional[List[Todo]] is Union[List[Todo], NoneType].
+    #
+    # `typing.List[...] | None` produces `typing.Union`, not `types.UnionType`:
+    # only the builtin generic (`list[Todo] | None`) yields a `types.UnionType`.
+    # The assertion below is therefore correct for this annotation, and the test
+    # would fail if the annotation were ever changed to the builtin form — which
+    # is the signal to update this assertion rather than to relax it.
     assert typing.get_origin(todo_list_hint) is typing.Union
-    
-    # The first arg of Union should be List[Todo]
+
     args = typing.get_args(todo_list_hint)
-    list_arg = args[0]
-    
+    assert len(args) == 2, f"expected List[Todo] | None, got {todo_list_hint}"
+
+    # The second member must be NoneType, otherwise the field is not optional.
+    non_none = [a for a in args if a is not type(None)]
+    assert len(non_none) == 1, f"expected exactly one non-None member, got {args}"
+    assert type(None) in args, f"todo_list is not optional: {todo_list_hint}"
+
+    list_arg = non_none[0]
     assert typing.get_origin(list_arg) is list
     list_args = typing.get_args(list_arg)
     assert len(list_args) == 1
