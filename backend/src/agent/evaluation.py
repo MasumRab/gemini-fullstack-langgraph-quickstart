@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from agent.models import GEMINI_PRO
 
 # Module-level cache for the judge model instance
-_judge_model_cache: Optional[ChatGoogleGenerativeAI] = None
+_judge_model_cache: ChatGoogleGenerativeAI | None = None
 
 
 def _get_judge_model() -> ChatGoogleGenerativeAI:
@@ -74,8 +74,7 @@ class GroundednessScore(BaseModel):
 
 
 def eval_quality(request: str, report: str) -> Dict[str, Any]:
-    """
-    Evaluates the overall quality of a research report.
+    """Evaluates the overall quality of a research report.
 
     Args:
         request: The original user research request.
@@ -106,8 +105,7 @@ def eval_quality(request: str, report: str) -> Dict[str, Any]:
 
 
 def eval_groundedness(report: str, sources: List[str]) -> Dict[str, Any]:
-    """
-    Evaluates how well the report is grounded in the provided sources.
+    """Evaluates how well the report is grounded in the provided sources.
     """
     # Simplified placeholder for groundedness logic
     # In a real scenario, this would involve extracting claims and checking them against summaries

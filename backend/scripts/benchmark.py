@@ -15,9 +15,8 @@ from dotenv import load_dotenv
 # Load env vars before importing evaluators or agent components
 load_dotenv()
 
-from agent.graph import graph
-
 from agent.evaluation import eval_groundedness, eval_quality
+from agent.graph import graph
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -134,7 +133,7 @@ async def run_benchmark():
             )
 
         except Exception as e:
-            logger.error(f"Agent failed for '{question}'", exc_info=True)
+            logger.error("Agent failed for '%s': %s", question, e, exc_info=True)
             continue
 
     # Report Generation
