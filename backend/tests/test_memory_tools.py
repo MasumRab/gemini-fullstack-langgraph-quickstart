@@ -6,7 +6,6 @@ from agent.memory_tools import load_plan_tool, save_plan_tool
 from agent.persistence import PLAN_DIR
 
 
-
 class TestMemoryTools(unittest.TestCase):
     def setUp(self):
         os.makedirs(PLAN_DIR, exist_ok=True)

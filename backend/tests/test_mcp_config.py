@@ -5,7 +5,6 @@ from unittest import mock
 from agent.mcp_config import MCPSettings, load_mcp_settings, validate
 
 
-
 class TestMCPSettings(unittest.TestCase):
     def test_default_settings(self):
         """Test that default settings are disabled."""

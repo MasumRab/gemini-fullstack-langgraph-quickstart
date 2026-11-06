@@ -8,7 +8,6 @@ from zoneinfo import ZoneInfo
 from agent.rate_limiter import PACIFIC_TZ, RateLimiter
 
 
-
 class TestRateLimiter(unittest.TestCase):
     def test_daily_reset_logic(self):
         """Test that daily reset occurs at midnight Pacific Time."""

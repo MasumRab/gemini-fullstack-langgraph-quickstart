@@ -7,7 +7,6 @@ from agent.mcp_config import MCPSettings
 from agent.tools_and_schemas import get_tools_from_mcp
 
 
-
 @pytest.mark.asyncio
 async def test_get_tools_from_mcp_disabled():
     config = MCPSettings(enabled=False, endpoint="http://localhost:8000")

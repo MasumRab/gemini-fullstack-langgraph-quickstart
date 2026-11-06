@@ -23,7 +23,6 @@ from agent.graphs.supervisor import compress_context, graph
 from agent.state import OverallState
 
 
-
 @pytest.fixture(autouse=True)
 def disable_compression():
     """Disable compression for deterministic testing."""

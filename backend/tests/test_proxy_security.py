@@ -1,6 +1,9 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
 from starlette.responses import PlainTextResponse
+
+import agent.security
 from agent.security import RateLimitMiddleware
 
 
@@ -34,10 +37,10 @@ async def test_proxy_security_default_secure():
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(*args, **kwargs):
         pass
 
-    async def mock_receive():
+    async def mock_receive(*args, **kwargs):
         return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
@@ -47,12 +50,8 @@ async def test_proxy_security_default_secure():
     assert "5.6.7.8" not in middleware.requests
 
 
-@pytest.mark.skip(reason="Proxy security tests failing due to env var mock ordering")
 @pytest.mark.asyncio
 async def test_proxy_security_trusted_enabled(monkeypatch):
-    import agent.security
-
-    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
     """Verify that when enabled, X-Forwarded-For IS used."""
 
     # Mock App
@@ -61,7 +60,15 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
         await response(scope, receive, send)
 
     # Initialize middleware with trust_proxy_headers=True
-    middleware = _create_test_middleware(mock_app)
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
+
+    middleware = RateLimitMiddleware(
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
+    )
 
     # Simulate request
     # Real IP: 10.0.0.1 (Proxy)
@@ -75,10 +82,10 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(*args, **kwargs):
         pass
 
-    async def mock_receive():
+    async def mock_receive(*args, **kwargs):
         return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
@@ -88,16 +95,15 @@ async def test_proxy_security_trusted_enabled(monkeypatch):
     assert "10.0.0.1" not in middleware.requests
 
 
-@pytest.mark.skip(reason="Proxy security tests failing due to env var mock ordering")
 @pytest.mark.asyncio
 async def test_spoofing_vulnerability(monkeypatch):
-    import agent.security
-
-    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 0)
     """
-    Verify that the middleware correctly identifies the client IP even if it's private,
-    when it is the last IP in the trusted proxy chain.
-    Prevents spoofing by injecting a public IP at the start of X-Forwarded-For.
+    With no trusted proxies configured, X-Forwarded-For is ignored entirely.
+
+    The attacker sets a public IP in the header and a private one is appended by an
+    upstream hop. Neither may become the rate-limit key: with TRUSTED_PROXY_COUNT=0
+    nothing in the header was written by a proxy we trust, so the only trustworthy
+    address is the connection peer.
     """
 
     # Mock App
@@ -105,14 +111,22 @@ async def test_spoofing_vulnerability(monkeypatch):
         response = PlainTextResponse("OK")
         await response(scope, receive, send)
 
-    # Initialize middleware with trust_proxy_headers=True
-    middleware = _create_test_middleware(mock_app)
+    # trust_proxy_headers=True but no trusted proxies: the header must still be dropped
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 0)
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXIES", set())
+
+    middleware = RateLimitMiddleware(
+        mock_app,
+        limit=10,
+        window=60,
+        protected_paths=["/protected"],
+        trust_proxy_headers=True,
+    )
 
     # Scenario:
-    # Attacker Real IP (seen by proxy): 10.0.0.5 (Private)
     # Attacker Spoofs Header: "8.8.8.8" (Public)
-    # Trusted Proxy appends Real IP.
-    # Header: "8.8.8.8, 10.0.0.5"
+    # Upstream hop appends: "10.0.0.5"
+    # Connection peer: 10.0.0.1
 
     headers = [(b"host", b"localhost"), (b"x-forwarded-for", b"8.8.8.8, 10.0.0.5")]
 
@@ -123,18 +137,19 @@ async def test_spoofing_vulnerability(monkeypatch):
         "headers": headers,
     }
 
-    async def mock_send(message):
+    async def mock_send(*args, **kwargs):
         pass
 
-    async def mock_receive():
+    async def mock_receive(*args, **kwargs):
         return {"type": "http.request"}
 
     await middleware(scope, mock_receive, mock_send)
 
-    # Expectation: The request should be tracked under the Real IP (10.0.0.5)
-    # If vulnerable, it would be under 8.8.8.8
-    assert "10.0.0.5" in middleware.requests
+    # Expectation: the request is tracked under the connection peer, and under neither
+    # header value — otherwise a client can mint a fresh bucket per request.
+    assert "10.0.0.1" in middleware.requests
     assert "8.8.8.8" not in middleware.requests
+    assert "10.0.0.5" not in middleware.requests
 
 
 @pytest.mark.asyncio
@@ -182,18 +197,16 @@ async def test_x_forwarded_for_ignored_by_default():
         pytest.fail("Rate limit bypassed! Response was success instead of 429.")
 
 
-@pytest.mark.skip(reason="Proxy security tests failing due to env var mock ordering")
 @pytest.mark.asyncio
 async def test_x_forwarded_for_trusted_when_configured(monkeypatch):
-    import agent.security
-
-    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
     """
     Test that X-Forwarded-For IS respected when trust_proxy_headers is True.
     This is for legitimate use cases (behind load balancer).
     """
     app = AsyncMock()
     # Limit 1 request per window, BUT we trust proxies
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
+
     mw = RateLimitMiddleware(
         app, limit=1, window=60, protected_paths=["/api"], trust_proxy_headers=True
     )

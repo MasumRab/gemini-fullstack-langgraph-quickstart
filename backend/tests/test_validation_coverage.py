@@ -8,7 +8,6 @@ import pytest
 from config.validation import check_env_strict, validate_environment
 
 
-
 class TestValidation:
     @pytest.fixture
     def mock_env(self):

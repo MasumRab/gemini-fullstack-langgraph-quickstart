@@ -301,7 +301,7 @@ def process_language_data(
             default_language,
         )
         cleaning_success = True
-    except Exception as e:
+    except Exception:
         logger.exception("Article cleaning failed")
         cleaning_success = False
 
@@ -381,7 +381,7 @@ def process_language_data(
 
         logger.info(f"Processing {len(tasks_to_process)} {language} tasks...")
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error loading data")
         return None
 
@@ -744,7 +744,7 @@ def main():
                     f.write(f"Readability: {readability_avg:.4f}\n")
                     f.write(f"Overall Score: {overall_avg:.4f}\n")
 
-        except IOError as e:
+        except IOError:
             logger.exception("Failed to write results")
     else:
         logger.warning("No results to save.")

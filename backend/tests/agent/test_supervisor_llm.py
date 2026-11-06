@@ -10,7 +10,6 @@ from agent.graphs.supervisor import compress_context
 from agent.state import OverallState
 
 
-
 @pytest.fixture
 def enable_compression():
     """Enable compression for testing."""

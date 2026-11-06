@@ -6,19 +6,18 @@ Tests cover:
 - Error handling and fallback mechanisms.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
-
 # Import SUT
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # MOCK google.genai BEFORE importing search.router to avoid broken environment dependencies
 # (e.g. pycares/aiohttp issues in current env)
 sys.modules["google.genai"] = MagicMock()
 
-from search.router import SearchRouter, SearchProviderType
 from search.provider import SearchResult
+from search.router import SearchProviderType, SearchRouter
 
 
 class TestSearchRouter:
