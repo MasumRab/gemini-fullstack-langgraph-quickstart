@@ -12,18 +12,43 @@ def sample_candidates():
         {"id": "route_c", "semantic_score": 0.9, "lexical_score": 0.1},
     ]
 
+_FAKE_MODULES = (
+    'dspy_helm',
+    'dspy_helm.routing',
+    'dspy_helm.routing.intelligent_dispatcher',
+)
+
+
 @pytest.fixture(autouse=True)
 def setup_mock_dispatcher():
-    # Setup mock module
-    if 'dspy_helm' not in sys.modules:
-        sys.modules['dspy_helm'] = MagicMock()
-        sys.modules['dspy_helm.routing'] = MagicMock()
-        sys.modules['dspy_helm.routing.intelligent_dispatcher'] = MagicMock()
-    
+    """Install a fake ``dspy_helm`` package for exactly one test.
+
+    The fake entries must be removed again on teardown. Leaving them in
+    ``sys.modules`` hands a later test in the same process a MagicMock where it
+    expected the real package, which turns an import failure into a silently
+    passing test.
+    """
+    saved = {name: sys.modules.get(name) for name in _FAKE_MODULES}
+    for name in _FAKE_MODULES:
+        if name not in sys.modules:
+            sys.modules[name] = MagicMock()
+
     mock_cls = MagicMock()
-    sys.modules['dspy_helm.routing.intelligent_dispatcher'].IntelligentDispatcher = mock_cls
-    
-    yield mock_cls
+    setattr(
+        sys.modules['dspy_helm.routing.intelligent_dispatcher'],
+        'IntelligentDispatcher',
+        mock_cls,
+    )
+
+    try:
+        yield mock_cls
+    finally:
+        for name in _FAKE_MODULES:
+            previous = saved[name]
+            if previous is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = previous
 
 def test_dispatch_empty_candidates(setup_mock_dispatcher):
     dispatcher = Dispatcher()
