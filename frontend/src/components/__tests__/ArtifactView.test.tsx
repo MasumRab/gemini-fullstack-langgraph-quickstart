@@ -76,6 +76,14 @@ describe('ArtifactView Component', () => {
     expect(rootDiv.className).toContain('left-0')
   })
 
+  it('updates the maximize button label when toggled', () => {
+    render(<ArtifactView {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /maximize/i }))
+
+    expect(screen.getByRole('button', { name: /restore size/i })).toBeDefined()
+  })
+
   it('renders markdown content', () => {
     render(<ArtifactView {...defaultProps} />)
     // ReactMarkdown renders h1 for # Test Content
