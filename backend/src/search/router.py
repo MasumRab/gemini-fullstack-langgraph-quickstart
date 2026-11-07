@@ -120,9 +120,13 @@ class SearchRouter:
                         # For simplicity, fallback is usually single shot untuned or standard.
                         # Let's try standard (tuned=True default)
                         try:
-                            return fallback_provider.search(query, max_results=max_results)
+                            return fallback_provider.search(
+                                query, max_results=max_results
+                            )
                         except Exception as e3:
-                            logger.warning(f"Search failed with fallback {fallback_name}: {e3}")
+                            logger.warning(
+                                f"Search failed with fallback {fallback_name}: {e3}"
+                            )
 
                 # If we get here, all attempts failed
                 logger.error("All search attempts failed.")
