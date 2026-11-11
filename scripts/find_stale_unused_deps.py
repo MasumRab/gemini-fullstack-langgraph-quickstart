@@ -100,6 +100,7 @@ def check_py_deps():
                     .split("=")[0]
                     .split("<")[0]
                     .split(">")[0]
+                    .split("~")[0]
                 )
                 deps.append((dep, i + 1))
 
