@@ -240,3 +240,9 @@ def test_google_genai_embeddings_keep_vector_shape(rag_classes, mock_config):
 
     assert single.shape == (768,)
     assert batch.shape == (2, 768)
+
+
+def test_google_genai_rejects_an_unknown_embedding_model(rag_classes):
+    """The adapter only knows text-embedding-004's width; refuse anything else."""
+    with pytest.raises(ValueError, match="only 'text-embedding-004' is supported"):
+        rag_classes.GoogleGenAIEmbedderAdapter("text-embedding-3-small")
