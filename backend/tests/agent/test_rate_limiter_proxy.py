@@ -1,9 +1,11 @@
 from unittest.mock import patch
 
 import pytest
+import agent.security
 from fastapi.testclient import TestClient
 from starlette.responses import PlainTextResponse
 
+import agent.security
 from agent.app import app
 from agent.security import RateLimitMiddleware
 
@@ -30,19 +32,18 @@ def test_rate_limiter_integration():
 @pytest.mark.asyncio
 async def test_rate_limiter_proxy_logic(monkeypatch):
     """Unit test for RateLimitMiddleware proxy logic."""
-    from agent import security
-
-    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
+    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
 
     # Mock App
     async def mock_app(scope, receive, send):
         response = PlainTextResponse("OK")
         await response(scope, receive, send)
 
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
+
     # Create middleware instance with low limit (2 per minute)
     # We use a distinct path prefix to ensure we hit the logic
     # 🛡️ Sentinel: Explicitly enable trust_proxy_headers for this test as we want to test X-Forwarded-For logic
-    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
     middleware = RateLimitMiddleware(
         mock_app,
         limit=2,
@@ -66,8 +67,8 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
 
         sent_messages = []
 
-        async def mock_send(_message):
-            sent_messages.append(_message)
+        async def mock_send(message):
+            sent_messages.append(message)
 
         async def mock_receive():
             return {"type": "http.request"}
@@ -82,15 +83,15 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
     # 1. Client A sends requests
     # The trusted proxy (Render) appends the REAL client IP to the end of X-Forwarded-For.
     # So if Client A is 1.2.3.4, the header seen by app is "..., 1.2.3.4"
-    header_a = "192.168.0.2"
+    header_a = "1.2.3.4"
 
-    await call_middleware("/protected", "192.168.0.1", header_a)
-    await call_middleware("/protected", "192.168.0.1", header_a)
+    await call_middleware("/protected", "10.0.0.1", header_a)
+    await call_middleware("/protected", "10.0.0.1", header_a)
 
     # 2. Client B sends requests
-    header_b = "192.168.0.3"
+    header_b = "5.6.7.8"
 
-    await call_middleware("/protected", "192.168.0.1", header_b)
+    await call_middleware("/protected", "10.0.0.1", header_b)
 
     # 3. Verify Internal State
     # We verify that the middleware tracks the IPs from X-Forwarded-For (Client A/B)
@@ -98,29 +99,28 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
 
     print(f"\nMiddleware State: {middleware.requests}")
 
-    assert "192.168.0.2" in middleware.requests
-    assert len(middleware.requests["192.168.0.2"]) == 2
+    assert "1.2.3.4" in middleware.requests
+    assert len(middleware.requests["1.2.3.4"]) == 2
 
-    assert "192.168.0.3" in middleware.requests
-    assert len(middleware.requests["192.168.0.3"]) == 1
+    assert "5.6.7.8" in middleware.requests
+    assert len(middleware.requests["5.6.7.8"]) == 1
 
-    # "192.168.0.1" (Proxy IP) should NOT be tracked as a client
-    assert "192.168.0.1" not in middleware.requests
+    # "10.0.0.1" (Proxy IP) should NOT be tracked as a client
+    assert "10.0.0.1" not in middleware.requests
 
 
 @pytest.mark.asyncio
 async def test_rate_limiter_truncation(monkeypatch):
     """Test that extremely long headers are truncated to prevent memory exhaustion."""
-    from agent import security
-
-    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
+    monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
 
     async def mock_app(scope, receive, send):
         response = PlainTextResponse("OK")
         await response(scope, receive, send)
 
+    monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
+
     # 🛡️ Sentinel: Enable proxy trust to test header parsing
-    monkeypatch.setattr(security, "TRUSTED_PROXY_COUNT", 1)
     middleware = RateLimitMiddleware(
         mock_app,
         limit=10,
@@ -129,7 +129,7 @@ async def test_rate_limiter_truncation(monkeypatch):
         trust_proxy_headers=True,
     )
 
-    long_ip = "192.168.0.2" + "a" * 1000  # Very long string
+    long_ip = "1.2.3.4" + "a" * 1000  # Very long string
     headers = [(b"x-forwarded-for", long_ip.encode())]
 
     scope = {
@@ -139,7 +139,7 @@ async def test_rate_limiter_truncation(monkeypatch):
         "headers": headers,
     }
 
-    async def mock_send(_message):
+    async def mock_send(message):
         pass
 
     async def mock_receive():
@@ -150,5 +150,5 @@ async def test_rate_limiter_truncation(monkeypatch):
     # Verify the key in requests is truncated
     keys = list(middleware.requests.keys())
     assert len(keys) == 1
-    # Now that we sanitize invalid IPs to "unknown", it won't match the truncated string
+    # Now that we sanitize invalid IPs, it defaults back to the connection IP.
     assert keys[0] == "127.0.0.1"
