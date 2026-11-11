@@ -133,8 +133,8 @@ async def run_benchmark():
                 result_entry["groundedness_score"],
             )
 
-        except Exception as e:
-            logger.error(f"Agent failed for '{question}'", exc_info=True)
+        except Exception:
+            logger.error("Agent failed for '%s'", question, exc_info=True)
             continue
 
     # Report Generation
