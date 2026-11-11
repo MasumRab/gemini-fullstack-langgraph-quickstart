@@ -28,7 +28,6 @@ def test_rate_limiter_integration():
 # We verify that X-Forwarded-For is correctly used to identify clients.
 
 
-@pytest.mark.skip(reason="Proxy security tests failing due to env var mock ordering")
 @pytest.mark.asyncio
 async def test_rate_limiter_proxy_logic(monkeypatch):
     """Unit test for RateLimitMiddleware proxy logic."""
@@ -109,7 +108,6 @@ async def test_rate_limiter_proxy_logic(monkeypatch):
     assert "10.0.0.1" not in middleware.requests
 
 
-@pytest.mark.skip(reason="Proxy security tests failing due to env var mock ordering")
 @pytest.mark.asyncio
 async def test_rate_limiter_truncation(monkeypatch):
     """Test that extremely long headers are truncated to prevent memory exhaustion."""
