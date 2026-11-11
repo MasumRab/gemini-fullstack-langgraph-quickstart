@@ -28,7 +28,10 @@ jobs:
   review:
     if: ${{ github.event.pull_request.user.login != 'google-labs-jules[bot]' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The session poll loop below budgets 120 x 15s = 30 min, plus per-attempt
+    # GET retries; a 30-min job timeout would kill the job before the loop can
+    # print its own timeout result, so leave the same 15-min margin as before.
+    timeout-minutes: 45
     permissions:
       pull-requests: write
       contents: read
