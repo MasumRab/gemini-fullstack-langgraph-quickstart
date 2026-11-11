@@ -581,15 +581,39 @@ jobs:
             // findings would drop every earlier key and let those comments come back.
             try {
               const postedFindings = { ...prevFindings };
+              // Re-read the tracking comment immediately before writing: this job can overlap
+              // with the other Jules review workflow, which may have merged in findings of its
+              // own since this run read the comment. Writing our stale copy back would drop them.
+              let freshFindingsComment = prevFindingsComment;
+              try {
+                const latestComments = await github.paginate(github.rest.issues.listComments, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  per_page: 100,
+                });
+                const latest = latestComments
+                  .filter(c => c.body?.includes('<!-- jules-posted-findings -->'))
+                  .pop();
+                if (latest) {
+                  freshFindingsComment = latest;
+                  Object.assign(
+                    postedFindings,
+                    JSON.parse(latest.body.replace(/.*<!-- jules-posted-findings -->\n?/, '').trim())
+                  );
+                }
+              } catch (e) {
+                core.warning(`Could not re-read the findings comment before saving: ${e.message}`);
+              }
               for (const c of comments) {
                 postedFindings[`${c.path}:${c.line}`] = true;
               }
               const findingsBody = `<!-- jules-posted-findings -->\n${JSON.stringify(postedFindings)}`;
-              if (prevFindingsComment) {
+              if (freshFindingsComment) {
                 await github.rest.issues.updateComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  comment_id: prevFindingsComment.id,
+                  comment_id: freshFindingsComment.id,
                   body: findingsBody,
                 });
               } else {
