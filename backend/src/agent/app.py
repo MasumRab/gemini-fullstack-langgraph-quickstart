@@ -87,13 +87,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"ERROR: Failed to load MCP tools during startup: {e}")
 
-    yield
-
-    # Cleanup if needed (e.g. close MCP sessions if we held them)
-    # For now, langchain_mcp_adapters handles session lifecycle via tool context?
-    # Actually, if load_mcp_tools establishes a persistent session, we should close it.
-    # But get_tools_from_mcp returns list of tools.
-    MCP_TOOLS.clear()
+    try:
+        yield
+    finally:
+        # Cleanup if needed (e.g. close MCP sessions if we held them)
+        # For now, langchain_mcp_adapters handles session lifecycle via tool context?
+        # Actually, if load_mcp_tools establishes a persistent session, we should close it.
+        # But get_tools_from_mcp returns list of tools.
+        MCP_TOOLS.clear()
 
 
 # Define the FastAPI app
