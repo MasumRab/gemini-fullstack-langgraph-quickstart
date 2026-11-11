@@ -21,7 +21,10 @@ jobs:
         github.event.comment.author_association == 'MEMBER') &&
        startsWith(github.event.comment.body, '/jules-walkthrough'))
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The session poll loop below budgets 120 x 15s = 30 min, plus per-attempt
+    # GET retries; a 30-min job timeout would kill the job before the loop can
+    # print its own timeout result, so leave the same 15-min margin as before.
+    timeout-minutes: 45
     permissions:
       pull-requests: write
       contents: read
@@ -229,7 +232,6 @@ jobs:
               `Output the entire walkthrough as your final message.`,
             ].join('\n');
 
-            const fs = require('fs');
             fs.writeFileSync('/tmp/jules-walkthrough-payload.json', JSON.stringify({
               prompt,
               sourceContext: {
@@ -325,7 +327,7 @@ jobs:
           SESSION_ID: ${{ steps.create.outputs.session_id }}
         run: |
           SESSION_RESOURCE="${SESSION_NAME:-sessions/${SESSION_ID}}"
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=120
 
           poll_curl() {
             local response
@@ -373,6 +375,15 @@ jobs:
 
           echo "session_state=TIMEOUT" >> "$GITHUB_OUTPUT"
           echo "Walkthrough timed out." > /tmp/jules-walkthrough-output.txt
+
+      - name: Upload review output as artifact
+        if: always() && steps.build.outputs.skip != 'true' && steps.create.outputs.quota_exhausted != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jules-walkthrough-output-${{ github.event.pull_request.number }}
+          path: /tmp/jules-*-output.txt
+          if-no-files-found: ignore
+          retention-days: 30
 
       - name: Post walkthrough comment
         if: always() && steps.build.conclusion == 'success' && steps.create.outputs.quota_exhausted != 'true'
@@ -432,6 +443,7 @@ jobs:
         with:
           name: jules-walkthrough-${{ github.event.pull_request.number }}
           path: /tmp/jules-walkthrough-output.txt
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Skip (fork)

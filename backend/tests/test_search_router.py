@@ -166,8 +166,15 @@ class TestSearchRouter:
         # Verify DDG called once
         ddg_mock.search.assert_called_once()
 
-    def test_search_all_fail(self, mock_config, mock_adapters):
-        """Test that exception is raised if fallback also fails."""
+    def test_search_all_fail_returns_empty_list(self, mock_config, mock_adapters):
+        """A failing fallback is reported, not raised out of search().
+
+        search() is documented to return a list of results, and the
+        no-fallback-attempt path already returns [] here. Letting the
+        fallback's exception escape made the failure mode depend on which
+        branch ran instead of on the contract, so callers had to guard the
+        call site with a broad except.
+        """
         router = SearchRouter(app_config=mock_config)
         mock_config.search_provider = "google"
         mock_config.search_fallback = "duckduckgo"
@@ -180,8 +187,10 @@ class TestSearchRouter:
         # DDG fails
         ddg_mock.search.side_effect = Exception("DDG Fail")
 
-        with pytest.raises(Exception, match="DDG Fail"):
-            router.search("query")
+        assert router.search("query") == []
+        # The fallback really was tried; an empty list because the fallback was
+        # skipped would look identical from the caller's side.
+        ddg_mock.search.assert_called_once()
 
     def test_search_no_provider_available(self, mock_config, mock_adapters):
         """Test ValueError when no providers are configured/available."""

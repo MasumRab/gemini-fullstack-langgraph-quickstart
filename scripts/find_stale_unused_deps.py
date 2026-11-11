@@ -9,7 +9,7 @@ def get_git_blame_date(file_path, line_number):
     try:
         result = subprocess.run(  # noqa: S603
             [
-                "/usr/bin/git",
+                "git",
                 "blame",
                 "--line-porcelain",
                 "-L",
@@ -30,7 +30,7 @@ def get_git_blame_date(file_path, line_number):
 
 
 def check_js_deps():
-    print("Checking JS dependencies in frontend/package.json...")
+    # print("Checking JS dependencies in frontend/package.json...")
     try:
         with open("frontend/package.json", "r") as f:
             package_json = json.load(f)
@@ -61,7 +61,7 @@ def check_js_deps():
                         # Exclude node_modules and package.json itself
                         subprocess.run(  # noqa: S603
                             [
-                                "/bin/grep",
+                                "grep",
                                 "-r",
                                 "--exclude-dir=node_modules",
                                 "--exclude=package.json",
@@ -75,12 +75,12 @@ def check_js_deps():
                         print(
                             f"Stale/Unused JS Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
                         )
-    except Exception as e:  # noqa: BLE001, S110
+    except (OSError, subprocess.SubprocessError) as e:  # noqa: BLE001
         print(f"Error checking JS deps: {e}")
 
 
 def check_py_deps():
-    print("\nChecking Python dependencies in backend/pyproject.toml...")
+    # print("\nChecking Python dependencies in backend/pyproject.toml...")
     try:
         with open("backend/pyproject.toml", "r") as f:
             lines = f.readlines()
@@ -100,6 +100,7 @@ def check_py_deps():
                     .split("=")[0]
                     .split("<")[0]
                     .split(">")[0]
+                    .split("~")[0]
                 )
                 deps.append((dep, i + 1))
 
@@ -114,7 +115,7 @@ def check_py_deps():
                 try:
                     subprocess.run(  # noqa: S603
                         [
-                            "/bin/grep",
+                            "grep",
                             "-E",
                             "-r",
                             "--exclude-dir=.venv",
@@ -129,7 +130,7 @@ def check_py_deps():
                         f"Stale/Unused Py Dep: {dep} (Added: {date.strftime('%Y-%m-%d')})"
                     )
 
-    except Exception as e:  # noqa: BLE001, S110
+    except (OSError, subprocess.SubprocessError) as e:  # noqa: BLE001
         print(f"Error checking Py deps: {e}")
 
 
