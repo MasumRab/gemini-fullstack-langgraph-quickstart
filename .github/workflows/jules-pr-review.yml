@@ -28,7 +28,10 @@ jobs:
   review:
     if: ${{ github.event.pull_request.user.login != 'google-labs-jules[bot]' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The session poll loop below budgets 120 x 15s = 30 min, plus per-attempt
+    # GET retries; a 30-min job timeout would kill the job before the loop can
+    # print its own timeout result, so leave the same 15-min margin as before.
+    timeout-minutes: 45
     permissions:
       pull-requests: write
       contents: read
@@ -380,7 +383,7 @@ jobs:
           SESSION_ID: ${{ steps.create.outputs.session_id }}
         run: |
           SESSION_RESOURCE="${SESSION_NAME:-sessions/${SESSION_ID}}"
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=120
 
           for i in $(seq 1 $MAX_ATTEMPTS); do
             sleep 15
@@ -418,6 +421,15 @@ jobs:
           echo "session_state=TIMEOUT" >> "$GITHUB_OUTPUT"
           echo "Review timed out after $((MAX_ATTEMPTS * 15)) seconds." > /tmp/jules-review-output.txt
 
+      - name: Upload review output as artifact
+        if: always() && steps.prepare.outputs.skip != 'true' && steps.create.outputs.quota_exhausted != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jules-review-output-${{ github.event.pull_request.number }}
+          path: /tmp/jules-*-output.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Post review and set commit status
         if: always() && steps.prepare.conclusion == 'success' && steps.prepare.outputs.skip != 'true' && steps.create.outputs.quota_exhausted != 'true'
         uses: actions/github-script@v7
@@ -428,6 +440,8 @@ jobs:
             const prNumber = context.payload.pull_request.number;
             const headSha = '${{ steps.prepare.outputs.head_sha }}';
             const sessionState = '${{ steps.poll.outputs.session_state }}';
+            let prevFindingsComment = null;
+            let prevFindings = {};
 
             // Split walkthrough from review before parsing
             const wtStart = '<!-- walkthrough_start -->';
@@ -482,12 +496,37 @@ jobs:
             }
 
             // Parse per-line findings from Jules output
-            const findingRegex = /<!--\s*FINDING\s+severity="([^"]+)"\s+file="([^"]+)"\s+line="?(\d+)"?(?:\s+reason="([^"]*)")?\s*-->/gi;
+            // Flexible FINDING parser: match the full HTML comment, then extract attributes individually
+            const findingRegex = /<!--\s*FINDING\s+([\s\S]*?)\s*-->/gi;
             const comments = [];
             let findingMatch;
             const seen = new Set();
+
+            // Fetch previously posted findings from PR comments for cross-session dedup
+            const allComments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+            prevFindingsComment = allComments.find(c => c.body?.includes('<!-- jules-posted-findings -->'));
+            if (prevFindingsComment) {
+              try {
+                prevFindings = JSON.parse(prevFindingsComment.body.replace(/.*<!-- jules-posted-findings -->\n?/, '').trim());
+                for (const k of Object.keys(prevFindings)) {
+                  seen.add(k);
+                }
+              } catch (e) { /* ignore parse errors */ }
+            }
+
             while ((findingMatch = findingRegex.exec(mainReview)) !== null) {
-              const [, severity, file, line, reason] = findingMatch;
+              const attrs = findingMatch[1];
+              const severity = (attrs.match(/\bseverity\s*=\s*["']([^"']+)["']/i) || [])[1];
+              const file = (attrs.match(/\bfile\s*=\s*["']([^"']+)["']/i) || [])[1];
+              const line = (attrs.match(/\bline\s*=\s*["']?(\d+)["']?/i) || [])[1];
+              const reason = (attrs.match(/\breason\s*=\s*["']([^"']*)["']/i) || [])[1];
+              if (!severity || !file || !line) continue;
+
               const key = `${file}:${line}`;
               if (seen.has(key)) continue;
               seen.add(key);
@@ -537,6 +576,58 @@ jobs:
               });
             }
 
+            // Persist the findings posted above so a later session on this PR does not
+            // re-post them. Seed from the previous map: replacing it with only this run's
+            // findings would drop every earlier key and let those comments come back.
+            try {
+              const postedFindings = { ...prevFindings };
+              // Re-read the tracking comment immediately before writing: this job can overlap
+              // with the other Jules review workflow, which may have merged in findings of its
+              // own since this run read the comment. Writing our stale copy back would drop them.
+              let freshFindingsComment = prevFindingsComment;
+              try {
+                const latestComments = await github.paginate(github.rest.issues.listComments, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  per_page: 100,
+                });
+                const latest = latestComments
+                  .filter(c => c.body?.includes('<!-- jules-posted-findings -->'))
+                  .pop();
+                if (latest) {
+                  freshFindingsComment = latest;
+                  Object.assign(
+                    postedFindings,
+                    JSON.parse(latest.body.replace(/.*<!-- jules-posted-findings -->\n?/, '').trim())
+                  );
+                }
+              } catch (e) {
+                core.warning(`Could not re-read the findings comment before saving: ${e.message}`);
+              }
+              for (const c of comments) {
+                postedFindings[`${c.path}:${c.line}`] = true;
+              }
+              const findingsBody = `<!-- jules-posted-findings -->\n${JSON.stringify(postedFindings)}`;
+              if (freshFindingsComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: freshFindingsComment.id,
+                  body: findingsBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: findingsBody,
+                });
+              }
+            } catch (e) {
+              core.warning(`Failed to record posted findings: ${e.message}`);
+            }
+
             // Post walkthrough as separate issue comment if generated
             if (walkthroughText) {
               try {
@@ -558,4 +649,5 @@ jobs:
         with:
           name: jules-review-${{ github.event.pull_request.number }}
           path: /tmp/jules-review-output.txt
+          if-no-files-found: ignore
           retention-days: 30
