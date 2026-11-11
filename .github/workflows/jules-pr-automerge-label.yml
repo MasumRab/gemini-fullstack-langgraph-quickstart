@@ -2,13 +2,13 @@ name: Jules PR Auto-Merge Label
 
 # Periodically labels Jules-created PRs for auto-merge.
 # Avoids per-session polling which would burn billable action minutes.
-# Relies on GitHub's built-in auto-merge (no Mergify on this repo).
-# Calls enablePullRequestAutoMerge GraphQL mutation after labeling.
-# Requires: Settings > General > Pull Requests > Allow auto-merge
+# Relies on Mergify (if .mergify.yml present) or GitHub's built-in auto-merge.
+# For repos without Mergify, also calls enablePullRequestAutoMerge GraphQL mutation.
+# Requires: Settings > General > Pull Requests > Allow auto-merge (for non-Mergify repos)
 
 on:
   schedule:
-    - cron: '0 * * * *'  # once per hour
+    - cron: "0 * * * *" # once per hour
   workflow_dispatch:
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
               // Only label PRs from the Jules bot account in the same repository.
               // Branch-name matching is rejected as a spoof vector — a fork author
               // controls their branch name and can trivially create a jules-* branch.
-              if (pr.user.login === 'google-labs-jules[bot]' && pr.head.repo.full_name === sameRepo) {
+              if (pr.user.login === 'google-labs-jules[bot]' && pr.head.repo?.full_name === sameRepo) {
                 const { data: labels } = await github.rest.issues.listLabelsOnIssue({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -53,15 +53,22 @@ jobs:
                 }
 
                 // Enable GitHub's built-in auto-merge (idempotent — safe to call repeatedly).
-                // Requires auto-merge enabled in repo settings.
+                // For repos without Mergify. Requires auto-merge enabled in repo settings.
+                // Harmless on repos with Mergify — Mergify still handles the actual merge.
+                const { data: repo } = await github.rest.repos.get({ owner: context.repo.owner, repo: context.repo.repo });
+                const allowedMergeMethods = [];
+                if (repo.allow_merge_commit) allowedMergeMethods.push('MERGE');
+                if (repo.allow_squash_merge) allowedMergeMethods.push('SQUASH');
+                if (repo.allow_rebase_merge) allowedMergeMethods.push('REBASE');
+                const mergeMethod = allowedMergeMethods[0] || 'SQUASH';
                 try {
                   await github.graphql(`
-                    mutation EnableAutoMerge($pullRequestId: ID!) {
-                      enablePullRequestAutoMerge(input: {pullRequestId: $pullRequestId}) {
+                    mutation EnableAutoMerge($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!) {
+                      enablePullRequestAutoMerge(input: {pullRequestId: $pullRequestId, mergeMethod: $mergeMethod}) {
                         pullRequest { number }
                       }
                     }
-                  `, { pullRequestId: pr.node_id });
+                  `, { pullRequestId: pr.node_id, mergeMethod });
                 } catch (e) {
                   core.info(`Auto-merge not enabled for PR #${pr.number}: ${e.message}`);
                 }

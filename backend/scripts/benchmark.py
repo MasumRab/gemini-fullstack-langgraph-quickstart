@@ -1,7 +1,7 @@
 """Benchmark Orchestration Script
 
 This script runs the agent against a dataset of questions and evaluates performance
-using the evaluators defined in backend/src/agent/evaluation.py.
+using the evaluators defined in backend/tests/evaluators.py.
 """
 
 import asyncio
@@ -17,7 +17,12 @@ load_dotenv()
 
 from agent.graph import graph
 
-from agent.evaluation import eval_groundedness, eval_quality
+try:
+    from tests.evaluators import eval_groundedness, eval_quality
+except ImportError:
+    # This might happen if running script directly without module context
+    # But usually handled by running as `python -m scripts.benchmark`
+    raise
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -133,8 +138,8 @@ async def run_benchmark():
                 result_entry["groundedness_score"],
             )
 
-        except Exception:
-            logger.error("Agent failed for '%s'", question, exc_info=True)
+        except Exception as e:
+            logger.error("Agent failed for '%s': %s", question, e, exc_info=True)
             continue
 
     # Report Generation
