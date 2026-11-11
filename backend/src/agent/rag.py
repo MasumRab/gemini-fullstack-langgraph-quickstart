@@ -44,6 +44,7 @@ class EvidenceChunk:
     chunk_id: str
     metadata: Dict = field(default_factory=dict)
 
+
 class LangChainEmbeddingAdapter:
     """Adapter to make LangChain embeddings look like sentence-transformers for Chroma."""
 
@@ -536,7 +537,9 @@ class _RAGConfig:
         self.enabled = os.getenv("RAG_ENABLED", "true").lower() == "true"
         self.enable_fallback = True
         self.max_documents = 5
-        self.embedding_provider = os.getenv("RAG_EMBEDDING_PROVIDER", "local").lower() # 'local' or 'google_genai'
+        self.embedding_provider = os.getenv(
+            "RAG_EMBEDDING_PROVIDER", "local"
+        ).lower()  # 'local' or 'google_genai'
 
 
 rag_config = _RAGConfig()
@@ -551,9 +554,7 @@ class Resource:
 
 
 def create_rag_tool(resources):
-    """
-    Returns an instance of DeepSearchRAG configured for tool use.
-    """
+    """Returns an instance of DeepSearchRAG configured for tool use."""
     if not is_rag_enabled():
         logger.warning("RAG is disabled via configuration.")
         return None
