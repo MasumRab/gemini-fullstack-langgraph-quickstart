@@ -283,7 +283,9 @@ def generate_plan(state: OverallState, config: RunnableConfig) -> OverallState:
             state["initial_search_query_count"] = configurable.number_of_initial_queries
 
         # 🛡️ Sentinel: Enforce limit to prevent DoS via massive query generation
-        state["initial_search_query_count"] = min(state["initial_search_query_count"], 10)
+        state["initial_search_query_count"] = min(
+            state["initial_search_query_count"], 10
+        )
 
         # Format the prompt
         current_date = get_current_date()
