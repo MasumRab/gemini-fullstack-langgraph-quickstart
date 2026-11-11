@@ -3,7 +3,7 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable","dom"],
+    "lib": ["ES2020", "DOM", "DOM.Iterable", "dom"],
     "module": "ESNext",
     "skipLibCheck": true,
     "baseUrl": ".",
@@ -24,11 +24,6 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src","vite.config.ts"],
-  "exclude": [
-    "src/**/*.test.tsx",
-    "src/**/*.test.ts",
-    "src/**/__tests__/*",
-    "src/test/*"
-  ]
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["src/**/*.test.tsx", "src/**/*.test.ts", "src/**/__tests__/*", "src/test/*"]
 }
