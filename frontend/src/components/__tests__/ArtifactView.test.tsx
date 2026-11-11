@@ -4,7 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 
 // Mock clipboard API
 const mockClipboard = {
-  writeText: vi.fn(),
+  writeText: vi.fn().mockResolvedValue(undefined),
 }
 Object.defineProperty(navigator, 'clipboard', {
   value: mockClipboard,
@@ -17,11 +17,17 @@ describe('ArtifactView Component', () => {
     type: 'markdown' as const,
     title: 'Test Artifact',
     isOpen: true,
+    isLoading: false,
     onClose: vi.fn(),
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('shows loading spinner when isLoading is true', () => {
+    render(<ArtifactView {...defaultProps} isLoading={true} />)
+    expect(screen.getByLabelText('Loading')).toBeDefined()
   })
 
   it('does not render when isOpen is false', () => {
@@ -68,6 +74,14 @@ describe('ArtifactView Component', () => {
     fireEvent.click(maximizeButton)
     expect(rootDiv.className).not.toContain('md:w-1/2')
     expect(rootDiv.className).toContain('left-0')
+  })
+
+  it('updates the maximize button label when toggled', () => {
+    render(<ArtifactView {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /maximize/i }))
+
+    expect(screen.getByRole('button', { name: /restore size/i })).toBeDefined()
   })
 
   it('renders markdown content', () => {
