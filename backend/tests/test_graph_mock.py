@@ -12,8 +12,6 @@ from agent.nodes import (
     web_research,
 )
 
-TEST_MODEL = "gemma-3-27b-it"
-
 
 @pytest.fixture
 def mock_state():
