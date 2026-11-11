@@ -5,6 +5,8 @@ import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
+import agent.security
+
 
 class TestAPISecurity:
     @pytest.fixture
@@ -94,8 +96,7 @@ class TestAPISecurity:
 
     def test_rate_limit_respects_x_forwarded_for(self, monkeypatch):
         """Test that rate limiting uses the X-Forwarded-For header when present."""
-        import agent.security
-        monkeypatch.setattr(agent.security, "TRUSTED_PROXY_COUNT", 1)
+        monkeypatch.setattr(agent.security, 'TRUSTED_PROXY_COUNT', 1)
         from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 
         # Instantiate a dedicated app with trust_proxy_headers=True

@@ -38,6 +38,7 @@ const MARKERS = Object.freeze({
   JULES_REBUILD:        '<!-- jules-rebuild -->',
   JULES_QUOTA:          '<!-- jules-quota-exhausted -->',
   JULES_ADDRESS:        '<!-- jules-address-comments -->',
+  JULES_POSTED_FINDINGS:'<!-- jules-posted-findings -->',
   FINDING:              '<!-- FINDING',
   WALKTHROUGH_START:    '<!-- walkthrough_start -->',
   WALKTHROUGH_END:      '<!-- walkthrough_end -->',
@@ -54,6 +55,7 @@ const ALL_JULES_MARKERS = Object.freeze([
   MARKERS.JULES_REBUILD,
   MARKERS.JULES_QUOTA,
   MARKERS.JULES_ADDRESS,
+  MARKERS.JULES_POSTED_FINDINGS,
 ]);
 
 const THIRD_PARTY_MARKERS = Object.freeze([
