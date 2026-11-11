@@ -380,6 +380,7 @@ jobs:
         with:
           name: jules-walkthrough-output-${{ github.event.pull_request.number }}
           path: /tmp/jules-*-output.txt
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Post walkthrough comment
@@ -440,6 +441,7 @@ jobs:
         with:
           name: jules-walkthrough-${{ github.event.pull_request.number }}
           path: /tmp/jules-walkthrough-output.txt
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Skip (fork)

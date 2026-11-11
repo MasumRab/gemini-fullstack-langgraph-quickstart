@@ -424,6 +424,7 @@ jobs:
         with:
           name: jules-review-output-${{ github.event.pull_request.number }}
           path: /tmp/jules-*-output.txt
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Post review and set commit status
@@ -437,6 +438,7 @@ jobs:
             const headSha = '${{ steps.prepare.outputs.head_sha }}';
             const sessionState = '${{ steps.poll.outputs.session_state }}';
             let prevFindingsComment = null;
+            let prevFindings = {};
 
             // Split walkthrough from review before parsing
             const wtStart = '<!-- walkthrough_start -->';
@@ -507,7 +509,7 @@ jobs:
             prevFindingsComment = allComments.find(c => c.body?.includes('<!-- jules-posted-findings -->'));
             if (prevFindingsComment) {
               try {
-                const prevFindings = JSON.parse(prevFindingsComment.body.replace(/.*<!-- jules-posted-findings -->\n?/, '').trim());
+                prevFindings = JSON.parse(prevFindingsComment.body.replace(/.*<!-- jules-posted-findings -->\n?/, '').trim());
                 for (const k of Object.keys(prevFindings)) {
                   seen.add(k);
                 }
@@ -571,6 +573,34 @@ jobs:
               });
             }
 
+            // Persist the findings posted above so a later session on this PR does not
+            // re-post them. Seed from the previous map: replacing it with only this run's
+            // findings would drop every earlier key and let those comments come back.
+            try {
+              const postedFindings = { ...prevFindings };
+              for (const c of comments) {
+                postedFindings[`${c.path}:${c.line}`] = true;
+              }
+              const findingsBody = `<!-- jules-posted-findings -->\n${JSON.stringify(postedFindings)}`;
+              if (prevFindingsComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: prevFindingsComment.id,
+                  body: findingsBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: findingsBody,
+                });
+              }
+            } catch (e) {
+              core.warning(`Failed to record posted findings: ${e.message}`);
+            }
+
             // Post walkthrough as separate issue comment if generated
             if (walkthroughText) {
               try {
@@ -592,4 +622,5 @@ jobs:
         with:
           name: jules-review-${{ github.event.pull_request.number }}
           path: /tmp/jules-review-output.txt
+          if-no-files-found: ignore
           retention-days: 30

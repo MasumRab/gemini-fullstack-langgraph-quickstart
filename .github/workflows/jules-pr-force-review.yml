@@ -470,6 +470,7 @@ jobs:
         with:
           name: jules-review-output-${{ github.event.pull_request.number }}
           path: /tmp/jules-*-output.txt
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Post review and set commit status
@@ -488,6 +489,7 @@ jobs:
             const headSha = '${{ steps.prepare.outputs.head_sha }}';
             const sessionState = '${{ steps.poll.outputs.session_state }}';
             let prevFindingsComment = null;
+            let prevFindings = {};
 
             const verdictMatch = reviewText.match(/\[VERDICT\]:\s*(approve|comment|block)|<!--\s*verdict:\s*(approve|comment|block)\s*-->/i);
             const verdict = verdictMatch ? (verdictMatch[1] || verdictMatch[2]).toLowerCase() : null;
@@ -542,7 +544,7 @@ jobs:
             prevFindingsComment = allComments.find(c => c.body?.includes('<!-- jules-posted-findings -->'));
             if (prevFindingsComment) {
               try {
-                const prevFindings = JSON.parse(prevFindingsComment.body.replace(/.*<!-- jules-posted-findings -->\n?/, '').trim());
+                prevFindings = JSON.parse(prevFindingsComment.body.replace(/.*<!-- jules-posted-findings -->\n?/, '').trim());
                 for (const k of Object.keys(prevFindings)) {
                   seen.add(k);
                 }
@@ -605,12 +607,41 @@ jobs:
               });
             }
 
+            // Persist the findings posted above so a later session on this PR does not
+            // re-post them. Seed from the previous map: replacing it with only this run's
+            // findings would drop every earlier key and let those comments come back.
+            try {
+              const postedFindings = { ...prevFindings };
+              for (const c of comments) {
+                postedFindings[`${c.path}:${c.line}`] = true;
+              }
+              const findingsBody = `<!-- jules-posted-findings -->\n${JSON.stringify(postedFindings)}`;
+              if (prevFindingsComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: prevFindingsComment.id,
+                  body: findingsBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: findingsBody,
+                });
+              }
+            } catch (e) {
+              core.warning(`Failed to record posted findings: ${e.message}`);
+            }
+
       - name: Upload session output
         if: always() && steps.prepare.outputs.skip != 'true' && steps.create.outputs.quota_exhausted != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: jules-force-review-${{ github.event.pull_request.number }}
           path: /tmp/jules-force-review-output.txt
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Remove jules-force-review label
