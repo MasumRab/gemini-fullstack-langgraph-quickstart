@@ -78,6 +78,7 @@ export default function App() {
       {latestArtifact && (
         <ArtifactView
           isOpen={isArtifactOpen}
+          isLoading={thread.isLoading}
           onClose={() => setIsArtifactOpen(false)}
           content={latestArtifact.content}
           type={latestArtifact.type as 'markdown' | 'code' | 'text'}

@@ -13,12 +13,14 @@ def get_research_topic(messages: List[AnyMessage]) -> str:
     if len(messages) == 1:
         research_topic = messages[-1].content
     else:
-        research_topic = ""
+        # ⚡ Bolt Optimization: Use list join instead of O(N^2) string concatenation
+        topic_parts = []
         for message in messages:
             if isinstance(message, HumanMessage):
-                research_topic += f"User: {message.content}\n"
+                topic_parts.append(f"User: {message.content}\n")
             elif isinstance(message, AIMessage):
-                research_topic += f"Assistant: {message.content}\n"
+                topic_parts.append(f"Assistant: {message.content}\n")
+        research_topic = "".join(topic_parts)
     return research_topic
 
 
@@ -251,8 +253,23 @@ def has_fuzzy_match(
     """
     # Reuse SequenceMatcher instance for efficiency
     matcher = difflib.SequenceMatcher(b=keyword)
+    kw_len = len(keyword)
+
+    # ⚡ Bolt Optimization: Pre-calculate length bounds to skip obvious mismatches.
+    # Based on the formula: 2 * min_len / (len_a + len_b) >= cutoff
+    if cutoff > 0:
+        upper_bound = kw_len * (2 - cutoff) / cutoff
+        lower_bound = kw_len * cutoff / (2 - cutoff)
+    else:
+        upper_bound = float("inf")
+        lower_bound = 0
 
     for candidate in candidates:
+        cand_len = len(candidate)
+        # Skip if length difference is too large for the cutoff
+        if not (lower_bound <= cand_len <= upper_bound):
+            continue
+
         matcher.set_seq1(candidate)
         # ⚡ Bolt Optimization: Check real_quick_ratio first as an O(1) upper bound based on length
         if (

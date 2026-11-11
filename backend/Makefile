@@ -1,4 +1,4 @@
-.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests
+.PHONY: all format lint test tests help
 
 # Default target executed when no arguments are given to make.
 all: help
@@ -9,15 +9,7 @@ TEST_FILE ?= tests/
 test:
 	uv run --with-editable . pytest $(TEST_FILE)
 
-test_watch:
-	uv run --with-editable . ptw --snapshot-update --now . -- -vv tests/unit_tests
-
-test_profile:
-	uv run --with-editable . pytest -vv tests/unit_tests/ --profile-svg
-
-extended_tests:
-	uv run --with-editable . pytest --only-extended $(TEST_FILE)
-
+tests: test
 
 ######################
 # LINTING AND FORMATTING
@@ -63,5 +55,3 @@ help:
 	@echo 'test                         - run unit tests'
 	@echo 'tests                        - run unit tests'
 	@echo 'test TEST_FILE=<test_file>   - run all tests in file'
-	@echo 'test_watch                   - run unit tests in watch mode'
-
