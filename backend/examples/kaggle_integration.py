@@ -191,7 +191,7 @@ if __name__ == "__main__":
                 import operator as op
                 operators = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
                              ast.Div: op.truediv, ast.Pow: op.pow,
-                             ast.UnaryOp: op.neg}
+                             ast.USub: op.neg, ast.UAdd: op.pos}
                 
                 def _eval(node):
                     if isinstance(node, ast.Constant):
