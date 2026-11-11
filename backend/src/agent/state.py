@@ -94,8 +94,8 @@ class OverallState(ScopingState, TypedDict, total=False):
     research_loop_count: int
     reasoning_model: str
     todo_list: (
-        List[dict] | None
-    )  # Deprecated: Migration to 'plan' in progress. See docs/tasks/02_OPEN_SWE_TASKS.md
+        List[Todo] | None
+    )  # Deprecated: superseded by 'plan'. Retained for persisted-plan compatibility. See docs/tasks/02_OPEN_SWE_TASKS.md
     artifacts: Dict[str, Artifact] | None
 
 
