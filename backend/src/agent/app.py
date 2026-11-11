@@ -128,6 +128,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+# Add Trusted Host Middleware (Guard against Host Header attacks)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=app_config.allowed_hosts)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=app_config.cors_origins,
@@ -136,8 +138,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add Trusted Host Middleware (Guard against Host Header attacks)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=app_config.allowed_hosts)
 
 # Add Content Size Limit Middleware (Guard against DoS)
 app.add_middleware(ContentSizeLimitMiddleware, max_upload_size=10 * 1024 * 1024)
