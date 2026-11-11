@@ -80,7 +80,7 @@ class AppConfig:
     local_model_path: str = os.getenv("LOCAL_MODEL_PATH", "")
 
     # Security Configuration
-    CORS_ORIGINS: List[str] = field(
+    cors_origins: List[str] = field(
         default_factory=lambda: os.getenv(
             "CORS_ORIGINS", "http://localhost:5173"
         ).split(",")
