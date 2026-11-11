@@ -18,6 +18,14 @@ except ImportError:
     SentenceTransformer = None
     faiss = None
 
+# Optional Google GenAI
+try:
+    from google import genai
+
+    GENAI_AVAILABLE = True
+except ImportError:
+    GENAI_AVAILABLE = False
+
 # Optional Chroma
 try:
     from rag.chroma_store import ChromaStore
@@ -59,6 +67,50 @@ class LangChainEmbeddingAdapter:
         return self.lc_embeddings.embed_documents(texts)
 
 
+# The Google GenAI embedding model this adapter knows the output width of.
+# Another model would build the FAISS/Chroma index at the wrong dimension, so
+# anything else is rejected rather than silently mis-sized.
+GOOGLE_GENAI_EMBEDDING_MODEL = "text-embedding-004"
+GOOGLE_GENAI_EMBEDDING_DIMENSION = 768
+
+
+class GoogleGenAIEmbedderAdapter:
+    """Adapt the Google GenAI embedding API to the sentence-transformers interface."""
+
+    def __init__(self, model_name: str = GOOGLE_GENAI_EMBEDDING_MODEL):
+        if model_name != GOOGLE_GENAI_EMBEDDING_MODEL:
+            raise ValueError(
+                f"Unsupported Google GenAI embedding model {model_name!r}; "
+                f"only {GOOGLE_GENAI_EMBEDDING_MODEL!r} is supported"
+            )
+        self.model_name = model_name
+        self.client = genai.Client()
+
+    def encode(self, texts):
+        # Google GenAI requires lists of strings or single string
+        single = isinstance(texts, str)
+        batch = [texts] if single else texts
+
+        response = self.client.models.embed_content(
+            model=self.model_name, contents=batch
+        )
+
+        # Return list of embeddings or numpy array if possible.
+        # Keep SentenceTransformer's shape contract: one 1-D vector for a
+        # single string, a 2-D array for a batch.
+        embeddings = [emb.values for emb in response.embeddings]
+        try:
+            import numpy as np
+
+            arr = np.array(embeddings, dtype=np.float32)
+            return arr[0] if single else arr
+        except ImportError:
+            return embeddings[0] if single else embeddings
+
+    def get_sentence_embedding_dimension(self):
+        return GOOGLE_GENAI_EMBEDDING_DIMENSION
+
+
 class DeepSearchRAG:
     """RAG system optimized for deep research workflows.
     Implements continuous evidence auditing and context pruning.
@@ -80,12 +132,27 @@ class DeepSearchRAG:
         self.config = config or global_config
 
         # Load embedding model
-        if SentenceTransformer:
-            logger.info(f"Loading embedding model: {embedding_model}")
-            self.embedder = SentenceTransformer(embedding_model)
+        self.embedding_provider = getattr(
+            self.config, "rag_embedding_provider", "sentence-transformers"
+        )
+
+        if self.embedding_provider == "google_genai":
+            if not GENAI_AVAILABLE:
+                raise ImportError(
+                    "google-genai required for google_genai embedding provider"
+                )
+            if embedding_model == "sentence-transformers/all-MiniLM-L6-v2":
+                embedding_model = GOOGLE_GENAI_EMBEDDING_MODEL
+            logger.info(f"Loading Google GenAI embedding model: {embedding_model}")
+            self.embedder = GoogleGenAIEmbedderAdapter(embedding_model)
             self.embedding_dim = self.embedder.get_sentence_embedding_dimension()
         else:
-            raise ImportError("sentence-transformers required")
+            if SentenceTransformer:
+                logger.info(f"Loading embedding model: {embedding_model}")
+                self.embedder = SentenceTransformer(embedding_model)
+                self.embedding_dim = self.embedder.get_sentence_embedding_dimension()
+            else:
+                raise ImportError("sentence-transformers required")
 
         # Initialize Stores
         # Force fallback if optional libs missing

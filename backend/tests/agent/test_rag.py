@@ -199,3 +199,50 @@ def test_initialization_no_deps(mock_config):
     # Cleanup here too
     if "agent.rag" in sys.modules:
         del sys.modules["agent.rag"]
+
+
+def test_google_genai_embeddings_keep_vector_shape(rag_classes, mock_config):
+    """The google_genai embedder must match SentenceTransformer's shape contract.
+
+    ``DeepSearchRAG.retrieve`` wraps a single-query embedding with
+    ``np.array([raw_emb])`` and hands it to FAISS, so a single string must
+    produce a 1-D vector, not a (1, dim) batch.
+    """
+
+    class _Embedding:
+        def __init__(self, values):
+            self.values = values
+
+    class _Response:
+        def __init__(self, count):
+            self.embeddings = [_Embedding([0.5] * 768) for _ in range(count)]
+
+    class _Models:
+        def embed_content(self, model, contents):
+            count = len(contents) if isinstance(contents, list) else 1
+            return _Response(count)
+
+    class _Client:
+        def __init__(self, *args, **kwargs):
+            self.models = _Models()
+
+    mock_config.rag_embedding_provider = "google_genai"
+    fake_genai = MagicMock()
+    fake_genai.Client = _Client
+
+    with (
+        patch.object(rag_classes, "GENAI_AVAILABLE", True),
+        patch.object(rag_classes, "genai", fake_genai, create=True),
+    ):
+        rag = rag_classes.DeepSearchRAG(config=mock_config)
+        single = rag.embedder.encode("one query")
+        batch = rag.embedder.encode(["first", "second"])
+
+    assert single.shape == (768,)
+    assert batch.shape == (2, 768)
+
+
+def test_google_genai_rejects_an_unknown_embedding_model(rag_classes):
+    """The adapter only knows text-embedding-004's width; refuse anything else."""
+    with pytest.raises(ValueError, match="only 'text-embedding-004' is supported"):
+        rag_classes.GoogleGenAIEmbedderAdapter("text-embedding-3-small")
