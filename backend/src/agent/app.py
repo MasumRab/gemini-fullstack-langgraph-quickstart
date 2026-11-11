@@ -96,13 +96,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"ERROR: Failed to load MCP tools during startup: {e}")
 
-    yield
-
-    # Cleanup if needed (e.g. close MCP sessions if we held them)
-    # For now, langchain_mcp_adapters handles session lifecycle via tool context?
-    # Actually, if load_mcp_tools establishes a persistent session, we should close it.
-    # But get_tools_from_mcp returns list of tools.
-    MCP_TOOLS.clear()
+    try:
+        yield
+    finally:
+        # Cleanup if needed (e.g. close MCP sessions if we held them)
+        # For now, langchain_mcp_adapters handles session lifecycle via tool context?
+        # Actually, if load_mcp_tools establishes a persistent session, we should close it.
+        # But get_tools_from_mcp returns list of tools.
+        MCP_TOOLS.clear()
 
 
 # Define the FastAPI app
@@ -137,6 +138,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+# Add Trusted Host Middleware (Guard against Host Header attacks)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=app_config.allowed_hosts)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=app_config.cors_origins,
@@ -145,8 +148,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add Trusted Host Middleware (Guard against Host Header attacks)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=app_config.allowed_hosts)
 
 # Add Content Size Limit Middleware (Guard against DoS)
 app.add_middleware(ContentSizeLimitMiddleware, max_upload_size=10 * 1024 * 1024)
