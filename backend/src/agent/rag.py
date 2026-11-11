@@ -20,6 +20,7 @@ except ImportError:
 # Optional Google GenAI
 try:
     from google import genai
+
     GENAI_AVAILABLE = True
 except ImportError:
     GENAI_AVAILABLE = False
@@ -71,13 +72,21 @@ class DeepSearchRAG:
 
         self.config = config or global_config
 
-# Load embedding model
-        self.embedding_provider = getattr(self.config, 'rag_embedding_provider', 'sentence-transformers')
+        # Load embedding model
+        self.embedding_provider = getattr(
+            self.config, "rag_embedding_provider", "sentence-transformers"
+        )
 
         if self.embedding_provider == "google_genai":
             if not GENAI_AVAILABLE:
-                raise ImportError("google-genai required for google_genai embedding provider")
-            embedding_model = "text-embedding-004" if embedding_model == "sentence-transformers/all-MiniLM-L6-v2" else embedding_model
+                raise ImportError(
+                    "google-genai required for google_genai embedding provider"
+                )
+            embedding_model = (
+                "text-embedding-004"
+                if embedding_model == "sentence-transformers/all-MiniLM-L6-v2"
+                else embedding_model
+            )
             logger.info(f"Loading Google GenAI embedding model: {embedding_model}")
 
             class GoogleGenAIEmbedderAdapter:
@@ -91,14 +100,14 @@ class DeepSearchRAG:
                         texts = [texts]
 
                     response = self.client.models.embed_content(
-                        model=self.model_name,
-                        contents=texts
+                        model=self.model_name, contents=texts
                     )
 
                     # Return list of embeddings or numpy array if possible
                     embeddings = [emb.values for emb in response.embeddings]
                     try:
                         import numpy as np
+
                         return np.array(embeddings, dtype=np.float32)
                     except ImportError:
                         return embeddings
