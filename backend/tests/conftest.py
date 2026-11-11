@@ -3,13 +3,14 @@
 This module provides reusable fixtures that can be used across all test files.
 Fixtures are designed to be path-insensitive and robust to minor code changes.
 """
+
+import os
 import pathlib
 import sys
-from typing import Any, Dict, List
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
-import os
 
 # Set dummy API key before any imports that might use it
 os.environ["GEMINI_API_KEY"] = "dummy_key_for_tests"
@@ -31,6 +32,7 @@ if str(SRC_PATH) not in sys.path:
 # Pytest Configuration
 # =============================================================================
 
+
 def pytest_addoption(parser):
     """Add command-line options for extended tests."""
     parser.addoption(
@@ -43,7 +45,9 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     """Register custom markers."""
-    config.addinivalue_line("markers", "extended: mark test as extended (slow, external, etc.)")
+    config.addinivalue_line(
+        "markers", "extended: mark test as extended (slow, external, etc.)"
+    )
 
 
 def pytest_collection_modifyitems(config, items):
@@ -66,8 +70,9 @@ def pytest_collection_modifyitems(config, items):
 # State Fixtures
 # =============================================================================
 
+
 @pytest.fixture
-def base_state() -> Dict[str, Any]:
+def base_state() -> dict[str, Any]:
     """Minimal valid state for graph node tests."""
     return {
         "messages": [{"content": "User: test research topic"}],
@@ -83,7 +88,7 @@ def base_state() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def planning_state(base_state) -> Dict[str, Any]:
+def planning_state(base_state) -> dict[str, Any]:
     """State configured for planning mode tests."""
     state = base_state.copy()
     state["search_query"] = ["solar energy market", "renewable trends"]
@@ -91,7 +96,7 @@ def planning_state(base_state) -> Dict[str, Any]:
 
 
 @pytest.fixture
-def reflection_state(base_state) -> Dict[str, Any]:
+def reflection_state(base_state) -> dict[str, Any]:
     """State configured for reflection tests."""
     state = base_state.copy()
     state["is_sufficient"] = False
@@ -105,8 +110,9 @@ def reflection_state(base_state) -> Dict[str, Any]:
 # Config Fixtures
 # =============================================================================
 
+
 @pytest.fixture
-def base_config() -> Dict[str, Any]:
+def base_config() -> dict[str, Any]:
     """Base configuration for tests."""
     return {
         "configurable": {
@@ -116,7 +122,7 @@ def base_config() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def confirmation_required_config() -> Dict[str, Any]:
+def confirmation_required_config() -> dict[str, Any]:
     """Configuration requiring planning confirmation."""
     return {
         "configurable": {
@@ -129,8 +135,10 @@ def confirmation_required_config() -> Dict[str, Any]:
 # Mock Classes for External Dependencies
 # =============================================================================
 
+
 class MockSegment:
     """Mock for grounding segment metadata."""
+
     def __init__(self, start_index=None, end_index=None):
         self.start_index = start_index
         self.end_index = end_index
@@ -138,20 +146,25 @@ class MockSegment:
 
 class MockChunk:
     """Mock for grounding chunk with web metadata."""
+
     def __init__(self, uri: str, title: str):
         self.web = SimpleNamespace(uri=uri, title=title)
 
 
 class MockSupport:
     """Mock for grounding support metadata."""
-    def __init__(self, segment: MockSegment, grounding_chunk_indices: List[int] = None):
+
+    def __init__(self, segment: MockSegment, grounding_chunk_indices: list[int] = None):
         self.segment = segment
         self.grounding_chunk_indices = grounding_chunk_indices or []
 
 
 class MockCandidate:
     """Mock for API response candidate."""
-    def __init__(self, grounding_supports: List[MockSupport], grounding_chunks: List[MockChunk]):
+
+    def __init__(
+        self, grounding_supports: list[MockSupport], grounding_chunks: list[MockChunk]
+    ):
         self.grounding_metadata = SimpleNamespace(
             grounding_supports=grounding_supports,
             grounding_chunks=grounding_chunks,
@@ -160,12 +173,14 @@ class MockCandidate:
 
 class MockResponse:
     """Mock for API response with candidates."""
-    def __init__(self, candidates: List[MockCandidate]):
+
+    def __init__(self, candidates: list[MockCandidate]):
         self.candidates = candidates
 
 
 class MockSite:
     """Mock for URL site data."""
+
     def __init__(self, uri: str):
         self.web = SimpleNamespace(uri=uri)
 
@@ -173,6 +188,7 @@ class MockSite:
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def make_message(content: str, role: str = "human"):
     """Create a simple message dict for testing."""
@@ -182,10 +198,12 @@ def make_message(content: str, role: str = "human"):
 def make_human_message(content: str):
     """Create a mock HumanMessage-like object."""
     from langchain_core.messages import HumanMessage
+
     return HumanMessage(content=content)
 
 
 def make_ai_message(content: str):
     """Create a mock AIMessage-like object."""
     from langchain_core.messages import AIMessage
+
     return AIMessage(content=content)

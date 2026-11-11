@@ -108,7 +108,9 @@ class ToolRegistry:
                 if rag_tool:
                     self.register(
                         "rag_search",
-                        rag_tool.invoke,
+                        lambda query: rag_tool.retrieve(
+                            query
+                        ),  # Fixed missing invoke method
                         description="Search internal knowledge base",
                         category="search",
                     )

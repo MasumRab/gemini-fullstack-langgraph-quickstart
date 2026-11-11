@@ -1,19 +1,26 @@
 """Tests for RateLimiter."""
 
 import unittest
+from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock, patch
-from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
-from agent.rate_limiter import RateLimiter, PACIFIC_TZ
+
+from agent.rate_limiter import PACIFIC_TZ, RateLimiter
+
 
 class TestRateLimiter(unittest.TestCase):
-    def test_daily_reset_logic(self):
+    @patch('agent.rate_limiter.datetime')
+    def test_daily_reset_logic(self, mock_datetime):
         """Test that daily reset occurs at midnight Pacific Time."""
+        # Setup mock time
+        now_date = datetime(2023, 10, 2, 12, 0, 0, tzinfo=PACIFIC_TZ)
+        mock_datetime.now.return_value = now_date
+
         limiter = RateLimiter()
 
         # Manually set last reset date to yesterday
-        yesterday = datetime.now(PACIFIC_TZ).date() - timedelta(days=1)
-        limiter._last_reset_date = yesterday
+        yesterday_date = now_date.date() - timedelta(days=1)
+        limiter._last_reset_date = yesterday_date
 
         # Add some dummy requests
         limiter._requests_per_day.append(12345)
@@ -24,15 +31,19 @@ class TestRateLimiter(unittest.TestCase):
 
         # Should be cleared
         self.assertEqual(len(limiter._requests_per_day), 0)
-        self.assertEqual(limiter._last_reset_date, datetime.now(PACIFIC_TZ).date())
+        self.assertEqual(limiter._last_reset_date, now_date.date())
 
-    def test_no_reset_same_day(self):
+    @patch('agent.rate_limiter.datetime')
+    def test_no_reset_same_day(self, mock_datetime):
         """Test that daily reset does not occur on the same day."""
+        # Setup mock time
+        now_date = datetime(2023, 10, 2, 12, 0, 0, tzinfo=PACIFIC_TZ)
+        mock_datetime.now.return_value = now_date
+
         limiter = RateLimiter()
 
         # Set last reset date to today
-        today = datetime.now(PACIFIC_TZ).date()
-        limiter._last_reset_date = today
+        limiter._last_reset_date = now_date.date()
 
         # Add some dummy requests
         limiter._requests_per_day.append(12345)
@@ -43,7 +54,7 @@ class TestRateLimiter(unittest.TestCase):
 
         # Should NOT be cleared
         self.assertEqual(len(limiter._requests_per_day), 1)
-        self.assertEqual(limiter._last_reset_date, today)
+        self.assertEqual(limiter._last_reset_date, now_date.date())
 
     @patch("agent.rate_limiter.time")
     def test_wait_if_needed_rpm_limit(self, mock_time):
@@ -91,8 +102,11 @@ class TestRateLimiter(unittest.TestCase):
         # 5. record -> 1061.0
 
         mock_time.time.side_effect = [
-            start_time, start_time,             # Iteration 1
-            start_time + 61.0, start_time + 61.0, start_time + 61.0  # Iteration 2
+            start_time,
+            start_time,  # Iteration 1
+            start_time + 61.0,
+            start_time + 61.0,
+            start_time + 61.0,  # Iteration 2
         ]
 
         limiter.wait_if_needed(10)
@@ -101,6 +115,7 @@ class TestRateLimiter(unittest.TestCase):
         # After success, we added the new request at 1061, old one removed
         self.assertEqual(len(limiter._requests_per_minute), 1)
         self.assertEqual(limiter._requests_per_minute[0], 1061.0)
+
 
 if __name__ == "__main__":
     unittest.main()
