@@ -1,7 +1,7 @@
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -64,10 +64,6 @@ class AppConfig:
     allowed_hosts: Tuple[str, ...] = tuple(
         filter(None, os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(","))
     )
-    trust_proxy_headers: bool = (
-        os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
-    )
-
     # Model Selection
     model_planning: str = os.getenv("MODEL_PLANNING", "gemma-3-27b-it")
     model_validation: str = os.getenv("MODEL_VALIDATION", "gemma-3-27b-it")
@@ -83,13 +79,6 @@ class AppConfig:
     vertex_endpoint_id: str = os.getenv("VERTEX_ENDPOINT_ID", "")
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     local_model_path: str = os.getenv("LOCAL_MODEL_PATH", "")
-
-    # Security Configuration
-    CORS_ORIGINS: List[str] = field(
-        default_factory=lambda: os.getenv(
-            "CORS_ORIGINS", "http://localhost:5173"
-        ).split(",")
-    )
 
     @classmethod
     def load(cls) -> "AppConfig":

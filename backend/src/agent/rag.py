@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -52,6 +53,20 @@ class EvidenceChunk:
     metadata: Dict = field(default_factory=dict)
 
 
+class LangChainEmbeddingAdapter:
+    """Adapter to make LangChain embeddings look like sentence-transformers for Chroma."""
+
+    def __init__(self, langchain_embeddings):
+        self.lc_embeddings = langchain_embeddings
+
+    def __call__(self, texts: List[str]) -> List[List[float]]:
+        # This is the interface Chroma expects if passed as embedding_function
+        return self.lc_embeddings.embed_documents(texts)
+
+    def encode(self, texts: List[str]) -> List[List[float]]:
+        return self.lc_embeddings.embed_documents(texts)
+
+
 class DeepSearchRAG:
     """RAG system optimized for deep research workflows.
     Implements continuous evidence auditing and context pruning.
@@ -96,21 +111,24 @@ class DeepSearchRAG:
 
                 def encode(self, texts):
                     # Google GenAI requires lists of strings or single string
-                    if isinstance(texts, str):
-                        texts = [texts]
+                    single = isinstance(texts, str)
+                    batch = [texts] if single else texts
 
                     response = self.client.models.embed_content(
-                        model=self.model_name, contents=texts
+                        model=self.model_name, contents=batch
                     )
 
-                    # Return list of embeddings or numpy array if possible
+                    # Return list of embeddings or numpy array if possible.
+                    # Keep SentenceTransformer's shape contract: one 1-D vector
+                    # for a single string, a 2-D array for a batch.
                     embeddings = [emb.values for emb in response.embeddings]
                     try:
                         import numpy as np
 
-                        return np.array(embeddings, dtype=np.float32)
+                        arr = np.array(embeddings, dtype=np.float32)
+                        return arr[0] if single else arr
                     except ImportError:
-                        return embeddings
+                        return embeddings[0] if single else embeddings
 
                 def get_sentence_embedding_dimension(self):
                     # Default for text-embedding-004
@@ -572,16 +590,20 @@ Respond in JSON format:
 
 # Compatibility exports
 class _RAGConfig:
-    enabled = True
-    enable_fallback = True
-    max_documents = 5
+    def __init__(self):
+        self.enabled = os.getenv("RAG_ENABLED", "true").lower() == "true"
+        self.enable_fallback = True
+        self.max_documents = 5
+        self.embedding_provider = os.getenv(
+            "RAG_EMBEDDING_PROVIDER", "local"
+        ).lower()  # 'local' or 'google_genai'
 
 
 rag_config = _RAGConfig()
 
 
 def is_rag_enabled() -> bool:
-    return True
+    return rag_config.enabled
 
 
 class Resource:
@@ -589,12 +611,8 @@ class Resource:
 
 
 def create_rag_tool(resources):
-    """Legacy compatibility stub - returns None.
-
-    TODO(priority=Low, complexity=Medium): [rag:legacy] Replace stub with real implementation
-    - Migrate callers to use DeepSearchRAG directly
-    - Remove this function once all callers are updated
-    - Update tests that mock this function
-    """
-    logger.warning("Using legacy create_rag_tool stub")
-    return None
+    """Returns an instance of DeepSearchRAG configured for tool use."""
+    if not is_rag_enabled():
+        logger.warning("RAG is disabled via configuration.")
+        return None
+    return DeepSearchRAG()

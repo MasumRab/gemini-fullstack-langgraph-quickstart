@@ -6,7 +6,6 @@ supporting various providers like Vertex AI, Ollama, and local execution.
 
 import logging
 
-from agent.models import GEMINI_FLASH
 from config.app_config import config as app_config
 
 logger = logging.getLogger(__name__)
@@ -80,10 +79,6 @@ class OllamaGemmaClient(GemmaClient):
 
         self.requests = requests
         self.base_url = app_config.ollama_base_url
-        # Ollama is always addressed with the configured Ollama tag. The
-        # Gemini fallback below belongs to GoogleGenAIGemmaClient only: sending
-        # "gemini-1.5-flash" to /api/generate asks Ollama for a model it does not
-        # serve, which fails every request on the default gemma:7b setup.
         self.model_name = app_config.gemma_model_name
         self.generate_url = f"{self.base_url}/api/generate"
         self.timeout = timeout
@@ -118,6 +113,46 @@ class OllamaGemmaClient(GemmaClient):
             raise
 
 
+class GoogleGenAIGemmaClient(GemmaClient):
+    """Client for Gemma models via Google GenAI API."""
+
+    def __init__(self):
+        """Initialize Google GenAI client."""
+        try:
+            from google import genai
+        except ImportError:
+            logger.error("google-genai not installed.")
+            raise ImportError(
+                "Please install 'google-genai' to use GoogleGenAIGemmaClient"
+            )
+
+        import os
+
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        if not self.api_key:
+            logger.error("GEMINI_API_KEY environment variable is missing.")
+            raise ValueError("GEMINI_API_KEY is required for GoogleGenAIGemmaClient")
+
+        self.client = genai.Client(api_key=self.api_key)
+
+        # Use provided model or default to gemini-2.5-flash for free tier if trying to use gemma but not specified correctly
+        self.model_name = app_config.gemma_model_name
+        if not self.model_name or self.model_name == "gemma:7b":
+            self.model_name = "gemini-2.5-flash"  # Fallback to gemini if gemma:7b (ollama default) is used
+
+    def invoke(self, prompt: str, **kwargs) -> str:
+        """Generate text completion."""
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+            )
+            return response.text
+        except Exception as e:
+            logger.error(f"Google GenAI generation failed: {e}")
+            raise e
+
+
 def get_gemma_client() -> GemmaClient:
     """Factory function to get the configured Gemma client."""
     provider = (app_config.gemma_provider or "ollama").lower()
@@ -132,48 +167,3 @@ def get_gemma_client() -> GemmaClient:
             f"Unknown or unsupported Gemma provider: {provider}. Defaulting to Ollama."
         )
         return OllamaGemmaClient()
-
-
-class GoogleGenAIGemmaClient(GemmaClient):
-    """Client for Gemma models using the Google GenAI SDK (requires GEMINI_API_KEY)."""
-
-    def __init__(self):
-        """Initialize Google GenAI client."""
-        try:
-            import os
-
-            from google import genai
-        except ImportError:
-            logger.error("google-genai not installed.")
-            raise ImportError(
-                "Please install 'google-genai' to use GoogleGenAIGemmaClient"
-            )
-
-        # Will automatically pick up GEMINI_API_KEY from environment
-        self.client = genai.Client()
-        # app_config's default is the Ollama tag gemma:7b, which the GenAI API
-        # does not serve; fall back to the repository's canonical Flash model.
-        self.model_name = (
-            GEMINI_FLASH
-            if app_config.gemma_model_name == "gemma:7b"
-            else app_config.gemma_model_name
-        )
-
-        # Basic validation that we have an API key
-        if not os.getenv("GEMINI_API_KEY"):
-            logger.warning(
-                "GEMINI_API_KEY not found in environment. Client initialization may fail."
-            )
-
-    def invoke(self, prompt: str, **kwargs) -> str:
-        """Generate text completion using Google GenAI SDK."""
-        try:
-            # We don't want to pass unrecognized kwargs to genai, so we filter out or ignore them
-            # For this simple implementation, we just pass the prompt
-            response = self.client.models.generate_content(
-                model=self.model_name, contents=prompt
-            )
-            return response.text
-        except Exception as e:
-            logger.error(f"Google GenAI request failed: {e}")
-            raise e

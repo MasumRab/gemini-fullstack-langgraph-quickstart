@@ -220,12 +220,10 @@ class TestOrchestratedGraphBuilder:
         # But let's try to just build it and catch if dependencies miss.
 
         # Actually, we can check the nodes in the compiled graph object if possible.
-        try:
-            graph = build_orchestrated_graph(registry, pool)
-            # Just asserting it compiled successfully is a good start
-            assert graph is not None
-        except Exception as e:
-            pytest.fail(f"Graph build failed: {e}")
+        # Let's try to just build it
+        graph = build_orchestrated_graph(registry, pool)
+        # Just asserting it compiled successfully is a good start
+        assert graph is not None
 
     def test_router_logic(self):
         """Test the router function mapping."""

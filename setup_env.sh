@@ -91,7 +91,7 @@ if command -v pnpm &> /dev/null; then
     pnpm run build
 else
     echo "ERROR: pnpm not found even after installation attempt."
-    # do not exit, just error log
+    exit 1
 fi
 
 cd ..
