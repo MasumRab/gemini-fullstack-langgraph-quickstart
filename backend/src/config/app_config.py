@@ -1,7 +1,7 @@
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -78,13 +78,6 @@ class AppConfig:
     vertex_endpoint_id: str = os.getenv("VERTEX_ENDPOINT_ID", "")
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     local_model_path: str = os.getenv("LOCAL_MODEL_PATH", "")
-
-    # Security Configuration
-    cors_origins: List[str] = field(
-        default_factory=lambda: os.getenv(
-            "CORS_ORIGINS", "http://localhost:5173"
-        ).split(",")
-    )
 
     @classmethod
     def load(cls) -> "AppConfig":
