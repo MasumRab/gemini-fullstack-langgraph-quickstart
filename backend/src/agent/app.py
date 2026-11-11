@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from agent.mcp_config import load_mcp_settings
+from agent.mcp_config import get_default_manager, load_mcp_settings
 from agent.security import RateLimitMiddleware, SecurityHeadersMiddleware
 from agent.tools_and_schemas import MCP_TOOLS, get_tools_from_mcp
 from config.app_config import config as app_config
@@ -99,10 +99,16 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        # Cleanup if needed (e.g. close MCP sessions if we held them)
-        # For now, langchain_mcp_adapters handles session lifecycle via tool context?
-        # Actually, if load_mcp_tools establishes a persistent session, we should close it.
-        # But get_tools_from_mcp returns list of tools.
+        # Release the pooled MCP sessions. McpConnectionManager holds them open for
+        # reuse across requests, so nothing else closes them: without this the SSE
+        # connections survive teardown and a reloaded app would inherit dead ones.
+        try:
+            await get_default_manager().close_all()
+        except Exception as e:
+            logger.warning(
+                f"WARNING: Failed to close MCP connections during shutdown: {e}"
+            )
+
         MCP_TOOLS.clear()
 
 

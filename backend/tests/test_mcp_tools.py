@@ -1,9 +1,18 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import agent.mcp_config
 from agent.mcp_config import MCPSettings
 from agent.tools_and_schemas import get_tools_from_mcp
+
+
+@pytest.fixture(autouse=True)
+def reset_manager():
+    original = getattr(agent.mcp_config, "_default_manager", None)
+    agent.mcp_config._default_manager = None
+    yield
+    agent.mcp_config._default_manager = original
 
 
 @pytest.mark.asyncio
@@ -66,18 +75,28 @@ async def test_get_tools_from_mcp_success():
 
 
 @pytest.mark.asyncio
-async def test_get_tools_from_mcp_exception():
+async def test_get_tools_from_mcp_exception_propagates():
+    """A broken enabled endpoint must not look like a disabled one.
+
+    ``get_tools_from_mcp`` previously swallowed every error and returned [],
+    which is indistinguishable from "MCP is off"; the lifespan treats that as an
+    empty tool list and the agent silently runs without the tools it declared.
+    The failure now reaches the caller, and the opened connection is released.
+    """
     config = MCPSettings(enabled=True, endpoint="http://localhost:8000/sse")
 
     mock_tools_module = MagicMock()
     mock_sessions_module = MagicMock()
 
-    mock_load = mock_tools_module.load_mcp_tools
-
     async def async_raise(*args, **kwargs):
-        raise Exception("Connection failed")
+        raise RuntimeError("Connection failed")
 
-    mock_load.side_effect = async_raise
+    mock_tools_module.load_mcp_tools.side_effect = async_raise
+
+    conn = MagicMock()
+    conn.__aenter__ = AsyncMock(return_value=AsyncMock())
+    conn.__aexit__ = AsyncMock(return_value=None)
+    mock_sessions_module.SSEConnection.return_value = conn
 
     with patch.dict(
         "sys.modules",
@@ -87,5 +106,7 @@ async def test_get_tools_from_mcp_exception():
             "langchain_mcp_adapters.sessions": mock_sessions_module,
         },
     ):
-        tools = await get_tools_from_mcp(config)
-        assert tools == []
+        with pytest.raises(RuntimeError, match="Connection failed"):
+            await get_tools_from_mcp(config)
+
+    conn.__aexit__.assert_awaited_once()
