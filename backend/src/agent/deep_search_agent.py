@@ -56,14 +56,13 @@ class WebSearcher:
             self.tool = None
 
     def search(self, query: str) -> List[Dict]:
-        """
-        Perform a web search for the given query and return collected results.
-        
+        """Perform a web search for the given query and return collected results.
+
         Parameters:
-        	query (str): The search query string.
-        
+                query (str): The search query string.
+
         Returns:
-        	List[Dict]: A list of result dictionaries, each typically containing keys like `'url'` and `'content'`. If the underlying search tool is not initialized, returns an empty list. If an error occurs during searching, returns an empty list.
+                List[Dict]: A list of result dictionaries, each typically containing keys like `'url'` and `'content'`. If the underlying search tool is not initialized, returns an empty list. If an error occurs during searching, returns an empty list.
         """
         if self.tool:
             try:
@@ -81,7 +80,7 @@ class WebSearcher:
                 return normalized
             except Exception as e:
                 logger.warning(f"Search tool failed: {e}")
-        
+
         # Return empty list instead of dummy/fallback results when tool not initialized
         logger.warning("Search tool not initialized; returning no results.")
         return []
@@ -122,7 +121,6 @@ class DeepSearchAgent:
         else:
             self.mcp = None
 
-
     def research(self, query: str) -> str:
         # Simple class to hold subgoal data
         class SubGoal:
@@ -137,10 +135,11 @@ class DeepSearchAgent:
         subgoals = [SubGoal(sg["id"], sg["query"]) for sg in subgoals_data]
 
         # 2. Research each subgoal
-        # Use asyncio.to_thread to avoid blocking the event loop on search calls
+        # `research` is synchronous (callers in bench/_evaluate_single_query are too),
+        # so the searcher is called directly rather than awaited.
         for sg in subgoals:
             logger.info(f"Processing subgoal: {sg.query}")
-            docs = await asyncio.to_thread(self.searcher.search, sg.query)
+            docs = self.searcher.search(sg.query)
 
             # 3. Ingest into RAG
             self.rag.ingest_research_results(

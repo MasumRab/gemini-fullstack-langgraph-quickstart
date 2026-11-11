@@ -96,12 +96,11 @@ builder.add_edge("load_context", "scoping_node")
 
 
 def scoping_router(state: OverallState) -> str:
-    """
-    Choose the next graph node name based on the state's scoping status.
-    
+    """Choose the next graph node name based on the state's scoping status.
+
     Parameters:
         state (OverallState): Agent state that may include the key `"scoping_status"`.
-    
+
     Returns:
         str: `"scoping_wait"` if `state["scoping_status"] == "active"`, `"outline_gen"` otherwise.
     """
