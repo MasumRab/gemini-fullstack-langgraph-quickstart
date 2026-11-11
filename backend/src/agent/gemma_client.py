@@ -138,9 +138,7 @@ class GoogleGenAIGemmaClient(GemmaClient):
         # Use provided model or default to gemini-2.5-flash for free tier if trying to use gemma but not specified correctly
         self.model_name = app_config.gemma_model_name
         if not self.model_name or self.model_name == "gemma:7b":
-            self.model_name = (
-                "gemini-2.5-flash"  # Fallback to gemini if gemma:7b (ollama default) is used
-            )
+            self.model_name = "gemini-2.5-flash"  # Fallback to gemini if gemma:7b (ollama default) is used
 
     def invoke(self, prompt: str, **kwargs) -> str:
         """Generate text completion."""
