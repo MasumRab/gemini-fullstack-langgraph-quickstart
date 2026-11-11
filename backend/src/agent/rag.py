@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -42,6 +43,20 @@ class EvidenceChunk:
     timestamp: float
     chunk_id: str
     metadata: Dict = field(default_factory=dict)
+
+
+class LangChainEmbeddingAdapter:
+    """Adapter to make LangChain embeddings look like sentence-transformers for Chroma."""
+
+    def __init__(self, langchain_embeddings):
+        self.lc_embeddings = langchain_embeddings
+
+    def __call__(self, texts: List[str]) -> List[List[float]]:
+        # This is the interface Chroma expects if passed as embedding_function
+        return self.lc_embeddings.embed_documents(texts)
+
+    def encode(self, texts: List[str]) -> List[List[float]]:
+        return self.lc_embeddings.embed_documents(texts)
 
 
 class DeepSearchRAG:
@@ -518,16 +533,20 @@ Respond in JSON format:
 
 # Compatibility exports
 class _RAGConfig:
-    enabled = True
-    enable_fallback = True
-    max_documents = 5
+    def __init__(self):
+        self.enabled = os.getenv("RAG_ENABLED", "true").lower() == "true"
+        self.enable_fallback = True
+        self.max_documents = 5
+        self.embedding_provider = os.getenv(
+            "RAG_EMBEDDING_PROVIDER", "local"
+        ).lower()  # 'local' or 'google_genai'
 
 
 rag_config = _RAGConfig()
 
 
 def is_rag_enabled() -> bool:
-    return True
+    return rag_config.enabled
 
 
 class Resource:
@@ -535,12 +554,8 @@ class Resource:
 
 
 def create_rag_tool(resources):
-    """Legacy compatibility stub - returns None.
-
-    TODO(priority=Low, complexity=Medium): [rag:legacy] Replace stub with real implementation
-    - Migrate callers to use DeepSearchRAG directly
-    - Remove this function once all callers are updated
-    - Update tests that mock this function
-    """
-    logger.warning("Using legacy create_rag_tool stub")
-    return None
+    """Returns an instance of DeepSearchRAG configured for tool use."""
+    if not is_rag_enabled():
+        logger.warning("RAG is disabled via configuration.")
+        return None
+    return DeepSearchRAG()

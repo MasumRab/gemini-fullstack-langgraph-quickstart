@@ -2,6 +2,8 @@ import json
 import os
 from typing import Any, Dict, List
 
+from agent.state import Todo
+
 PLAN_DIR = "plans"
 
 
@@ -14,9 +16,7 @@ def _get_plan_path(thread_id: str) -> str:
     return os.path.join(PLAN_DIR, f"{safe_id}.json")
 
 
-def save_plan(
-    thread_id: str, todo_list: List[Dict[str, Any]], artifacts: Dict[str, Any]
-) -> None:
+def save_plan(thread_id: str, todo_list: List[Todo], artifacts: Dict[str, Any]) -> None:
     """Saves the current plan and artifacts to a JSON file."""
     if not thread_id:
         return

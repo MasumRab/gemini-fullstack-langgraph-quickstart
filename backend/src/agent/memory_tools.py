@@ -1,11 +1,14 @@
+from typing import List
+
 from langchain_core.tools import tool
 
 from agent.persistence import load_plan as persist_load
 from agent.persistence import save_plan as persist_save
+from agent.state import Todo
 
 
 @tool
-def save_plan_tool(thread_id: str, todo_list: list, artifacts: dict) -> str:
+def save_plan_tool(thread_id: str, todo_list: List[Todo], artifacts: dict) -> str:
     """Saves the current plan and artifacts to a local file.
 
     Args:

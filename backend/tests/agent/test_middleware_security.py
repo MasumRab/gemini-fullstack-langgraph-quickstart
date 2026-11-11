@@ -88,6 +88,36 @@ async def test_content_size_limit_missing_length():
 
 
 @pytest.mark.asyncio
+async def test_content_size_limit_negative_length():
+    """Test that ContentSizeLimitMiddleware rejects a negative Content-Length.
+
+    A negative length passes the ``> max_upload_size`` comparison, so without an
+    explicit check it reaches the handler and fails there (RFC 9110 forbids it).
+    """
+
+    async def mock_call_next(request):
+        return Response("OK", status_code=200)
+
+    app_mock = MagicMock()
+    middleware = ContentSizeLimitMiddleware(app_mock)
+
+    async def receive():
+        return {"type": "http.request", "body": b"data"}
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "headers": [(b"content-length", b"-1")],
+        "path": "/test",
+    }
+    request = Request(scope, receive)
+
+    response = await middleware.dispatch(request, mock_call_next)
+    assert response.status_code == 400
+    assert response.body == b"Invalid Content-Length"
+
+
+@pytest.mark.asyncio
 async def test_content_size_limit_invalid_length():
     """Test that ContentSizeLimitMiddleware handles invalid Content-Length gracefully."""
 

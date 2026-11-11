@@ -1,11 +1,14 @@
-# TODO(priority=High, complexity=Large): Benchmarking & Evaluation Framework
+# TODO(priority=High, complexity=Large, owner=agent): Benchmarking & Evaluation Framework
 
 We need to implement a systematic evaluation framework to measure improvements in report quality, relevance, and accuracy.
 
 ## 1. Port Evaluators
-Create `backend/tests/evaluators.py`. This module will define Pydantic models for structured grading.
+Create `backend/src/agent/evaluation.py`. This module defines the Pydantic models for structured
+grading. (It originally lived at `backend/tests/evaluators.py`; it was moved into the package
+because production code — `backend/scripts/benchmark.py` — imports it, and a module under
+`tests/` is neither importable as `agent.*` nor collected as a test.)
 
-### Pseudocode (`backend/tests/evaluators.py`)
+### Pseudocode (`backend/src/agent/evaluation.py`)
 ```python
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
@@ -52,7 +55,7 @@ Create `backend/scripts/benchmark.py` to run evaluations against a dataset using
 import asyncio
 from langsmith import Client
 from backend.src.agent.graph import graph # Import your main agent graph
-from backend.tests.evaluators import eval_quality, eval_groundedness
+from backend.src.agent.evaluation import eval_quality, eval_groundedness
 
 client = Client()
 
