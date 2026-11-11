@@ -53,7 +53,16 @@ class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
 
             try:
                 # 🛡️ Sentinel: Prevent 500 crashes from malformed Content-Length headers
-                if int(content_length) > self.max_upload_size:
+                cl_int = int(content_length)
+
+                # 🛡️ Sentinel: Reject negative Content-Length (RFC 9110 violation)
+                if cl_int < 0:
+                    logger.warning(
+                        f"Request blocked: Negative Content-Length ({content_length})"
+                    )
+                    return Response("Invalid Content-Length", status_code=400)
+
+                if cl_int > self.max_upload_size:
                     logger.warning(
                         f"Request blocked: Request entity too large ({content_length} > {self.max_upload_size})"
                     )
