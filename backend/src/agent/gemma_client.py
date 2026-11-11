@@ -6,6 +6,7 @@ supporting various providers like Vertex AI, Ollama, and local execution.
 
 import logging
 
+from agent.models import GEMINI_FLASH
 from config.app_config import config as app_config
 
 logger = logging.getLogger(__name__)
@@ -79,11 +80,11 @@ class OllamaGemmaClient(GemmaClient):
 
         self.requests = requests
         self.base_url = app_config.ollama_base_url
-        self.model_name = (
-            "gemini-1.5-flash"
-            if app_config.gemma_model_name == "gemma:7b"
-            else app_config.gemma_model_name
-        )
+        # Ollama is always addressed with the configured Ollama tag. The
+        # Gemini fallback below belongs to GoogleGenAIGemmaClient only: sending
+        # "gemini-1.5-flash" to /api/generate asks Ollama for a model it does not
+        # serve, which fails every request on the default gemma:7b setup.
+        self.model_name = app_config.gemma_model_name
         self.generate_url = f"{self.base_url}/api/generate"
         self.timeout = timeout
 
@@ -150,8 +151,10 @@ class GoogleGenAIGemmaClient(GemmaClient):
 
         # Will automatically pick up GEMINI_API_KEY from environment
         self.client = genai.Client()
+        # app_config's default is the Ollama tag gemma:7b, which the GenAI API
+        # does not serve; fall back to the repository's canonical Flash model.
         self.model_name = (
-            "gemini-1.5-flash"
+            GEMINI_FLASH
             if app_config.gemma_model_name == "gemma:7b"
             else app_config.gemma_model_name
         )
