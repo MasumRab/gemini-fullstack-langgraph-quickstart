@@ -5,7 +5,7 @@ structured grading of agent outputs using a Judge LLM (Gemini 2.5 Pro).
 """
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from agent.models import GEMINI_PRO
 
 # Module-level cache for the judge model instance
-_judge_model_cache: Optional[ChatGoogleGenerativeAI] = None
+_judge_model_cache: ChatGoogleGenerativeAI | None = None
 
 
 def _get_judge_model() -> ChatGoogleGenerativeAI:
@@ -54,7 +54,7 @@ def _get_judge_model() -> ChatGoogleGenerativeAI:
 class QualityScore(BaseModel):
     """Overall quality and utility score."""
 
-    score: int = Field(..., description="Numerical score from 1 to 5.")
+    score: int = Field(..., ge=1, le=5, description="Numerical score from 1 to 5.")
     reasoning: str = Field(..., description="Step-by-step justification for the score.")
 
 
@@ -67,15 +67,14 @@ class GroundednessScore(BaseModel):
     total_claims: int = Field(
         ..., description="Total number of major claims identified."
     )
-    hallucinations: List[str] = Field(
+    hallucinations: list[str] = Field(
         default_factory=list, description="List of claims that are not supported."
     )
     reasoning: str
 
 
-def eval_quality(request: str, report: str) -> Dict[str, Any]:
-    """
-    Evaluates the overall quality of a research report.
+def eval_quality(request: str, report: str) -> dict[str, Any]:
+    """Evaluates the overall quality of a research report.
 
     Args:
         request: The original user research request.
@@ -105,12 +104,13 @@ def eval_quality(request: str, report: str) -> Dict[str, Any]:
         return {"key": "quality_score", "score": 0, "error": str(e)}
 
 
-def eval_groundedness(report: str, sources: List[str]) -> Dict[str, Any]:
+def eval_groundedness(report: str, sources: list[str]) -> dict[str, Any]:
+    """Evaluates how well the report is grounded in the provided sources.
+
+    The judge returns a ``GroundednessScore``: how many of the report's claims it could
+    verify, how many it found in total, and the claims it could not support. The score is
+    the verified fraction, clamped to ``[0, 1]``.
     """
-    Evaluates how well the report is grounded in the provided sources.
-    """
-    # Simplified placeholder for groundedness logic
-    # In a real scenario, this would involve extracting claims and checking them against summaries
     prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -122,14 +122,26 @@ def eval_groundedness(report: str, sources: List[str]) -> Dict[str, Any]:
     )
 
     try:
-        grader = _get_judge_model().with_structured_output(
-            QualityScore
-        )  # Reusing QualityScore schema for simplicity
+        grader = _get_judge_model().with_structured_output(GroundednessScore)
         result = grader.invoke(prompt.format_messages())
+        metadata = {
+            "reasoning": result.reasoning,
+            "hallucinations": result.hallucinations,
+            "claims_verified": result.claims_verified,
+            "total_claims": result.total_claims,
+        }
+        if result.total_claims <= 0:
+            # No checkable claim means the ratio is undefined; report zero rather than
+            # dividing by zero, and say so, so a caller can tell it apart from "none verified".
+            metadata["note"] = (
+                "no checkable claims were identified; score is 0 by definition"
+            )
+            return {"key": "groundedness_score", "score": 0.0, "metadata": metadata}
+        fraction = result.claims_verified / result.total_claims
         return {
             "key": "groundedness_score",
-            "score": result.score / 5.0,
-            "metadata": {"reasoning": result.reasoning},
+            "score": min(max(fraction, 0.0), 1.0),
+            "metadata": metadata,
         }
     except Exception as e:
         return {"key": "groundedness_score", "score": 0, "error": str(e)}
